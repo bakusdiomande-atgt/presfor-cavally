@@ -1,0 +1,177 @@
+╔══════════════════════════════════════════════════════════════╗
+║        PRESFOR CAVALLY — Guide d'installation               ║
+║        Serveur local multi-utilisateurs terrain             ║
+╚══════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════
+ ÉTAPE 1 — Installer Node.js
+═══════════════════════════════════
+
+1. Ouvrez votre navigateur et allez sur : https://nodejs.org
+2. Cliquez sur "LTS" (version recommandée, bouton vert)
+3. Téléchargez et installez (cliquez Suivant à chaque étape)
+4. Redémarrez votre PC après installation
+
+VÉRIFICATION :
+- Ouvrez l'Invite de commandes (touche Windows + R, tapez "cmd")
+- Tapez : node --version
+- Vous devez voir quelque chose comme : v20.11.0
+
+
+═══════════════════════════════════
+ ÉTAPE 2 — Installer le serveur
+═══════════════════════════════════
+
+1. Copiez le dossier "presfor-serveur" sur votre PC
+   (ex : C:\PRESFOR\presfor-serveur)
+
+2. Double-cliquez sur INSTALLER.bat
+   → Attendez la fin de l'installation (1 à 2 minutes)
+
+3. Copiez votre fichier presfor_cavally.html
+   dans le même dossier que server.js
+
+Votre dossier doit ressembler à :
+  presfor-serveur/
+  ├── server.js
+  ├── package.json
+  ├── presfor_cavally.html    ← copiez votre fichier ici
+  ├── INSTALLER.bat
+  ├── DEMARRER_SERVEUR.bat
+  └── node_modules/           (créé par l'installation)
+
+
+═══════════════════════════════════
+ ÉTAPE 3 — Activer le hotspot WiFi
+═══════════════════════════════════
+
+Sur Windows 10/11 :
+1. Allez dans Paramètres > Réseau et Internet > Point d'accès mobile
+2. Activez "Partager ma connexion internet"
+3. Notez le Nom du réseau et le Mot de passe affichés
+
+Sur les téléphones agents :
+- WiFi > rejoindre le réseau avec le nom et mot de passe ci-dessus
+
+
+═══════════════════════════════════
+ ÉTAPE 4 — Démarrer le serveur
+═══════════════════════════════════
+
+1. Double-cliquez sur DEMARRER_SERVEUR.bat
+2. Une fenêtre noire s'ouvre — NE PAS LA FERMER
+
+Vous verrez s'afficher :
+  ╔════════════════════════════════╗
+  ║  PRESFOR CAVALLY — Serveur    ║
+  ╚════════════════════════════════╝
+
+  Accès local (votre PC) :
+    http://localhost:3000
+
+  Accès agents via WiFi :
+    http://192.168.137.1:3000
+
+3. Sur votre navigateur, allez sur : http://localhost:3000
+4. Sur les smartphones agents (connectés au hotspot) :
+   Ouvrez Chrome et tapez : http://192.168.137.1:3000
+
+
+═══════════════════════════════════
+ ÉTAPE 5 — Vérifier que tout marche
+═══════════════════════════════════
+
+Sur votre PC, ouvrez : http://localhost:3000/api/ping
+
+Vous devez voir :
+  {"ok":true,"message":"PRESFOR Cavally — serveur actif",...}
+
+Si vous voyez cette réponse, le serveur fonctionne.
+
+
+═══════════════════════════════════
+ UTILISATION QUOTIDIENNE
+═══════════════════════════════════
+
+MATIN (avant de partir sur le terrain) :
+□ Démarrer le serveur : double-clic sur DEMARRER_SERVEUR.bat
+□ Activer le hotspot WiFi du PC
+□ Vérifier que les agents voient le réseau WiFi sur leur téléphone
+
+TERRAIN :
+□ Agents ouvrent Chrome sur leur téléphone
+□ Tapent l'adresse IP affichée par le serveur
+□ Saisissent normalement dans l'application
+□ Toutes les données arrivent en temps réel sur votre PC
+
+FIN DE JOURNÉE :
+□ Exporter les données si besoin : http://localhost:3000/api/export/saisies.csv
+□ Vous pouvez arrêter le serveur (Ctrl+C dans la fenêtre noire)
+□ La base de données est sauvegardée dans : presfor_cavally.db
+
+
+═══════════════════════════════════
+ SYNCHRONISATION SUPABASE (cloud)
+═══════════════════════════════════
+
+Pour accéder à vos données depuis n'importe où :
+
+1. Créez un compte gratuit sur : https://supabase.com
+2. Créez un nouveau projet
+3. Dans Settings > API, copiez :
+   - Project URL  (ex: https://xxxx.supabase.co)
+   - anon key     (longue chaîne de caractères)
+
+4. Ouvrez server.js avec un éditeur de texte
+5. Remplacez les lignes :
+   const SUPABASE_URL = '';
+   const SUPABASE_KEY = '';
+   Par vos valeurs :
+   const SUPABASE_URL = 'https://xxxx.supabase.co';
+   const SUPABASE_KEY = 'votre-cle-ici';
+
+6. Redémarrez le serveur
+→ Les données se synchroniseront automatiquement
+  dès qu'une connexion internet est disponible
+
+
+═══════════════════════════════════
+ RÉSOLUTION DE PROBLÈMES
+═══════════════════════════════════
+
+PROBLÈME : Les agents ne voient pas l'appli sur leur téléphone
+→ Vérifiez qu'ils sont bien connectés au hotspot WiFi du PC
+→ Vérifiez que le pare-feu Windows autorise Node.js
+   (une fenêtre demande l'autorisation au premier lancement)
+
+PROBLÈME : "node n'est pas reconnu"
+→ Node.js n'est pas installé ou le PC doit être redémarré
+
+PROBLÈME : "port 3000 déjà utilisé"
+→ Changez PORT=3000 en PORT=3001 dans server.js
+
+PROBLÈME : Données perdues
+→ Vos données sont dans presfor_cavally.db — ne jamais supprimer ce fichier
+→ Faites une copie de sauvegarde régulière de ce fichier
+
+
+═══════════════════════════════════
+ CONTACTS ET SUPPORT
+═══════════════════════════════════
+
+API disponibles pour développement futur :
+  GET    /api/programmes        → liste des programmes
+  POST   /api/programmes        → créer un programme
+  PUT    /api/programmes/:id    → modifier un programme
+  DELETE /api/programmes/:id    → supprimer un programme
+
+  GET    /api/saisies           → liste des saisies
+  POST   /api/saisies           → créer une saisie
+  PUT    /api/saisies/:id       → modifier une saisie
+  DELETE /api/saisies/:id       → supprimer une saisie
+
+  GET    /api/stats             → statistiques globales
+  GET    /api/export/saisies.csv → export CSV complet
+  GET    /api/ping              → vérifier le serveur
+
+═══════════════════════════════════════════════════════════════
