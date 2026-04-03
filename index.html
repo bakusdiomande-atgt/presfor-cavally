@@ -223,6 +223,10 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     <div class="tb-title">PRESFOR <span>· Cavally</span></div>
   </div>
   <nav class="tb-modules">
+    <button class="tb-mod" onclick="switchModule('accueil')" id="tab-accueil" style="background:var(--accent);color:#fff;">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="margin-right:4px"><path d="M8.354 1.146a.5.5 0 0 0-.708 0l-6 6A.5.5 0 0 0 1.5 7.5v7a.5.5 0 0 0 .5.5h4.5a.5.5 0 0 0 .5-.5v-4h2v4a.5.5 0 0 0 .5.5H14a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.146-.354L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.354 1.146z"/></svg>
+      Accueil
+    </button>
     <button class="tb-mod active" onclick="switchModule('prog')" id="tab-prog"><span class="mod-num">M1</span>Programme planifié</button>
     <button class="tb-mod" onclick="switchModule('saisie')" id="tab-saisie"><span class="mod-num">M2</span>Saisie quotidienne</button>
     <button class="tb-mod" onclick="switchModule('dossier')" id="tab-dossier"><span class="mod-num">M3</span>Dossiers fonciers</button>
@@ -233,6 +237,95 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 </header>
 
 <div class="app">
+
+<!-- ══════════════════════════════════════════════
+     MODULE ACCUEIL · TABLEAU DE BORD
+══════════════════════════════════════════════ -->
+<div id="module-accueil" class="module" style="display:none;flex:1;min-width:0;overflow-y:auto;">
+  <div style="padding:20px 24px;max-width:1200px;margin:0 auto;">
+
+    <!-- En-tête avec date et heure -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <div>
+        <h1 style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--text1);margin:0">Tableau de bord PRESFOR</h1>
+        <p style="font-size:13px;color:var(--text2);margin:3px 0 0" id="dash-date">Région du Cavally</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-s" onclick="dashRefresh()" style="display:flex;align-items:center;gap:5px;">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/><path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"/></svg>
+          Actualiser
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI principaux -->
+    <div id="dash-kpi-main" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;"></div>
+
+    <!-- Alertes -->
+    <div id="dash-alertes-wrap" style="margin-bottom:18px;display:none;">
+      <div style="background:var(--red-lt);border:1px solid rgba(184,48,37,.2);border-radius:var(--radius);padding:12px 16px;">
+        <div style="font-size:12px;font-weight:700;color:var(--red-txt);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg>
+          Alertes terrain
+        </div>
+        <div id="dash-alertes-list" style="display:flex;flex-direction:column;gap:5px;"></div>
+      </div>
+    </div>
+
+    <!-- Ligne 2 : Activité récente + Couverture départements -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
+
+      <!-- Activité récente -->
+      <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;">Saisies récentes</span>
+          <button class="btn-s" style="font-size:10px;padding:3px 8px" onclick="switchModule('saisie')">Voir tout</button>
+        </div>
+        <div id="dash-recent-saisies" style="max-height:280px;overflow-y:auto;"></div>
+      </div>
+
+      <!-- Couverture par département -->
+      <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;">Couverture par département</span>
+          <button class="btn-s" style="font-size:10px;padding:3px 8px" onclick="switchModule('zones')">Voir tout</button>
+        </div>
+        <div id="dash-couverture" style="padding:14px 16px;"></div>
+      </div>
+    </div>
+
+    <!-- Ligne 3 : Performance agents + Progression activités -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
+
+      <!-- Top agents -->
+      <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;">Top agents — Production</span>
+          <button class="btn-s" style="font-size:10px;padding:3px 8px" onclick="switchModule('agents')">Voir tout</button>
+        </div>
+        <div id="dash-top-agents" style="padding:10px 14px;"></div>
+      </div>
+
+      <!-- Progression par activité -->
+      <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);">
+          <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;">Progression par activité</span>
+        </div>
+        <div id="dash-activites" style="padding:14px 16px;"></div>
+      </div>
+    </div>
+
+    <!-- Ligne 4 : Programmes en cours -->
+    <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:18px;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;">Programmes en cours</span>
+        <button class="btn-s" style="font-size:10px;padding:3px 8px" onclick="switchModule('prog')">Voir tout</button>
+      </div>
+      <div id="dash-programmes" style="overflow-x:auto;"></div>
+    </div>
+
+  </div>
+</div>
 
 <!-- ══════════════════════════════════════════════
      MODULE 1 · PROGRAMME PLANIFIÉ
@@ -1281,6 +1374,7 @@ function switchModule(id){
   if(id==='prog'){try{progRenderAll();}catch(e){console.error('prog render:',e);}}
   if(id==='dossier'){try{dosRenderAll();}catch(e){console.error('dos render:',e);}}
   if(id==='agents'){try{agRenderAll();}catch(e){console.error('agents render:',e);}}
+  if(id==='accueil'){try{dashRenderAll();}catch(e){console.error('dash render:',e);}}
   if(id==='zones'){try{zvRenderAll();}catch(e){console.error('zones render:',e);}}
 }
 
@@ -3129,6 +3223,275 @@ function zvExportCSV(){
 }
 
 // ═══════════════════════════════════════════
+// MODULE ACCUEIL · TABLEAU DE BORD
+// ═══════════════════════════════════════════
+
+function dashInit(){
+  // Afficher date/heure
+  const now = new Date();
+  const opts = {weekday:'long',day:'numeric',month:'long',year:'numeric'};
+  document.getElementById('dash-date').textContent =
+    now.toLocaleDateString('fr-FR', opts) + ' — ' +
+    now.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+  dashRenderAll();
+}
+
+function dashRefresh(){
+  dashRenderAll();
+  showToast('Tableau de bord actualisé');
+}
+
+function dashRenderAll(){
+  dashRenderKPI();
+  dashRenderAlertes();
+  dashRenderRecentSaisies();
+  dashRenderCouverture();
+  dashRenderTopAgents();
+  dashRenderActivites();
+  dashRenderProgrammes();
+}
+
+// ── KPI principaux ──
+function dashRenderKPI(){
+  const today = new Date().toISOString().split('T')[0];
+  const totDos = saisies.reduce((s,x)=>s+(x.ndos||0),0);
+  const totSup = saisies.reduce((s,x)=>s+(x.superficie||0),0);
+  const agentsActifs = new Set(saisies.filter(s=>s.date===today).map(s=>s.agent)).size;
+  const progsEnCours = programmes.filter(p=>p.statut==='En cours').length;
+  const progsRetard = programmes.filter(p=>p.statut==='En retard').length;
+  const dossActifs = dossiers.filter(d=>d.etape!=='Clôturé').length;
+  const dossClos = dossiers.filter(d=>d.etape==='Clôturé').length;
+  const txCloture = dossiers.length>0?Math.round(dossClos/dossiers.length*100):0;
+  const saisiesAuj = saisies.filter(s=>s.date===today).length;
+  const supAuj = saisies.filter(s=>s.date===today).reduce((s,x)=>s+(x.superficie||0),0);
+
+  document.getElementById('dash-kpi-main').innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;border-top:3px solid var(--accent2);">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px;">Dossiers traités</div>
+      <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:700;color:var(--accent)">${totDos}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;">Superficie : ${totSup.toFixed(1)} ha</div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text2);padding-top:8px;border-top:1px solid var(--border);">
+        Aujourd'hui : <b style="color:var(--accent)">${saisiesAuj}</b> saisie(s) · <b>${supAuj.toFixed(1)}</b> ha
+      </div>
+    </div>
+    <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;border-top:3px solid var(--blue);">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px;">Agents actifs</div>
+      <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:700;color:var(--blue)">${agentsActifs}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;">sur ${AGENTS.length} agents au total</div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text2);padding-top:8px;border-top:1px solid var(--border);">
+        Ayant saisi aujourd'hui
+      </div>
+    </div>
+    <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;border-top:3px solid ${progsRetard>0?'var(--red)':'var(--amber)'};">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px;">Programmes</div>
+      <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:700;color:var(--amber)">${progsEnCours}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;">En cours sur ${programmes.length} total</div>
+      <div style="margin-top:8px;font-size:11px;padding-top:8px;border-top:1px solid var(--border);color:${progsRetard>0?'var(--red-txt)':'var(--text2)'};">
+        ${progsRetard>0?`⚠ ${progsRetard} en retard`:'Tous dans les délais'}
+      </div>
+    </div>
+    <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;border-top:3px solid var(--accent);">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px;">Dossiers fonciers</div>
+      <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:700;color:var(--accent)">${dossActifs}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;">Actifs · ${dossClos} clôturés</div>
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;">
+            <div style="width:${txCloture}%;height:100%;background:var(--accent);border-radius:3px;"></div>
+          </div>
+          <span style="font-size:11px;font-weight:600;color:var(--accent)">${txCloture}%</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Alertes ──
+function dashRenderAlertes(){
+  const alertes = [];
+  const today = new Date().toISOString().split('T')[0];
+
+  // Dossiers bloqués > 30 jours
+  const bloques = dossiers.filter(d=>d.etape!=='Clôturé'&&dosJours(d.etape_date)>30);
+  if(bloques.length>0)
+    alertes.push({type:'red', msg:`${bloques.length} dossier(s) bloqué(s) depuis plus de 30 jours`, action:"switchModule('dossier')", label:'Voir dossiers'});
+
+  // Programmes en retard
+  const retard = programmes.filter(p=>p.statut==='En retard');
+  if(retard.length>0)
+    alertes.push({type:'red', msg:`${retard.length} programme(s) en retard`, action:"switchModule('prog')", label:'Voir programmes'});
+
+  // Agents sans saisie depuis 3 jours
+  const il3j = new Date(); il3j.setDate(il3j.getDate()-3);
+  const dateLimite = il3j.toISOString().split('T')[0];
+  const sansSaisie = AGENTS.filter(a=>{
+    const last = saisies.filter(s=>s.agent===a).sort((x,y)=>y.date.localeCompare(x.date))[0];
+    return last && last.date < dateLimite;
+  });
+  if(sansSaisie.length>0)
+    alertes.push({type:'amber', msg:`${sansSaisie.length} agent(s) sans saisie depuis plus de 3 jours`, action:"switchModule('agents')", label:'Voir agents'});
+
+  const wrap = document.getElementById('dash-alertes-wrap');
+  const list = document.getElementById('dash-alertes-list');
+  if(!alertes.length){wrap.style.display='none';return;}
+  wrap.style.display='block';
+  list.innerHTML = alertes.map(a=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.5);padding:6px 10px;border-radius:var(--radius-sm);">
+      <span style="font-size:12px;color:var(--red-txt)">⚠ ${a.msg}</span>
+      <button onclick="${a.action}" style="font-size:10px;padding:3px 9px;border:1px solid var(--red);background:transparent;color:var(--red-txt);border-radius:4px;cursor:pointer">${a.label}</button>
+    </div>`).join('');
+}
+
+// ── Saisies récentes ──
+function dashRenderRecentSaisies(){
+  const recent = [...saisies].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+  const div = document.getElementById('dash-recent-saisies');
+  if(!recent.length){div.innerHTML='<p style="font-size:12px;color:var(--text3);padding:16px;text-align:center;">Aucune saisie enregistrée</p>';return;}
+  div.innerHTML = recent.map(s=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);">
+      <div style="min-width:70px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${fmtDate(s.date)}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.agent}</div>
+        <div style="font-size:11px;color:var(--text2)">${s.village} · ${s.dept.replace('Dép. ','')}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--accent)">${s.ndos}</div>
+        <div style="font-size:10px;color:var(--text3)">${s.superficie?s.superficie+'ha':''}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── Couverture par département ──
+function dashRenderCouverture(){
+  const div = document.getElementById('dash-couverture');
+  const depts = Object.keys(ZV_GEO);
+  div.innerHTML = depts.map(dept=>{
+    const info = ZV_GEO[dept];
+    const allV = Object.values(info.sp).flat();
+    const couverts = allV.filter(v=>dossiers.some(d=>d.village===v&&d.dept===dept)).length;
+    const partiels = allV.filter(v=>!dossiers.some(d=>d.village===v&&d.dept===dept)&&saisies.some(s=>s.village===v)).length;
+    const pct = allV.length>0?Math.round(couverts/allV.length*100):0;
+    const col = pct>=70?'var(--accent)':pct>=40?'var(--amber)':'var(--red)';
+    return`<div style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <div>
+          <span style="font-size:12px;font-weight:600">${dept.replace('Dép. ','')}</span>
+          <span style="font-size:10px;color:var(--text2);margin-left:6px;">${allV.length} villages</span>
+        </div>
+        <div style="text-align:right;">
+          <span style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:${col}">${pct}%</span>
+          <span style="font-size:10px;color:var(--text3);margin-left:4px;">${couverts} couverts</span>
+        </div>
+      </div>
+      <div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;position:relative;">
+        <div style="width:${pct}%;height:100%;background:${col};border-radius:4px;"></div>
+        ${partiels>0?`<div style="position:absolute;left:${pct}%;top:0;width:${Math.round(partiels/allV.length*100)}%;height:100%;background:var(--amber);opacity:.5;"></div>`:''}
+      </div>
+      <div style="display:flex;gap:10px;margin-top:3px;font-size:10px;color:var(--text3);">
+        <span>✓ ${couverts} couverts</span>
+        <span>~ ${partiels} partiels</span>
+        <span>○ ${allV.length-couverts-partiels} non traités</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Top agents ──
+function dashRenderTopAgents(){
+  const div = document.getElementById('dash-top-agents');
+  const data = AGENTS.map(a=>{
+    const tot = saisies.filter(s=>s.agent===a).reduce((s,x)=>s+(x.ndos||0),0);
+    const sup = saisies.filter(s=>s.agent===a).reduce((s,x)=>s+(x.superficie||0),0);
+    return {nom:a, tot, sup};
+  }).filter(d=>d.tot>0).sort((a,b)=>b.tot-a.tot).slice(0,7);
+  const max = data[0]?.tot||1;
+  if(!data.length){div.innerHTML='<p style="font-size:12px;color:var(--text3);text-align:center;padding:12px;">Aucune donnée</p>';return;}
+  div.innerHTML = data.map((d,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;">
+      <span style="font-size:11px;font-weight:700;color:${i<3?'var(--accent)':'var(--text3)'};min-width:16px">${i+1}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
+          <span style="font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px">${d.nom.split(' ')[0]+' '+d.nom.split(' ').slice(-1)[0]}</span>
+          <span style="font-size:11px;font-weight:700;color:var(--accent);flex-shrink:0;margin-left:4px">${d.tot} dos.</span>
+        </div>
+        <div style="height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;">
+          <div style="width:${Math.round(d.tot/max*100)}%;height:100%;background:var(--accent);border-radius:3px;"></div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// ── Progression par activité ──
+function dashRenderActivites(){
+  const div = document.getElementById('dash-activites');
+  div.innerHTML = Object.entries(ACTIVITES).map(([key, act])=>{
+    const mesDos = dossiers.filter(d=>d.activite===key);
+    const clos = mesDos.filter(d=>d.etape==='Clôturé').length;
+    const total = mesDos.length;
+    const pct = total>0?Math.round(clos/total*100):0;
+    const supTot = mesDos.reduce((s,d)=>s+(d.superficie||0),0);
+    return`<div style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+        <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;background:${act.couleur.bg};color:${act.couleur.tx}">${key}</span>
+        <span style="font-size:11px;color:var(--text2)">${total} dossiers · ${supTot.toFixed(1)} ha</span>
+      </div>
+      <div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;margin-bottom:3px;">
+        <div style="width:${pct}%;height:100%;background:${act.couleur.brd||'var(--accent)'};border-radius:4px;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);">
+        <span>${clos} clôturés</span>
+        <span style="font-weight:600;color:${act.couleur.brd||'var(--accent)'}">${pct}% clôturé</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Programmes en cours ──
+function dashRenderProgrammes(){
+  const div = document.getElementById('dash-programmes');
+  const enCours = programmes.filter(p=>p.statut==='En cours'||p.statut==='En retard')
+    .sort((a,b)=>(b.statut==='En retard'?1:0)-(a.statut==='En retard'?1:0))
+    .slice(0,6);
+  if(!enCours.length){div.innerHTML='<p style="font-size:12px;color:var(--text3);padding:16px;text-align:center;">Aucun programme en cours</p>';return;}
+  div.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead><tr style="background:var(--surface2);">
+      <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Référence</th>
+      <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Agent</th>
+      <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Département</th>
+      <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Activité</th>
+      <th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Objectif (Ha)</th>
+      <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Progression</th>
+      <th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Statut</th>
+    </tr></thead>
+    <tbody>` +
+    enCours.map(p=>{
+      const real = saisies.filter(s=>s.prog_ref===p.id).reduce((s,x)=>s+(x.superficie||x.ndos||0),0);
+      const pct = p.objectif>0?Math.min(100,Math.round(real/p.objectif*100)):0;
+      const col = pct>=90?'var(--accent)':pct>=60?'var(--amber)':'var(--red)';
+      const retard = p.statut==='En retard';
+      const actInfo = ACTIVITES[p.op]||ACTIVITES['CF'];
+      return`<tr style="border-bottom:1px solid var(--border);${retard?'background:rgba(184,48,37,0.03)':''}">
+        <td style="padding:9px 12px;font-family:'DM Mono',monospace;font-size:11px;">${p.id}</td>
+        <td style="padding:9px 12px;font-weight:500">${p.agent.split(' ').slice(0,2).join(' ')}</td>
+        <td style="padding:9px 12px;font-size:11px;color:var(--text2)">${p.dept.replace('Dép. ','')}</td>
+        <td style="padding:9px 12px;"><span style="font-size:10px;padding:2px 6px;border-radius:4px;background:${actInfo?actInfo.couleur.bg:'var(--surface2)'};color:${actInfo?actInfo.couleur.tx:'var(--text2)'}">${p.op||'—'}</span></td>
+        <td style="padding:9px 12px;text-align:right;font-weight:600">${p.objectif} ha</td>
+        <td style="padding:9px 12px;min-width:120px;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div style="flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;">
+              <div style="width:${pct}%;height:100%;background:${col};border-radius:3px;"></div>
+            </div>
+            <span style="font-size:11px;font-weight:600;color:${col};min-width:28px">${pct}%</span>
+          </div>
+        </td>
+        <td style="padding:9px 12px;text-align:center;">
+          <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:${retard?'var(--red-lt)':'var(--accent-lt)'};color:${retard?'var(--red-txt)':'var(--accent-txt)'}">${p.statut}</span>
+        </td>
+      </tr>`;
+    }).join('') +
+    '</tbody></table>';
+}
+
+// ═══════════════════════════════════════════
 // INIT GLOBAL
 // ═══════════════════════════════════════════
 document.getElementById('hdate').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
@@ -3156,11 +3519,14 @@ function peuplerTousAgents() {
 }
 
 peuplerTousAgents();
+dashInit();
 progInit();
 saisieInit();
 dosInit();
 agInit();
 zvInit();
+// Démarrer sur le tableau de bord
+switchModule('accueil');
 
 </script>
 </body>
