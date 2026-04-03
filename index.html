@@ -5,6 +5,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PRESFOR · Région du Cavally</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1C4A2E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PRESFOR Cavally">
+<script>
+// Enregistrement du Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => {
+        console.log('[SW] Enregistré:', reg.scope);
+        // Vérifier les mises à jour
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              if (confirm('Une nouvelle version est disponible. Mettre à jour ?')) {
+                newWorker.postMessage('skipWaiting');
+                window.location.reload();
+              }
+            }
+          });
+        });
+      })
+      .catch(err => console.log('[SW] Erreur:', err));
+  });
+}
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -219,8 +248,15 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 <!-- ══ TOP BAR ══ -->
 <header class="topbar">
   <div class="tb-brand">
-    <div class="tb-logo">PF</div>
+    <div id="offline-banner" style="display:none;position:fixed;top:0;left:0;width:100%;background:#92400E;color:#FEF3C7;text-align:center;font-size:12px;font-weight:600;padding:5px;z-index:9999;">
+  📵 Mode hors-ligne — Les données sont sauvegardées localement et seront synchronisées à la reconnexion
+</div>
+<div class="tb-logo">PF</div>
     <div class="tb-title">PRESFOR <span>· Cavally</span></div>
+  <div id="net-status" style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.9);margin-left:8px;">
+    <span id="net-dot" style="width:6px;height:6px;border-radius:50%;background:#4ade80;display:inline-block;"></span>
+    <span id="net-label">En ligne</span>
+  </div>
   </div>
   <nav class="tb-modules">
     <button class="tb-mod" onclick="switchModule('accueil')" id="tab-accueil" style="background:var(--accent);color:#fff;">
@@ -232,6 +268,10 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     <button class="tb-mod" onclick="switchModule('dossier')" id="tab-dossier"><span class="mod-num">M3</span>Dossiers fonciers</button>
     <button class="tb-mod" onclick="switchModule('agents')" id="tab-agents"><span class="mod-num">M4</span>Agents &amp; équipes</button>
     <button class="tb-mod" onclick="switchModule('zones')" id="tab-zones"><span class="mod-num">M5</span>Zones &amp; villages</button>
+    <button class="tb-mod" onclick="switchModule('rapport')" id="tab-rapport">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="margin-right:4px"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H4zm0 1h8a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/><path d="M4.5 6a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7zm0 2.5a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7zm0 2.5a.5.5 0 0 1 0-1h4a.5.5 0 0 1 0 1h-4z"/></svg>
+      Rapports
+    </button>
   </nav>
   <span class="tb-right" id="hdate"></span>
 </header>
@@ -1398,6 +1438,7 @@ function switchModule(id){
   if(id==='agents'){try{agRenderAll();}catch(e){console.error('agents render:',e);}}
   if(id==='accueil'){try{dashRenderAll();}catch(e){console.error('dash render:',e);}}
   if(id==='zones'){try{zvRenderAll();}catch(e){console.error('zones render:',e);}}
+  if(id==='rapport'){try{rptInit();}catch(e){console.error('rapport render:',e);}}
 }
 
 
@@ -3606,6 +3647,342 @@ function dashRenderProgrammes(){
 }
 
 // ═══════════════════════════════════════════
+// MODULE RAPPORT
+// ═══════════════════════════════════════════
+
+function rptInit(){
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - today.getDay() + 1);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  document.getElementById('rpt-debut').value = monday.toISOString().split('T')[0];
+  document.getElementById('rpt-fin').value = sunday.toISOString().split('T')[0];
+}
+
+function rptUpdateDates(){
+  const type = document.getElementById('rpt-periode').value;
+  const today = new Date();
+  let debut, fin;
+  if(type==='semaine'){
+    const monday = new Date(today);
+    monday.setDate(today.getDate()-today.getDay()+1);
+    const sunday = new Date(monday); sunday.setDate(monday.getDate()+6);
+    debut=monday; fin=sunday;
+  } else if(type==='mois'){
+    debut=new Date(today.getFullYear(),today.getMonth(),1);
+    fin=new Date(today.getFullYear(),today.getMonth()+1,0);
+  } else if(type==='mission'){
+    debut=new Date(today); debut.setDate(today.getDate()-1);
+    fin=new Date(today);
+  } else {
+    return;
+  }
+  document.getElementById('rpt-debut').value=debut.toISOString().split('T')[0];
+  document.getElementById('rpt-fin').value=fin.toISOString().split('T')[0];
+}
+
+function rptUpdateSP(){
+  const dept=document.getElementById('rpt-dept').value;
+  const spSel=document.getElementById('rpt-sp');
+  const vilSel=document.getElementById('rpt-village');
+  spSel.innerHTML='<option value="">Toutes les SP</option>';
+  vilSel.innerHTML='<option value="">Tous les villages</option>';
+  if(dept&&GEO[dept]){
+    Object.keys(GEO[dept].sp).forEach(sp=>{
+      spSel.innerHTML+=`<option value="${sp}">${sp}</option>`;
+    });
+  }
+}
+
+function rptUpdateVillages(){
+  const dept=document.getElementById('rpt-dept').value;
+  const sp=document.getElementById('rpt-sp').value;
+  const vilSel=document.getElementById('rpt-village');
+  vilSel.innerHTML='<option value="">Tous les villages</option>';
+  if(dept&&sp&&GEO[dept]&&GEO[dept].sp[sp]){
+    GEO[dept].sp[sp].forEach(v=>{
+      vilSel.innerHTML+=`<option value="${v}">${v}</option>`;
+    });
+  }
+}
+
+function rptGetData(){
+  const debut=document.getElementById('rpt-debut').value;
+  const fin=document.getElementById('rpt-fin').value;
+  const dept=document.getElementById('rpt-dept').value;
+  const sp=document.getElementById('rpt-sp').value;
+  const village=document.getElementById('rpt-village').value;
+  const periode=document.getElementById('rpt-periode').value;
+
+  // Filtrer les saisies
+  let mesSaisies=saisies.filter(s=>{
+    const inDate=(!debut||s.date>=debut)&&(!fin||s.date<=fin);
+    const inDept=!dept||s.dept===dept;
+    const inSP=!sp||s.sp===sp;
+    const inVil=!village||s.village===village;
+    return inDate&&inDept&&inSP&&inVil;
+  });
+
+  // Filtrer les programmes
+  let mesProgs=programmes.filter(p=>{
+    const inDate=(!debut||p.date_fin>=debut)&&(!fin||p.date_debut<=fin);
+    const inDept=!dept||p.dept===dept;
+    return inDate&&inDept;
+  });
+
+  // Filtrer les dossiers
+  let mesDos=dossiers.filter(d=>{
+    const inDept=!dept||d.dept===dept;
+    const inVil=!village||d.village===village;
+    return inDept&&inVil;
+  });
+
+  // Stats
+  const totalDos=mesSaisies.reduce((s,x)=>s+(x.ndos||0),0);
+  const totalSup=mesSaisies.reduce((s,x)=>s+(x.superficie||0),0);
+  const agentsActifs=[...new Set(mesSaisies.map(s=>s.agent))];
+  const villages=[...new Set(mesSaisies.map(s=>s.village))].filter(Boolean);
+  const incidents=mesSaisies.filter(s=>s.incident&&s.incident.trim()!=='');
+
+  // Avancement par activité
+  const avancement={};
+  Object.keys(ACTIVITES).forEach(act=>{
+    const dosDact=mesDos.filter(d=>d.activite===act);
+    const clos=dosDact.filter(d=>d.etape==='Clôturé').length;
+    const etapesCount={};
+    dosDact.forEach(d=>{
+      etapesCount[d.etape]=(etapesCount[d.etape]||0)+1;
+    });
+    avancement[act]={total:dosDact.length,clos,encours:dosDact.length-clos,etapesCount,
+      sup:dosDact.reduce((s,d)=>s+(d.superficie||0),0)};
+  });
+
+  return {debut,fin,dept,sp,village,periode,mesSaisies,mesProgs,mesDos,
+    totalDos,totalSup,agentsActifs,villages,incidents,avancement};
+}
+
+function rptGenerer(){
+  const d=rptGetData();
+  const succes=document.getElementById('rpt-succes').value;
+  const difficultes=document.getElementById('rpt-difficultes').value;
+  const soutien=document.getElementById('rpt-soutien').value;
+
+  // Titre période
+  const types={'semaine':'Rapport hebdomadaire','mois':'Rapport mensuel',
+    'mission':'Rapport de mission','custom':'Rapport de période'};
+  const titreType=types[d.periode]||'Rapport';
+  const zoneTxt=d.village||d.sp||d.dept||'Région du Cavally';
+  const today=new Date().toLocaleDateString('fr-FR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  // Succès automatiques (missions terminées, dossiers clôturés)
+  const sucAutoList=[];
+  if(d.mesProgs.filter(p=>p.statut==='Terminé').length>0)
+    sucAutoList.push(`${d.mesProgs.filter(p=>p.statut==='Terminé').length} programme(s) terminé(s) avec succès`);
+  if(d.mesDos.filter(d=>d.etape==='Clôturé').length>0)
+    sucAutoList.push(`${d.mesDos.filter(d=>d.etape==='Clôturé').length} dossier(s) foncier(s) clôturé(s)`);
+  if(d.agentsActifs.length>0)
+    sucAutoList.push(`${d.agentsActifs.length} agent(s) actif(s) sur la période`);
+  if(succes) sucAutoList.push(...succes.split('\n').filter(s=>s.trim()));
+
+  // Difficultés automatiques depuis incidents
+  const difAutoList=[...new Set(d.incidents.map(s=>s.incident))];
+  if(difficultes) difAutoList.push(...difficultes.split('\n').filter(s=>s.trim()));
+
+  const actColors={ISF:'#7F77DD',CF:'#2A6B42',DTV:'#D97706',CONTRAT:'#2563EB'};
+
+  const html2=`
+  <div id="rapport-preview" style="font-family:'Arial',sans-serif;font-size:12px;line-height:1.6;color:#1a1a1a;">
+
+    <!-- EN-TÊTE OFFICIEL -->
+    <div style="background:linear-gradient(135deg,#1C4A2E 0%,#2A6B42 100%);padding:28px 32px;color:white;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div style="font-size:10px;letter-spacing:.15em;text-transform:uppercase;opacity:.75;margin-bottom:4px;">République de Côte d'Ivoire</div>
+          <div style="font-size:10px;opacity:.75;margin-bottom:12px;">Ministère de l'Agriculture et du Développement Rural</div>
+          <div style="font-size:20px;font-weight:700;margin-bottom:4px;">PRESFOR — Région du Cavally</div>
+          <div style="font-size:15px;font-weight:600;opacity:.9;">${titreType}</div>
+          <div style="font-size:12px;opacity:.75;margin-top:6px;">Zone : ${zoneTxt} · Période : ${fmtDate(d.debut)} au ${fmtDate(d.fin)}</div>
+        </div>
+        <div style="text-align:right;opacity:.75;font-size:11px;">
+          <div>Généré le ${today}</div>
+          <div style="margin-top:4px;">Projet de Sécurisation Foncière</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding:24px 32px;">
+
+      <!-- RÉSUMÉ EXÉCUTIF -->
+      <div style="background:#F0F7F2;border-left:4px solid #2A6B42;padding:14px 18px;border-radius:0 8px 8px 0;margin-bottom:22px;">
+        <div style="font-size:13px;font-weight:700;color:#1C4A2E;margin-bottom:8px;">Résumé exécutif</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+          <div style="text-align:center;">
+            <div style="font-size:24px;font-weight:700;color:#2A6B42;">${d.totalDos}</div>
+            <div style="font-size:10px;color:#555;">Dossiers traités</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:24px;font-weight:700;color:#2A6B42;">${d.totalSup.toFixed(1)}</div>
+            <div style="font-size:10px;color:#555;">Hectares couverts</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:24px;font-weight:700;color:#2A6B42;">${d.agentsActifs.length}</div>
+            <div style="font-size:10px;color:#555;">Agents actifs</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:24px;font-weight:700;color:#2A6B42;">${d.villages.length}</div>
+            <div style="font-size:10px;color:#555;">Villages couverts</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AVANCEMENT PAR ACTIVITÉ -->
+      <div style="margin-bottom:22px;">
+        <div style="font-size:14px;font-weight:700;color:#1C4A2E;border-bottom:2px solid #1C4A2E;padding-bottom:6px;margin-bottom:14px;">
+          État d'avancement des activités
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          ${Object.entries(d.avancement).map(([act,v])=>{
+            const pct=v.total>0?Math.round(v.clos/v.total*100):0;
+            const col=actColors[act]||'#555';
+            const actDef=ACTIVITES[act];
+            const etapesListe=Object.entries(v.etapesCount)
+              .sort((a,b)=>b[1]-a[1])
+              .slice(0,3)
+              .map(([e,n])=>`<span style="font-size:10px;background:#f0f0f0;padding:1px 6px;border-radius:10px;margin-right:4px;">${e} (${n})</span>`)
+              .join('');
+            return`<div style="border:1px solid #e0e0e0;border-radius:8px;padding:14px;border-top:3px solid ${col};">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <div style="font-size:13px;font-weight:700;color:${col};">${act}</div>
+                <div style="font-size:10px;color:#777;">${v.total} dossier(s) · ${v.sup.toFixed(1)} ha</div>
+              </div>
+              <div style="font-size:11px;color:#555;margin-bottom:6px;">${actDef?actDef.label.split('—')[1].trim():act}</div>
+              <div style="height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;margin-bottom:6px;">
+                <div style="width:${pct}%;height:100%;background:${col};border-radius:4px;"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:#777;">
+                <span>${v.clos} clôturé(s)</span>
+                <span style="font-weight:700;color:${col};">${pct}% clôturé</span>
+              </div>
+              ${etapesListe?`<div style="margin-top:8px;">Étapes actives : ${etapesListe}</div>`:''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- DÉTAIL DES SAISIES PAR AGENT -->
+      ${d.agentsActifs.length>0?`
+      <div style="margin-bottom:22px;">
+        <div style="font-size:14px;font-weight:700;color:#1C4A2E;border-bottom:2px solid #1C4A2E;padding-bottom:6px;margin-bottom:14px;">
+          Production par agent
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+          <thead>
+            <tr style="background:#F0F7F2;">
+              <th style="padding:8px 10px;text-align:left;border:1px solid #ddd;">Agent</th>
+              <th style="padding:8px 10px;text-align:center;border:1px solid #ddd;">Saisies</th>
+              <th style="padding:8px 10px;text-align:center;border:1px solid #ddd;">Dossiers</th>
+              <th style="padding:8px 10px;text-align:center;border:1px solid #ddd;">Superficie (ha)</th>
+              <th style="padding:8px 10px;text-align:left;border:1px solid #ddd;">Villages</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${d.agentsActifs.map((ag,i)=>{
+              const ms=d.mesSaisies.filter(s=>s.agent===ag);
+              const nd=ms.reduce((s,x)=>s+(x.ndos||0),0);
+              const sup=ms.reduce((s,x)=>s+(x.superficie||0),0);
+              const vils=[...new Set(ms.map(s=>s.village))].join(', ');
+              return`<tr style="background:${i%2===0?'#fff':'#fafafa'};">
+                <td style="padding:7px 10px;border:1px solid #ddd;font-weight:500;">${ag}</td>
+                <td style="padding:7px 10px;text-align:center;border:1px solid #ddd;">${ms.length}</td>
+                <td style="padding:7px 10px;text-align:center;border:1px solid #ddd;font-weight:600;color:#2A6B42;">${nd}</td>
+                <td style="padding:7px 10px;text-align:center;border:1px solid #ddd;">${sup.toFixed(1)}</td>
+                <td style="padding:7px 10px;border:1px solid #ddd;font-size:10px;color:#555;">${vils}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`:''}
+
+      <!-- SUCCÈS -->
+      ${sucAutoList.length>0?`
+      <div style="margin-bottom:22px;">
+        <div style="font-size:14px;font-weight:700;color:#1C4A2E;border-bottom:2px solid #1C4A2E;padding-bottom:6px;margin-bottom:12px;">
+          Succès de la période
+        </div>
+        <ul style="margin:0;padding-left:18px;">
+          ${sucAutoList.map(s=>`<li style="margin-bottom:6px;color:#1a1a1a;">${s}</li>`).join('')}
+        </ul>
+      </div>`:''}
+
+      <!-- DIFFICULTÉS -->
+      ${difAutoList.length>0?`
+      <div style="margin-bottom:22px;">
+        <div style="font-size:14px;font-weight:700;color:#C04828;border-bottom:2px solid #C04828;padding-bottom:6px;margin-bottom:12px;">
+          Difficultés rencontrées
+        </div>
+        <ul style="margin:0;padding-left:18px;">
+          ${difAutoList.map(s=>`<li style="margin-bottom:6px;color:#1a1a1a;">${s}</li>`).join('')}
+        </ul>
+      </div>`:''}
+
+      <!-- SOUTIEN CORPS SOUS-PRÉFECTORAL -->
+      <div style="margin-bottom:22px;">
+        <div style="font-size:14px;font-weight:700;color:#1C4A2E;border-bottom:2px solid #1C4A2E;padding-bottom:6px;margin-bottom:12px;">
+          Soutien attendu du corps sous-préfectoral
+        </div>
+        ${soutien?`<ul style="margin:0;padding-left:18px;">${soutien.split('\n').filter(s=>s.trim()).map(s=>`<li style="margin-bottom:6px;">${s}</li>`).join('')}</ul>`:
+        `<ul style="margin:0;padding-left:18px;">
+          <li style="margin-bottom:6px;">Facilitation de l'accès aux villages et appui à la mobilisation des populations</li>
+          <li style="margin-bottom:6px;">Mise à disposition d'une salle pour les réunions de sensibilisation</li>
+          <li style="margin-bottom:6px;">Appui à la résolution des conflits fonciers inter-villageois</li>
+          <li style="margin-bottom:6px;">Présence lors des cérémonies d'ouverture des opérations PRESFOR</li>
+        </ul>`}
+      </div>
+
+      <!-- PERSPECTIVES -->
+      <div style="margin-bottom:22px;">
+        <div style="font-size:14px;font-weight:700;color:#1C4A2E;border-bottom:2px solid #1C4A2E;padding-bottom:6px;margin-bottom:12px;">
+          Perspectives
+        </div>
+        <ul style="margin:0;padding-left:18px;">
+          ${d.mesProgs.filter(p=>p.statut==='En cours'||p.statut==='Planifié').slice(0,4).map(p=>`<li style="margin-bottom:6px;">Poursuite de l'opération <b>${p.id}</b> — ${p.op||p.activite||'activité'} à ${p.dept.replace('Dép. ','')} (objectif : ${p.objectif} ha)</li>`).join('')}
+          ${d.mesProgs.filter(p=>p.statut==='En cours'||p.statut==='Planifié').length===0?'<li>Planification des prochaines missions en cours</li>':''}
+        </ul>
+      </div>
+
+      <!-- PIED DE PAGE -->
+      <div style="border-top:1px solid #ddd;padding-top:14px;margin-top:10px;display:flex;justify-content:space-between;font-size:10px;color:#888;">
+        <span>PRESFOR Cavally — Document généré automatiquement</span>
+        <span>Date : ${today}</span>
+      </div>
+
+    </div>
+  </div>`;
+
+  document.getElementById('rpt-contenu').innerHTML=html2;
+  document.getElementById('rpt-apercu').style.display='block';
+  document.getElementById('rpt-btn-pdf').style.display='inline-flex';
+  showToast('Rapport généré !');
+}
+
+function rptExportPDF(){
+  const el=document.getElementById('rapport-preview');
+  if(!el){showToast('Générez d\'abord le rapport.');return;}
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+  <title>Rapport PRESFOR Cavally</title>
+  <style>
+    body{margin:0;font-family:Arial,sans-serif;font-size:12px;}
+    @media print{body{margin:0;}@page{margin:15mm;}}
+  </style>
+  </head><body>${el.innerHTML}</body></html>`);
+  w.document.close();
+  setTimeout(()=>w.print(),500);
+  showToast('Fenêtre d\'impression ouverte — choisissez "Enregistrer en PDF"');
+}
+
+// ═══════════════════════════════════════════
 // INIT GLOBAL
 // ═══════════════════════════════════════════
 document.getElementById('hdate').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
@@ -3634,6 +4011,8 @@ function peuplerTousAgents() {
 
 peuplerTousAgents();
 // Charger toutes les données en premier
+// Initialiser le statut réseau
+updateNetworkStatus();
 progInit();
 saisieInit();
 dosInit();
@@ -3648,5 +4027,111 @@ dashInit();
 switchModule('accueil');
 
 </script>
+<!-- ══════════════════════════════════════════════
+     MODULE RAPPORT
+══════════════════════════════════════════════ -->
+<div id="module-rapport" class="module" style="display:none;flex:1;min-width:0;overflow-y:auto;">
+  <div style="padding:20px 24px;max-width:900px;margin:0 auto;">
+
+    <!-- En-tête -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div>
+        <h1 style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin:0">Génération de rapport</h1>
+        <p style="font-size:12px;color:var(--text2);margin:4px 0 0">Rapport automatique PRESFOR — Région du Cavally</p>
+      </div>
+    </div>
+
+    <!-- Formulaire de paramètres -->
+    <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:16px;">
+      <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+        1 · Paramètres du rapport
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div class="ff">
+          <label class="fl">Type de période</label>
+          <select class="fsel" id="rpt-periode" onchange="rptUpdateDates()">
+            <option value="semaine">Rapport hebdomadaire</option>
+            <option value="mois">Rapport mensuel</option>
+            <option value="mission">Par mission / sortie terrain</option>
+            <option value="custom">Période personnalisée</option>
+          </select>
+        </div>
+        <div class="ff">
+          <label class="fl">Date début</label>
+          <input class="fi" type="date" id="rpt-debut">
+        </div>
+        <div class="ff">
+          <label class="fl">Date fin</label>
+          <input class="fi" type="date" id="rpt-fin">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+        <div class="ff">
+          <label class="fl">Département</label>
+          <select class="fsel" id="rpt-dept" onchange="rptUpdateSP()">
+            <option value="">Tous les départements</option>
+            <option>Dép. Guiglo</option>
+            <option>Dép. Bloléquin</option>
+            <option>Dép. Taï</option>
+            <option>Dép. Toulépleu</option>
+          </select>
+        </div>
+        <div class="ff">
+          <label class="fl">Sous-préfecture</label>
+          <select class="fsel" id="rpt-sp" onchange="rptUpdateVillages()">
+            <option value="">Toutes les SP</option>
+          </select>
+        </div>
+        <div class="ff">
+          <label class="fl">Village</label>
+          <select class="fsel" id="rpt-village">
+            <option value="">Tous les villages</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compléments qualitatifs -->
+    <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:16px;">
+      <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+        2 · Compléments qualitatifs
+        <span style="font-size:11px;font-weight:400;color:var(--text3);margin-left:8px;">Les incidents sont extraits automatiquement des saisies</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div class="ff">
+          <label class="fl">Succès additionnels</label>
+          <textarea class="fta" id="rpt-succes" style="min-height:70px" placeholder="Ex: Forte mobilisation des chefs de village, bonne coopération du CVGFR..."></textarea>
+        </div>
+        <div class="ff">
+          <label class="fl">Difficultés additionnelles</label>
+          <textarea class="fta" id="rpt-difficultes" style="min-height:70px" placeholder="Ex: Accès difficile en saison des pluies, pistes impraticables..."></textarea>
+        </div>
+      </div>
+      <div class="ff">
+        <label class="fl">Soutien attendu du corps sous-préfectoral</label>
+        <textarea class="fta" id="rpt-soutien" style="min-height:70px" placeholder="Ex: Facilitation des réunions villageoises, mise à disposition de salle, appui à la sensibilisation des populations sur les droits fonciers..."></textarea>
+      </div>
+    </div>
+
+    <!-- Boutons de génération -->
+    <div style="display:flex;gap:10px;margin-bottom:20px;">
+      <button class="btn-p" onclick="rptGenerer()" style="display:flex;align-items:center;gap:6px;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/></svg>
+        Générer l'aperçu
+      </button>
+      <button class="btn-s" id="rpt-btn-pdf" onclick="rptExportPDF()" style="display:none;align-items:center;gap:6px;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+        Télécharger PDF
+      </button>
+    </div>
+
+    <!-- Aperçu du rapport -->
+    <div id="rpt-apercu" style="display:none;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:0;overflow:hidden;">
+      <div id="rpt-contenu"></div>
+    </div>
+
+  </div>
+</div>
+
 </body>
 </html>
