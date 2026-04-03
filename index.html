@@ -3622,12 +3622,17 @@ function peuplerTousAgents() {
 }
 
 peuplerTousAgents();
-dashInit();
+// Charger toutes les données en premier
 progInit();
 saisieInit();
 dosInit();
 agInit();
 zvInit();
+// Peupler les selects agents
+['pf-agent','sf-agent','df-agent','abs-agent'].forEach(id=>buildAgentOptions(id,false));
+['saisie-f-agent','dos-f-agent'].forEach(id=>buildAgentOptions(id,true));
+// Initialiser le dashboard APRÈS que toutes les données sont chargées
+dashInit();
 // Démarrer sur le tableau de bord
 switchModule('accueil');
 
