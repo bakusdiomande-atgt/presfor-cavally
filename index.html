@@ -611,7 +611,8 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     <!-- Liste saisies -->
     <div class="panel active" id="saisie-panel-list">
       <div class="page-head">
-        <div><h2>Journal des saisies terrain</h2><p>Déclarations journalières — Région du Cavally</p></div>
+        <div><h2>Journal des saisies terrain</h2>
+        <p>Déclarations journalières — Région du Cavally · <span id="sync-status" style="color:var(--accent);font-weight:500"></span></p></div>
         <div class="btn-row">
           <label class="btn-s" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;" title="Importer depuis Excel">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708.708l3-3z"/></svg>
@@ -655,6 +656,12 @@ tbody td{padding:9px 12px;vertical-align:middle;}
               <div class="ff"><label class="fl">Date <span class="req">*</span></label><input class="fi" type="date" id="sf-date" onchange="saisieCheckProg()"><span class="ferr" id="se-date">Requise.</span></div>
               <div class="ff"><label class="fl">Agent <span class="req">*</span></label><select class="fsel" id="sf-agent" onchange="saisieCheckProg()"><option value="">-- Sélectionner un agent --</option></select><span class="ferr" id="se-agent">Requis.</span></div>
               <div class="ff"><label class="fl">Programme lié</label><select class="fsel" id="sf-prog-ref"><option value="">-- Lier à un programme --</option></select><span class="fhint">Pour la corrélation auto</span></div>
+              <div class="ff"><label class="fl">Dossier foncier lié</label>
+                <select class="fsel" id="sf-dossier-ref" onchange="saisieOnDossierChange()">
+                  <option value="">-- Lier à un dossier (optionnel) --</option>
+                </select>
+                <span class="fhint">L'étape du dossier sera mise à jour automatiquement</span>
+              </div>
             </div>
           </div>
           <div class="fs">
@@ -1743,6 +1750,26 @@ function saisieLoadProgs(){
   sel.innerHTML='<option value="">-- Lier à un programme --</option>';
   PROGS_REF.forEach(p=>sel.innerHTML+=`<option value="${p.id}">${p.id} · ${p.agent} · ${p.dept}</option>`);
 }
+function saisieLoadDossiers(agent, village){
+  const sel=document.getElementById('sf-dossier-ref');
+  if(!sel)return;
+  sel.innerHTML='<option value="">-- Lier à un dossier (optionnel) --</option>';
+  let list=dossiers.filter(d=>d.etape!=='Clôturé');
+  if(agent)list=list.filter(d=>d.agent===agent);
+  if(village)list=list.filter(d=>d.village===village);
+  if(!list.length)list=dossiers.filter(d=>d.etape!=='Clôturé');
+  list.forEach(d=>sel.innerHTML+=`<option value="${d.id}">${d.ref_officiel} · ${d.demandeur} · ${d.village} (${d.etape})</option>`);
+}
+function saisieOnDossierChange(){
+  const dosId=document.getElementById('sf-dossier-ref')?.value;
+  if(!dosId)return;
+  const dos=dossiers.find(d=>d.id===dosId);
+  if(!dos)return;
+  // Pré-remplir l'étape si le dossier a une étape
+  const etapeChip=document.querySelector(`#saisie-chips .chip[data-v="${dos.etape}"]`);
+  if(etapeChip){saisieSelEtape&&saisieSelEtape(etapeChip);}
+  showToast('Dossier '+dos.ref_officiel+' sélectionné');
+}
 function saisieUpdateGeo(){
   geoUpdateSP('sf-dept','sf-sp','sf-village');
 }
@@ -1774,6 +1801,11 @@ function saisieCheckProg(){
   if(ex){ao.innerHTML=`<span>ℹ</span><span>Saisie existante pour ${agent} le ${fmtDate(date)} (${ex.id}).</span>`;ao.classList.add('show');}
   else ao.classList.remove('show');
 }
+  // Charger les dossiers filtrés par agent et village
+  const ag=document.getElementById('sf-agent')?.value;
+  const vl=document.getElementById('sf-village')?.value;
+  saisieLoadDossiers(ag,vl);
+
 function saisieCalcDuree(){
   const dep=document.getElementById('sf-hdep').value,ret=document.getElementById('sf-hret').value;
   if(!dep||!ret){document.getElementById('sf-duree').value='';return;}
@@ -1822,7 +1854,7 @@ function saisieSubmit(e){
     sp:document.getElementById('sf-sp').value,
     village:document.getElementById('sf-village').value,
     etape:document.getElementById('sf-etape').value,
-    ndos:parseInt(document.getElementById('sf-ndos').value)||0,superficie:parseFloat(document.getElementById('sf-superficie')?.value||0)||0,
+    ndos:parseInt(document.getElementById('sf-ndos').value)||0,superficie:parseFloat(document.getElementById('sf-superficie')?.value||0)||0,dossier_ref:document.getElementById('sf-dossier-ref')?.value||'',
     dossiers:[...saisieDosList],
     hdep:document.getElementById('sf-hdep').value,
     hret:document.getElementById('sf-hret').value,
@@ -2040,6 +2072,77 @@ function saisieExportCSV(){
   a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
   a.download='presfor_saisies_cavally.csv';a.click();
   showToast('Export CSV téléchargé !');
+}
+
+// ═══════════════════════════════════════════
+// SYNCHRONISATION M2 → M3
+// ═══════════════════════════════════════════
+
+function syncSaisieVersDossier(s){
+  // Si la saisie est liée à un dossier explicitement
+  if(s.dossier_ref){
+    const dos = dossiers.find(d=>d.id===s.dossier_ref);
+    if(dos && s.etape && dos.etape!=='Clôturé'){
+      const etapeIdx = DOS_ETAPES.indexOf(s.etape);
+      const currentIdx = DOS_ETAPES.indexOf(dos.etape);
+      if(etapeIdx > currentIdx){
+        dos.historique = dos.historique||[];
+        dos.historique.push({etape:s.etape, date:s.date, agent:s.agent});
+        dos.etape = s.etape;
+        dos.etape_date = s.date;
+        dosSave();
+        console.log('Sync M2→M3: dossier '+dos.ref_officiel+' avancé à '+s.etape);
+      }
+    }
+    return;
+  }
+
+  // Synchronisation automatique par village + agent + activité
+  if(!s.etape || !s.village || !s.agent) return;
+  const candidats = dossiers.filter(d=>
+    d.etape !== 'Clôturé' &&
+    d.village === s.village &&
+    d.agent === s.agent
+  );
+  if(!candidats.length) return;
+  let synced = 0;
+  candidats.forEach(dos=>{
+    // Vérifier si l'étape de la saisie est dans la chaîne de l'activité du dossier
+    const actDef = ACTIVITES[dos.activite];
+    if(!actDef) return;
+    const etapesAct = [...actDef.etapes, 'Clôturé'];
+    const etapeIdx = etapesAct.indexOf(s.etape);
+    const currentIdx = etapesAct.indexOf(dos.etape);
+    if(etapeIdx > 0 && etapeIdx > currentIdx){
+      dos.historique = dos.historique||[];
+      dos.historique.push({etape:s.etape, date:s.date, agent:s.agent, auto:true});
+      dos.etape = s.etape;
+      dos.etape_date = s.date;
+      synced++;
+    }
+  });
+  if(synced>0){
+    dosSave();
+    console.log('Sync auto M2→M3: '+synced+' dossier(s) mis à jour pour '+s.village);
+  }
+}
+
+function syncAll(){
+  // Synchronisation complète de toutes les saisies vers tous les dossiers
+  let total = 0;
+  const saisiesTri = [...saisies].sort((a,b)=>a.date.localeCompare(b.date));
+  saisiesTri.forEach(s => {
+    const avant = JSON.stringify(dossiers.map(d=>d.etape));
+    syncSaisieVersDossier(s);
+    const apres = JSON.stringify(dossiers.map(d=>d.etape));
+    if(avant!==apres) total++;
+  });
+  dosSave();
+  dosRenderAll();
+  if(total>0)
+    showToast(total+' dossier(s) synchronisé(s) depuis les saisies !');
+  else
+    showToast('Tout est déjà synchronisé.');
 }
 
 // ═══════════════════════════════════════════
