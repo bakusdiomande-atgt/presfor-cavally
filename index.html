@@ -1845,6 +1845,7 @@ function saisieImportExcel(input){
         const incident = get(row,['incident','probleme','difficulte']);
         const meteo    = get(row,['meteo','temps','météo'])||'Ensoleillé';
         const obs      = get(row,['observation','obs','commentaire','remarque']);
+        const superficie = parseFloat(get(row,['superficie','surface','ha','hectare','sup']))||0;
         const prog_ref = get(row,['programme','prog','ref','reference','prog_ref']);
         const sp       = get(row,['sousprefecture','sp','sous_pref']);
         const duree    = get(row,['duree','durée','temps_travail']);
@@ -1859,7 +1860,7 @@ function saisieImportExcel(input){
           dept: dept?(dept.includes('Dép.')?dept:'Dép. '+dept):'',
           sp, village,
           etape: etape||'Enquête terrain',
-          ndos, dossiers:[],
+          ndos, superficie, dossiers:[],
           hdep: hdep||'07:00', hret: hret||'17:00',
           duree: duree||'', km, incident, meteo, obs,
           prog_ref,
@@ -2309,6 +2310,7 @@ function dosImportExcel(input){
           dept:dept?(dept.includes('Dép.')?dept:'Dép. '+dept):'',
           village,demandeur,tel,
           superficie:sup,
+          activite,
           type_parcelle:type_parc||'Agricole',
           etape:etapeValide||'Enquête terrain',
           etape_date:etape_date||new Date().toISOString().split('T')[0],
