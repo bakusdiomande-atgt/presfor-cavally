@@ -1262,6 +1262,21 @@ function geoUpdateVillage(deptId, spId, vilId) {
     vils.map(v => '<option value="' + v + '">' + v + '</option>').join('');
 }
 // ════════════════════════════════════════
+// DÉCLARATIONS GLOBALES ANTICIPÉES
+// (pour éviter les erreurs "before initialization")
+// ════════════════════════════════════════
+let programmes = [];
+let saisies = [];
+let dossiers = [];
+let dosEditingId = null;
+let saisieEditingId = null;
+let progEditingId = null;
+let saisieCounter = 0;
+let progVillages = [];
+let dosImportData = [];
+let progImportData = [];
+
+// ════════════════════════════════════════
 // RÉFÉRENTIEL ACTIVITÉS PRESFOR CAVALLY
 // ════════════════════════════════════════
 const ACTIVITES = {
@@ -1389,9 +1404,8 @@ function switchModule(id){
 // ═══════════════════════════════════════════
 // MODULE 1 · PROGRAMME
 // ═══════════════════════════════════════════
-let programmes=[];
-let progEditingId=null;
-let progVillages=[];
+
+
 let progCounter=0;
 
 const PROG_SAMPLE=[
@@ -1593,9 +1607,8 @@ function progClearAll(){
 // ═══════════════════════════════════════════
 // MODULE 2 · SAISIE QUOTIDIENNE
 // ═══════════════════════════════════════════
-let saisies=[];
-let saisieEditingId=null;
-let saisieCounter=0;
+
+
 let saisieDosList=[];
 
 const SAISIE_SAMPLE=[
@@ -2150,8 +2163,7 @@ function syncAll(){
 // ═══════════════════════════════════════════
 const DOS_ETAPES=['Enquête terrain','Bornage','Constitution du dossier','PV de constat de limite','Recensement droit coutumier','Demande certificat foncier','Clôturé'];
 const DOS_COLORS={'Enquête terrain':{bg:'var(--blue-lt)',tx:'var(--blue-txt)'},'Bornage':{bg:'var(--teal-lt)',tx:'var(--teal-txt)'},'Constitution du dossier':{bg:'var(--amber-lt)',tx:'var(--amber-txt)'},'PV de constat de limite':{bg:'#EDE9FE',tx:'#4C1D95'},'Recensement droit coutumier':{bg:'#FEF3C7',tx:'#92400E'},'Demande certificat foncier':{bg:'var(--red-lt)',tx:'var(--red-txt)'},'Clôturé':{bg:'var(--accent-lt)',tx:'var(--accent-txt)'}};
-let dossiers=[];
-let dosEditingId=null;
+
 const DOS_SAMPLE=[
   {id:'DOS-CAV-001',ref_officiel:'CF-CAV-2025-001',date_ouverture:'2025-04-01',agent:'Chigbeu Akoue Florent',dept:'Dép. Guiglo',village:'Taï',demandeur:'Kouakou Jean',tel:'07 01 23 45 67',superficie:3.5,type_parcelle:'Agricole',activite:'CF',etape:'Bornage',etape_date:'2025-04-10',obs:'',historique:[{etape:'Enquête terrain',date:'2025-04-01'},{etape:'Bornage',date:'2025-04-10'}]},
   {id:'DOS-CAV-002',ref_officiel:'CF-CAV-2025-002',date_ouverture:'2025-04-02',agent:'Diby Arnaud',dept:'Dép. Guiglo',village:'Grabo',demandeur:'Kouamé Marie',tel:'',superficie:1.8,type_parcelle:'Habitation',activite:'CF',etape:'Constitution du dossier',etape_date:'2025-04-08',obs:'',historique:[{etape:'Enquête terrain',date:'2025-04-02'},{etape:'Bornage',date:'2025-04-05'},{etape:'Constitution du dossier',date:'2025-04-08'}]},
@@ -2555,7 +2567,6 @@ function dosImportExcel(input){
   };
   reader.readAsArrayBuffer(file);
 }
-let dosImportData=[];
 function dosImportConfirm(){
   const valides=dosImportData.filter(d=>d.errs.length===0);
   if(!valides.length){showToast('Aucun dossier valide.');return;}
