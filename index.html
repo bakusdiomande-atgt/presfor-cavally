@@ -84,6 +84,8 @@ body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--t
 
 /* ── Module panels ── */
 .module{display:none;}
+#module-rapport{flex-direction:column;}
+#module-rapport>div{width:100%;box-sizing:border-box;}
 .module.active{display:block;}
 .panel{display:none;animation:fi .16s ease;}
 .panel.active{display:block;}
@@ -3651,13 +3653,18 @@ function dashRenderProgrammes(){
 // ═══════════════════════════════════════════
 
 function rptInit(){
-  const today = new Date();
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - today.getDay() + 1);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  document.getElementById('rpt-debut').value = monday.toISOString().split('T')[0];
-  document.getElementById('rpt-fin').value = sunday.toISOString().split('T')[0];
+  try {
+    const today = new Date();
+    const d = document.getElementById('rpt-debut');
+    const f = document.getElementById('rpt-fin');
+    if(!d || !f) return;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - today.getDay() + 1);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    d.value = monday.toISOString().split('T')[0];
+    f.value = sunday.toISOString().split('T')[0];
+  } catch(e) { console.error('rptInit:', e); }
 }
 
 function rptUpdateDates(){
@@ -4031,7 +4038,7 @@ switchModule('accueil');
      MODULE RAPPORT
 ══════════════════════════════════════════════ -->
 <div id="module-rapport" class="module" style="display:none;flex:1;min-width:0;overflow-y:auto;">
-  <div style="padding:20px 24px;max-width:900px;margin:0 auto;">
+  <div style="padding:20px 24px;max-width:900px;margin:0 auto;width:100%;box-sizing:border-box;">
 
     <!-- En-tête -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
