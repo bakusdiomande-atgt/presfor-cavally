@@ -338,8 +338,8 @@ tbody td{padding:9px 12px;vertical-align:middle;}
           <div class="fs">
             <div class="fs-title">2 · Territoire</div>
             <div class="fg">
-              <div class="ff"><label class="fl">Département <span class="req">*</span></label><select class="fsel" id="pf-dept"><option value="">-- Sélectionner --</option><option>Dép. Guiglo</option><option>Dép. Bloléquin</option><option>Dép. Toulépleu</option><option>Dép. Taï</option></select><span class="ferr" id="pe-dept">Requis.</span></div>
-              <div class="ff"><label class="fl">Sous-préfecture</label><input class="fi" id="pf-sp" placeholder="Ex : SP Taï"></div>
+              <div class="ff"><label class="fl">Département <span class="req">*</span></label><select class="fsel" id="pf-dept" onchange="geoUpdateSP('pf-dept','pf-sp','pf-village-sel')"><option value="">-- Sélectionner --</option><option>Dép. Guiglo</option><option>Dép. Bloléquin</option><option>Dép. Toulépleu</option><option>Dép. Taï</option></select><span class="ferr" id="pe-dept">Requis.</span></div>
+              <div class="ff"><label class="fl">Sous-préfecture</label><select class="fsel" id="pf-sp" onchange="geoUpdateVillage('pf-dept','pf-sp','pf-village-sel')"><option value="">-- Sous-préfecture --</option></select></div>
               <div class="ff full">
                 <label class="fl">Villages cibles <span class="req">*</span></label>
                 <div class="v-input-w"><input class="fi" id="pf-village-in" placeholder="Taper un village + Entrée" style="flex:1" onkeydown="progAddVillage(event)"><button type="button" class="btn-s" onclick="progAddVillage({key:'Enter',preventDefault:()=>{}})">Ajouter</button></div>
@@ -369,7 +369,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
                 <div id="pf-sousetapes-list" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;"></div>
                 <input type="hidden" id="pf-sousetapes">
               </div>
-              <div class="ff"><label class="fl">Objectif dossiers <span class="req">*</span></label><input class="fi" type="number" id="pf-objectif" min="1" max="200" placeholder="Ex : 25"><span class="ferr" id="pe-obj">Entre 1 et 200.</span></div>
+              <div class="ff"><label class="fl">Objectif (Ha) <span class="req">*</span></label><input class="fi" type="number" id="pf-objectif" min="0.1" step="0.1" placeholder="Ex : 25.5"><span class="ferr" id="pe-obj">Requis.</span><span class="fhint">Superficie totale à traiter en Ha</span></div>
             </div>
           </div>
           <div class="fs">
@@ -537,7 +537,8 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       </div>
       <div class="tw">
         <table>
-          <thead><tr><th>Réf.</th><th>Date</th><th>Agent</th><th>Dép. · Village</th><th>Étape</th><th>Dossiers</th><th>Heures</th><th>Écart prog.</th><th></th></tr></thead>
+          <thead><tr><th>Réf.</th><th>Date</th><th>Agent</th><th>Dép. · Village</th><th>Étape</th><th>Dossiers</th>
+            <th>Sup. (Ha)</th><th>Heures</th><th>Écart prog.</th><th></th></tr></thead>
           <tbody id="saisie-tbody"></tbody>
         </table>
         <div id="saisie-empty" class="empty-state" style="display:none"><p>Aucune saisie. Démarrez la première déclaration.</p><button class="btn-p" onclick="saisieShowPanel('form')">+ Nouvelle saisie</button></div>
@@ -566,9 +567,9 @@ tbody td{padding:9px 12px;vertical-align:middle;}
           <div class="fs">
             <div class="fs-title">2 · Territoire</div>
             <div class="fg3">
-              <div class="ff"><label class="fl">Département <span class="req">*</span></label><select class="fsel" id="sf-dept" onchange="saisieUpdateGeo()"><option value="">-- Sélectionner --</option><option>Dép. Guiglo</option><option>Dép. Bloléquin</option><option>Dép. Toulépleu</option><option>Dép. Taï</option></select><span class="ferr" id="se-dept">Requis.</span></div>
-              <div class="ff"><label class="fl">Sous-préfecture</label><select class="fsel" id="sf-sp"><option value="">-- Département d'abord --</option></select></div>
-              <div class="ff"><label class="fl">Village <span class="req">*</span></label><input class="fi" id="sf-village" list="saisie-village-dl" placeholder="Nom du village"><datalist id="saisie-village-dl"></datalist><span class="ferr" id="se-village">Requis.</span></div>
+              <div class="ff"><label class="fl">Département <span class="req">*</span></label><select class="fsel" id="sf-dept" onchange="geoUpdateSP('sf-dept','sf-sp','sf-village');saisieUpdateGeo()"><option value="">-- Sélectionner --</option><option>Dép. Guiglo</option><option>Dép. Bloléquin</option><option>Dép. Toulépleu</option><option>Dép. Taï</option></select><span class="ferr" id="se-dept">Requis.</span></div>
+              <div class="ff"><label class="fl">Sous-préfecture</label><select class="fsel" id="sf-sp" onchange="geoUpdateVillage('sf-dept','sf-sp','sf-village')"><option value="">-- Département d'abord --</option></select></div>
+              <div class="ff"><label class="fl">Village <span class="req">*</span></label><select class="fsel" id="sf-village"><option value="">-- Village --</option></select><datalist id="saisie-village-dl"></datalist><span class="ferr" id="se-village">Requis.</span></div>
             </div>
           </div>
           <div class="fs">
@@ -579,6 +580,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
                 <div class="counter-wrap"><button type="button" class="counter-btn" onclick="saisieAdj(-1)">−</button><input type="number" class="counter-val" id="sf-ndos" value="0" min="0" max="99" oninput="saisieCheckAlert()"><button type="button" class="counter-btn" onclick="saisieAdj(1)">+</button></div>
                 <span class="ferr" id="se-ndos">Valeur 0–99.</span>
               </div>
+              <div class="ff"><label class="fl">Superficie traitée (Ha)</label><input class="fi" type="number" id="sf-superficie" min="0" step="0.1" placeholder="Ex : 12.5"><span class="fhint">Superficie totale des dossiers traités ce jour</span></div>
               <div class="ff">
                 <label class="fl">Étape réalisée <span class="req">*</span></label>
                 <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:3px;" id="saisie-chips">
@@ -774,7 +776,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
               <div class="ff"><label class="fl">N° officiel PRESFOR <span class="req">*</span></label><input class="fi" id="df-ref" placeholder="Ex : CF-CAV-2025-0042"><span class="ferr" id="de-ref">Requis.</span><span class="fhint">Numéro officiel attribué par PRESFOR</span></div>
               <div class="ff"><label class="fl">Date d'ouverture <span class="req">*</span></label><input class="fi" type="date" id="df-date"><span class="ferr" id="de-date">Requise.</span></div>
               <div class="ff"><label class="fl">Agent responsable <span class="req">*</span></label><select class="fsel" id="df-agent"><option value="">-- Sélectionner --</option></select><span class="ferr" id="de-agent">Requis.</span></div>
-              <div class="ff"><label class="fl">Département <span class="req">*</span></label><select class="fsel" id="df-dept" onchange="dosUpdateGeo()"><option value="">-- Sélectionner --</option><option>Dép. Guiglo</option><option>Dép. Bloléquin</option><option>Dép. Toulépleu</option><option>Dép. Taï</option></select><span class="ferr" id="de-dept">Requis.</span></div>
+              <div class="ff"><label class="fl">Département <span class="req">*</span></label><select class="fsel" id="df-dept" onchange="geoUpdateSP('df-dept','df-sp','df-village');dosUpdateGeo()"><option value="">-- Sélectionner --</option><option>Dép. Guiglo</option><option>Dép. Bloléquin</option><option>Dép. Toulépleu</option><option>Dép. Taï</option></select><span class="ferr" id="de-dept">Requis.</span></div>
             </div>
           </div>
 
@@ -1085,12 +1087,80 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 // ═══════════════════════════════════════════
 // DONNÉES PARTAGÉES
 // ═══════════════════════════════════════════
-const GEO={
-  'Dép. Guiglo':{sp:['SP Guiglo','SP Taï','SP Grabo','SP Zagné','SP Diékoué'],v:['Guiglo','Taï','Grabo','Zagné','Diékoué','Nidrou','Kaadé','Podiagouiné','Zérégbo']},
-  'Dép. Bloléquin':{sp:['SP Bloléquin','SP Péhé','SP Nizahon','SP Déhiré'],v:['Bloléquin','Péhé','Nizahon','Déhiré','Zrabrogo','Breby','Mané']},
-  'Dép. Toulépleu':{sp:['SP Toulépleu','SP Bin-Houyé','SP Tiapleu'],v:['Toulépleu','Bin-Houyé','Tiapleu','Logoualé','Fengolo']},
-  'Dép. Taï':{sp:['SP Taï','SP Aboa','SP Grabo'],v:['Taï','Aboa','Grabo','Zagné','Diékoué','Nidrou']},
+const GEO = {
+  'Dép. Bloléquin': {
+    sp: {
+      'SP Bloléquin': ['Blédi-Diéya','Bloléquin','Diouya-Dokin','Goya','Guéya','Kéibly','Médibly','Yoya'],
+      'SP Diboké':    ['Diboké','Oulaï-Taibly','Zilébli'],
+      'SP Doké':      ['Bably-Vaya','Diéya','Doké','Ganhia','Guibobly','Ké-Bouébo','Oulaï-kpably','Pohan-Badouébly','Zomplou'],
+      'SP Tinhou':    ['Dédjean','Koadéguézon','Petit-Guiglo','Tinhou','Tuambly','Zou-Yahi'],
+      'SP Zéaglo':    ['Béoué','Douandrou','Pohan','Zéaglo','Ziglo'],
+    }
+  },
+  'Dép. Guiglo': {
+    sp: {
+      'SP Bédy-Goazon': ['Bédy-Goazon','Douédy-Guézon','Zébly'],
+      'SP Guiglo':      ['Ditroudra-Béoué','Domobly','Glopaoudy','Goya 1','Goya 2','Guiglo','Kati','Kridy','Mona','Nedrou','Nounoubaye','Paris-Léona','Petit-Guiglo','Pona','Troya','Yaoudé','Zouan','Zro'],
+      'SP Kaadé':       ['Béoua','Guézon','Guinkin','Kaadé','Niouldé','Troya 2'],
+      'SP Nizahon':     ['Béablo','Béhébo','Nizahon 1','Nizahon 2'],
+    }
+  },
+  'Dép. Taï': {
+    sp: {
+      'SP Taï':   ['Daobly','Diéro-Oula','Gouléako 1','Gouléako 2','Paulé-Oula','Ponan','Port-Gentil','Sakré','Sioblo-Oula','Taï','Tiéolé-Oula','Ziriglo'],
+      'SP Zagné': ['Djidoubaye','Gahably','Goulégui-Béoué','Kéibly','Tienkoula','Vodélobly','Zagné','Zaipobly'],
+    }
+  },
+  'Dép. Toulépleu': {
+    sp: {
+      'SP Bakoubli': ['Bakoubli','Kambli','Kouyabli','Pantroya','Poyabli','Séibli'],
+      'SP Méo':      ['Bohobli','Diai','Douhozon','Grié 1','Grié 2','Méo','Pahoubli','Panhoulo','Sahoubli'],
+      'SP Nézobly':  ['Kahibli','Klaon','Kpably','Nézobly','Tiabolébly 1','Touaplébli','Toyébli','Zaïgbopleu'],
+      'SP Péhé':     ['Bohibli','Dénan','Diaïbli','Glakon-Bloc','Kpobli-Douozé','Mayoubli','Pantrokin','Péhé','Tahibli'],
+      'SP Tiobly':   ['Bawombli','Bazobli','Douoguibly','Guéya','Guéyédé','Klobli','Ouloto-Zrébli','Péhékanhouébli','Péhékanhouébli-Barrage','Tiobly'],
+      'SP Toulépleu':['Bakpahi','Cèbly','Diollé','Doho','Grêpleu','Guiellé','Koarho','Sahibli','Seizaïbly','Tambly','Toulépleu','Ziombly','Ziouébly','Zoguiné','Zoutouho'],
+    }
+  },
 };
+
+// Helper: liste des SP d'un département
+function geoGetSP(dept) {
+  return GEO[dept] ? Object.keys(GEO[dept].sp) : [];
+}
+
+// Helper: liste des villages d'une SP
+function geoGetVillages(dept, sp) {
+  return (GEO[dept] && GEO[dept].sp[sp]) ? GEO[dept].sp[sp] : [];
+}
+
+// Helper: tous les villages d'un département
+function geoAllVillages(dept) {
+  if (!GEO[dept]) return [];
+  return Object.values(GEO[dept].sp).flat();
+}
+
+// Mettre à jour le select SP en fonction du département sélectionné
+function geoUpdateSP(deptId, spId, vilId) {
+  const dept = document.getElementById(deptId)?.value;
+  const spSel = document.getElementById(spId);
+  const vilSel = document.getElementById(vilId);
+  if (!spSel) return;
+  const sps = geoGetSP(dept);
+  spSel.innerHTML = '<option value="">-- Sous-préfecture --</option>' +
+    sps.map(s => '<option value="' + s + '">' + s + '</option>').join('');
+  if (vilSel) vilSel.innerHTML = '<option value="">-- Village --</option>';
+}
+
+// Mettre à jour le select Village en fonction de la SP
+function geoUpdateVillage(deptId, spId, vilId) {
+  const dept = document.getElementById(deptId)?.value;
+  const sp   = document.getElementById(spId)?.value;
+  const vilSel = document.getElementById(vilId);
+  if (!vilSel) return;
+  const vils = geoGetVillages(dept, sp);
+  vilSel.innerHTML = '<option value="">-- Village --</option>' +
+    vils.map(v => '<option value="' + v + '">' + v + '</option>').join('');
+}
 // ════════════════════════════════════════
 // RÉFÉRENTIEL ACTIVITÉS PRESFOR CAVALLY
 // ════════════════════════════════════════
@@ -1487,6 +1557,7 @@ function saisieRenderList(){
       <td><span style="font-size:12px">${s.dept}</span><br><span style="font-size:11px;color:var(--text2)">${s.village}</span></td>
       <td>${eb(s.etape)}</td>
       <td style="text-align:center;font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--accent)">${s.ndos}</td>
+      <td style="text-align:center;font-size:12px;color:var(--teal);font-weight:600">${s.superficie?s.superficie+' ha':'—'}</td>
       <td style="font-size:11px;color:var(--text2);white-space:nowrap">${s.hdep}→${s.hret}<br><span style="color:var(--text3)">${s.duree}</span></td>
       <td>${ecartHtml}</td>
       <td><div style="display:flex;gap:5px"><button class="btn-s" style="font-size:11px;padding:4px 8px" onclick="saisieEdit('${s.id}')">Modifier</button><button class="btn-d" onclick="saisieDelete('${s.id}')">Sup.</button></div></td>
@@ -1579,14 +1650,9 @@ function saisieLoadProgs(){
   PROGS_REF.forEach(p=>sel.innerHTML+=`<option value="${p.id}">${p.id} · ${p.agent} · ${p.dept}</option>`);
 }
 function saisieUpdateGeo(){
-  const dep=document.getElementById('sf-dept').value;
-  const geo=GEO[dep];
-  const spSel=document.getElementById('sf-sp');
-  const dl=document.getElementById('saisie-village-dl');
-  if(!geo){spSel.innerHTML='<option>-- Département d\'abord --</option>';dl.innerHTML='';return;}
-  spSel.innerHTML='<option value="">-- SP --</option>'+geo.sp.map(s=>`<option>${s}</option>`).join('');
-  dl.innerHTML=geo.v.map(v=>`<option value="${v}">`).join('');
+  geoUpdateSP('sf-dept','sf-sp','sf-village');
 }
+
 function saisieSelEtape(el){
   document.querySelectorAll('#saisie-chips .chip').forEach(c=>c.classList.remove('selected'));
   el.classList.add('selected');document.getElementById('sf-etape').value=el.dataset.v;
@@ -1662,7 +1728,7 @@ function saisieSubmit(e){
     sp:document.getElementById('sf-sp').value,
     village:document.getElementById('sf-village').value,
     etape:document.getElementById('sf-etape').value,
-    ndos:parseInt(document.getElementById('sf-ndos').value)||0,
+    ndos:parseInt(document.getElementById('sf-ndos').value)||0,superficie:parseFloat(document.getElementById('sf-superficie')?.value||0)||0,
     dossiers:[...saisieDosList],
     hdep:document.getElementById('sf-hdep').value,
     hret:document.getElementById('sf-hret').value,
@@ -2128,7 +2194,9 @@ function dosShowPanel(id,btn){
   if(id==='form'&&!dosEditingId)dosResetForm();
   if(id==='pipeline')dosRenderPipeline();
 }
-function dosUpdateGeo(){const d=document.getElementById('df-dept')?.value;const dl=document.getElementById('dos-village-dl');if(!dl)return;const g=GEO[d];dl.innerHTML=g?(g.v.map(v=>`<option value="${v}">`).join('')):''; }
+function dosUpdateGeo(){
+  geoUpdateSP('df-dept','df-sp','df-village');
+}
 function dosSelEtape(el){document.querySelectorAll('#dos-etape-chips .chip').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');document.getElementById('df-etape').value=el.dataset.v;}
 function dosValidate(){
   const errs=[];
@@ -2683,36 +2751,41 @@ function agExportCSV(){
 
 // Référentiel géographique complet Cavally
 const ZV_GEO = {
-  'Dép. Guiglo': {
-    couleur:{bg:'#E4EFE8',tx:'#0F2F1C',brd:'#2A6B42'},
-    sp:{
-      'SP Guiglo': ['Guiglo','Kaadé','Podiagouiné','Zérégbo','Koulé','Gbéalé','Péhécanblé'],
-      'SP Taï':    ['Taï','Zagné','Diékoué','Nidrou','Tiénbly','Dougroupla'],
-      'SP Grabo':  ['Grabo','Kaadé','Tahibly','Niambly','Djouroutou'],
-    }
-  },
   'Dép. Bloléquin': {
     couleur:{bg:'#EDE9FE',tx:'#4C1D95',brd:'#8B5CF6'},
     sp:{
-      'SP Bloléquin': ['Bloléquin','Zrabrogo','Breby','Mané','Siaglo'],
-      'SP Péhé':      ['Péhé','Nizahon','Déhiré','Zéaglo'],
-      'SP Kouibly':   ['Kouibly','Blédy','Gohouo','Toa'],
+      'SP Bloléquin': ['Blédi-Diéya','Bloléquin','Diouya-Dokin','Goya','Guéya','Kéibly','Médibly','Yoya'],
+      'SP Diboké':    ['Diboké','Oulaï-Taibly','Zilébli'],
+      'SP Doké':      ['Bably-Vaya','Diéya','Doké','Ganhia','Guibobly','Ké-Bouébo','Oulaï-kpably','Pohan-Badouébly','Zomplou'],
+      'SP Tinhou':    ['Dédjean','Koadéguézon','Petit-Guiglo','Tinhou','Tuambly','Zou-Yahi'],
+      'SP Zéaglo':    ['Béoué','Douandrou','Pohan','Zéaglo','Ziglo'],
+    }
+  },
+  'Dép. Guiglo': {
+    couleur:{bg:'#E4EFE8',tx:'#0F2F1C',brd:'#2A6B42'},
+    sp:{
+      'SP Bédy-Goazon': ['Bédy-Goazon','Douédy-Guézon','Zébly'],
+      'SP Guiglo':      ['Ditroudra-Béoué','Domobly','Glopaoudy','Goya 1','Goya 2','Guiglo','Kati','Kridy','Mona','Nedrou','Nounoubaye','Paris-Léona','Petit-Guiglo','Pona','Troya','Yaoudé','Zouan','Zro'],
+      'SP Kaadé':       ['Béoua','Guézon','Guinkin','Kaadé','Niouldé','Troya 2'],
+      'SP Nizahon':     ['Béablo','Béhébo','Nizahon 1','Nizahon 2'],
     }
   },
   'Dép. Taï': {
     couleur:{bg:'#FBF0DC',tx:'#6B3F00',brd:'#D97706'},
     sp:{
-      'SP Taï':   ['Taï','Gbinta','Bakoubly','Méagui'],
-      'SP Aboa':  ['Aboa','Zagné','Glarou','Djouroutou'],
-      'SP Grabo': ['Grabo','Niambly','Kaadé','Tiény'],
+      'SP Taï':   ['Daobly','Diéro-Oula','Gouléako 1','Gouléako 2','Paulé-Oula','Ponan','Port-Gentil','Sakré','Sioblo-Oula','Taï','Tiéolé-Oula','Ziriglo'],
+      'SP Zagné': ['Djidoubaye','Gahably','Goulégui-Béoué','Kéibly','Tienkoula','Vodélobly','Zagné','Zaipobly'],
     }
   },
   'Dép. Toulépleu': {
     couleur:{bg:'#E5EEF5',tx:'#0D2D44',brd:'#2563EB'},
     sp:{
-      'SP Toulépleu': ['Toulépleu','Fengolo','Kézabo','Logoualé'],
-      'SP Bin-Houyé': ['Bin-Houyé','Tiapleu','Blapleu','Siapleu'],
-      'SP Tiapleu':   ['Tiapleu','Logoualé','Wrigbe','Dièdrou'],
+      'SP Bakoubli': ['Bakoubli','Kambli','Kouyabli','Pantroya','Poyabli','Séibli'],
+      'SP Méo':      ['Bohobli','Diai','Douhozon','Grié 1','Grié 2','Méo','Pahoubli','Panhoulo','Sahoubli'],
+      'SP Nézobly':  ['Kahibli','Klaon','Kpably','Nézobly','Tiabolébly 1','Touaplébli','Toyébli','Zaïgbopleu'],
+      'SP Péhé':     ['Bohibli','Dénan','Diaïbli','Glakon-Bloc','Kpobli-Douozé','Mayoubli','Pantrokin','Péhé','Tahibli'],
+      'SP Tiobly':   ['Bawombli','Bazobli','Douoguibly','Guéya','Guéyédé','Klobli','Ouloto-Zrébli','Péhékanhouébli','Péhékanhouébli-Barrage','Tiobly'],
+      'SP Toulépleu':['Bakpahi','Cèbly','Diollé','Doho','Grêpleu','Guiellé','Koarho','Sahibli','Seizaïbly','Tambly','Toulépleu','Ziombly','Ziouébly','Zoguiné','Zoutouho'],
     }
   },
 };
