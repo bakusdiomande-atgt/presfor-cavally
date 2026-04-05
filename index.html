@@ -1980,7 +1980,7 @@ function saisieImportExcel(input){
       };
       const get = (row, keys)=>{
         for(const k of Object.keys(row)){
-          if(keys.some(key=>k.toLowerCase().replace(/[\s_]/g,'').includes(key.toLowerCase().replace(/[\s_]/g,''))))
+          if(keys.some(key=>k.toLowerCase().replace(/[\s_\*\(\)]/g,'').replace(/[éèê]/g,'e').replace(/[àâ]/g,'a').replace(/î/g,'i').replace(/ô/g,'o').replace(/û/g,'u').replace(/ç/g,'c').includes(key.toLowerCase().replace(/[\s_\*\(\)]/g,'').replace(/[éèê]/g,'e').replace(/[àâ]/g,'a').replace(/î/g,'i').replace(/ô/g,'o').replace(/û/g,'u').replace(/ç/g,'c'))))
             return String(row[k]||'').trim();
         }return '';
       };
@@ -2511,19 +2511,22 @@ function progImportExcel(input){
       };
       const get=(row,keys)=>{
         for(const k of Object.keys(row)){
-          if(keys.some(key=>k.toLowerCase().replace(/[\s_]/g,'').includes(key.toLowerCase().replace(/[\s_]/g,''))))
-            return String(row[k]||'').trim();
+          const kn=k.toLowerCase().replace(/[\s_\*\(\)]/g,'').replace(/é/g,'e').replace(/è/g,'e').replace(/ê/g,'e').replace(/à/g,'a').replace(/â/g,'a').replace(/î/g,'i').replace(/ô/g,'o').replace(/û/g,'u').replace(/ç/g,'c');
+          if(keys.some(key=>{
+            const keyn=key.toLowerCase().replace(/[\s_\*\(\)]/g,'').replace(/é/g,'e').replace(/è/g,'e').replace(/ê/g,'e').replace(/à/g,'a').replace(/â/g,'a').replace(/î/g,'i').replace(/ô/g,'o').replace(/û/g,'u').replace(/ç/g,'c');
+            return kn.includes(keyn);
+          })) return String(row[k]||'').trim();
         }return'';
       };
       rows.forEach((row,i)=>{
         const errs=[];
-        const agent=get(row,['agent','nom','responsable']);
-        const dept=get(row,['departement','dept','zone']);
-        const objectif=get(row,['objectif','cible','superficie','ha','hectare']);
-        const debut=fmtD(get(row,['debut','début','datedebut','datedepart']));
+        const agent=get(row,['agent','nom','responsable','agentresponsable']);
+        const dept=get(row,['departement','dept','zone','dep']);
+        const objectif=get(row,['objectif','cible','superficie','ha','hectare','objectifha']);
+        const debut=fmtD(get(row,['debut','datedebut','datedepart','datedebut']));
         const fin=fmtD(get(row,['fin','datefin','datedefin']));
-        const op=get(row,['activite','activité','operation','opération','type','op']);
-        const sp=get(row,['sousprefecture','sp','sous_pref','sous-prefecture']);
+        const op=get(row,['activite','operation','type','op','activiteprincipal']);
+        const sp=get(row,['sousprefecture','sp','sous_pref','sous-prefecture','sousprefecture','souspref']);
         const obs=get(row,['observation','obs','commentaire']);
         const nb_agents=parseInt(get(row,['nbagents','effectif','nombreagents']))||1;
         const budget=parseInt(get(row,['budget']))||0;
@@ -2612,7 +2615,7 @@ function dosImportExcel(input){
         if(p.length===3){if(p[2].length===4)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');return p[0]+'-'+p[1].padStart(2,'0')+'-'+p[2].padStart(2,'0');}
         return s;
       };
-      const get=(row,keys)=>{for(const k of Object.keys(row)){if(keys.some(key=>k.toLowerCase().replace(/[\s_]/g,'').includes(key.toLowerCase().replace(/[\s_]/g,''))))return String(row[k]||'').trim();}return'';};
+      const get=(row,keys)=>{for(const k of Object.keys(row)){if(keys.some(key=>k.toLowerCase().replace(/[\s_\*\(\)]/g,'').replace(/[éèê]/g,'e').replace(/[àâ]/g,'a').replace(/î/g,'i').replace(/ô/g,'o').replace(/û/g,'u').replace(/ç/g,'c').includes(key.toLowerCase().replace(/[\s_\*\(\)]/g,'').replace(/[éèê]/g,'e').replace(/[àâ]/g,'a').replace(/î/g,'i').replace(/ô/g,'o').replace(/û/g,'u').replace(/ç/g,'c'))))return String(row[k]||'').trim();}return'';};
       rows.forEach((row,i)=>{
         const errs=[];
         const ref=get(row,['ref','numero','n°','noffic','officiel','presfor']);
