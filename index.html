@@ -227,6 +227,9 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 </div>
 <div class="tb-logo">PF</div>
     <div class="tb-title">PRESFOR <span>· Cavally</span></div>
+  <div id="sync-indicator" style="display:flex;align-items:center;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,0.12);margin-left:4px;cursor:pointer" onclick="serverSave()" title="Cliquer pour sauvegarder maintenant">
+    <span style="color:rgba(255,255,255,0.8);font-size:11px;">✓ Sauvegardé</span>
+  </div>
   <div id="net-status" style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.9);margin-left:8px;">
     <span id="net-dot" style="width:6px;height:6px;border-radius:50%;background:#4ade80;display:inline-block;"></span>
     <span id="net-label">En ligne</span>
@@ -1451,6 +1454,7 @@ function progRenderKPI(){
     <div class="kpi blue"><div class="kpi-l">Taux global</div><div class="kpi-v">${taux}%</div><div class="kpi-s">${tReal} / ${tObj} dos.</div></div>
     <div class="kpi"><div class="kpi-l">Planifiés</div><div class="kpi-v">${programmes.filter(p=>p.statut==='Planifié').length}</div><div class="kpi-s">À démarrer</div></div>
     <div class="kpi ${ret>0?'red':''}"><div class="kpi-l">En retard</div><div class="kpi-v">${ret}</div><div class="kpi-s">${ret>0?'Action requise':'Aucun'}</div></div>`;
+  scheduleSave();
 }
 
 function progRenderTable(){
@@ -1662,6 +1666,7 @@ function saisieRenderKPI(){
     <div class="kpi blue"><div class="kpi-l">Total saisis</div><div class="kpi-v">${tAll}</div><div class="kpi-s">${saisies.length} saisies</div></div>
     <div class="kpi"><div class="kpi-l">Ce mois</div><div class="kpi-v">${saisies.filter(s=>s.date&&s.date.startsWith(new Date().toISOString().slice(0,7))).length}</div><div class="kpi-s">Saisies</div></div>
     <div class="kpi ${inc>0?'amber':''}"><div class="kpi-l">Incidents</div><div class="kpi-v">${inc}</div><div class="kpi-s">${inc>0?'À suivre':'Aucun'}</div></div>`;
+  scheduleSave();
 }
 
 function saisieRenderList(){
@@ -2262,6 +2267,7 @@ function dosRenderKPI(){
   const blq=dossiers.filter(d=>d.etape!=='Clôturé'&&dosJours(d.etape_date)>30).length;
   const sup=dossiers.reduce((s,d)=>s+(parseFloat(d.superficie)||0),0);
   document.getElementById('dos-kpi').innerHTML=`<div class="kpi blue"><div class="kpi-l">Total dossiers</div><div class="kpi-v">${tot}</div><div class="kpi-s">${tot-clo} actifs</div></div><div class="kpi green"><div class="kpi-l">Clôturés</div><div class="kpi-v">${clo}</div><div class="kpi-s">Certificat demandé</div></div><div class="kpi ${blq>0?'red':''}"><div class="kpi-l">Bloqués +30j</div><div class="kpi-v">${blq}</div><div class="kpi-s">Même étape &gt;30j</div></div><div class="kpi amber"><div class="kpi-l">Superficie tot.</div><div class="kpi-v">${sup.toFixed(1)}</div><div class="kpi-s">hectares</div></div>`;
+  scheduleSave();
 }
 function dosRenderList(){
   const q=(document.getElementById('dos-srch').value||'').toLowerCase();
@@ -4126,6 +4132,103 @@ function rptExportPDF(){
 }
 
 // ═══════════════════════════════════════════
+// SAUVEGARDE PERSISTANTE RAILWAY
+// ═══════════════════════════════════════════
+
+const SERVER_URL = window.location.origin;
+let syncTimer = null;
+let syncPending = false;
+let lastSyncTime = null;
+let serverAvailable = false;
+
+// Indicateur de sync dans la topbar
+function updateSyncIndicator(status){
+  const el = document.getElementById('sync-indicator');
+  if(!el) return;
+  const icons = {
+    ok:      {icon:'✓', txt:'Sauvegardé',  color:'var(--accent)'},
+    pending: {icon:'↑', txt:'Envoi...',    color:'var(--amber)'},
+    error:   {icon:'!', txt:'Local seul',  color:'var(--red)'},
+    offline: {icon:'↓', txt:'Hors-ligne',  color:'var(--text3)'},
+  };
+  const s = icons[status] || icons.ok;
+  el.innerHTML = `<span style="color:${s.color};font-size:11px;font-weight:600">${s.icon} ${s.txt}</span>`;
+}
+
+// Charger les données depuis le serveur au démarrage
+async function serverLoad(){
+  try {
+    const r = await fetch(SERVER_URL+'/api/sync', {signal:AbortSignal.timeout(5000)});
+    if(!r.ok) return false;
+    const json = await r.json();
+    if(!json.ok) return false;
+    const d = json.data;
+    // Ne remplacer que si le serveur a plus de données que le localStorage
+    if(d.programmes && d.programmes.length >= programmes.length){
+      programmes = d.programmes;
+      localStorage.setItem('presfor_programmes', JSON.stringify(programmes));
+    }
+    if(d.saisies && d.saisies.length >= saisies.length){
+      saisies = d.saisies;
+      localStorage.setItem('presfor_saisies', JSON.stringify(saisies));
+    }
+    if(d.dossiers && d.dossiers.length >= dossiers.length){
+      dossiers = d.dossiers;
+      localStorage.setItem('presfor_dossiers', JSON.stringify(dossiers));
+    }
+    if(d.absences && d.absences.length >= absences.length){
+      absences = d.absences;
+      localStorage.setItem('presfor_absences', JSON.stringify(absences));
+    }
+    serverAvailable = true;
+    lastSyncTime = new Date();
+    updateSyncIndicator('ok');
+    console.log('✓ Données chargées depuis le serveur Railway');
+    return true;
+  } catch(e) {
+    console.log('Serveur non disponible, utilisation du localStorage');
+    updateSyncIndicator('offline');
+    return false;
+  }
+}
+
+// Sauvegarder toutes les données sur le serveur
+async function serverSave(){
+  if(!navigator.onLine){ updateSyncIndicator('offline'); return; }
+  updateSyncIndicator('pending');
+  try {
+    const r = await fetch(SERVER_URL+'/api/sync', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({programmes, saisies, dossiers, absences}),
+      signal: AbortSignal.timeout(8000)
+    });
+    if(r.ok){
+      serverAvailable = true;
+      lastSyncTime = new Date();
+      updateSyncIndicator('ok');
+    } else {
+      updateSyncIndicator('error');
+    }
+  } catch(e) {
+    serverAvailable = false;
+    updateSyncIndicator('error');
+  }
+}
+
+// Déclencher une sync différée (évite les appels trop fréquents)
+function scheduleSave(){
+  syncPending = true;
+  if(syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(()=>{
+    if(syncPending){ syncPending=false; serverSave(); }
+  }, 2000); // Attendre 2s après la dernière modification
+}
+
+// Sync automatique toutes les 5 minutes
+setInterval(()=>{ if(serverAvailable) serverSave(); }, 5*60*1000);
+
+// ═══════════════════════════════════════════
 // STATUT RÉSEAU (version légère)
 // ═══════════════════════════════════════════
 function updateNetworkStatus(){
@@ -4170,12 +4273,21 @@ function peuplerTousAgents() {
 }
 
 peuplerTousAgents();
-// Charger toutes les données en premier
+// Charger les données locales d'abord
 progInit();
 saisieInit();
 dosInit();
 agInit();
 zvInit();
+// Puis synchroniser avec le serveur Railway
+serverLoad().then(loaded => {
+  if(loaded){
+    progRenderAll();
+    saisieRenderAll();
+    dosRenderAll();
+    dashRenderAll();
+  }
+});
 // Peupler les selects agents
 ['pf-agent','sf-agent','df-agent','abs-agent'].forEach(id=>buildAgentOptions(id,false));
 ['saisie-f-agent','dos-f-agent'].forEach(id=>buildAgentOptions(id,true));
