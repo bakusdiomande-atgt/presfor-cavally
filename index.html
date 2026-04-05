@@ -2487,6 +2487,112 @@ function dosResetForm(){
   document.getElementById('dos-suc').classList.remove('show');
 }
 function dosExportCSV(){const h='ref_officiel,date_ouverture,agent,dept,village,demandeur,superficie,type_parcelle,etape,etape_date,obs';const l=dossiers.map(d=>[d.ref_officiel,d.date_ouverture,d.agent,d.dept,d.village,d.demandeur,d.superficie,d.type_parcelle,d.etape,d.etape_date||'',d.obs||''].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','));const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent([h,...l].join('\n'));a.download='presfor_dossiers.csv';a.click();showToast('Export CSV !');}
+function progImportExcel(input){
+  const file=input.files[0];
+  if(!file)return;
+  input.value='';
+  if(typeof XLSX==='undefined'){showToast('Bibliothèque Excel non chargée. Vérifiez votre connexion.');return;}
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!rows.length){showToast('Fichier vide ou format invalide.');return;}
+      progImportData=[];
+      const fmtD=(d)=>{
+        if(!d)return'';
+        if(d instanceof Date)return d.toISOString().split('T')[0];
+        const s=String(d).trim();
+        if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+        const p=s.split(/[\/\-\.]/);
+        if(p.length===3){if(p[2].length===4)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');return p[0]+'-'+p[1].padStart(2,'0')+'-'+p[2].padStart(2,'0');}
+        return s;
+      };
+      const get=(row,keys)=>{
+        for(const k of Object.keys(row)){
+          if(keys.some(key=>k.toLowerCase().replace(/[\s_]/g,'').includes(key.toLowerCase().replace(/[\s_]/g,''))))
+            return String(row[k]||'').trim();
+        }return'';
+      };
+      rows.forEach((row,i)=>{
+        const errs=[];
+        const agent=get(row,['agent','nom','responsable']);
+        const dept=get(row,['departement','dept','zone']);
+        const objectif=get(row,['objectif','cible','superficie','ha','hectare']);
+        const debut=fmtD(get(row,['debut','début','datedebut','datedepart']));
+        const fin=fmtD(get(row,['fin','datefin','datedefin']));
+        const op=get(row,['activite','activité','operation','opération','type','op']);
+        const sp=get(row,['sousprefecture','sp','sous_pref','sous-prefecture']);
+        const obs=get(row,['observation','obs','commentaire']);
+        const nb_agents=parseInt(get(row,['nbagents','effectif','nombreagents']))||1;
+        const budget=parseInt(get(row,['budget']))||0;
+        if(!agent)errs.push('Agent manquant');
+        if(!dept)errs.push('Département manquant');
+        if(!objectif||isNaN(parseFloat(objectif)))errs.push('Objectif manquant');
+        const prog={
+          id:'PROG-'+new Date().getFullYear()+'-IMP'+String(i+1).padStart(3,'0'),
+          periode_type:'Semaine',
+          date_debut:debut||new Date().toISOString().split('T')[0],
+          date_fin:fin||'',
+          dept:dept?(dept.includes('Dép.')?dept:'Dép. '+dept):'',
+          sp,villages:[],agent,op:op||'Enquête terrain',
+          objectif:parseFloat(objectif)||0,
+          nb_agents,budget,obs,statut:'Planifié',realise:0,
+          sousetapes:[]
+        };
+        progImportData.push({prog,errs,ligne:i+2});
+      });
+      const total=progImportData.length;
+      const totalErr=progImportData.filter(d=>d.errs.length>0).length;
+      const modal=document.getElementById('prog-import-modal');
+      document.getElementById('prog-import-info').textContent=total+' programme(s) détecté(s). '+(totalErr>0?totalErr+' ligne(s) invalides seront ignorées.':'Toutes les lignes sont valides.');
+      document.getElementById('prog-import-preview').innerHTML=
+        '<table style="width:100%;border-collapse:collapse;font-size:12px;">'+
+        '<thead><tr style="background:var(--surface2)">'+
+        '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">L.</th>'+
+        '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Agent</th>'+
+        '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Département</th>'+
+        '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Activité</th>'+
+        '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Objectif (Ha)</th>'+
+        '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Statut</th>'+
+        '</tr></thead><tbody>'+
+        progImportData.map(p=>{
+          const ok=p.errs.length===0;
+          return'<tr style="border-bottom:1px solid var(--border);'+(ok?'':'background:var(--red-lt)')+'">'+
+            '<td style="padding:4px 8px;color:var(--text3)">'+p.ligne+'</td>'+
+            '<td style="padding:4px 8px;font-weight:500">'+p.prog.agent+'</td>'+
+            '<td style="padding:4px 8px">'+p.prog.dept+'</td>'+
+            '<td style="padding:4px 8px">'+p.prog.op+'</td>'+
+            '<td style="padding:4px 8px;text-align:center">'+p.prog.objectif+' ha</td>'+
+            '<td style="padding:4px 8px">'+(ok?'<span style="color:var(--accent);font-weight:500">OK</span>':'<span style="color:var(--red-txt)">'+p.errs.join(', ')+'</span>')+'</td>'+
+          '</tr>';
+        }).join('')+'</tbody></table>';
+      if(totalErr>0){
+        document.getElementById('prog-import-errors').style.display='block';
+        document.getElementById('prog-import-errors').textContent=totalErr+' ligne(s) incomplètes seront ignorées.';
+      } else {
+        document.getElementById('prog-import-errors').style.display='none';
+      }
+      modal.style.display='flex';
+    }catch(err){showToast('Erreur lecture : '+err.message);}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function progImportConfirm(){
+  const valides=progImportData.filter(d=>d.errs.length===0);
+  if(!valides.length){showToast('Aucun programme valide.');return;}
+  let nb=0;
+  valides.forEach(({prog})=>{
+    if(!programmes.find(p=>p.id===prog.id)){programmes.unshift({...prog,created_at:new Date().toLocaleString('fr-FR')});nb++;}
+  });
+  progSave();progRenderAll();
+  document.getElementById('prog-import-modal').style.display='none';
+  showToast(nb+' programme(s) importé(s) !');
+  progImportData=[];
+}
+
 function dosImportExcel(input){
   const file=input.files[0];if(!file)return;input.value='';
   const reader=new FileReader();
