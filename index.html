@@ -5,35 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PRESFOR · Région du Cavally</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#1C4A2E">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="PRESFOR Cavally">
-<script>
-// Enregistrement du Service Worker
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => {
-        console.log('[SW] Enregistré:', reg.scope);
-        // Vérifier les mises à jour
-        reg.addEventListener('updatefound', () => {
-          const newWorker = reg.installing;
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              if (confirm('Une nouvelle version est disponible. Mettre à jour ?')) {
-                newWorker.postMessage('skipWaiting');
-                window.location.reload();
-              }
-            }
-          });
-        });
-      })
-      .catch(err => console.log('[SW] Erreur:', err));
-  });
-}
-</script>
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -3990,6 +3962,23 @@ function rptExportPDF(){
 }
 
 // ═══════════════════════════════════════════
+// STATUT RÉSEAU (version légère)
+// ═══════════════════════════════════════════
+function updateNetworkStatus(){
+  try {
+    const online = navigator.onLine;
+    const dot = document.getElementById('net-dot');
+    const label = document.getElementById('net-label');
+    const banner = document.getElementById('offline-banner');
+    if(dot) dot.style.background = online ? '#4ade80' : '#f87171';
+    if(label) label.textContent = online ? 'En ligne' : 'Hors-ligne';
+    if(banner) banner.style.display = online ? 'none' : 'block';
+  } catch(e) {}
+}
+window.addEventListener('online', updateNetworkStatus);
+window.addEventListener('offline', updateNetworkStatus);
+
+// ═══════════════════════════════════════════
 // INIT GLOBAL
 // ═══════════════════════════════════════════
 document.getElementById('hdate').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
@@ -4018,8 +4007,6 @@ function peuplerTousAgents() {
 
 peuplerTousAgents();
 // Charger toutes les données en premier
-// Initialiser le statut réseau
-updateNetworkStatus();
 progInit();
 saisieInit();
 dosInit();
