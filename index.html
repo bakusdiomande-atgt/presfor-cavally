@@ -4021,32 +4021,23 @@ dashInit();
 switchModule('accueil');
 
 </script>
-<!-- ══════════════════════════════════════════════
-     MODULE RAPPORT
-══════════════════════════════════════════════ -->
+
+<!-- MODULE RAPPORT -->
 <div id="module-rapport" class="module" style="display:none;flex:1;min-width:0;overflow-y:auto;">
-  <div style="padding:20px 24px;max-width:900px;margin:0 auto;width:100%;box-sizing:border-box;">
+  <div style="padding:20px 24px;">
+    <h2 style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin:0 0 4px">Génération de rapport</h2>
+    <p style="font-size:12px;color:var(--text2);margin:0 0 20px">Rapport automatique PRESFOR — Région du Cavally</p>
 
-    <!-- En-tête -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-      <div>
-        <h1 style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin:0">Génération de rapport</h1>
-        <p style="font-size:12px;color:var(--text2);margin:4px 0 0">Rapport automatique PRESFOR — Région du Cavally</p>
-      </div>
-    </div>
-
-    <!-- Formulaire de paramètres -->
-    <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:16px;">
-      <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);">
-        1 · Paramètres du rapport
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
+    <!-- Paramètres -->
+    <div class="fc" style="margin-bottom:16px;">
+      <div class="fs-title">1 · Paramètres du rapport</div>
+      <div class="fg" style="margin-top:12px;">
         <div class="ff">
           <label class="fl">Type de période</label>
           <select class="fsel" id="rpt-periode" onchange="rptUpdateDates()">
             <option value="semaine">Rapport hebdomadaire</option>
             <option value="mois">Rapport mensuel</option>
-            <option value="mission">Par mission / sortie terrain</option>
+            <option value="mission">Par mission</option>
             <option value="custom">Période personnalisée</option>
           </select>
         </div>
@@ -4058,8 +4049,6 @@ switchModule('accueil');
           <label class="fl">Date fin</label>
           <input class="fi" type="date" id="rpt-fin">
         </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
         <div class="ff">
           <label class="fl">Département</label>
           <select class="fsel" id="rpt-dept" onchange="rptUpdateSP()">
@@ -4085,45 +4074,35 @@ switchModule('accueil');
       </div>
     </div>
 
-    <!-- Compléments qualitatifs -->
-    <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:16px;">
-      <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);">
-        2 · Compléments qualitatifs
-        <span style="font-size:11px;font-weight:400;color:var(--text3);margin-left:8px;">Les incidents sont extraits automatiquement des saisies</span>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+    <!-- Compléments -->
+    <div class="fc" style="margin-bottom:16px;">
+      <div class="fs-title">2 · Compléments qualitatifs</div>
+      <div class="fg" style="margin-top:12px;">
         <div class="ff">
           <label class="fl">Succès additionnels</label>
-          <textarea class="fta" id="rpt-succes" style="min-height:70px" placeholder="Ex: Forte mobilisation des chefs de village, bonne coopération du CVGFR..."></textarea>
+          <textarea class="fta" id="rpt-succes" placeholder="Ex: Forte mobilisation des chefs de village..."></textarea>
         </div>
         <div class="ff">
           <label class="fl">Difficultés additionnelles</label>
-          <textarea class="fta" id="rpt-difficultes" style="min-height:70px" placeholder="Ex: Accès difficile en saison des pluies, pistes impraticables..."></textarea>
+          <textarea class="fta" id="rpt-difficultes" placeholder="Ex: Accès difficile en saison des pluies..."></textarea>
+        </div>
+        <div class="ff full">
+          <label class="fl">Soutien attendu du corps sous-préfectoral</label>
+          <textarea class="fta" id="rpt-soutien" placeholder="Ex: Facilitation des réunions villageoises, mise à disposition de salle..."></textarea>
         </div>
       </div>
-      <div class="ff">
-        <label class="fl">Soutien attendu du corps sous-préfectoral</label>
-        <textarea class="fta" id="rpt-soutien" style="min-height:70px" placeholder="Ex: Facilitation des réunions villageoises, mise à disposition de salle, appui à la sensibilisation des populations sur les droits fonciers..."></textarea>
-      </div>
     </div>
 
-    <!-- Boutons de génération -->
-    <div style="display:flex;gap:10px;margin-bottom:20px;">
-      <button class="btn-p" onclick="rptGenerer()" style="display:flex;align-items:center;gap:6px;">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/></svg>
-        Générer l'aperçu
-      </button>
-      <button class="btn-s" id="rpt-btn-pdf" onclick="rptExportPDF()" style="display:none;align-items:center;gap:6px;">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
-        Télécharger PDF
-      </button>
+    <!-- Bouton -->
+    <div class="fa" style="margin-bottom:20px;">
+      <button class="btn-p" onclick="rptGenerer()">Générer le rapport</button>
+      <button class="btn-s" id="rpt-btn-pdf" onclick="rptExportPDF()" style="display:none;">Télécharger PDF</button>
     </div>
 
-    <!-- Aperçu du rapport -->
-    <div id="rpt-apercu" style="display:none;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:0;overflow:hidden;">
+    <!-- Aperçu -->
+    <div id="rpt-apercu" style="display:none;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
       <div id="rpt-contenu"></div>
     </div>
-
   </div>
 </div>
 
