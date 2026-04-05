@@ -2585,7 +2585,7 @@ function progImportExcel(input){
             '<td style="padding:4px 8px">'+p.prog.dept+'</td>'+
             '<td style="padding:4px 8px">'+p.prog.op+'</td>'+
             '<td style="padding:4px 8px;text-align:center">'+p.prog.objectif+' ha</td>'+
-            '<td style="padding:4px 8px">'+(ok?'<span style="color:var(--accent);font-weight:500">OK</span>':'<span style="color:var(--red-txt)">'+p.errs.join(', ')+'</span>')+'</td>'+
+            '<td style="padding:4px 8px">'+(p.errs.length>0?'<span style="color:var(--red-txt)">'+p.errs.join(', ')+'</span>':programmes.find(x=>x.agent===p.prog.agent&&x.dept===p.prog.dept&&x.date_debut===p.prog.date_debut)?'<span style="color:var(--amber-txt);font-weight:500">Doublon</span>':'<span style="color:var(--accent);font-weight:500">OK</span>')+'</td>'+
           '</tr>';
         }).join('')+'</tbody></table>';
       if(totalErr>0){
@@ -2603,13 +2603,26 @@ function progImportExcel(input){
 function progImportConfirm(){
   const valides=progImportData.filter(d=>d.errs.length===0);
   if(!valides.length){showToast('Aucun programme valide.');return;}
-  let nb=0;
+  let nb=0, doublons=0;
   valides.forEach(({prog})=>{
-    if(!programmes.find(p=>p.id===prog.id)){programmes.unshift({...prog,created_at:new Date().toLocaleString('fr-FR')});nb++;}
+    // Vérifier doublon : même agent + même département + même date début
+    const existe=programmes.find(p=>
+      p.agent===prog.agent &&
+      p.dept===prog.dept &&
+      p.date_debut===prog.date_debut
+    );
+    if(existe){
+      doublons++;
+    } else {
+      programmes.unshift({...prog,created_at:new Date().toLocaleString('fr-FR')});
+      nb++;
+    }
   });
   progSave();progRenderAll();
   document.getElementById('prog-import-modal').style.display='none';
-  showToast(nb+' programme(s) importé(s) !');
+  let msg=nb+' programme(s) importé(s) !';
+  if(doublons>0) msg+=' '+doublons+' doublon(s) ignoré(s).';
+  showToast(msg);
   progImportData=[];
 }
 
@@ -2725,14 +2738,25 @@ function dosImportExcel(input){
 function dosImportConfirm(){
   const valides=dosImportData.filter(d=>d.errs.length===0);
   if(!valides.length){showToast('Aucun dossier valide.');return;}
-  let nb=0;
+  let nb=0, doublons=0;
   valides.forEach(({dos})=>{
-    if(!dossiers.find(d=>d.ref_officiel===dos.ref_officiel)){dossiers.unshift({...dos,created_at:new Date().toLocaleString('fr-FR')});nb++;}
-    else{showToast('Ignoré (déjà existant) : '+dos.ref_officiel);}
+    // Doublon : même N° officiel OU même demandeur + village + département
+    const existe=dossiers.find(d=>
+      d.ref_officiel===dos.ref_officiel ||
+      (d.demandeur===dos.demandeur && d.village===dos.village && d.dept===dos.dept)
+    );
+    if(existe){
+      doublons++;
+    } else {
+      dossiers.unshift({...dos,created_at:new Date().toLocaleString('fr-FR')});
+      nb++;
+    }
   });
   dosSave();dosRenderAll();
   document.getElementById('dos-import-modal').style.display='none';
-  showToast(nb+' dossier(s) importé(s) !');
+  let msg=nb+' dossier(s) importé(s) !';
+  if(doublons>0) msg+=' '+doublons+' doublon(s) ignoré(s).';
+  showToast(msg);
   dosImportData=[];
 }
 function dosClearAll(){if(!confirm('Réinitialiser les dossiers ?'))return;dossiers=[...DOS_SAMPLE];try{localStorage.removeItem('presfor_dossiers');}catch(e){}dosSave();dosRenderAll();showToast('Réinitialisé.');}
