@@ -1,13 +1,12 @@
 {
-  "name": "presfor-cavally-serveur",
+  "name": "presfor-cavally",
   "version": "1.0.0",
-  "description": "Serveur local PRESFOR - Region du Cavally",
+  "description": "PRESFOR Cavally - Suivi terrain Region du Cavally",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5"
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
