@@ -1,26 +1,36 @@
-const express = require('express');
-const path = require('path');
+const http = require('http');
 const fs = require('fs');
-const app = express();
-const PORT = process.env.PORT || 8080;
+const path = require('path');
 
-// Route principale — lire et envoyer index.html directement
-app.get('/', (req, res) => {
-  try {
-    const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.status(200).send(html);
-  } catch(e) {
-    res.status(500).send('Erreur: ' + e.message);
+const PORT = process.env.PORT || 3000;
+const INDEX = path.join(__dirname, 'index.html');
+
+const server = http.createServer((req, res) => {
+  console.log(req.method, req.url);
+  
+  if (req.url === '/api/ping') {
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end(JSON.stringify({ok: true}));
+    return;
   }
+
+  // Servir index.html pour toutes les requêtes
+  fs.readFile(INDEX, (err, data) => {
+    if (err) {
+      res.writeHead(500);
+      res.end('Erreur: ' + err.message);
+      return;
+    }
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Length': Buffer.byteLength(data),
+      'Cache-Control': 'no-cache'
+    });
+    res.end(data);
+  });
 });
 
-app.get('/api/ping', (req, res) => {
-  res.json({ ok: true });
-});
-
-app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log('PRESFOR Cavally - Port ' + PORT);
-  console.log('index.html:', fs.existsSync(path.join(__dirname, 'index.html')) ? 'OK' : 'MANQUANT');
+  console.log('index.html:', fs.existsSync(INDEX) ? fs.statSync(INDEX).size + ' bytes' : 'MANQUANT');
 });
