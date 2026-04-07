@@ -3944,46 +3944,81 @@ function rptGenerer(){
   <div id="rapport-preview" style="font-family:'Arial',sans-serif;font-size:12px;line-height:1.6;color:#1a1a1a;">
 
     <!-- EN-TÊTE OFFICIEL -->
-    <div style="background:linear-gradient(135deg,#1C4A2E 0%,#2A6B42 100%);padding:28px 32px;color:white;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-        <div>
-          <div style="font-size:10px;letter-spacing:.15em;text-transform:uppercase;opacity:.75;margin-bottom:4px;">République de Côte d'Ivoire</div>
-          <div style="font-size:10px;opacity:.75;margin-bottom:12px;">Ministère de l'Agriculture et du Développement Rural</div>
-          <div style="font-size:20px;font-weight:700;margin-bottom:4px;">PRESFOR — Région du Cavally</div>
-          <div style="font-size:15px;font-weight:600;opacity:.9;">${titreType}</div>
-          <div style="font-size:12px;opacity:.75;margin-top:6px;">Zone : ${zoneTxt} · Période : ${fmtDate(d.debut)} au ${fmtDate(d.fin)}</div>
+    <div style="background:#1C4A2E;padding:0;overflow:hidden;">
+
+      <!-- Bandeau République -->
+      <div style="background:#fff;padding:8px 32px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #F5A623;">
+        <div style="font-size:10px;color:#1C4A2E;font-weight:600;letter-spacing:.08em;text-transform:uppercase;">République de Côte d'Ivoire</div>
+        <div style="font-size:10px;color:#555;font-style:italic;">Ministère de l'Agriculture et du Développement Rural</div>
+        <div style="font-size:10px;color:#1C4A2E;font-weight:600;letter-spacing:.08em;text-transform:uppercase;">Projet PRESFOR</div>
+      </div>
+
+      <!-- Corps principal de l'en-tête -->
+      <div style="padding:24px 32px 20px;display:flex;justify-content:space-between;align-items:flex-start;">
+
+        <!-- Gauche : Identité CAG + rapport -->
+        <div style="flex:1;">
+          <!-- Badge CAG -->
+          <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);border-radius:6px;padding:6px 14px;margin-bottom:14px;">
+            <div style="width:28px;height:28px;background:#F5A623;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#1C4A2E;">CAG</div>
+            <div>
+              <div style="color:#F5A623;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;">Groupement CAG</div>
+              <div style="color:rgba(255,255,255,0.7);font-size:9px;">Responsable de la rédaction</div>
+            </div>
+          </div>
+
+          <div style="color:rgba(255,255,255,0.6);font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px;">Rapport d'activités terrain</div>
+          <div style="color:#fff;font-size:22px;font-weight:700;margin-bottom:4px;line-height:1.2;">PRESFOR <span style="color:#F5A623;">·</span> Région du Cavally</div>
+          <div style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500;margin-bottom:10px;">${titreType}</div>
+
+          <div style="display:flex;gap:16px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:5px;">
+              <div style="width:6px;height:6px;background:#F5A623;border-radius:50%;"></div>
+              <span style="color:rgba(255,255,255,0.75);font-size:11px;">Zone : <strong style="color:#fff;">${zoneTxt}</strong></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:5px;">
+              <div style="width:6px;height:6px;background:#F5A623;border-radius:50%;"></div>
+              <span style="color:rgba(255,255,255,0.75);font-size:11px;">Du <strong style="color:#fff;">${fmtDate(d.debut)}</strong> au <strong style="color:#fff;">${fmtDate(d.fin)}</strong></span>
+            </div>
+          </div>
         </div>
-        <div style="text-align:right;opacity:.75;font-size:11px;">
-          <div>Généré le ${today}</div>
-          <div style="margin-top:4px;">Projet de Sécurisation Foncière</div>
+
+        <!-- Droite : Date et infos -->
+        <div style="text-align:right;min-width:160px;">
+          <div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:12px 16px;border:1px solid rgba(255,255,255,0.15);">
+            <div style="color:#F5A623;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Généré le</div>
+            <div style="color:#fff;font-size:11px;">${today}</div>
+            <div style="border-top:1px solid rgba(255,255,255,0.15);margin:8px 0;"></div>
+            <div style="color:rgba(255,255,255,0.6);font-size:10px;">Sécurisation Foncière</div>
+            <div style="color:rgba(255,255,255,0.6);font-size:10px;">Côte d'Ivoire</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barre de stats rapides -->
+      <div style="background:rgba(0,0,0,0.2);padding:10px 32px;display:flex;gap:0;border-top:1px solid rgba(255,255,255,0.1);">
+        <div style="flex:1;text-align:center;border-right:1px solid rgba(255,255,255,0.1);padding:4px 0;">
+          <div style="color:#F5A623;font-size:16px;font-weight:700;">${d.totalDos}</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:9px;text-transform:uppercase;letter-spacing:.05em;">Dossiers traités</div>
+        </div>
+        <div style="flex:1;text-align:center;border-right:1px solid rgba(255,255,255,0.1);padding:4px 0;">
+          <div style="color:#F5A623;font-size:16px;font-weight:700;">${d.totalSup.toFixed(1)} ha</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:9px;text-transform:uppercase;letter-spacing:.05em;">Superficie couverte</div>
+        </div>
+        <div style="flex:1;text-align:center;border-right:1px solid rgba(255,255,255,0.1);padding:4px 0;">
+          <div style="color:#F5A623;font-size:16px;font-weight:700;">${d.agentsActifs.length}</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:9px;text-transform:uppercase;letter-spacing:.05em;">Agents actifs</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:4px 0;">
+          <div style="color:#F5A623;font-size:16px;font-weight:700;">${d.villages.length}</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:9px;text-transform:uppercase;letter-spacing:.05em;">Villages couverts</div>
         </div>
       </div>
     </div>
 
     <div style="padding:24px 32px;">
 
-      <!-- RÉSUMÉ EXÉCUTIF -->
-      <div style="background:#F0F7F2;border-left:4px solid #2A6B42;padding:14px 18px;border-radius:0 8px 8px 0;margin-bottom:22px;">
-        <div style="font-size:13px;font-weight:700;color:#1C4A2E;margin-bottom:8px;">Résumé exécutif</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
-          <div style="text-align:center;">
-            <div style="font-size:24px;font-weight:700;color:#2A6B42;">${d.totalDos}</div>
-            <div style="font-size:10px;color:#555;">Dossiers traités</div>
-          </div>
-          <div style="text-align:center;">
-            <div style="font-size:24px;font-weight:700;color:#2A6B42;">${d.totalSup.toFixed(1)}</div>
-            <div style="font-size:10px;color:#555;">Hectares couverts</div>
-          </div>
-          <div style="text-align:center;">
-            <div style="font-size:24px;font-weight:700;color:#2A6B42;">${d.agentsActifs.length}</div>
-            <div style="font-size:10px;color:#555;">Agents actifs</div>
-          </div>
-          <div style="text-align:center;">
-            <div style="font-size:24px;font-weight:700;color:#2A6B42;">${d.villages.length}</div>
-            <div style="font-size:10px;color:#555;">Villages couverts</div>
-          </div>
-        </div>
-      </div>
+
 
       <!-- AVANCEMENT PAR ACTIVITÉ -->
       <div style="margin-bottom:22px;">
@@ -4067,12 +4102,17 @@ function rptGenerer(){
       <!-- DIFFICULTÉS -->
       ${difAutoList.length>0?`
       <div style="margin-bottom:22px;">
-        <div style="font-size:14px;font-weight:700;color:#C04828;border-bottom:2px solid #C04828;padding-bottom:6px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:700;color:#C04828;border-bottom:2px solid #C04828;padding-bottom:6px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+          <span style="width:18px;height:18px;background:#C04828;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;">!</span>
           Difficultés rencontrées
         </div>
-        <ul style="margin:0;padding-left:18px;">
-          ${difAutoList.map(s=>`<li style="margin-bottom:6px;color:#1a1a1a;">${s}</li>`).join('')}
-        </ul>
+        ${difAutoList.length>0?`
+        <ul style="margin:0;padding-left:0;list-style:none;">
+          ${difAutoList.map(s=>`<li style="margin-bottom:8px;color:#1a1a1a;padding:8px 12px;background:#FFF5F5;border-left:3px solid #C04828;border-radius:0 4px 4px 0;">${s}</li>`).join('')}
+        </ul>`:`
+        <div style="padding:12px 16px;background:#FFF5F5;border-radius:6px;border:1px dashed #E8A8A0;color:#888;font-style:italic;font-size:12px;">
+          Aucune difficulté signalée — renseignez le champ ci-dessus si nécessaire.
+        </div>`}
       </div>`:''}
 
       <!-- SOUTIEN CORPS SOUS-PRÉFECTORAL -->
