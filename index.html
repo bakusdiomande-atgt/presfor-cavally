@@ -4417,9 +4417,9 @@ async function notifSendEmail(alertes){
   
   try {
     // Utiliser EmailJS service public (gratuit, 200 emails/mois)
-    const EMAILJS_SERVICE = 'default_service';
-    const EMAILJS_TEMPLATE = 'presfor_alertes';
-    const EMAILJS_KEY = 'user_presfor_cavally';
+    const EMAILJS_SERVICE = 'service_9sxks5u';
+    const EMAILJS_TEMPLATE = 'template_h5qodip';
+    const EMAILJS_KEY = 'pz4y-Ub1sZ5LQ_Fpd';
     
     const contenu = alertes.map(a => '• '+a.titre+': '+a.msg).join('\\n');
     const today = new Date().toLocaleDateString('fr-FR', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
@@ -4445,14 +4445,14 @@ async function notifTestEmail(){
   
   showToast('Envoi en cours...');
   try {
-    await emailjs.send('default_service', 'presfor_alertes', {
+    await emailjs.send('service_9sxks5u', 'template_h5qodip', {
       to_email: email,
       to_name: 'Responsable PRESFOR',
       subject: 'PRESFOR Cavally — Test des alertes email',
       message: "Ceci est un email de test. Si vous recevez cet email, la configuration est correcte.",
       nb_alertes: '1 (test)',
       date: new Date().toLocaleDateString('fr-FR'),
-    }, 'user_presfor_cavally');
+    }, 'pz4y-Ub1sZ5LQ_Fpd');
     showToast('Email test envoyé à ' + email);
   } catch(e) {
     showToast("EmailJS non configuré. Les alertes in-app fonctionnent normalement.");
@@ -4652,6 +4652,8 @@ function peuplerTousAgents() {
 }
 
 peuplerTousAgents();
+// Initialiser EmailJS
+emailjs.init('pz4y-Ub1sZ5LQ_Fpd');
 // Charger les données locales d'abord
 progInit();
 saisieInit();
