@@ -759,9 +759,13 @@ tbody td{padding:9px 12px;vertical-align:middle;}
                 <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:3px;" id="saisie-chips">
                   <span class="chip" data-v="Enquête terrain" onclick="saisieSelEtape(this)">Enquête terrain</span>
                   <span class="chip" data-v="Bornage" onclick="saisieSelEtape(this)">Bornage</span>
-                  <span class="chip" data-v="Constitution" onclick="saisieSelEtape(this)">Constitution</span>
-                  <span class="chip" data-v="Validation techn." onclick="saisieSelEtape(this)">Validation techn.</span>
+                  <span class="chip" data-v="Constitution du dossier" onclick="saisieSelEtape(this)">Constitution dossier</span>
+                  <span class="chip" data-v="PV de constat de limite" onclick="saisieSelEtape(this)">PV constat limite</span>
+                  <span class="chip" data-v="Recensement droit coutumier" onclick="saisieSelEtape(this)">Recensement coutumier</span>
+                  <span class="chip" data-v="Demande certificat foncier" onclick="saisieSelEtape(this)">Demande CF</span>
+                  <span class="chip" data-v="Validation technique" onclick="saisieSelEtape(this)">Validation techn.</span>
                   <span class="chip" data-v="Enregistrement" onclick="saisieSelEtape(this)">Enregistrement</span>
+                  <span class="chip" data-v="Clôturé" onclick="saisieSelEtape(this)">Clôturé</span>
                 </div>
                 <input type="hidden" id="sf-etape">
                 <span class="ferr" id="se-etape">Requis.</span>
@@ -2572,7 +2576,19 @@ function progImportExcel(input){
       // Construire les vrais objets en sautant ligne d'indices et exemple
       const headers=allRows[headerRow];
       const dataStart=headerRow+3; // sauter indices + exemple
-      const rows=allRows.slice(dataStart).filter(r=>r.some(c=>c!==null&&c!=='')).map(r=>{
+      const MOTS_INSTRUCTIONS = ['liste déroulante','jj/mm','aaaa','hh:mm','ex :','ex:','exemple','séparer','suite','selon','↑','▼','*'];
+      const estInstruction = (val) => {
+        if(!val) return false;
+        const s = String(val).toLowerCase().trim();
+        return MOTS_INSTRUCTIONS.some(m => s.includes(m));
+      };
+      const rows=allRows.slice(dataStart).filter(r=>{
+        if(!r.some(c=>c!==null&&c!=='')) return false;
+        // Ignorer les lignes d'instruction
+        const premierVal = r.find(c=>c!==null&&c!=='');
+        if(estInstruction(premierVal)) return false;
+        return true;
+      }).map(r=>{
         const obj={};
         headers.forEach((h,i)=>{if(h)obj[String(h)]=r[i]!==undefined?r[i]:'';});
         return obj;
@@ -2580,13 +2596,29 @@ function progImportExcel(input){
       if(!rows.length){showToast('Aucune donnée trouvée. Vérifiez que vous avez rempli à partir de la ligne 7.');return;}
       progImportData=[];
       const fmtD=(d)=>{
-        if(!d)return'';
-        if(d instanceof Date)return d.toISOString().split('T')[0];
+        if(!d && d!==0)return'';
+        // Date Excel numérique (nombre de jours depuis 1900)
+        if(typeof d==='number'){
+          const excelDate=new Date(Math.round((d-25569)*86400*1000));
+          return excelDate.toISOString().split('T')[0];
+        }
+        if(d instanceof Date){
+          if(isNaN(d.getTime()))return'';
+          return d.toISOString().split('T')[0];
+        }
         const s=String(d).trim();
+        if(!s)return'';
         if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+        // Format JJ/MM/AAAA
         const p=s.split(/[\/\-\.]/);
-        if(p.length===3){if(p[2].length===4)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');return p[0]+'-'+p[1].padStart(2,'0')+'-'+p[2].padStart(2,'0');}
-        return s;
+        if(p.length===3){
+          if(p[2].length===4)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');
+          if(p[0].length===4)return p[0]+'-'+p[1].padStart(2,'0')+'-'+p[2].padStart(2,'0');
+        }
+        // Essayer de parser directement
+        const parsed=new Date(s);
+        if(!isNaN(parsed.getTime()))return parsed.toISOString().split('T')[0];
+        return'';
       };
       const get=(row,keys)=>{
         for(const k of Object.keys(row)){
@@ -2620,7 +2652,13 @@ function progImportExcel(input){
           dept:dept?(dept.includes('Dép.')?dept:'Dép. '+dept):'',
           sp,villages:[],agent,op:op||'Enquête terrain',
           objectif:parseFloat(objectif)||0,
-          nb_agents,budget,obs,statut:'Planifié',realise:0,
+          nb_agents,budget,obs,statut:(()=>{
+          if(!debut)return'Planifié';
+          const now=new Date().toISOString().split('T')[0];
+          if(debut>now)return'Planifié';
+          if(fin&&fin<now)return'En retard';
+          return'En cours';
+        })(),realise:0,
           sousetapes:[]
         };
         progImportData.push({prog,errs,ligne:i+2});
@@ -2705,7 +2743,13 @@ function dosImportExcel(input){
       }
       const headers=allRows[headerRow];
       const dataStart=headerRow+3;
-      const rows=allRows.slice(dataStart).filter(r=>r.some(c=>c!==null&&c!=='')).map(r=>{
+      const MOTS_INSTR2 = ['liste déroulante','jj/mm','aaaa','ex :','ex:','exemple','séparer','↑','▼'];
+      const rows=allRows.slice(dataStart).filter(r=>{
+        if(!r.some(c=>c!==null&&c!=='')) return false;
+        const pv = r.find(c=>c!==null&&c!=='');
+        if(pv && MOTS_INSTR2.some(m=>String(pv).toLowerCase().includes(m))) return false;
+        return true;
+      }).map(r=>{
         const obj={};
         headers.forEach((h,i)=>{if(h)obj[String(h)]=r[i]!==undefined?r[i]:'';});
         return obj;
@@ -2713,13 +2757,29 @@ function dosImportExcel(input){
       if(!rows.length){showToast('Aucune donnée trouvée. Vérifiez que vous avez rempli à partir de la ligne 7.');return;}
       dosImportData=[];
       const fmtD=(d)=>{
-        if(!d)return'';
-        if(d instanceof Date)return d.toISOString().split('T')[0];
+        if(!d && d!==0)return'';
+        // Date Excel numérique (nombre de jours depuis 1900)
+        if(typeof d==='number'){
+          const excelDate=new Date(Math.round((d-25569)*86400*1000));
+          return excelDate.toISOString().split('T')[0];
+        }
+        if(d instanceof Date){
+          if(isNaN(d.getTime()))return'';
+          return d.toISOString().split('T')[0];
+        }
         const s=String(d).trim();
+        if(!s)return'';
         if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+        // Format JJ/MM/AAAA
         const p=s.split(/[\/\-\.]/);
-        if(p.length===3){if(p[2].length===4)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');return p[0]+'-'+p[1].padStart(2,'0')+'-'+p[2].padStart(2,'0');}
-        return s;
+        if(p.length===3){
+          if(p[2].length===4)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');
+          if(p[0].length===4)return p[0]+'-'+p[1].padStart(2,'0')+'-'+p[2].padStart(2,'0');
+        }
+        // Essayer de parser directement
+        const parsed=new Date(s);
+        if(!isNaN(parsed.getTime()))return parsed.toISOString().split('T')[0];
+        return'';
       };
       const get=(row,keys)=>{for(const k of Object.keys(row)){if(keys.some(key=>k.toLowerCase().replace(/[\s_\*\(\)]/g,'').replace(/[éèê]/g,'e').replace(/[àâ]/g,'a').replace(/î/g,'i').replace(/ô/g,'o').replace(/û/g,'u').replace(/ç/g,'c').includes(key.toLowerCase().replace(/[\s_\*\(\)]/g,'').replace(/[éèê]/g,'e').replace(/[àâ]/g,'a').replace(/î/g,'i').replace(/ô/g,'o').replace(/û/g,'u').replace(/ç/g,'c'))))return String(row[k]||'').trim();}return'';};
       rows.forEach((row,i)=>{
