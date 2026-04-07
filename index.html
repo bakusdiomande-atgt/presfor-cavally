@@ -216,17 +216,72 @@ tbody td{padding:9px 12px;vertical-align:middle;}
   .tb-mod .mod-num{display:none;}}
 @media(max-width:640px){.sidebar{display:none;}.main{padding:14px;}.fg,.fg3,.fg4{grid-template-columns:1fr;}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
 
 <!-- ══ TOP BAR ══ -->
 <header class="topbar">
   <div class="tb-brand">
-    <div id="offline-banner" style="display:none;position:fixed;top:0;left:0;width:100%;background:#92400E;color:#FEF3C7;text-align:center;font-size:12px;font-weight:600;padding:5px;z-index:9999;">
+    <div id="notif-panel" style="display:none;position:fixed;top:52px;right:12px;width:360px;max-height:480px;overflow-y:auto;background:var(--surface);border-radius:var(--radius);box-shadow:0 8px 32px rgba(0,0,0,0.2);z-index:9998;border:1px solid var(--border);">
+  <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+    <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;">Alertes terrain</span>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button onclick="notifMarkAll()" style="font-size:10px;color:var(--text2);background:none;border:none;cursor:pointer;padding:2px 6px;">Tout marquer lu</button>
+      <button onclick="notifToggle()" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:16px;">×</button>
+    </div>
+  </div>
+  <div id="notif-list" style="padding:8px;"></div>
+  <div style="padding:10px 16px;border-top:1px solid var(--border);">
+    <button onclick="notifSettings()" style="font-size:11px;color:var(--text2);background:none;border:none;cursor:pointer;">⚙ Configurer les alertes email</button>
+  </div>
+</div>
+
+<!-- Modal configuration alertes email -->
+<div id="notif-settings-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border-radius:var(--radius);padding:24px;width:440px;max-width:90vw;">
+    <h3 style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin:0 0 16px;">Configuration des alertes email</h3>
+    <div class="ff">
+      <label class="fl">Votre adresse email</label>
+      <input class="fi" type="email" id="notif-email" placeholder="votre@email.com">
+    </div>
+    <div class="ff" style="margin-top:10px;">
+      <label class="fl">Seuil dossiers bloqués (jours)</label>
+      <input class="fi" type="number" id="notif-seuil-dos" value="30" min="1" max="90">
+    </div>
+    <div class="ff" style="margin-top:10px;">
+      <label class="fl">Seuil agents sans saisie (jours)</label>
+      <input class="fi" type="number" id="notif-seuil-agent" value="3" min="1" max="30">
+    </div>
+    <div style="margin-top:12px;">
+      <label style="font-size:12px;font-weight:600;color:var(--text1);display:block;margin-bottom:8px;">Alertes actives :</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:6px;cursor:pointer;">
+        <input type="checkbox" id="notif-chk-dos" checked> Dossiers bloqués
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:6px;cursor:pointer;">
+        <input type="checkbox" id="notif-chk-agents" checked> Agents sans saisie
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;">
+        <input type="checkbox" id="notif-chk-progs" checked> Programmes en retard
+      </label>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn-p" onclick="notifSaveSettings()">Enregistrer</button>
+      <button class="btn-s" onclick="notifTestEmail()">Tester l'email</button>
+      <button class="btn-s" onclick="document.getElementById('notif-settings-modal').style.display='none'">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<div id="offline-banner" style="display:none;position:fixed;top:0;left:0;width:100%;background:#92400E;color:#FEF3C7;text-align:center;font-size:12px;font-weight:600;padding:5px;z-index:9999;">
   📵 Mode hors-ligne — Les données sont sauvegardées localement et seront synchronisées à la reconnexion
 </div>
 <div class="tb-logo">PF</div>
     <div class="tb-title">PRESFOR <span>· Cavally</span></div>
+  <div id="notif-bell" onclick="notifToggle()" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:8px;background:rgba(255,255,255,0.1);margin-left:4px;display:flex;align-items:center;">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="white"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.558-1.527-4.765-3.005-4.901z"/></svg>
+    <span id="notif-count" style="display:none;position:absolute;top:-4px;right:-4px;background:#E24B4A;color:#fff;font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;"></span>
+  </div>
   <div id="sync-indicator" style="display:flex;align-items:center;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,0.12);margin-left:4px;cursor:pointer" onclick="serverSave()" title="Cliquer pour sauvegarder maintenant">
     <span style="color:rgba(255,255,255,0.8);font-size:11px;">✓ Sauvegardé</span>
   </div>
@@ -4172,6 +4227,252 @@ function rptExportPDF(){
 }
 
 // ═══════════════════════════════════════════
+// SYSTÈME DE NOTIFICATIONS ET ALERTES
+// ═══════════════════════════════════════════
+
+// Config notifications
+let notifConfig = JSON.parse(localStorage.getItem('presfor_notif_config') || '{}');
+let notifLues = JSON.parse(localStorage.getItem('presfor_notif_lues') || '[]');
+let notifPanelOpen = false;
+
+function notifSaveConfig(){
+  localStorage.setItem('presfor_notif_config', JSON.stringify(notifConfig));
+}
+
+// ── Générer les alertes ──
+function notifGetAlertes(){
+  const alertes = [];
+  const today = new Date();
+  const seuilDos = parseInt(notifConfig.seuilDos || 30);
+  const seuilAgent = parseInt(notifConfig.seuilAgent || 3);
+
+  // 1. Dossiers bloqués
+  if(notifConfig.chkDos !== false){
+    dossiers.filter(d => d.etape !== 'Clôturé').forEach(d => {
+      if(!d.etape_date) return;
+      const jours = Math.floor((today - new Date(d.etape_date)) / 86400000);
+      if(jours >= seuilDos){
+        alertes.push({
+          id: 'dos_'+d.id,
+          type: 'danger',
+          titre: 'Dossier bloqué',
+          msg: `${d.ref_officiel} — ${d.demandeur} (${d.village}) · Étape "${d.etape}" depuis ${jours} jours`,
+          date: new Date().toISOString(),
+          action: "switchModule('dossier')"
+        });
+      }
+    });
+  }
+
+  // 2. Agents sans saisie
+  if(notifConfig.chkAgents !== false){
+    const dateLimite = new Date();
+    dateLimite.setDate(dateLimite.getDate() - seuilAgent);
+    const limitStr = dateLimite.toISOString().split('T')[0];
+    AGENTS_FULL.forEach(ag => {
+      const dernier = saisies.filter(s => s.agent === ag.nom)
+        .sort((a,b) => b.date.localeCompare(a.date))[0];
+      if(dernier && dernier.date < limitStr){
+        const jours = Math.floor((today - new Date(dernier.date)) / 86400000);
+        alertes.push({
+          id: 'ag_'+ag.nom.replace(/\s/g,''),
+          type: 'warning',
+          titre: 'Agent inactif',
+          msg: `${ag.nom} — Dernière saisie il y a ${jours} jours (${fmtDate(dernier.date)})`,
+          date: new Date().toISOString(),
+          action: "switchModule('agents')"
+        });
+      } else if(!dernier){
+        alertes.push({
+          id: 'ag0_'+ag.nom.replace(/\s/g,''),
+          type: 'warning',
+          titre: 'Aucune saisie',
+          msg: `${ag.nom} — Aucune saisie enregistrée`,
+          date: new Date().toISOString(),
+          action: "switchModule('agents')"
+        });
+      }
+    });
+  }
+
+  // 3. Programmes en retard
+  if(notifConfig.chkProgs !== false){
+    programmes.filter(p => p.statut === 'En retard').forEach(p => {
+      alertes.push({
+        id: 'prog_'+p.id,
+        type: 'danger',
+        titre: 'Programme en retard',
+        msg: `${p.id} — ${p.agent} · ${p.dept} · Objectif : ${p.objectif} ha`,
+        date: new Date().toISOString(),
+        action: "switchModule('prog')"
+      });
+    });
+  }
+
+  return alertes;
+}
+
+// ── Afficher le panneau ──
+function notifToggle(){
+  notifPanelOpen = !notifPanelOpen;
+  const panel = document.getElementById('notif-panel');
+  if(notifPanelOpen){
+    notifRender();
+    panel.style.display = 'block';
+  } else {
+    panel.style.display = 'none';
+  }
+}
+
+function notifRender(){
+  const alertes = notifGetAlertes();
+  const nonLues = alertes.filter(a => !notifLues.includes(a.id));
+  
+  // Mettre à jour le badge
+  const badge = document.getElementById('notif-count');
+  if(badge){
+    if(nonLues.length > 0){
+      badge.textContent = nonLues.length > 9 ? '9+' : nonLues.length;
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  const list = document.getElementById('notif-list');
+  if(!list) return;
+  
+  if(!alertes.length){
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px;">✓ Aucune alerte en cours</div>';
+    return;
+  }
+
+  const colors = {
+    danger:  {bg:'var(--red-lt)',  brd:'var(--red)',   ico:'⚠', txt:'var(--red-txt)'},
+    warning: {bg:'var(--amber-lt)',brd:'var(--amber)',  ico:'!', txt:'var(--amber-txt)'},
+    info:    {bg:'var(--blue-lt)', brd:'var(--blue)',   ico:'i', txt:'var(--blue-txt)'},
+  };
+
+  list.innerHTML = alertes.map(a => {
+    const c = colors[a.type] || colors.info;
+    const lu = notifLues.includes(a.id);
+    return `<div style="margin-bottom:6px;padding:10px 12px;background:${c.bg};border-left:3px solid ${c.brd};border-radius:0 6px 6px 0;opacity:${lu?'0.6':'1'};">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="flex:1;">
+          <div style="font-size:11px;font-weight:700;color:${c.txt};margin-bottom:2px;">${c.ico} ${a.titre}</div>
+          <div style="font-size:11px;color:var(--text1);line-height:1.4;">${a.msg}</div>
+        </div>
+        <button onclick="notifMarqueLue('${a.id}')" style="font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;flex-shrink:0;padding:0;">✓ Lu</button>
+      </div>
+      <button onclick="${a.action};notifToggle();" style="margin-top:6px;font-size:10px;padding:2px 8px;border:1px solid ${c.brd};background:transparent;color:${c.txt};border-radius:4px;cursor:pointer;">Voir →</button>
+    </div>`;
+  }).join('');
+}
+
+function notifMarqueLue(id){
+  if(!notifLues.includes(id)) notifLues.push(id);
+  localStorage.setItem('presfor_notif_lues', JSON.stringify(notifLues));
+  notifRender();
+}
+
+function notifMarkAll(){
+  const alertes = notifGetAlertes();
+  alertes.forEach(a => { if(!notifLues.includes(a.id)) notifLues.push(a.id); });
+  localStorage.setItem('presfor_notif_lues', JSON.stringify(notifLues));
+  notifRender();
+}
+
+function notifSettings(){
+  const cfg = notifConfig;
+  document.getElementById('notif-email').value = cfg.email || '';
+  document.getElementById('notif-seuil-dos').value = cfg.seuilDos || 30;
+  document.getElementById('notif-seuil-agent').value = cfg.seuilAgent || 3;
+  document.getElementById('notif-chk-dos').checked = cfg.chkDos !== false;
+  document.getElementById('notif-chk-agents').checked = cfg.chkAgents !== false;
+  document.getElementById('notif-chk-progs').checked = cfg.chkProgs !== false;
+  document.getElementById('notif-settings-modal').style.display = 'flex';
+  notifPanelOpen = false;
+  document.getElementById('notif-panel').style.display = 'none';
+}
+
+function notifSaveSettings(){
+  notifConfig = {
+    email: document.getElementById('notif-email').value,
+    seuilDos: parseInt(document.getElementById('notif-seuil-dos').value) || 30,
+    seuilAgent: parseInt(document.getElementById('notif-seuil-agent').value) || 3,
+    chkDos: document.getElementById('notif-chk-dos').checked,
+    chkAgents: document.getElementById('notif-chk-agents').checked,
+    chkProgs: document.getElementById('notif-chk-progs').checked,
+  };
+  notifSaveConfig();
+  document.getElementById('notif-settings-modal').style.display = 'none';
+  notifRender();
+  showToast('Configuration alertes enregistrée !');
+}
+
+// ── Envoi email via EmailJS ──
+async function notifSendEmail(alertes){
+  const email = notifConfig.email;
+  if(!email || !alertes.length) return;
+  
+  try {
+    // Utiliser EmailJS service public (gratuit, 200 emails/mois)
+    const EMAILJS_SERVICE = 'default_service';
+    const EMAILJS_TEMPLATE = 'presfor_alertes';
+    const EMAILJS_KEY = 'user_presfor_cavally';
+    
+    const contenu = alertes.map(a => '• '+a.titre+': '+a.msg).join('\\n');
+    const today = new Date().toLocaleDateString('fr-FR', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    
+    await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+      to_email: email,
+      to_name: 'Responsable PRESFOR',
+      subject: `PRESFOR Cavally — ${alertes.length} alerte(s) terrain — ${today}`,
+      message: contenu,
+      nb_alertes: alertes.length,
+      date: today,
+    }, EMAILJS_KEY);
+    
+    console.log('Email alertes envoyé à', email);
+  } catch(e) {
+    console.log('Email non envoyé (EmailJS non configuré):', e.message);
+  }
+}
+
+async function notifTestEmail(){
+  const email = document.getElementById('notif-email').value;
+  if(!email){ showToast("Entrez votre adresse email d'abord."); return; }
+  
+  showToast('Envoi en cours...');
+  try {
+    await emailjs.send('default_service', 'presfor_alertes', {
+      to_email: email,
+      to_name: 'Responsable PRESFOR',
+      subject: 'PRESFOR Cavally — Test des alertes email',
+      message: "Ceci est un email de test. Si vous recevez cet email, la configuration est correcte.",
+      nb_alertes: '1 (test)',
+      date: new Date().toLocaleDateString('fr-FR'),
+    }, 'user_presfor_cavally');
+    showToast('Email test envoyé à ' + email);
+  } catch(e) {
+    showToast("EmailJS non configuré. Les alertes in-app fonctionnent normalement.");
+  }
+}
+
+// Vérification périodique des alertes (toutes les 30 minutes)
+function notifCheck(){
+  const alertes = notifGetAlertes();
+  const nonLues = alertes.filter(a => !notifLues.includes(a.id));
+  notifRender();
+  // Envoyer email si nouvelles alertes
+  if(nonLues.length > 0 && notifConfig.email){
+    notifSendEmail(nonLues);
+  }
+}
+
+setInterval(notifCheck, 30 * 60 * 1000); // toutes les 30 min
+
+// ═══════════════════════════════════════════
 // SAUVEGARDE PERSISTANTE — JSONBin.io
 // ═══════════════════════════════════════════
 
@@ -4373,6 +4674,8 @@ serverLoad().then(loaded => {
 dashInit();
 // Démarrer sur le tableau de bord
 switchModule('accueil');
+// Vérifier les alertes au démarrage
+setTimeout(notifCheck, 3000);
 
 </script>
 
