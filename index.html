@@ -232,8 +232,9 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     </div>
   </div>
   <div id="notif-list" style="padding:8px;"></div>
-  <div style="padding:10px 16px;border-top:1px solid var(--border);">
-    <button onclick="notifSettings()" style="font-size:11px;color:var(--text2);background:none;border:none;cursor:pointer;">⚙ Configurer les alertes email</button>
+  <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+    <button onclick="notifSettings()" style="font-size:11px;color:var(--text2);background:none;border:none;cursor:pointer;">⚙ Configurer les alertes</button>
+    <a id="wa-superviseur-btn" href="#" target="_blank" style="font-size:11px;color:#25D366;text-decoration:none;padding:3px 8px;border:1px solid #25D366;border-radius:4px;">WhatsApp superviseur</a>
   </div>
 </div>
 
@@ -4251,7 +4252,14 @@ const RESPONSABLES = [
 ];
 
 // Config notifications
-let notifConfig = JSON.parse(localStorage.getItem('presfor_notif_config') || '{}');
+// Superviseur PRESFOR
+const SUPERVISEUR = {
+  nom: 'DIOMANDE BAKARY',
+  email: 'bakus.diomande@gmail.com',
+  whatsapp: '2250708071928'
+};
+
+let notifConfig = JSON.parse(localStorage.getItem('presfor_notif_config') || JSON.stringify({email:'bakus.diomande@gmail.com'}));
 let notifLues = JSON.parse(localStorage.getItem('presfor_notif_lues') || '[]');
 let notifPanelOpen = false;
 let lastNotifSent = localStorage.getItem('presfor_last_notif_sent') || null;
@@ -4353,6 +4361,13 @@ function notifRender(){
   const alertes = notifGetAlertes();
   const nonLues = alertes.filter(a => !notifLues.includes(a.id));
 
+  // Mettre à jour le lien WhatsApp superviseur
+  const waBtn = document.getElementById('wa-superviseur-btn');
+  if(waBtn){
+    const alertes2 = notifGetAlertes();
+    const waTxt = encodeURIComponent('PRESFOR CAVALLY - ' + alertes2.length + ' alerte(s) - ' + new Date().toLocaleDateString('fr-FR') + ' - Verifiez l application.');
+    waBtn.href = 'https://wa.me/' + SUPERVISEUR.whatsapp + '?text=' + waTxt;
+  }
   const badge = document.getElementById('notif-count');
   if(badge){
     if(nonLues.length > 0){
@@ -4415,7 +4430,7 @@ function notifMarkAll(){
 
 function notifSettings(){
   const cfg = notifConfig;
-  document.getElementById('notif-email').value = cfg.email || 'bakus.diomande@gmail.com';
+  document.getElementById('notif-email').value = cfg.email || SUPERVISEUR.email;
   document.getElementById('notif-seuil-dos').value = cfg.seuilDos || 30;
   document.getElementById('notif-seuil-agent').value = cfg.seuilAgent || 3;
   document.getElementById('notif-chk-dos').checked = cfg.chkDos !== false;
@@ -4466,7 +4481,7 @@ async function notifSendEmailResp(alerte){
 
 // ── Envoi email résumé superviseur (toutes les 24h) ──
 async function notifSendSummary(){
-  const email = notifConfig.email || 'bakus.diomande@gmail.com';
+  const email = notifConfig.email || SUPERVISEUR.email;
   const alertes = notifGetAlertes();
   if(!alertes.length) return;
 
@@ -4488,6 +4503,9 @@ async function notifSendSummary(){
     lastNotifSent = new Date().toISOString();
     localStorage.setItem('presfor_last_notif_sent', lastNotifSent);
     console.log('Résumé quotidien envoyé à', email);
+    // Générer aussi lien WhatsApp superviseur
+    const waResume = encodeURIComponent('PRESFOR CAVALLY - Resume ' + new Date().toLocaleDateString('fr-FR') + ' : ' + alertes.length + ' alerte(s). Verifiez l application.');
+    console.log('WhatsApp superviseur: https://wa.me/' + SUPERVISEUR.whatsapp + '?text=' + waResume);
   } catch(e) {
     console.log('Erreur envoi résumé:', e.message);
   }
