@@ -4230,10 +4230,31 @@ function rptExportPDF(){
 // SYSTÈME DE NOTIFICATIONS ET ALERTES
 // ═══════════════════════════════════════════
 
+// Responsables par département et activité
+const RESPONSABLES = [
+  {dept:'Dép. Guiglo',    act:'ISF',     nom:'TOHOUA ERIC',             email:'tohoua.eric@groupementcag.ci',  whatsapp:'22507098217 45'},
+  {dept:'Dép. Guiglo',    act:'CONTRAT', nom:'TOHOUA ERIC',             email:'tohoua.eric@groupementcag.ci',  whatsapp:'2250709821745'},
+  {dept:'Dép. Guiglo',    act:'CF',      nom:'AKOUE CHIGBEU FLORENT',   email:'florentsenior@gmail.com',        whatsapp:'2250707831770'},
+  {dept:'Dép. Guiglo',    act:'DTV',     nom:'AKOUE CHIGBEU FLORENT',   email:'florentsenior@gmail.com',        whatsapp:'2250707831770'},
+  {dept:'Dép. Taï',       act:'CF',      nom:'AKOUE CHIGBEU FLORENT',   email:'florentsenior@gmail.com',        whatsapp:'2250707831770'},
+  {dept:'Dép. Taï',       act:'DTV',     nom:'AKOUE CHIGBEU FLORENT',   email:'florentsenior@gmail.com',        whatsapp:'2250707831770'},
+  {dept:'Dép. Taï',       act:'ISF',     nom:'TOHOUA ERIC',             email:'tohoua.eric@groupementcag.ci',  whatsapp:'2250709821745'},
+  {dept:'Dép. Taï',       act:'CONTRAT', nom:'TOHOUA ERIC',             email:'tohoua.eric@groupementcag.ci',  whatsapp:'2250709821745'},
+  {dept:'Dép. Bloléquin', act:'CF',      nom:'SAMASSI ISMAEL',          email:'isamassi.presfor@gmail.com',    whatsapp:'2250565048233'},
+  {dept:'Dép. Bloléquin', act:'DTV',     nom:'SAMASSI ISMAEL',          email:'isamassi.presfor@gmail.com',    whatsapp:'2250565048233'},
+  {dept:'Dép. Bloléquin', act:'ISF',     nom:'BEUGRE RAPHAEL',          email:'kbeugreraphael@gmail.com',      whatsapp:'2250708498938'},
+  {dept:'Dép. Bloléquin', act:'CONTRAT', nom:'BEUGRE RAPHAEL',          email:'kbeugreraphael@gmail.com',      whatsapp:'2250708498938'},
+  {dept:'Dép. Toulépleu', act:'CF',      nom:'SAMASSI ISMAEL',          email:'isamassi.presfor@gmail.com',    whatsapp:'2250565048233'},
+  {dept:'Dép. Toulépleu', act:'DTV',     nom:'SAMASSI ISMAEL',          email:'isamassi.presfor@gmail.com',    whatsapp:'2250565048233'},
+  {dept:'Dép. Toulépleu', act:'ISF',     nom:'KODJO GERAUD',            email:'kbeugreraphael@gmail.com',      whatsapp:'2250777191106'},
+  {dept:'Dép. Toulépleu', act:'CONTRAT', nom:'KODJO GERAUD',            email:'kbeugreraphael@gmail.com',      whatsapp:'2250777191106'},
+];
+
 // Config notifications
 let notifConfig = JSON.parse(localStorage.getItem('presfor_notif_config') || '{}');
 let notifLues = JSON.parse(localStorage.getItem('presfor_notif_lues') || '[]');
 let notifPanelOpen = false;
+let lastNotifSent = localStorage.getItem('presfor_last_notif_sent') || null;
 
 function notifSaveConfig(){
   localStorage.setItem('presfor_notif_config', JSON.stringify(notifConfig));
@@ -4252,11 +4273,20 @@ function notifGetAlertes(){
       if(!d.etape_date) return;
       const jours = Math.floor((today - new Date(d.etape_date)) / 86400000);
       if(jours >= seuilDos){
+        // Trouver le responsable
+        const resp = RESPONSABLES.find(r =>
+          r.dept === d.dept && r.act === d.activite
+        );
         alertes.push({
           id: 'dos_'+d.id,
           type: 'danger',
           titre: 'Dossier bloqué',
-          msg: `${d.ref_officiel} — ${d.demandeur} (${d.village}) · Étape "${d.etape}" depuis ${jours} jours`,
+          msg: d.ref_officiel+' — '+d.demandeur+' ('+d.village+') · Étape "'+d.etape+'" depuis '+jours+' jours',
+          dept: d.dept,
+          act: d.activite,
+          responsable: resp ? resp.nom : 'Non défini',
+          email_resp: resp ? resp.email : null,
+          whatsapp_resp: resp ? resp.whatsapp : null,
           date: new Date().toISOString(),
           action: "switchModule('dossier')"
         });
@@ -4278,16 +4308,9 @@ function notifGetAlertes(){
           id: 'ag_'+ag.nom.replace(/\s/g,''),
           type: 'warning',
           titre: 'Agent inactif',
-          msg: `${ag.nom} — Dernière saisie il y a ${jours} jours (${fmtDate(dernier.date)})`,
-          date: new Date().toISOString(),
-          action: "switchModule('agents')"
-        });
-      } else if(!dernier){
-        alertes.push({
-          id: 'ag0_'+ag.nom.replace(/\s/g,''),
-          type: 'warning',
-          titre: 'Aucune saisie',
-          msg: `${ag.nom} — Aucune saisie enregistrée`,
+          msg: ag.nom+' — Dernière saisie il y a '+jours+' jours ('+fmtDate(dernier.date)+')',
+          dept: null, act: null,
+          responsable: null, email_resp: null, whatsapp_resp: null,
           date: new Date().toISOString(),
           action: "switchModule('agents')"
         });
@@ -4298,11 +4321,17 @@ function notifGetAlertes(){
   // 3. Programmes en retard
   if(notifConfig.chkProgs !== false){
     programmes.filter(p => p.statut === 'En retard').forEach(p => {
+      const resp = RESPONSABLES.find(r => r.dept === p.dept && r.act === p.op);
       alertes.push({
         id: 'prog_'+p.id,
         type: 'danger',
         titre: 'Programme en retard',
-        msg: `${p.id} — ${p.agent} · ${p.dept} · Objectif : ${p.objectif} ha`,
+        msg: p.id+' — '+p.agent+' · '+p.dept+' · Objectif : '+p.objectif+' ha',
+        dept: p.dept,
+        act: p.op,
+        responsable: resp ? resp.nom : null,
+        email_resp: resp ? resp.email : null,
+        whatsapp_resp: resp ? resp.whatsapp : null,
         date: new Date().toISOString(),
         action: "switchModule('prog')"
       });
@@ -4316,58 +4345,61 @@ function notifGetAlertes(){
 function notifToggle(){
   notifPanelOpen = !notifPanelOpen;
   const panel = document.getElementById('notif-panel');
-  if(notifPanelOpen){
-    notifRender();
-    panel.style.display = 'block';
-  } else {
-    panel.style.display = 'none';
-  }
+  if(notifPanelOpen){ notifRender(); panel.style.display='block'; }
+  else { panel.style.display='none'; }
 }
 
 function notifRender(){
   const alertes = notifGetAlertes();
   const nonLues = alertes.filter(a => !notifLues.includes(a.id));
-  
-  // Mettre à jour le badge
+
   const badge = document.getElementById('notif-count');
   if(badge){
     if(nonLues.length > 0){
       badge.textContent = nonLues.length > 9 ? '9+' : nonLues.length;
       badge.style.display = 'flex';
-    } else {
-      badge.style.display = 'none';
-    }
+    } else { badge.style.display = 'none'; }
   }
 
   const list = document.getElementById('notif-list');
   if(!list) return;
-  
+
   if(!alertes.length){
-    list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px;">✓ Aucune alerte en cours</div>';
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px;">&#10003; Aucune alerte en cours</div>';
     return;
   }
 
-  const colors = {
-    danger:  {bg:'var(--red-lt)',  brd:'var(--red)',   ico:'⚠', txt:'var(--red-txt)'},
-    warning: {bg:'var(--amber-lt)',brd:'var(--amber)',  ico:'!', txt:'var(--amber-txt)'},
-    info:    {bg:'var(--blue-lt)', brd:'var(--blue)',   ico:'i', txt:'var(--blue-txt)'},
-  };
-
   list.innerHTML = alertes.map(a => {
-    const c = colors[a.type] || colors.info;
+    const rouge = a.type === 'danger';
+    const bg = rouge ? 'var(--red-lt)' : 'var(--amber-lt)';
+    const brd = rouge ? 'var(--red)' : 'var(--amber)';
+    const txt = rouge ? 'var(--red-txt)' : 'var(--amber-txt)';
+    const ico = rouge ? '&#9888;' : '!';
     const lu = notifLues.includes(a.id);
-    return `<div style="margin-bottom:6px;padding:10px 12px;background:${c.bg};border-left:3px solid ${c.brd};border-radius:0 6px 6px 0;opacity:${lu?'0.6':'1'};">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-        <div style="flex:1;">
-          <div style="font-size:11px;font-weight:700;color:${c.txt};margin-bottom:2px;">${c.ico} ${a.titre}</div>
-          <div style="font-size:11px;color:var(--text1);line-height:1.4;">${a.msg}</div>
-        </div>
-        <button onclick="notifMarqueLue('${a.id}')" style="font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;flex-shrink:0;padding:0;">✓ Lu</button>
-      </div>
-      <button onclick="${a.action};notifToggle();" style="margin-top:6px;font-size:10px;padding:2px 8px;border:1px solid ${c.brd};background:transparent;color:${c.txt};border-radius:4px;cursor:pointer;">Voir →</button>
-    </div>`;
+    const waMsg = a.whatsapp_resp ? encodeURIComponent('PRESFOR CAVALLY - ' + a.titre + ' - ' + a.msg) : null;
+    const waLink = a.whatsapp_resp ? 'https://wa.me/' + a.whatsapp_resp + '?text=' + waMsg : null;
+
+    let html2 = '<div style="margin-bottom:6px;padding:10px 12px;background:' + bg + ';border-left:3px solid ' + brd + ';border-radius:0 6px 6px 0;opacity:' + (lu ? '0.5' : '1') + ';">';
+    html2 += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">';
+    html2 += '<div style="flex:1;">';
+    html2 += '<div style="font-size:11px;font-weight:700;color:' + txt + ';margin-bottom:2px;">' + ico + ' ' + a.titre + (a.act ? ' · ' + a.act : '') + '</div>';
+    html2 += '<div style="font-size:11px;color:var(--text1);line-height:1.4;">' + a.msg + '</div>';
+    if(a.responsable) html2 += '<div style="font-size:10px;color:var(--text2);margin-top:3px;">Responsable : ' + a.responsable + '</div>';
+    html2 += '</div>';
+    html2 += '<button onclick="notifMarqueLue(&quot;' + a.id + '&quot;)" style="font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;flex-shrink:0;">&#10003;</button>';
+    html2 += '</div>';
+    html2 += '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">';
+    html2 += '<button onclick="' + a.action + ';notifToggle();" style="font-size:10px;padding:2px 8px;border:1px solid ' + brd + ';background:transparent;color:' + txt + ';border-radius:4px;cursor:pointer;">Voir &#8594;</button>';
+    if(waLink) html2 += '<a href="' + waLink + '" target="_blank" style="font-size:10px;padding:2px 8px;border:1px solid #25D366;background:transparent;color:#25D366;border-radius:4px;cursor:pointer;text-decoration:none;">WhatsApp</a>';
+    if(a.email_resp){
+      const aid = a.id;
+    html2 += '<button onclick="notifSendEmailById(&quot;' + aid + '&quot;)" style="font-size:10px;padding:2px 8px;border:1px solid var(--blue);background:transparent;color:var(--blue-txt);border-radius:4px;cursor:pointer;">Email</button>';
+    }
+    html2 += '</div></div>';
+    return html2;
   }).join('');
 }
+
 
 function notifMarqueLue(id){
   if(!notifLues.includes(id)) notifLues.push(id);
@@ -4376,15 +4408,14 @@ function notifMarqueLue(id){
 }
 
 function notifMarkAll(){
-  const alertes = notifGetAlertes();
-  alertes.forEach(a => { if(!notifLues.includes(a.id)) notifLues.push(a.id); });
+  notifGetAlertes().forEach(a => { if(!notifLues.includes(a.id)) notifLues.push(a.id); });
   localStorage.setItem('presfor_notif_lues', JSON.stringify(notifLues));
   notifRender();
 }
 
 function notifSettings(){
   const cfg = notifConfig;
-  document.getElementById('notif-email').value = cfg.email || '';
+  document.getElementById('notif-email').value = cfg.email || 'bakus.diomande@gmail.com';
   document.getElementById('notif-seuil-dos').value = cfg.seuilDos || 30;
   document.getElementById('notif-seuil-agent').value = cfg.seuilAgent || 3;
   document.getElementById('notif-chk-dos').checked = cfg.chkDos !== false;
@@ -4407,49 +4438,71 @@ function notifSaveSettings(){
   notifSaveConfig();
   document.getElementById('notif-settings-modal').style.display = 'none';
   notifRender();
-  showToast('Configuration alertes enregistrée !');
+  showToast('Configuration enregistrée !');
 }
 
-// ── Envoi email via EmailJS ──
-async function notifSendEmail(alertes){
-  const email = notifConfig.email;
-  if(!email || !alertes.length) return;
-  
+// ── Envoi email au responsable ──
+async function notifSendEmailById(id){
+  const alerte = notifGetAlertes().find(a => a.id === id);
+  if(alerte) await notifSendEmailResp(alerte);
+}
+
+async function notifSendEmailResp(alerte){
+  if(!alerte.email_resp) return;
   try {
-    // Utiliser EmailJS service public (gratuit, 200 emails/mois)
-    const EMAILJS_SERVICE = 'service_9sxks5u';
-    const EMAILJS_TEMPLATE = 'template_h5qodip';
-    const EMAILJS_KEY = 'pz4y-Ub1sZ5LQ_Fpd';
-    
-    const contenu = alertes.map(a => '• '+a.titre+': '+a.msg).join('\\n');
-    const today = new Date().toLocaleDateString('fr-FR', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
-    
-    await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
-      to_email: email,
-      to_name: 'Responsable PRESFOR',
-      subject: `PRESFOR Cavally — ${alertes.length} alerte(s) terrain — ${today}`,
-      message: contenu,
-      nb_alertes: alertes.length,
-      date: today,
-    }, EMAILJS_KEY);
-    
-    console.log('Email alertes envoyé à', email);
+    await emailjs.send('service_9sxks5u', 'template_h5qodip', {
+      to_email: alerte.email_resp,
+      to_name: alerte.responsable || 'Responsable',
+      subject: 'PRESFOR Cavally — Alerte : ' + alerte.titre,
+      message: alerte.msg,
+      nb_alertes: '1',
+      date: new Date().toLocaleDateString('fr-FR'),
+    }, 'pz4y-Ub1sZ5LQ_Fpd');
+    showToast('Email envoyé à ' + alerte.email_resp);
   } catch(e) {
-    console.log('Email non envoyé (EmailJS non configuré):', e.message);
+    showToast('Erreur envoi email : ' + e.message);
+  }
+}
+
+// ── Envoi email résumé superviseur (toutes les 24h) ──
+async function notifSendSummary(){
+  const email = notifConfig.email || 'bakus.diomande@gmail.com';
+  const alertes = notifGetAlertes();
+  if(!alertes.length) return;
+
+  const resume = alertes.map(a =>
+    '• ['+a.dept+' / '+(a.act||'Général')+'] '+a.titre+' : '+a.msg+
+    (a.responsable ? ' (Resp: '+a.responsable+')' : '')
+  ).join(' | ');
+
+
+  try {
+    await emailjs.send('service_9sxks5u', 'template_h5qodip', {
+      to_email: email,
+      to_name: 'Superviseur PRESFOR',
+      subject: 'PRESFOR Cavally — Résumé quotidien : ' + alertes.length + ' alerte(s)',
+      message: resume,
+      nb_alertes: alertes.length,
+      date: new Date().toLocaleDateString('fr-FR'),
+    }, 'pz4y-Ub1sZ5LQ_Fpd');
+    lastNotifSent = new Date().toISOString();
+    localStorage.setItem('presfor_last_notif_sent', lastNotifSent);
+    console.log('Résumé quotidien envoyé à', email);
+  } catch(e) {
+    console.log('Erreur envoi résumé:', e.message);
   }
 }
 
 async function notifTestEmail(){
   const email = document.getElementById('notif-email').value;
   if(!email){ showToast("Entrez votre adresse email d'abord."); return; }
-  
   showToast('Envoi en cours...');
   try {
     await emailjs.send('service_9sxks5u', 'template_h5qodip', {
       to_email: email,
-      to_name: 'Responsable PRESFOR',
+      to_name: 'Superviseur PRESFOR',
       subject: 'PRESFOR Cavally — Test des alertes email',
-      message: "Ceci est un email de test. Si vous recevez cet email, la configuration est correcte.",
+      message: 'Ceci est un email de test. Si vous recevez cet email, la configuration est correcte.',
       nb_alertes: '1 (test)',
       date: new Date().toLocaleDateString('fr-FR'),
     }, 'pz4y-Ub1sZ5LQ_Fpd');
@@ -4459,20 +4512,27 @@ async function notifTestEmail(){
   }
 }
 
-// Vérification périodique des alertes (toutes les 30 minutes)
+// ── Vérification toutes les 24h ──
 function notifCheck(){
   const alertes = notifGetAlertes();
   const nonLues = alertes.filter(a => !notifLues.includes(a.id));
   notifRender();
-  // Envoyer email si nouvelles alertes
-  if(nonLues.length > 0 && notifConfig.email){
-    notifSendEmail(nonLues);
+
+  // Vérifier si 24h se sont écoulées depuis le dernier envoi
+  const now = new Date();
+  const dernier = lastNotifSent ? new Date(lastNotifSent) : null;
+  const heuresEcoulees = dernier ? (now - dernier) / 3600000 : 999;
+
+  if(heuresEcoulees >= 24 && alertes.length > 0 && notifConfig.email){
+    notifSendSummary();
   }
 }
 
-setInterval(notifCheck, 30 * 60 * 1000); // toutes les 30 min
+// Vérification toutes les heures (l'envoi réel ne se fait que toutes les 24h)
+setInterval(notifCheck, 60 * 60 * 1000);
 
 // ═══════════════════════════════════════════
+// SAUVEGARDE PERSISTANTE// ═══════════════════════════════════════════
 // SAUVEGARDE PERSISTANTE — JSONBin.io
 // ═══════════════════════════════════════════
 
