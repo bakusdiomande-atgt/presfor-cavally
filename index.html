@@ -4640,8 +4640,9 @@ function updateSyncIndicator(status){
   const el = document.getElementById('sync-indicator');
   if(!el) return;
   const icons = {
-    ok:      {icon:'✓', txt:'Sauvegardé',  color:'var(--accent)'},
+    ok:      {icon:'✓', txt:'Synchronisé', color:'var(--accent)'},
     pending: {icon:'↑', txt:'Envoi...',    color:'var(--amber)'},
+    syncing: {icon:'↻', txt:'Sync...',     color:'var(--blue)'},
     error:   {icon:'!', txt:'Local seul',  color:'var(--red)'},
     offline: {icon:'↓', txt:'Hors-ligne',  color:'var(--text3)'},
   };
@@ -4706,6 +4707,7 @@ async function serverLoad(){
     }
     serverAvailable = true;
     lastSyncTime = new Date();
+    lastServerTimestamp = json.record?.updated_at || new Date().toISOString();
     updateSyncIndicator('ok');
     console.log('✓ Données chargées depuis JSONBin');
     return true;
@@ -4735,6 +4737,7 @@ async function serverSave(){
     if(r.ok){
       serverAvailable = true;
       lastSyncTime = new Date();
+      lastServerTimestamp = new Date().toISOString();
       updateSyncIndicator('ok');
     } else {
       updateSyncIndicator('error');
@@ -4754,8 +4757,66 @@ function scheduleSave(){
   }, 2000);
 }
 
-// Sync automatique toutes les 5 minutes
+// ── Sync automatique toutes les 5 minutes ──
 setInterval(()=>{ if(serverAvailable) serverSave(); }, 5*60*1000);
+
+// ── Polling toutes les 30 secondes pour récupérer les données des autres utilisateurs ──
+let lastServerTimestamp = null;
+
+async function syncPoll(){
+  if(!navigator.onLine || !jsonbinId) return;
+  try {
+    const r = await fetch('https://api.jsonbin.io/v3/b/'+jsonbinId, {
+      headers:{'X-Master-Key': JSONBIN_KEY},
+      signal: AbortSignal.timeout(5000)
+    });
+    if(!r.ok) return;
+    const json = await r.json();
+    const serverTs = json.record?.updated_at;
+    
+    // Si le serveur a des données plus récentes que ce qu'on a
+    if(serverTs && serverTs !== lastServerTimestamp){
+      lastServerTimestamp = serverTs;
+      const d = json.record;
+      let changed = false;
+      
+      if(d.programmes && d.programmes.length > programmes.length){
+        programmes = d.programmes;
+        localStorage.setItem('presfor_programmes', JSON.stringify(programmes));
+        changed = true;
+      }
+      if(d.saisies && d.saisies.length > saisies.length){
+        saisies = d.saisies;
+        localStorage.setItem('presfor_saisies', JSON.stringify(saisies));
+        changed = true;
+      }
+      if(d.dossiers && d.dossiers.length > dossiers.length){
+        dossiers = d.dossiers;
+        localStorage.setItem('presfor_dossiers', JSON.stringify(dossiers));
+        changed = true;
+      }
+      if(d.absences && d.absences.length > absences.length){
+        absences = d.absences;
+        localStorage.setItem('presfor_absences', JSON.stringify(absences));
+        changed = true;
+      }
+      
+      if(changed){
+        // Rafraîchir l'affichage du module actif
+        const activeModule = document.querySelector('.module.active')?.id?.replace('module-','');
+        if(activeModule === 'prog') progRenderAll();
+        else if(activeModule === 'saisie') saisieRenderAll();
+        else if(activeModule === 'dossier') dosRenderAll();
+        else if(activeModule === 'accueil') dashRenderAll();
+        showToast('Données mises à jour depuis le serveur');
+        updateSyncIndicator('ok');
+      }
+    }
+  } catch(e) { }
+}
+
+// Polling toutes les 30 secondes
+setInterval(syncPoll, 30 * 1000);
 
 // ═══════════════════════════════════════════
 // STATUT RÉSEAU (version légère)
@@ -4828,6 +4889,8 @@ dashInit();
 switchModule('accueil');
 // Vérifier les alertes au démarrage
 setTimeout(notifCheck, 3000);
+// Démarrer le polling de synchronisation (après 10s pour laisser le temps au chargement)
+setTimeout(syncPoll, 10000);
 
 </script>
 
