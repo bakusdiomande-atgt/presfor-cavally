@@ -4779,26 +4779,43 @@ async function syncPoll(){
       lastServerTimestamp = serverTs;
       const d = json.record;
       let changed = false;
-      
-      if(d.programmes && d.programmes.length > programmes.length){
-        programmes = d.programmes;
-        localStorage.setItem('presfor_programmes', JSON.stringify(programmes));
-        changed = true;
+
+      // Comparer par JSON stringifié — toujours prendre les données du serveur
+      if(d.programmes !== undefined){
+        const serverStr = JSON.stringify(d.programmes);
+        const localStr = JSON.stringify(programmes);
+        if(serverStr !== localStr){
+          programmes = d.programmes;
+          localStorage.setItem('presfor_programmes', JSON.stringify(programmes));
+          changed = true;
+        }
       }
-      if(d.saisies && d.saisies.length > saisies.length){
-        saisies = d.saisies;
-        localStorage.setItem('presfor_saisies', JSON.stringify(saisies));
-        changed = true;
+      if(d.saisies !== undefined){
+        const serverStr = JSON.stringify(d.saisies);
+        const localStr = JSON.stringify(saisies);
+        if(serverStr !== localStr){
+          saisies = d.saisies;
+          localStorage.setItem('presfor_saisies', JSON.stringify(saisies));
+          changed = true;
+        }
       }
-      if(d.dossiers && d.dossiers.length > dossiers.length){
-        dossiers = d.dossiers;
-        localStorage.setItem('presfor_dossiers', JSON.stringify(dossiers));
-        changed = true;
+      if(d.dossiers !== undefined){
+        const serverStr = JSON.stringify(d.dossiers);
+        const localStr = JSON.stringify(dossiers);
+        if(serverStr !== localStr){
+          dossiers = d.dossiers;
+          localStorage.setItem('presfor_dossiers', JSON.stringify(dossiers));
+          changed = true;
+        }
       }
-      if(d.absences && d.absences.length > absences.length){
-        absences = d.absences;
-        localStorage.setItem('presfor_absences', JSON.stringify(absences));
-        changed = true;
+      if(d.absences !== undefined){
+        const serverStr = JSON.stringify(d.absences);
+        const localStr = JSON.stringify(absences);
+        if(serverStr !== localStr){
+          absences = d.absences;
+          localStorage.setItem('presfor_absences', JSON.stringify(absences));
+          changed = true;
+        }
       }
       
       if(changed){
