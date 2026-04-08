@@ -472,7 +472,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       </div>
       <div class="tw">
         <table>
-          <thead><tr><th>Référence</th><th>Période</th><th>Dép. · Localité(s)</th><th>Agent</th><th>Objectif</th><th>Progression</th><th>Statut</th><th></th></tr></thead>
+          <thead><tr><th>Référence</th><th>Période</th><th>Dép. · Localité(s)</th><th>Agent</th><th>Objectif Ha</th><th>Objectif Dos.</th><th>Progression</th><th>Statut</th><th></th></tr></thead>
           <tbody id="prog-tbody"></tbody>
         </table>
         <div id="prog-empty" class="empty-state" style="display:none">
@@ -817,7 +817,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
         </div>
       </div>
       <div class="tw">
-        <table><thead><tr><th>Programme</th><th>Agent</th><th>Département</th><th>Objectif</th><th>Réalisé</th><th>Écart</th><th>Taux</th><th>Statut</th></tr></thead><tbody id="corr-tbody"></tbody></table>
+        <table><thead><tr><th>Programme</th><th>Agent</th><th>Département</th><th>Objectif Ha</th><th>Obj. Dos.</th><th>Réalisé</th><th>Écart</th><th>Taux</th><th>Statut</th></tr></thead><tbody id="corr-tbody"></tbody></table>
       </div>
     </div>
 
@@ -1537,7 +1537,8 @@ function progRenderTable(){
       <td><strong style="font-size:12px">${p.periode_type}</strong><br><span style="font-size:11px;color:var(--text2)">${fmtDate(p.date_debut)}→${fmtDate(p.date_fin)}</span></td>
       <td><span style="font-size:12px;font-weight:500">${p.dept}</span><br><span style="font-size:11px;color:var(--text2)">${p.villages.join(', ')}</span></td>
       <td style="font-size:13px">${p.agent}</td>
-      <td style="text-align:center">${p.objectif}</td>
+      <td style="text-align:center">${p.objectif?p.objectif+" ha":"—"}</td>
+      <td style="text-align:center;font-size:12px;color:var(--text2)">${p.objectif_dos?p.objectif_dos+" dos.":"—"}</td><td style="text-align:center;font-size:12px;color:var(--text2)">${p.objectif_dos?p.objectif_dos+" dos.":"—"}</td>
       <td style="min-width:100px"><div class="prog"><div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${fc}"></div></div><span class="prog-pct" style="color:${fc}">${pct}%</span></div><span style="font-size:10px;color:var(--text3)">${p.realise||0} réal.</span></td>
       <td>${sb(p.statut)}</td>
       <td><div style="display:flex;gap:5px"><button class="btn-s" style="font-size:11px;padding:4px 8px" onclick="progEdit('${p.id}')">Modifier</button><button class="btn-d" onclick="progDelete('${p.id}')">Sup.</button></div></td>
@@ -2634,8 +2635,10 @@ function progImportExcel(input){
         const agent=get(row,['agent','nom','responsable','agentresponsable']);
         const dept=get(row,['departement','dept','zone','dep']);
         const objectif=get(row,['objectif','cible','superficie','ha','hectare','objectifha']);
-        const debut=fmtD(get(row,['debut','datedebut','datedepart','datedebut']));
-        const fin=fmtD(get(row,['fin','datefin','datedefin']));
+        const debut_raw=get(row,['debut','datedebut','datedepart','date','datedebut','datededebut']);
+        const debut=fmtD(debut_raw);
+        const fin_raw=get(row,['fin','datefin','datedefin','date_fin','datedefin']);
+        const fin=fmtD(fin_raw);
         const op=get(row,['activite','operation','type','op','activiteprincipal']);
         const etape_prog=get(row,['etapeprincipale','etape','step','bornage','enquete']);
         const obj_dos=parseFloat(get(row,['objectifdossiers','objectif_dossiers','dossiers','nbredossiers','nbdossiers']))||0;
@@ -3881,7 +3884,8 @@ function dashRenderProgrammes(){
       <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Agent</th>
       <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Département</th>
       <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Activité</th>
-      <th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Objectif (Ha)</th>
+      <th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Obj. Ha</th>
+      <th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Obj. Dos.</th>
       <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Progression</th>
       <th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Statut</th>
     </tr></thead>
@@ -3897,7 +3901,7 @@ function dashRenderProgrammes(){
         <td style="padding:9px 12px;font-weight:500">${p.agent.split(' ').slice(0,2).join(' ')}</td>
         <td style="padding:9px 12px;font-size:11px;color:var(--text2)">${p.dept.replace('Dép. ','')}</td>
         <td style="padding:9px 12px;"><span style="font-size:10px;padding:2px 6px;border-radius:4px;background:${actInfo?actInfo.couleur.bg:'var(--surface2)'};color:${actInfo?actInfo.couleur.tx:'var(--text2)'}">${p.op||'—'}</span></td>
-        <td style="padding:9px 12px;text-align:right;font-weight:600">${p.objectif} ha</td>
+        <td style="padding:9px 12px;text-align:right;font-weight:600">${p.objectif?p.objectif+" ha":"—"}</td><td style="padding:9px 12px;text-align:right;color:var(--text2)">${p.objectif_dos?p.objectif_dos+" dos.":"—"}</td>
         <td style="padding:9px 12px;min-width:120px;">
           <div style="display:flex;align-items:center;gap:6px;">
             <div style="flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;">
