@@ -2637,6 +2637,8 @@ function progImportExcel(input){
         const debut=fmtD(get(row,['debut','datedebut','datedepart','datedebut']));
         const fin=fmtD(get(row,['fin','datefin','datedefin']));
         const op=get(row,['activite','operation','type','op','activiteprincipal']);
+        const etape_prog=get(row,['etapeprincipale','etape','step','bornage','enquete']);
+        const obj_dos=parseFloat(get(row,['objectifdossiers','objectif_dossiers','dossiers','nbredossiers','nbdossiers']))||0;
         const sp=get(row,['sousprefecture','sp','sous_pref','sous-prefecture','sousprefecture','souspref']);
         const obs=get(row,['observation','obs','commentaire']);
         const nb_agents=parseInt(get(row,['nbagents','effectif','nombreagents']))||1;
@@ -2652,6 +2654,8 @@ function progImportExcel(input){
           dept:dept?(dept.includes('Dép.')?dept:'Dép. '+dept):'',
           sp,villages:[],agent,op:op||'Enquête terrain',
           objectif:parseFloat(objectif)||0,
+          objectif_dos:obj_dos,
+          etape_prog:etape_prog,
           nb_agents,budget,obs,statut:(()=>{
           if(!debut)return'Planifié';
           const now=new Date().toISOString().split('T')[0];
@@ -2674,7 +2678,9 @@ function progImportExcel(input){
         '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Agent</th>'+
         '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Département</th>'+
         '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Activité</th>'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Objectif (Ha)</th>'+
+        '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Étape</th>'+
+        '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Obj. Ha</th>'+
+        '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Obj. Dos.</th>'+
         '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Statut</th>'+
         '</tr></thead><tbody>'+
         progImportData.map(p=>{
@@ -2684,7 +2690,9 @@ function progImportExcel(input){
             '<td style="padding:4px 8px;font-weight:500">'+p.prog.agent+'</td>'+
             '<td style="padding:4px 8px">'+p.prog.dept+'</td>'+
             '<td style="padding:4px 8px">'+p.prog.op+'</td>'+
-            '<td style="padding:4px 8px;text-align:center">'+p.prog.objectif+' ha</td>'+
+            '<td style="padding:4px 8px">'+( p.prog.etape_prog||'—')+'</td>'+
+            '<td style="padding:4px 8px;text-align:center">'+( p.prog.objectif||'—')+' ha</td>'+
+            '<td style="padding:4px 8px;text-align:center">'+( p.prog.objectif_dos||'—')+' dos.</td>'+
             '<td style="padding:4px 8px">'+(p.errs.length>0?'<span style="color:var(--red-txt)">'+p.errs.join(', ')+'</span>':programmes.find(x=>x.agent===p.prog.agent&&x.dept===p.prog.dept&&x.date_debut===p.prog.date_debut)?'<span style="color:var(--amber-txt);font-weight:500">Doublon</span>':'<span style="color:var(--accent);font-weight:500">OK</span>')+'</td>'+
           '</tr>';
         }).join('')+'</tbody></table>';
