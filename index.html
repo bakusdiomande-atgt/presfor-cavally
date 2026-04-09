@@ -4626,17 +4626,24 @@ setInterval(notifCheck, 60 * 60 * 1000);
 
 // ═══════════════════════════════════════════
 // SAUVEGARDE PERSISTANTE// ═══════════════════════════════════════════
-// SAUVEGARDE PERSISTANTE — JSONBin.io
+// SAUVEGARDE PERSISTANTE — Firebase Realtime Database
 // ═══════════════════════════════════════════
 
-const JSONBIN_KEY = '$2a$10$j33QpryghUhFgO2.Rvxu9.qC9fvhWAL/oVGlMQ7v904cjPSQxvdJC';
-const JSONBIN_COLLECTION = '69d2a0d7856a68218900b25f';
-const JSONBIN_BIN_KEY = 'presfor_jsonbin_id';
+const FIREBASE_URL = 'https://presfor-cavally-default-rtdb.europe-west1.firebasedatabase.app';
 let syncTimer = null;
 let syncPending = false;
 let lastSyncTime = null;
 let serverAvailable = false;
-let jsonbinId = localStorage.getItem(JSONBIN_BIN_KEY) || null;
+// Hash simple pour détecter les changements
+function quickHash(data){
+  const str = JSON.stringify(data);
+  let hash = 0;
+  for(let i=0;i<str.length;i++){
+    hash = ((hash<<5)-hash)+str.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash;
+}
 
 // Indicateur de sync dans la topbar
 function updateSyncIndicator(status){
@@ -4653,45 +4660,15 @@ function updateSyncIndicator(status){
   el.innerHTML = `<span style="color:${s.color};font-size:11px;font-weight:600">${s.icon} ${s.txt}</span>`;
 }
 
-// ── Créer le bin JSONBin si inexistant ──
-async function jsonbinCreate(){
-  try {
-    const r = await fetch('https://api.jsonbin.io/v3/b', {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'X-Master-Key': JSONBIN_KEY,
-        'X-Collection-Id': JSONBIN_COLLECTION,
-        'X-Bin-Name': 'presfor-data',
-        'X-Private': 'true'
-      },
-      body: JSON.stringify({programmes:[],saisies:[],dossiers:[],absences:[],version:1}),
-      signal: AbortSignal.timeout(20000)
-    });
-    const json = await r.json();
-    jsonbinId = json.metadata?.id;
-    if(jsonbinId){
-      localStorage.setItem(JSONBIN_BIN_KEY, jsonbinId);
-      console.log('Bin JSONBin créé:', jsonbinId);
-    }
-    return jsonbinId;
-  } catch(e) { console.error('Erreur création bin:', e); return null; }
-}
-
-// ── Charger depuis JSONBin ──
+// ── Charger depuis Firebase ──
 async function serverLoad(){
   try {
-    if(!jsonbinId) jsonbinId = await jsonbinCreate();
-    if(!jsonbinId){ updateSyncIndicator('error'); return false; }
-    const r = await fetch('https://api.jsonbin.io/v3/b/'+jsonbinId+'/latest', {
-      headers:{'X-Master-Key': JSONBIN_KEY},
-      signal: AbortSignal.timeout(20000)
+    const r = await fetch(FIREBASE_URL + '/presfor.json', {
+      signal: AbortSignal.timeout(15000)
     });
     if(!r.ok){ updateSyncIndicator('error'); return false; }
-    const json = await r.json();
-    const d = json.record;
+    const d = await r.json();
     if(!d){ updateSyncIndicator('error'); return false; }
-    // Ne remplacer que si le serveur a plus de données
     if(d.programmes && d.programmes.length >= programmes.length){
       programmes = d.programmes;
       localStorage.setItem('presfor_programmes', JSON.stringify(programmes));
@@ -4710,37 +4687,33 @@ async function serverLoad(){
     }
     serverAvailable = true;
     lastSyncTime = new Date();
-    lastServerTimestamp = json.record?.updated_at || new Date().toISOString();
     updateSyncIndicator('ok');
-    console.log('✓ Données chargées depuis JSONBin');
+    console.log('✓ Données chargées depuis Firebase');
     return true;
   } catch(e) {
-    console.log('JSONBin non disponible, localStorage utilisé');
+    console.log('Firebase non disponible:', e.message);
     updateSyncIndicator('offline');
     return false;
   }
 }
 
-// ── Sauvegarder sur JSONBin ──
+// ── Sauvegarder sur Firebase ──
 async function serverSave(){
   if(!navigator.onLine){ updateSyncIndicator('offline'); return; }
-  if(!jsonbinId){ jsonbinId = await jsonbinCreate(); if(!jsonbinId) return; }
   updateSyncIndicator('pending');
   try {
-    const r = await fetch('https://api.jsonbin.io/v3/b/'+jsonbinId, {
-      method:'PUT',
-      headers:{
-        'Content-Type':'application/json',
-        'X-Master-Key': JSONBIN_KEY
-      },
-      body: JSON.stringify({programmes, saisies, dossiers, absences, version:1,
-        updated_at: new Date().toISOString()}),
-      signal: AbortSignal.timeout(25000)
+    const r = await fetch(FIREBASE_URL + '/presfor.json', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        programmes, saisies, dossiers, absences,
+        updated_at: new Date().toISOString()
+      }),
+      signal: AbortSignal.timeout(20000)
     });
     if(r.ok){
       serverAvailable = true;
       lastSyncTime = new Date();
-      lastServerTimestamp = new Date().toISOString();
       updateSyncIndicator('ok');
     } else {
       updateSyncIndicator('error');
@@ -4748,6 +4721,52 @@ async function serverSave(){
   } catch(e) {
     serverAvailable = false;
     updateSyncIndicator('error');
+  }
+}
+
+// ── Polling Firebase (temps réel) ──
+async function syncPoll(){
+  if(!navigator.onLine) return;
+  try {
+    const r = await fetch(FIREBASE_URL + '/presfor.json', {
+      signal: AbortSignal.timeout(15000)
+    });
+    if(!r.ok) return;
+    const d = await r.json();
+    if(!d) return;
+    let changed = false;
+    if(d.programmes !== undefined && quickHash(d.programmes) !== quickHash(programmes)){
+      programmes = d.programmes;
+      localStorage.setItem('presfor_programmes', JSON.stringify(programmes));
+      changed = true;
+    }
+    if(d.saisies !== undefined && quickHash(d.saisies) !== quickHash(saisies)){
+      saisies = d.saisies;
+      localStorage.setItem('presfor_saisies', JSON.stringify(saisies));
+      changed = true;
+    }
+    if(d.dossiers !== undefined && quickHash(d.dossiers) !== quickHash(dossiers)){
+      dossiers = d.dossiers;
+      localStorage.setItem('presfor_dossiers', JSON.stringify(dossiers));
+      changed = true;
+    }
+    if(d.absences !== undefined && quickHash(d.absences) !== quickHash(absences)){
+      absences = d.absences;
+      localStorage.setItem('presfor_absences', JSON.stringify(absences));
+      changed = true;
+    }
+    if(changed){
+      const activeModule = document.querySelector('.module.active')?.id?.replace('module-','');
+      if(activeModule==='prog') progRenderAll();
+      else if(activeModule==='saisie') saisieRenderAll();
+      else if(activeModule==='dossier') dosRenderAll();
+      else if(activeModule==='accueil') dashRenderAll();
+      else if(activeModule==='agents') agRenderAll();
+      showToast('Données synchronisées');
+      updateSyncIndicator('ok');
+    }
+  } catch(e) {
+    console.log('syncPoll erreur:', e.message);
   }
 }
 
