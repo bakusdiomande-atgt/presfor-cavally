@@ -1534,14 +1534,17 @@ function progRenderTable(){
   empty.style.display='none';
   const sb=s=>{const m={'En cours':'b-green','Planifié':'b-blue','Terminé':'b-gray','En retard':'b-red'};return`<span class="badge ${m[s]||'b-gray'}">${s}</span>`;};
   tbody.innerHTML=list.map(p=>{
-    const pct=Math.min(100,Math.round((p.realise||0)/p.objectif*100));
-    const fc=pct>=90?'var(--accent)':pct>=60?'var(--amber)':'var(--red)';
+    // Calcul progression : Ha pour Topo, Dossiers pour CE
+    const objRef = p.objectif > 0 ? p.objectif : (p.objectif_dos > 0 ? p.objectif_dos : 1);
+    const pct = Math.min(100, Math.round((p.realise||0) / objRef * 100));
+    const fc = pct>=90?'var(--accent)':pct>=60?'var(--amber)':'var(--red)';
+    const villages = Array.isArray(p.villages) ? p.villages.join(', ') : (p.villages||'');
     return`<tr><td class="td-mono">${p.id}</td>
-      <td><strong style="font-size:12px">${p.periode_type}</strong><br><span style="font-size:11px;color:var(--text2)">${fmtDate(p.date_debut)}→${fmtDate(p.date_fin)}</span></td>
-      <td><span style="font-size:12px;font-weight:500">${p.dept}</span><br><span style="font-size:11px;color:var(--text2)">${p.villages.join(', ')}</span></td>
-      <td style="font-size:13px">${p.agent}</td>
-      <td style="text-align:center">${p.objectif?p.objectif+" ha":"—"}</td>
-      <td style="text-align:center;font-size:12px;color:var(--text2)">${p.objectif_dos?p.objectif_dos+" dos.":"—"}</td><td style="text-align:center;font-size:12px;color:var(--text2)">${p.objectif_dos?p.objectif_dos+" dos.":"—"}</td>
+      <td><strong style="font-size:12px">${p.periode_type||''}</strong><br><span style="font-size:11px;color:var(--text2)">${fmtDate(p.date_debut)}→${fmtDate(p.date_fin)}</span></td>
+      <td><span style="font-size:12px;font-weight:500">${p.dept||''}</span><br><span style="font-size:11px;color:var(--text2)">${villages}</span></td>
+      <td style="font-size:13px">${p.agent||''}</td>
+      <td style="text-align:center">${p.objectif?p.objectif+' ha':'—'}</td>
+      <td style="text-align:center;font-size:12px;color:var(--text2)">${p.objectif_dos?p.objectif_dos+' dos.':'—'}</td>
       <td style="min-width:100px"><div class="prog"><div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${fc}"></div></div><span class="prog-pct" style="color:${fc}">${pct}%</span></div><span style="font-size:10px;color:var(--text3)">${p.realise||0} réal.</span></td>
       <td>${sb(p.statut)}</td>
       <td><div style="display:flex;gap:5px"><button class="btn-s" style="font-size:11px;padding:4px 8px" onclick="progEdit('${p.id}')">Modifier</button><button class="btn-d" onclick="progDelete('${p.id}')">Sup.</button></div></td>
