@@ -4763,77 +4763,70 @@ setInterval(()=>{ if(serverAvailable) serverSave(); }, 5*60*1000);
 // ── Polling toutes les 30 secondes pour récupérer les données des autres utilisateurs ──
 let lastServerTimestamp = null;
 
+// Hash simple pour détecter les changements
+function quickHash(data){
+  const str = JSON.stringify(data);
+  let hash = 0;
+  for(let i=0;i<str.length;i++){
+    hash = ((hash<<5)-hash)+str.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash;
+}
+
 async function syncPoll(){
   if(!navigator.onLine || !jsonbinId) return;
   try {
-    const r = await fetch('https://api.jsonbin.io/v3/b/'+jsonbinId, {
+    const r = await fetch('https://api.jsonbin.io/v3/b/'+jsonbinId+'/latest', {
       headers:{'X-Master-Key': JSONBIN_KEY},
-      signal: AbortSignal.timeout(5000)
+      signal: AbortSignal.timeout(8000)
     });
     if(!r.ok) return;
     const json = await r.json();
-    const serverTs = json.record?.updated_at;
-    
-    // Si le serveur a des données plus récentes que ce qu'on a
-    if(serverTs && serverTs !== lastServerTimestamp){
-      lastServerTimestamp = serverTs;
-      const d = json.record;
-      let changed = false;
+    const d = json.record;
+    if(!d) return;
 
-      // Comparer par JSON stringifié — toujours prendre les données du serveur
-      if(d.programmes !== undefined){
-        const serverStr = JSON.stringify(d.programmes);
-        const localStr = JSON.stringify(programmes);
-        if(serverStr !== localStr){
-          programmes = d.programmes;
-          localStorage.setItem('presfor_programmes', JSON.stringify(programmes));
-          changed = true;
-        }
-      }
-      if(d.saisies !== undefined){
-        const serverStr = JSON.stringify(d.saisies);
-        const localStr = JSON.stringify(saisies);
-        if(serverStr !== localStr){
-          saisies = d.saisies;
-          localStorage.setItem('presfor_saisies', JSON.stringify(saisies));
-          changed = true;
-        }
-      }
-      if(d.dossiers !== undefined){
-        const serverStr = JSON.stringify(d.dossiers);
-        const localStr = JSON.stringify(dossiers);
-        if(serverStr !== localStr){
-          dossiers = d.dossiers;
-          localStorage.setItem('presfor_dossiers', JSON.stringify(dossiers));
-          changed = true;
-        }
-      }
-      if(d.absences !== undefined){
-        const serverStr = JSON.stringify(d.absences);
-        const localStr = JSON.stringify(absences);
-        if(serverStr !== localStr){
-          absences = d.absences;
-          localStorage.setItem('presfor_absences', JSON.stringify(absences));
-          changed = true;
-        }
-      }
-      
-      if(changed){
-        // Rafraîchir l'affichage du module actif
-        const activeModule = document.querySelector('.module.active')?.id?.replace('module-','');
-        if(activeModule === 'prog') progRenderAll();
-        else if(activeModule === 'saisie') saisieRenderAll();
-        else if(activeModule === 'dossier') dosRenderAll();
-        else if(activeModule === 'accueil') dashRenderAll();
-        showToast('Données mises à jour depuis le serveur');
-        updateSyncIndicator('ok');
-      }
+    let changed = false;
+
+    // Comparer hash local vs serveur
+    if(d.programmes !== undefined && quickHash(d.programmes) !== quickHash(programmes)){
+      programmes = d.programmes;
+      localStorage.setItem('presfor_programmes', JSON.stringify(programmes));
+      changed = true;
     }
-  } catch(e) { }
+    if(d.saisies !== undefined && quickHash(d.saisies) !== quickHash(saisies)){
+      saisies = d.saisies;
+      localStorage.setItem('presfor_saisies', JSON.stringify(saisies));
+      changed = true;
+    }
+    if(d.dossiers !== undefined && quickHash(d.dossiers) !== quickHash(dossiers)){
+      dossiers = d.dossiers;
+      localStorage.setItem('presfor_dossiers', JSON.stringify(dossiers));
+      changed = true;
+    }
+    if(d.absences !== undefined && quickHash(d.absences) !== quickHash(absences)){
+      absences = d.absences;
+      localStorage.setItem('presfor_absences', JSON.stringify(absences));
+      changed = true;
+    }
+
+    if(changed){
+      const activeModule = document.querySelector('.module.active')?.id?.replace('module-','');
+      if(activeModule==='prog') progRenderAll();
+      else if(activeModule==='saisie') saisieRenderAll();
+      else if(activeModule==='dossier') dosRenderAll();
+      else if(activeModule==='accueil') dashRenderAll();
+      else if(activeModule==='agents') agRenderAll();
+      showToast('Données synchronisées');
+      updateSyncIndicator('ok');
+    }
+  } catch(e) {
+    console.log('syncPoll erreur:', e.message);
+  }
 }
 
 // Polling toutes les 30 secondes
-setInterval(syncPoll, 30 * 1000);
+setInterval(syncPoll, 15 * 1000); // Toutes les 15 secondes
 
 // ═══════════════════════════════════════════
 // STATUT RÉSEAU (version légère)
