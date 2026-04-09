@@ -2059,14 +2059,41 @@ function saisieImportExcel(input){
 
       rows.forEach((row,i)=>{
         const errs = [];
-        const date     = fmtDfmtD(row[Object.keys(row).find(k=>k.replace(/[\s\*▼↑]/g,'').toLowerCase()==='date')||''] || get(row,['date','jour','journee']));
+        const date_raw = (() => {
+          // Chercher la colonne Date dans les en-têtes (insensible à la casse et aux *)
+          const dateKey = Object.keys(row).find(k => k.replace(/[\s\*▼↑]/g,'').toLowerCase() === 'date');
+          const val = dateKey ? row[dateKey] : get(row,['date','jour','journee']);
+          // Si c'est un nombre (date Excel sérielle)
+          if(typeof val === 'number') {
+            const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+            return d.toISOString().split('T')[0];
+          }
+          // Si c'est une Date JS
+          if(val instanceof Date && !isNaN(val.getTime())) {
+            return val.toISOString().split('T')[0];
+          }
+          return val;
+        })();
+        const date = fmtD(date_raw);
         const agent    = get(row,['agent','nom','responsable']);
         const dept     = get(row,['departement','dept','zone']);
         const village  = get(row,['village','localite','lieu']);
         const etape    = get(row,['etape','phase','activite','operation']);
         const ndos     = parseInt(get(row,['dossier','nombre','ndos','traites','production']))||0;
-        const hdep    = fmtHeure(get(row,['hdep','heuredep','hdepart','heure dep','heure_depart','depart']));
-        const hret    = fmtHeure(get(row,['hret','heureret','hretour','heure ret','heure_retour','retour']));
+        const hdep = fmtHeure((() => {
+          const k = Object.keys(row).find(k2 => {
+            const n = k2.replace(/[\s\*▼↑]/g,'').toLowerCase();
+            return n.includes('heuredepart') || n.includes('hdep') || n === 'heuredep' || n.includes('depart');
+          });
+          return k ? row[k] : '';
+        })());
+        const hret = fmtHeure((() => {
+          const k = Object.keys(row).find(k2 => {
+            const n = k2.replace(/[\s\*▼↑]/g,'').toLowerCase();
+            return n.includes('heureretour') || n.includes('hret') || n === 'heureret' || n.includes('retour');
+          });
+          return k ? row[k] : '';
+        })());
         const km       = parseInt(get(row,['km','kilometre','distance']))||0;
         const incident = get(row,['incident','probleme','difficulte']);
         const meteo    = get(row,['meteo','temps','météo'])||'Ensoleillé';
