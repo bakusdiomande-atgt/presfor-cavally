@@ -2056,7 +2056,7 @@ function saisieImportExcel(input){
 
       rows.forEach((row,i)=>{
         const errs = [];
-        const date     = fmtD(get(row,['date','jour','journee']));
+        const date     = fmtDfmtD(row[Object.keys(row).find(k=>k.replace(/[\s\*▼↑]/g,'').toLowerCase()==='date')||''] || get(row,['date','jour','journee']));
         const agent    = get(row,['agent','nom','responsable']);
         const dept     = get(row,['departement','dept','zone']);
         const village  = get(row,['village','localite','lieu']);
@@ -2580,7 +2580,7 @@ function progImportExcel(input){
       // Construire les vrais objets en sautant ligne d'indices et exemple
       const headers=allRows[headerRow];
       const dataStart=headerRow+3; // sauter indices + exemple
-      const MOTS_INSTRUCTIONS = ['liste déroulante','jj/mm','aaaa','hh:mm','ex :','ex:','exemple','séparer','suite','selon','↑','▼','*'];
+      const MOTS_INSTRUCTIONS = ['liste déroulante','jj/mm','aaaa','hh:mm','ex :','ex:','exemple','séparer','suite','selon','↑','▼','*','suit le','selon sp','selon dept','pour topo','pour ce'];
       const estInstruction = (val) => {
         if(!val) return false;
         const s = String(val).toLowerCase().trim();
@@ -2608,6 +2608,14 @@ function progImportExcel(input){
         }
         if(d instanceof Date){
           if(isNaN(d.getTime()))return'';
+          // Vérifier si c'est une date ou une heure (date de base Excel 1899-12-30)
+          const year = d.getFullYear();
+          if(year < 1900 || year === 1899){
+            // C'est une heure, pas une date
+            const h = d.getHours();
+            const m = d.getMinutes();
+            return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+          }
           return d.toISOString().split('T')[0];
         }
         const s=String(d).trim();
@@ -2782,6 +2790,14 @@ function dosImportExcel(input){
         }
         if(d instanceof Date){
           if(isNaN(d.getTime()))return'';
+          // Vérifier si c'est une date ou une heure (date de base Excel 1899-12-30)
+          const year = d.getFullYear();
+          if(year < 1900 || year === 1899){
+            // C'est une heure, pas une date
+            const h = d.getHours();
+            const m = d.getMinutes();
+            return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+          }
           return d.toISOString().split('T')[0];
         }
         const s=String(d).trim();
@@ -4672,20 +4688,21 @@ async function serverLoad(){
     if(!r.ok){ updateSyncIndicator('error'); return false; }
     const d = await r.json();
     if(!d){ updateSyncIndicator('error'); return false; }
-    if(d.programmes && d.programmes.length >= programmes.length){
-      programmes = d.programmes;
+    // Prendre les données Firebase si elles sont plus complètes
+    if(d.programmes !== undefined){
+      programmes = d.programmes.length >= programmes.length ? d.programmes : programmes;
       localStorage.setItem('presfor_programmes', JSON.stringify(programmes));
     }
-    if(d.saisies && d.saisies.length >= saisies.length){
-      saisies = d.saisies;
+    if(d.saisies !== undefined){
+      saisies = d.saisies.length >= saisies.length ? d.saisies : saisies;
       localStorage.setItem('presfor_saisies', JSON.stringify(saisies));
     }
-    if(d.dossiers && d.dossiers.length >= dossiers.length){
-      dossiers = d.dossiers;
+    if(d.dossiers !== undefined){
+      dossiers = d.dossiers.length >= dossiers.length ? d.dossiers : dossiers;
       localStorage.setItem('presfor_dossiers', JSON.stringify(dossiers));
     }
-    if(d.absences && d.absences.length >= absences.length){
-      absences = d.absences;
+    if(d.absences !== undefined){
+      absences = d.absences.length >= absences.length ? d.absences : absences;
       localStorage.setItem('presfor_absences', JSON.stringify(absences));
     }
     serverAvailable = true;
@@ -4738,25 +4755,48 @@ async function syncPoll(){
     const d = await r.json();
     if(!d) return;
     let changed = false;
-    if(d.programmes !== undefined && quickHash(d.programmes) !== quickHash(programmes)){
-      programmes = d.programmes;
-      localStorage.setItem('presfor_programmes', JSON.stringify(programmes));
-      changed = true;
+    // Fusion intelligente: prendre le tableau le plus long (le plus complet)
+    function mergeData(local, server){
+      if(!server) return local;
+      if(!local || local.length === 0) return server;
+      if(server.length > local.length) return server;
+      // Même longueur: vérifier si le serveur a des entrées non présentes en local
+      const localIds = new Set(local.map(x=>x.id));
+      const newItems = server.filter(x=>x.id && !localIds.has(x.id));
+      if(newItems.length > 0) return [...local, ...newItems];
+      return local;
     }
-    if(d.saisies !== undefined && quickHash(d.saisies) !== quickHash(saisies)){
-      saisies = d.saisies;
-      localStorage.setItem('presfor_saisies', JSON.stringify(saisies));
-      changed = true;
+    if(d.programmes !== undefined){
+      const merged = mergeData(programmes, d.programmes);
+      if(quickHash(merged) !== quickHash(programmes)){
+        programmes = merged;
+        localStorage.setItem('presfor_programmes', JSON.stringify(programmes));
+        changed = true;
+      }
     }
-    if(d.dossiers !== undefined && quickHash(d.dossiers) !== quickHash(dossiers)){
-      dossiers = d.dossiers;
-      localStorage.setItem('presfor_dossiers', JSON.stringify(dossiers));
-      changed = true;
+    if(d.saisies !== undefined){
+      const merged = mergeData(saisies, d.saisies);
+      if(quickHash(merged) !== quickHash(saisies)){
+        saisies = merged;
+        localStorage.setItem('presfor_saisies', JSON.stringify(saisies));
+        changed = true;
+      }
     }
-    if(d.absences !== undefined && quickHash(d.absences) !== quickHash(absences)){
-      absences = d.absences;
-      localStorage.setItem('presfor_absences', JSON.stringify(absences));
-      changed = true;
+    if(d.dossiers !== undefined){
+      const merged = mergeData(dossiers, d.dossiers);
+      if(quickHash(merged) !== quickHash(dossiers)){
+        dossiers = merged;
+        localStorage.setItem('presfor_dossiers', JSON.stringify(dossiers));
+        changed = true;
+      }
+    }
+    if(d.absences !== undefined){
+      const merged = mergeData(absences, d.absences);
+      if(quickHash(merged) !== quickHash(absences)){
+        absences = merged;
+        localStorage.setItem('presfor_absences', JSON.stringify(absences));
+        changed = true;
+      }
     }
     if(changed){
       const activeModule = document.querySelector('.module.active')?.id?.replace('module-','');
@@ -4813,25 +4853,48 @@ async function syncPoll(){
     let changed = false;
 
     // Comparer hash local vs serveur
-    if(d.programmes !== undefined && quickHash(d.programmes) !== quickHash(programmes)){
-      programmes = d.programmes;
-      localStorage.setItem('presfor_programmes', JSON.stringify(programmes));
-      changed = true;
+    // Fusion intelligente: prendre le tableau le plus long (le plus complet)
+    function mergeData(local, server){
+      if(!server) return local;
+      if(!local || local.length === 0) return server;
+      if(server.length > local.length) return server;
+      // Même longueur: vérifier si le serveur a des entrées non présentes en local
+      const localIds = new Set(local.map(x=>x.id));
+      const newItems = server.filter(x=>x.id && !localIds.has(x.id));
+      if(newItems.length > 0) return [...local, ...newItems];
+      return local;
     }
-    if(d.saisies !== undefined && quickHash(d.saisies) !== quickHash(saisies)){
-      saisies = d.saisies;
-      localStorage.setItem('presfor_saisies', JSON.stringify(saisies));
-      changed = true;
+    if(d.programmes !== undefined){
+      const merged = mergeData(programmes, d.programmes);
+      if(quickHash(merged) !== quickHash(programmes)){
+        programmes = merged;
+        localStorage.setItem('presfor_programmes', JSON.stringify(programmes));
+        changed = true;
+      }
     }
-    if(d.dossiers !== undefined && quickHash(d.dossiers) !== quickHash(dossiers)){
-      dossiers = d.dossiers;
-      localStorage.setItem('presfor_dossiers', JSON.stringify(dossiers));
-      changed = true;
+    if(d.saisies !== undefined){
+      const merged = mergeData(saisies, d.saisies);
+      if(quickHash(merged) !== quickHash(saisies)){
+        saisies = merged;
+        localStorage.setItem('presfor_saisies', JSON.stringify(saisies));
+        changed = true;
+      }
     }
-    if(d.absences !== undefined && quickHash(d.absences) !== quickHash(absences)){
-      absences = d.absences;
-      localStorage.setItem('presfor_absences', JSON.stringify(absences));
-      changed = true;
+    if(d.dossiers !== undefined){
+      const merged = mergeData(dossiers, d.dossiers);
+      if(quickHash(merged) !== quickHash(dossiers)){
+        dossiers = merged;
+        localStorage.setItem('presfor_dossiers', JSON.stringify(dossiers));
+        changed = true;
+      }
+    }
+    if(d.absences !== undefined){
+      const merged = mergeData(absences, d.absences);
+      if(quickHash(merged) !== quickHash(absences)){
+        absences = merged;
+        localStorage.setItem('presfor_absences', JSON.stringify(absences));
+        changed = true;
+      }
     }
 
     if(changed){
