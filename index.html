@@ -283,8 +283,11 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     <svg width="16" height="16" viewBox="0 0 16 16" fill="white"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.558-1.527-4.765-3.005-4.901z"/></svg>
     <span id="notif-count" style="display:none;position:absolute;top:-4px;right:-4px;background:#E24B4A;color:#fff;font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;"></span>
   </div>
-  <div id="sync-indicator" style="display:flex;align-items:center;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,0.12);margin-left:4px;cursor:pointer" onclick="serverSave()" title="Cliquer pour sauvegarder maintenant">
-    <span style="color:rgba(255,255,255,0.8);font-size:11px;">✓ Sauvegardé</span>
+  <div id="sync-indicator" style="display:flex;align-items:center;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,0.12);margin-left:4px;cursor:pointer" onclick="serverSave()" title="Cliquer pour sauvegarder">
+    <span style="color:rgba(255,255,255,0.8);font-size:11px;">✓ Synchronisé</span>
+  </div>
+  <div onclick="syncPoll().then(()=>showToast('Actualisation terminée'))" title="Actualiser depuis le serveur" style="cursor:pointer;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,0.12);margin-left:4px;">
+    <span style="color:rgba(255,255,255,0.8);font-size:11px;">↻</span>
   </div>
   <div id="net-status" style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.9);margin-left:8px;">
     <span id="net-dot" style="width:6px;height:6px;border-radius:50%;background:#4ade80;display:inline-block;"></span>
@@ -4663,7 +4666,7 @@ async function jsonbinCreate(){
         'X-Private': 'true'
       },
       body: JSON.stringify({programmes:[],saisies:[],dossiers:[],absences:[],version:1}),
-      signal: AbortSignal.timeout(8000)
+      signal: AbortSignal.timeout(20000)
     });
     const json = await r.json();
     jsonbinId = json.metadata?.id;
@@ -4682,7 +4685,7 @@ async function serverLoad(){
     if(!jsonbinId){ updateSyncIndicator('error'); return false; }
     const r = await fetch('https://api.jsonbin.io/v3/b/'+jsonbinId+'/latest', {
       headers:{'X-Master-Key': JSONBIN_KEY},
-      signal: AbortSignal.timeout(8000)
+      signal: AbortSignal.timeout(20000)
     });
     if(!r.ok){ updateSyncIndicator('error'); return false; }
     const json = await r.json();
@@ -4732,7 +4735,7 @@ async function serverSave(){
       },
       body: JSON.stringify({programmes, saisies, dossiers, absences, version:1,
         updated_at: new Date().toISOString()}),
-      signal: AbortSignal.timeout(10000)
+      signal: AbortSignal.timeout(25000)
     });
     if(r.ok){
       serverAvailable = true;
@@ -4779,7 +4782,7 @@ async function syncPoll(){
   try {
     const r = await fetch('https://api.jsonbin.io/v3/b/'+jsonbinId+'/latest', {
       headers:{'X-Master-Key': JSONBIN_KEY},
-      signal: AbortSignal.timeout(8000)
+      signal: AbortSignal.timeout(20000)
     });
     if(!r.ok) return;
     const json = await r.json();
@@ -4826,7 +4829,7 @@ async function syncPoll(){
 }
 
 // Polling toutes les 30 secondes
-setInterval(syncPoll, 15 * 1000); // Toutes les 15 secondes
+setInterval(syncPoll, 60 * 1000); // Toutes les 60 secondes
 
 // ═══════════════════════════════════════════
 // STATUT RÉSEAU (version légère)
