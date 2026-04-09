@@ -4797,11 +4797,10 @@ function quickHash(data){
 }
 
 async function syncPoll(){
-  if(!navigator.onLine || !jsonbinId) return;
+  if(!navigator.onLine) return;
   try {
-    const r = await fetch('https://api.jsonbin.io/v3/b/'+jsonbinId+'/latest', {
-      headers:{'X-Master-Key': JSONBIN_KEY},
-      signal: AbortSignal.timeout(20000)
+    const r = await fetch(FIREBASE_URL + '/presfor.json', {
+      signal: AbortSignal.timeout(15000)
     });
     if(!r.ok) return;
     const json = await r.json();
