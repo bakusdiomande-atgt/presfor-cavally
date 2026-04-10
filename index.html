@@ -4902,41 +4902,39 @@ function updateSyncIndicator(status){
   el.innerHTML = `<span style="color:${s.color};font-size:11px;font-weight:600">${s.icon} ${s.txt}</span>`;
 }
 
-// ── Charger depuis Firebase ──
+// ── Charger depuis Firebase (Firebase = source de vérité) ──
 async function serverLoad(){
   try {
     const r = await fetch(FIREBASE_URL + '/presfor.json', {
-      signal: AbortSignal.timeout(15000)
+      signal: AbortSignal.timeout(20000)
     });
     if(!r.ok){ updateSyncIndicator('error'); return false; }
     const d = await r.json();
     if(!d){ updateSyncIndicator('error'); return false; }
-    // Prendre les données Firebase si elles sont plus complètes
-    if(d.programmes !== undefined){
-      programmes = d.programmes.length >= programmes.length ? d.programmes : programmes;
+    // Firebase est la source de vérité — remplacer les données locales
+    if(Array.isArray(d.programmes)) {
+      programmes = d.programmes;
       localStorage.setItem('presfor_programmes', JSON.stringify(programmes));
     }
-    if(d.saisies !== undefined){
-      saisies = d.saisies.length >= saisies.length ? d.saisies : saisies;
+    if(Array.isArray(d.saisies)) {
+      saisies = d.saisies;
       localStorage.setItem('presfor_saisies', JSON.stringify(saisies));
     }
-    if(d.dossiers !== undefined){
-      dossiers = d.dossiers.length >= dossiers.length ? d.dossiers : dossiers;
+    if(Array.isArray(d.dossiers)) {
+      dossiers = d.dossiers;
       localStorage.setItem('presfor_dossiers', JSON.stringify(dossiers));
     }
-    if(d.absences !== undefined){
-      absences = d.absences.length >= absences.length ? d.absences : absences;
+    if(Array.isArray(d.absences)) {
+      absences = d.absences;
       localStorage.setItem('presfor_absences', JSON.stringify(absences));
     }
     serverAvailable = true;
     lastSyncTime = new Date();
+    lastServerTimestamp = d.updated_at || null;
     updateSyncIndicator('ok');
-    console.log('✓ Données chargées depuis Firebase:', saisies.length, 'saisies,', programmes.length, 'programmes');
-    // Rafraîchir tous les modules après chargement
-    progRenderAll();
-    saisieRenderAll();
-    dosRenderAll();
-    dashRenderAll();
+    // Rafraîchir l'affichage
+    progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
+    console.log('✓ Firebase chargé:', saisies.length, 'saisies,', programmes.length, 'programmes');
     return true;
   } catch(e) {
     console.log('Firebase non disponible:', e.message);
@@ -4949,19 +4947,20 @@ async function serverLoad(){
 async function serverSave(){
   if(!navigator.onLine){ updateSyncIndicator('offline'); return; }
   updateSyncIndicator('pending');
+  const ts = new Date().toISOString();
   try {
     const r = await fetch(FIREBASE_URL + '/presfor.json', {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        programmes, saisies, dossiers, absences,
-        updated_at: new Date().toISOString()
+        programmes, saisies, dossiers, absences, updated_at: ts
       }),
-      signal: AbortSignal.timeout(20000)
+      signal: AbortSignal.timeout(25000)
     });
     if(r.ok){
       serverAvailable = true;
       lastSyncTime = new Date();
+      lastServerTimestamp = ts;
       updateSyncIndicator('ok');
     } else {
       updateSyncIndicator('error');
@@ -4972,95 +4971,40 @@ async function serverSave(){
   }
 }
 
-// ── Polling Firebase (temps réel) ──
+// ── Polling Firebase toutes les 30 secondes ──
 async function syncPoll(){
   if(!navigator.onLine) return;
-  // Si une sauvegarde est en cours, ne pas polluer avec les anciennes données
-  if(syncPending) return;
+  if(syncPending) return; // Ne pas polluer si sauvegarde en cours
   try {
-    const r = await fetch(FIREBASE_URL + '/presfor/updated_at.json', {
+    // Vérifier d'abord le timestamp
+    const r1 = await fetch(FIREBASE_URL + '/presfor/updated_at.json', {
       signal: AbortSignal.timeout(10000)
     });
-    if(!r.ok) return;
-    const serverTs = await r.json();
-    // Si même timestamp que la dernière sync, pas besoin de télécharger
+    if(!r1.ok) return;
+    const serverTs = await r1.json();
+    // Si même timestamp → pas de changement
     if(serverTs && serverTs === lastServerTimestamp) return;
-    lastServerTimestamp = serverTs;
-    // Télécharger toutes les données
-    const r2 = await fetch(FIREBASE_URL + '/presfor.json', {
-      signal: AbortSignal.timeout(15000)
-    });
-    if(!r2.ok) return;
-    const d = await r2.json();
-    if(!d) return;
-    let changed = false;
-    // Fusion intelligente: prendre le tableau le plus long (le plus complet)
-    function mergeData(local, server){
-      if(!server) return local;
-      if(!local || local.length === 0) return server;
-      if(server.length > local.length) return server;
-      // Même longueur: vérifier si le serveur a des entrées non présentes en local
-      const localIds = new Set(local.map(x=>x.id));
-      const newItems = server.filter(x=>x.id && !localIds.has(x.id));
-      if(newItems.length > 0) return [...local, ...newItems];
-      return local;
-    }
-    if(d.programmes !== undefined){
-      const merged = mergeData(programmes, d.programmes);
-      if(quickHash(merged) !== quickHash(programmes)){
-        programmes = merged;
-        localStorage.setItem('presfor_programmes', JSON.stringify(programmes));
-        changed = true;
-      }
-    }
-    if(d.saisies !== undefined){
-      const merged = mergeData(saisies, d.saisies);
-      if(quickHash(merged) !== quickHash(saisies)){
-        saisies = merged;
-        localStorage.setItem('presfor_saisies', JSON.stringify(saisies));
-        changed = true;
-      }
-    }
-    if(d.dossiers !== undefined){
-      const merged = mergeData(dossiers, d.dossiers);
-      if(quickHash(merged) !== quickHash(dossiers)){
-        dossiers = merged;
-        localStorage.setItem('presfor_dossiers', JSON.stringify(dossiers));
-        changed = true;
-      }
-    }
-    if(d.absences !== undefined){
-      const merged = mergeData(absences, d.absences);
-      if(quickHash(merged) !== quickHash(absences)){
-        absences = merged;
-        localStorage.setItem('presfor_absences', JSON.stringify(absences));
-        changed = true;
-      }
-    }
-    if(changed){
-      // Rafraîchir tous les modules
-      progRenderAll();
-      saisieRenderAll();
-      dosRenderAll();
-      dashRenderAll();
-      showToast('Données synchronisées');
-      updateSyncIndicator('ok');
-    }
+    // Données changées → charger tout depuis Firebase
+    console.log('Nouveau timestamp Firebase, rechargement...');
+    await serverLoad();
   } catch(e) {
     console.log('syncPoll erreur:', e.message);
   }
 }
+
+// Polling toutes les 30 secondes
+setInterval(syncPoll, 30 * 1000);
 
 // ── Sync différée (2s après dernière modif) ──
 function scheduleSave(){
   syncPending = true;
   if(syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(()=>{
-    if(syncPending){ 
-      syncPending=false; 
+    if(syncPending){
+      syncPending = false;
       serverSave();
     }
-  }, 1500); // 1.5s après la dernière modif
+  }, 2000);
 }
 
 // ── Sync automatique toutes les 5 minutes ──
