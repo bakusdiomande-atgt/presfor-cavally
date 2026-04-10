@@ -2150,7 +2150,11 @@ function saisieImportExcel(input){
         if(!village)errs.push('Village manquant');
 
         const s = {
-          id:'SAI-IMP-'+Date.now()+'-'+i,
+          id:(()=>{
+            // ID basé sur le contenu pour éviter les doublons
+            const key = (date||'')+'_'+(agent||'').replace(/\s/g,'')+'_'+(village||'').replace(/\s/g,'')+'_'+(ndos||0);
+            return 'SAI-'+key.replace(/[^a-zA-Z0-9_-]/g,'').substring(0,30)+'-'+(i%1000);
+          })(),
           date, agent,
           dept: dept?(dept.includes('Dép.')?dept:'Dép. '+dept):'',
           sp, village,
@@ -2220,10 +2224,16 @@ function saisieImportConfirm(){
   valides.forEach(({s})=>{
     if(!saisies.find(x=>x.id===s.id)){saisies.unshift({...s,created_at:new Date().toLocaleString('fr-FR')});nb++;}
   });
-  saisSave();saisieRenderAll();
+  saisSave();
   document.getElementById('saisie-import-modal').style.display='none';
   showToast(nb+' saisie(s) importée(s) !');
   saisieImportData=[];
+  saisieRenderAll();
+  dashRenderAll();
+  // Forcer la sauvegarde immédiate sur Firebase
+  serverSave().then(()=>{
+    console.log('Import sauvegardé sur Firebase');
+  });
 }
 
 function saisClearAll(){
@@ -4819,12 +4829,23 @@ async function serverSave(){
 // ── Polling Firebase (temps réel) ──
 async function syncPoll(){
   if(!navigator.onLine) return;
+  // Si une sauvegarde est en cours, ne pas polluer avec les anciennes données
+  if(syncPending) return;
   try {
-    const r = await fetch(FIREBASE_URL + '/presfor.json', {
-      signal: AbortSignal.timeout(15000)
+    const r = await fetch(FIREBASE_URL + '/presfor/updated_at.json', {
+      signal: AbortSignal.timeout(10000)
     });
     if(!r.ok) return;
-    const d = await r.json();
+    const serverTs = await r.json();
+    // Si même timestamp que la dernière sync, pas besoin de télécharger
+    if(serverTs && serverTs === lastServerTimestamp) return;
+    lastServerTimestamp = serverTs;
+    // Télécharger toutes les données
+    const r2 = await fetch(FIREBASE_URL + '/presfor.json', {
+      signal: AbortSignal.timeout(15000)
+    });
+    if(!r2.ok) return;
+    const d = await r2.json();
     if(!d) return;
     let changed = false;
     // Fusion intelligente: prendre le tableau le plus long (le plus complet)
@@ -4890,8 +4911,11 @@ function scheduleSave(){
   syncPending = true;
   if(syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(()=>{
-    if(syncPending){ syncPending=false; serverSave(); }
-  }, 2000);
+    if(syncPending){ 
+      syncPending=false; 
+      serverSave();
+    }
+  }, 1500); // 1.5s après la dernière modif
 }
 
 // ── Sync automatique toutes les 5 minutes ──
