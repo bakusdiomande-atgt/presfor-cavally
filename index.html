@@ -4931,7 +4931,12 @@ async function serverLoad(){
     serverAvailable = true;
     lastSyncTime = new Date();
     updateSyncIndicator('ok');
-    console.log('✓ Données chargées depuis Firebase');
+    console.log('✓ Données chargées depuis Firebase:', saisies.length, 'saisies,', programmes.length, 'programmes');
+    // Rafraîchir tous les modules après chargement
+    progRenderAll();
+    saisieRenderAll();
+    dosRenderAll();
+    dashRenderAll();
     return true;
   } catch(e) {
     console.log('Firebase non disponible:', e.message);
@@ -5033,12 +5038,11 @@ async function syncPoll(){
       }
     }
     if(changed){
-      const activeModule = document.querySelector('.module.active')?.id?.replace('module-','');
-      if(activeModule==='prog') progRenderAll();
-      else if(activeModule==='saisie') saisieRenderAll();
-      else if(activeModule==='dossier') dosRenderAll();
-      else if(activeModule==='accueil') dashRenderAll();
-      else if(activeModule==='agents') agRenderAll();
+      // Rafraîchir tous les modules
+      progRenderAll();
+      saisieRenderAll();
+      dosRenderAll();
+      dashRenderAll();
       showToast('Données synchronisées');
       updateSyncIndicator('ok');
     }
@@ -5233,15 +5237,8 @@ saisieInit();
 dosInit();
 agInit();
 zvInit();
-// Puis synchroniser avec le serveur Railway
-serverLoad().then(loaded => {
-  if(loaded){
-    progRenderAll();
-    saisieRenderAll();
-    dosRenderAll();
-    dashRenderAll();
-  }
-});
+// Synchroniser avec Firebase au démarrage
+serverLoad();
 // Peupler les selects agents
 ['pf-agent','sf-agent','df-agent','abs-agent'].forEach(id=>buildAgentOptions(id,false));
 ['saisie-f-agent','dos-f-agent'].forEach(id=>buildAgentOptions(id,true));
