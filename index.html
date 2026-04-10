@@ -2037,8 +2037,50 @@ function saisieImportExcel(input){
     try{
       const wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
-      if(!rows.length){showToast('Fichier vide.');return;}
+      // Lire en tableau brut pour contrôler la ligne de départ
+      const allRows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      if(!allRows.length){showToast('Fichier vide.');return;}
+
+      // Détecter la ligne d'en-tête (celle qui contient "Agent" ou "Date")
+      const MOTS_ENTETE = ['agent','date','village','etape','departement','dept'];
+      let headerRow = -1;
+      for(let i=0;i<Math.min(10,allRows.length);i++){
+        const r = allRows[i];
+        const vals = r.map(c=>String(c||'').toLowerCase().replace(/[\s\*▼↑]/g,''));
+        if(MOTS_ENTETE.filter(m=>vals.some(v=>v.includes(m))).length >= 3){
+          headerRow = i; break;
+        }
+      }
+      if(headerRow < 0){showToast('En-têtes non trouvés. Vérifiez le format du fichier.');return;}
+
+      // Les données commencent 2 lignes après l'en-tête (hints + exemple)
+      const dataStart = headerRow + 3;
+      const headers = allRows[headerRow].map(h=>String(h||'').trim());
+
+      // Mots à ignorer dans les lignes de données
+      const MOTS_INSTR = ['liste déroulante','jj/mm','aaaa','hh:mm','ex :','ex:','exemple',
+        'séparer','suite','selon','↑','▼','*','suit le','pour topo','pour ce','automatiquement'];
+      const estInstr = v => {
+        if(!v && v!==0) return true;
+        const s = String(v).toLowerCase().trim();
+        return MOTS_INSTR.some(m=>s.includes(m));
+      };
+
+      // Convertir en objets en ignorant les lignes d'instruction
+      const rows = allRows.slice(dataStart).filter(r=>{
+        if(!r.some(c=>c!==null&&c!=='')) return false;
+        // Ignorer si tous les champs non vides sont des instructions
+        const vals = r.filter(c=>c!==null&&c!=='');
+        if(vals.length === 0) return false;
+        if(vals.every(v=>estInstr(v))) return false;
+        return true;
+      }).map(r=>{
+        const obj={};
+        headers.forEach((h,i)=>{if(h) obj[h]=r[i]!==undefined?r[i]:'';});
+        return obj;
+      });
+
+      if(!rows.length){showToast('Aucune donnée trouvée. Vérifiez que vous avez rempli à partir de la ligne '+( dataStart+1)+'.');return;}
       saisieImportData = [];
 
       const fmtD = (d)=>{
