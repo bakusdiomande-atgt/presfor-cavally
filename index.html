@@ -3236,9 +3236,9 @@ function agRenderList(){
   const today=new Date().toISOString().split('T')[0];
 
   const list = AGENTS_FULL.filter(a=>{
-    const mq=!q||a.nom.toLowerCase().includes(q)||a.fonction.toLowerCase().includes(q);
+    const mq=!q||a.nom.toLowerCase().includes(q)||(a.fonction||'').toLowerCase().includes(q);
     const mf=!ff||a.fonction===ff;
-    const md=!fd||a.depts.includes(fd);
+    const md=!fd||((a.depts||[])||[]).includes(fd);
     return mq&&mf&&md;
   });
 
@@ -3263,7 +3263,7 @@ function agRenderList(){
       </div>
       <div style="font-size:11px;color:var(--text2);margin-bottom:10px;">
         <div style="margin-bottom:3px;">&#128222; ${a.tel}</div>
-        <div>${a.depts.map(d=>`<span style="font-size:10px;background:var(--surface2);padding:1px 6px;border-radius:8px;margin-right:3px;">${d.replace('Dép. ','')}</span>`).join('')}</div>
+        <div>${(a.depts||[]).map(d=>`<span style="font-size:10px;background:var(--surface2);padding:1px 6px;border-radius:8px;margin-right:3px;">${d.replace('Dép. ','')}</span>`).join('')}</div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;border-top:1px solid var(--border);padding-top:10px;">
         <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--accent)">${nbProgs}</div><div style="font-size:9px;color:var(--text3)">Programmes</div></div>
