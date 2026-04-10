@@ -524,7 +524,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
               <div class="ff"><label class="fl">Agent <span class="req">*</span></label><select class="fsel" id="pf-agent"><option value="">-- Sélectionner un agent --</option></select><span class="ferr" id="pe-agent">Requis.</span></div>
               <div class="ff">
                 <label class="fl">Activité principale <span class="req">*</span></label>
-                <select class="fsel" id="pf-operation" onchange="progUpdateSousEtapes()">
+                <select class="fsel" id="pf-operation" onchange="progUpdateSousEtapes();progUpdateObjUnite();">
                   <option value="">-- Sélectionner --</option>
                   <option value="ISF">ISF — Ingénierie Socio Foncière</option>
                   <option value="CF">CF — Certificat Foncier</option>
@@ -1680,8 +1680,8 @@ function progResetForm(){
   document.getElementById('prog-val-sum').classList.remove('show');
   document.getElementById('prog-suc').classList.remove('show');
   progCounter--;progGenRef();
+  setTimeout(progUpdateObjUnite, 50);
 }
-
 function progClearAll(){
   if(!confirm('Réinitialiser les données ?'))return;
   programmes=[...PROG_SAMPLE];progCounter=5;
@@ -2338,19 +2338,80 @@ const DOS_SAMPLE=[
   {id:'DOS-CAV-005',ref_officiel:'CF-CAV-2025-005',date_ouverture:'2025-04-05',agent:'Fofana Ahoua',dept:'Dép. Taï',village:'Taï',demandeur:'Yao Pierre',tel:'',superficie:0.9,type_parcelle:'Habitation',activite:'ISF',etape:'Information, sensibilisation et dialogue communautaire',etape_date:'2025-04-05',obs:'',historique:[{etape:'Enquête terrain',date:'2025-04-05'}]},
 ];
 // ── Fonctions activités Module 1 ──
+// ── Mise à jour des activités disponibles selon l'agent ──
+function progOnAgentChange(agentNom){
+  const sel = document.getElementById('pf-operation');
+  const activites = getAgentActivites(agentNom);
+  const currentVal = sel.value;
+  // Reconstruire les options
+  sel.innerHTML = '<option value="">-- Sélectionner --</option>';
+  const labels = {
+    'CF':      'CF — Certificat Foncier',
+    'DTV':     'DTV — Délimitation Territoire Villageois',
+    'ISF':     'ISF — Ingénierie Socio Foncière',
+    'CONTRAT': 'CONTRAT — Formalisation Contrat'
+  };
+  activites.forEach(act => {
+    const opt = document.createElement('option');
+    opt.value = act;
+    opt.textContent = labels[act] || act;
+    if(act === currentVal) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  // Mettre à jour les sous-activités et l'unité
+  progUpdateSousEtapes();
+  progUpdateObjUnite();
+}
+
+// ── Mise à jour de l'unité objectif selon l'agent ──
+function progUpdateObjUnite(){
+  const agentNom = document.getElementById('pf-agent').value;
+  const unite = getAgentUnite(agentNom);
+  const lblHa  = document.getElementById('lbl-obj-ha');
+  const lblDos = document.getElementById('lbl-obj-dos');
+  const wrapHa  = document.getElementById('wrap-obj-ha');
+  const wrapDos = document.getElementById('wrap-obj-dos');
+  const wrapVil = document.getElementById('wrap-obj-vil');
+  if(!lblHa) return;
+  // Masquer tout d'abord
+  if(wrapHa)  wrapHa.style.display  = 'none';
+  if(wrapDos) wrapDos.style.display = 'none';
+  if(wrapVil) wrapVil.style.display = 'none';
+  // Afficher selon l'unité
+  if(unite === 'villages'){
+    if(wrapVil) wrapVil.style.display = '';
+  } else if(unite === 'dossiers+ha'){
+    if(wrapDos) wrapDos.style.display = '';
+    if(wrapHa)  wrapHa.style.display  = '';
+  } else { // dossiers
+    if(wrapDos) wrapDos.style.display = '';
+  }
+}
+
 function progUpdateSousEtapes(){
   const act = document.getElementById('pf-operation').value;
+  const agentNom = document.getElementById('pf-agent').value;
   const wrap = document.getElementById('pf-sousetapes-wrap');
   const list = document.getElementById('pf-sousetapes-list');
-  if(!act||!ACTIVITES[act]){wrap.style.display='none';return;}
-  const a = ACTIVITES[act];
+  if(!act){wrap.style.display='none';return;}
+
+  // Prioriser les sous-activités du référentiel agent
+  let etapes = getSousActivites(agentNom, act);
+
+  // Fallback sur ACTIVITES si pas dans le référentiel
+  if(!etapes.length && ACTIVITES[act]){
+    etapes = ACTIVITES[act].etapes || [];
+  }
+
+  if(!etapes.length){wrap.style.display='none';return;}
+
+  const a = ACTIVITES[act] || {couleur:{bg:'var(--accent-lt)',brd:'var(--accent)',tx:'var(--accent)'}};
   wrap.style.display='block';
-  list.innerHTML = a.etapes.map((e,i)=>`
-    <label style="display:inline-flex;align-items:center;gap:5px;background:${a.couleur.bg};border:1px solid ${a.couleur.brd};color:${a.couleur.tx};padding:4px 10px;border-radius:20px;font-size:11px;cursor:pointer;">
-      <input type="checkbox" value="${e}" style="accent-color:${a.couleur.brd};cursor:pointer;" onchange="progSaveSousEtapes()">
+  list.innerHTML = etapes.map(e=>`
+    <label style="display:inline-flex;align-items:center;gap:5px;background:${a.couleur?a.couleur.bg:'#e8f4f8'};border:1px solid ${a.couleur?a.couleur.brd:'#2A6B42'};color:${a.couleur?a.couleur.tx:'#1C4A2E'};padding:4px 10px;border-radius:20px;font-size:11px;cursor:pointer;">
+      <input type="checkbox" value="${e}" style="accent-color:${a.couleur?a.couleur.brd:'#2A6B42'};cursor:pointer;" onchange="progSaveSousEtapes()">
       ${e}
     </label>`).join('');
-  // Tout cocher par défaut
   list.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.checked=true);
   progSaveSousEtapes();
 }
@@ -3001,35 +3062,115 @@ function dosClearAll(){if(!confirm('Réinitialiser les dossiers ?'))return;dossi
 // ═══════════════════════════════════════════
 // MODULE 4 · AGENTS ET ÉQUIPES
 // ═══════════════════════════════════════════
+// ── Référentiel complet agents PRESFOR Cavally ──
 const AGENTS_FULL = [
-  {nom:'Diby Arnaud',            fonction:'Commissaire enquêteur',      tel:'0758739395', depts:['Dép. Guiglo','Dép. Taï']},
-  {nom:'Kouadio Ahou Estelle',   fonction:'Commissaire enquêteur',      tel:'0707356623', depts:['Dép. Guiglo']},
-  {nom:'Kouassi Kobina Philippe',fonction:'Commissaire enquêteur',      tel:'0140532021', depts:['Dép. Guiglo','Dép. Bloléquin']},
-  {nom:'Bakayoko Adama',         fonction:'Commissaire enquêteur',      tel:'0779210922', depts:['Dép. Toulépleu']},
-  {nom:"N'Guessan Armand",       fonction:'Commissaire enquêteur',      tel:'0708319517', depts:['Dép. Bloléquin']},
-  {nom:'Chigbeu Akoue Florent',  fonction:"Chef d'équipe départemental",tel:'0707831770', depts:['Dép. Guiglo']},
-  {nom:'Konan Alex',             fonction:'Opérateur GNSS',             tel:'0151630093', depts:['Dép. Guiglo','Dép. Taï']},
-  {nom:'Kone Boike',             fonction:'Opérateur GNSS',             tel:'0172093930', depts:['Dép. Bloléquin']},
-  {nom:'Fofana Ahoua',           fonction:'Opérateur GNSS',             tel:'0574443707', depts:['Dép. Taï']},
-  {nom:'Kouadio Ezeckiel',       fonction:'Opérateur GNSS',             tel:'0787288228', depts:['Dép. Guiglo']},
-  {nom:'Dago Guy Melaine',       fonction:'Commissaire enquêteur',      tel:'0707970403', depts:['Dép. Bloléquin','Dép. Toulépleu']},
-  {nom:'Tizie Irie Phillipe',    fonction:'Commissaire enquêteur',      tel:'0101801372', depts:['Dép. Guiglo']},
-  {nom:'Agbonou A. B. C. Beranger',fonction:'Commissaire enquêteur',    tel:'0757351147', depts:['Dép. Bloléquin']},
-  {nom:'Yeboua Adjia Emmanuela', fonction:'Commissaire enquêteur',      tel:'0708136233', depts:['Dép. Taï']},
-  {nom:'Aboya Affoua Ines',      fonction:'Commissaire enquêteur',      tel:'0797583942', depts:['Dép. Toulépleu']},
-  {nom:'Yao Atouman Jean Charles',fonction:'Opérateur GNSS',            tel:'0555100634', depts:['Dép. Guiglo','Dép. Bloléquin']},
-  {nom:'Dje Christian Dominique Konan',fonction:'Opérateur GNSS',       tel:'0720530055', depts:['Dép. Taï']},
-  {nom:'Fakayode Abdul',         fonction:'Opérateur GNSS',             tel:'0173735246', depts:['Dép. Toulépleu']},
-  {nom:'Samassi Ismael',         fonction:"Chef d'équipe départemental",tel:'0749678794', depts:['Dép. Bloléquin']},
-  {nom:'Kouassi Kouame Gislain', fonction:'Opérateur GNSS',             tel:'0777440514', depts:['Dép. Bloléquin','Dép. Taï']},
-  {nom:'Tohoua Eric',            fonction:'RR ISF',                     tel:'0709821745', depts:['Dép. Guiglo','Dép. Bloléquin','Dép. Taï','Dép. Toulépleu']},
-  {nom:'Ehouman Michael',        fonction:'ISF',                        tel:'0707337407', depts:['Dép. Guiglo']},
-  {nom:'Beugre Raphael',         fonction:'ISF',                        tel:'0505095696', depts:['Dép. Bloléquin']},
-  {nom:'Kodjo Geraud',           fonction:'ISF',                        tel:'0777191106', depts:['Dép. Taï']},
-  {nom:'Kouadio Charles',        fonction:'ASF',                        tel:'0758083469', depts:['Dép. Guiglo']},
-  {nom:"N'Guetta Manouan Marcel",fonction:'ASF',                        tel:'0709584472', depts:['Dép. Bloléquin']},
-  {nom:'Koffi Nathanael',        fonction:'ASF',                        tel:'0708727114', depts:['Dép. Taï']},
+  {nom:'Diby Arnaud',                    tel:'0758739395',  fonction:'Commissaire enquêteur'},
+  {nom:'Kouadio Ahou Estelle',           tel:'0707356623',  fonction:'Commissaire enquêteur'},
+  {nom:'Kouassi Kobina Philippe',        tel:'0140532021',  fonction:'Commissaire enquêteur'},
+  {nom:'Bakayoko Adama',                 tel:'0779210922',  fonction:'Commissaire enquêteur'},
+  {nom:"N'Guessan Armand",              tel:'0708319517',  fonction:'Commissaire enquêteur'},
+  {nom:'Chigbeu Akoue Florent',          tel:'0707831770',  fonction:"Chef d'équipe départemental"},
+  {nom:'Konan Alex',                     tel:'0151630093',  fonction:'Opérateur GNSS'},
+  {nom:'Kone Boike',                     tel:'0172093930',  fonction:'Opérateur GNSS'},
+  {nom:'Fofana Ahoua',                   tel:'0574443707',  fonction:'Opérateur GNSS'},
+  {nom:'Kouadio Ezeckiel',               tel:'0787288228',  fonction:'Opérateur GNSS'},
+  {nom:'Dago Guy Melaine',               tel:'0707970403',  fonction:'Commissaire enquêteur'},
+  {nom:'Tizie Irie Phillipe',            tel:'0101801372',  fonction:'Commissaire enquêteur'},
+  {nom:'Agbonou A. B. C. Beranger',      tel:'0757351147',  fonction:'Commissaire enquêteur'},
+  {nom:'Yeboua Adjia Emmanuela',         tel:'0708136233',  fonction:'Commissaire enquêteur'},
+  {nom:'Aboya Affoua Ines',              tel:'0797583942',  fonction:'Commissaire enquêteur'},
+  {nom:'Yao Atouman Jean Charles',       tel:'0555100634',  fonction:'Opérateur GNSS'},
+  {nom:'Dje Christian Dominique Konan',  tel:'0720530055',  fonction:'Opérateur GNSS'},
+  {nom:'Fakayode Abdul',                 tel:'0173735246',  fonction:'Opérateur GNSS'},
+  {nom:'Samassi Ismael',                 tel:'0749678794',  fonction:"Chef d'équipe départemental"},
+  {nom:'Kouassi Kouame Gislain',         tel:'0777440514',  fonction:'Opérateur GNSS'},
+  {nom:'Tohoua Eric',                    tel:'0709821745',  fonction:'RR ISF'},
+  {nom:'Ehouman Michael',                tel:'0707337407',  fonction:'ISF'},
+  {nom:'Beugre Raphael',                 tel:'0505095696',  fonction:'ISF'},
+  {nom:'Kodjo Geraud',                   tel:'0777191106',  fonction:'ISF'},
+  {nom:'Kouadio Charles',                tel:'0758083469',  fonction:'ASF'},
+  {nom:"N'Guetta Manouan Marcel",        tel:'0709584472',  fonction:'ASF'},
+  {nom:'Koffi Nathanael',                tel:'0708727114',  fonction:'ASF'},
 ];
+
+// ── Activités et sous-activités par fonction ──
+const ACTIVITES_PAR_FONCTION = {
+  'Commissaire enquêteur': {
+    activites: ['CF','DTV'],
+    unite: 'dossiers',
+    sousActivites: {
+      'CF':  ['Demande CF','RDC','Levé et bornage','PV de constat de limite','Ouverture de publicité','Clôture de publicité','Approbation CPCDC'],
+      'DTV': ['Recueil historique de village','Constitution équipe enquête','Ouverture de layon','Levé et bornage','PV de constat de limite','Ouverture de publicité','Clôture de publicité'],
+    }
+  },
+  'Opérateur GNSS': {
+    activites: ['CF','DTV'],
+    unite: 'dossiers+ha',
+    sousActivites: {
+      'CF':  ['Demande CF','RDC','Levé et bornage','PV de constat de limite','Ouverture de publicité','Clôture de publicité','Approbation CPCDC'],
+      'DTV': ['Recueil historique de village','Constitution équipe enquête','Ouverture de layon','Levé et bornage','PV de constat de limite','Ouverture de publicité','Clôture de publicité'],
+    }
+  },
+  "Chef d'équipe départemental": {
+    activites: ['CF','DTV'],
+    unite: 'dossiers+ha',
+    sousActivites: {
+      'CF':  ['Demande CF','RDC','Levé et bornage','PV de constat de limite','Ouverture de publicité','Clôture de publicité','Approbation CPCDC'],
+      'DTV': ['Recueil historique de village','Constitution équipe enquête','Ouverture de layon','Levé et bornage','PV de constat de limite','Ouverture de publicité','Clôture de publicité'],
+    }
+  },
+  'RR ISF': {
+    activites: ['ISF','CONTRAT'],
+    unite: 'villages',
+    sousActivites: {
+      'ISF':     ['Formation module 1&2','Formation module 3&4','Préparation démarrage activités','Sensibilisation contractualisation','Dialogue tuteur-exploitant','Formalisation des contrats'],
+      'CONTRAT': ['Appui rédaction contrat tuteur-exploitant','Formalisation contrat tuteur-exploitant'],
+    }
+  },
+  'ISF': {
+    activites: ['ISF','CONTRAT'],
+    unite: 'villages',
+    sousActivites: {
+      'ISF':     ['Formation module 1&2','Formation module 3&4','Préparation démarrage activités','Sensibilisation contractualisation','Dialogue tuteur-exploitant','Formalisation des contrats'],
+      'CONTRAT': ['Appui rédaction contrat tuteur-exploitant','Formalisation contrat tuteur-exploitant'],
+    }
+  },
+  'ASF': {
+    activites: ['ISF','CONTRAT'],
+    unite: 'villages',
+    sousActivites: {
+      'ISF':     ['Formation module 1&2','Formation module 3&4','Préparation démarrage activités','Sensibilisation contractualisation','Dialogue tuteur-exploitant','Formalisation des contrats'],
+      'CONTRAT': ['Appui rédaction contrat tuteur-exploitant','Formalisation contrat tuteur-exploitant'],
+    }
+  },
+};
+
+// ── Obtenir la fonction d'un agent ──
+function getAgentFonction(nom){
+  const ag = AGENTS_FULL.find(a => a.nom === nom);
+  return ag ? ag.fonction : null;
+}
+
+// ── Obtenir les activités d'un agent ──
+function getAgentActivites(nom){
+  const f = getAgentFonction(nom);
+  if(!f || !ACTIVITES_PAR_FONCTION[f]) return ['CF','DTV','ISF','CONTRAT'];
+  return ACTIVITES_PAR_FONCTION[f].activites;
+}
+
+// ── Obtenir l'unité d'objectif d'un agent ──
+function getAgentUnite(nom){
+  const f = getAgentFonction(nom);
+  if(!f || !ACTIVITES_PAR_FONCTION[f]) return 'dossiers';
+  return ACTIVITES_PAR_FONCTION[f].unite;
+}
+
+// ── Obtenir les sous-activités selon agent + activité ──
+function getSousActivites(nomAgent, activite){
+  const f = getAgentFonction(nomAgent);
+  if(!f || !ACTIVITES_PAR_FONCTION[f]) return [];
+  return ACTIVITES_PAR_FONCTION[f].sousActivites[activite] || [];
+}
 
 let absences = [];
 
