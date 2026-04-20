@@ -4798,35 +4798,69 @@ async function notifSendEmailResp(alerte){
 
 // ── Envoi email résumé superviseur (toutes les 24h) ──
 async function notifSendSummary(){
-  const email = notifConfig.email || SUPERVISEUR.email;
   const alertes = notifGetAlertes();
   if(!alertes.length) return;
+  const dateStr = new Date().toLocaleDateString('fr-FR');
 
+  // 1. Envoyer le résumé global au superviseur
   const resume = alertes.map(a =>
-    '• ['+a.dept+' / '+(a.act||'Général')+'] '+a.titre+' : '+a.msg+
+    '• ['+( a.dept||'Global')+' / '+(a.act||'Général')+'] '+a.titre+' : '+a.msg+
     (a.responsable ? ' (Resp: '+a.responsable+')' : '')
-  ).join(' | ');
-
-
+  ).join('\n');
   try {
     await emailjs.send('service_9sxks5u', 'template_h5qodip', {
-      to_email: email,
+      to_email: SUPERVISEUR.email,
       to_name: 'Superviseur PRESFOR',
       subject: 'PRESFOR Cavally — Résumé quotidien : ' + alertes.length + ' alerte(s)',
       message: resume,
       nb_alertes: alertes.length,
-      date: new Date().toLocaleDateString('fr-FR'),
+      date: dateStr,
     }, 'pz4y-Ub1sZ5LQ_Fpd');
-    lastNotifSent = new Date().toISOString();
-    localStorage.setItem('presfor_last_notif_sent', lastNotifSent);
-    console.log('Résumé quotidien envoyé à', email);
-    // Générer aussi lien WhatsApp superviseur
-    const waResume = encodeURIComponent('PRESFOR CAVALLY - Resume ' + new Date().toLocaleDateString('fr-FR') + ' : ' + alertes.length + ' alerte(s). Verifiez l application.');
-    console.log('WhatsApp superviseur: https://wa.me/' + SUPERVISEUR.whatsapp + '?text=' + waResume);
-  } catch(e) {
-    console.log('Erreur envoi résumé:', e.message);
+    console.log('Email superviseur envoyé');
+  } catch(e) { console.log('Erreur email superviseur:', e.message); }
+
+  // 2. Envoyer aux responsables par département/activité
+  // Regrouper les alertes par responsable
+  const parResponsable = {};
+  alertes.forEach(a => {
+    if(!a.email_resp) return;
+    if(!parResponsable[a.email_resp]){
+      parResponsable[a.email_resp] = {
+        email: a.email_resp,
+        nom: a.responsable,
+        whatsapp: a.whatsapp_resp,
+        alertes: []
+      };
+    }
+    parResponsable[a.email_resp].alertes.push(a);
+  });
+
+  // Envoyer un email par responsable
+  for(const [email, data] of Object.entries(parResponsable)){
+    const msgResp = data.alertes.map(a =>
+      '• '+a.titre+' : '+a.msg
+    ).join('\n');
+    try {
+      await emailjs.send('service_9sxks5u', 'template_h5qodip', {
+        to_email: data.email,
+        to_name: data.nom || 'Responsable PRESFOR',
+        subject: 'PRESFOR Cavally — ' + data.alertes.length + ' alerte(s) dans votre zone',
+        message: msgResp,
+        nb_alertes: data.alertes.length,
+        date: dateStr,
+      }, 'pz4y-Ub1sZ5LQ_Fpd');
+      console.log('Email envoyé à', data.email);
+      // Délai entre les envois pour éviter le spam
+      await new Promise(r => setTimeout(r, 1000));
+    } catch(e) { console.log('Erreur email', data.email, ':', e.message); }
   }
+
+  lastNotifSent = new Date().toISOString();
+  localStorage.setItem('presfor_last_notif_sent', lastNotifSent);
+  console.log('Résumé quotidien envoyé à', Object.keys(parResponsable).length + 1, 'destinataires');
+  showToast('Alertes envoyées à ' + (Object.keys(parResponsable).length + 1) + ' destinataire(s)');
 }
+
 
 async function notifTestEmail(){
   const email = document.getElementById('notif-email').value;
@@ -4858,7 +4892,7 @@ function notifCheck(){
   const dernier = lastNotifSent ? new Date(lastNotifSent) : null;
   const heuresEcoulees = dernier ? (now - dernier) / 3600000 : 999;
 
-  if(heuresEcoulees >= 24 && alertes.length > 0 && notifConfig.email){
+  if(heuresEcoulees >= 24 && alertes.length > 0){
     notifSendSummary();
   }
 }
