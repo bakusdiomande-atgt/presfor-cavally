@@ -1489,19 +1489,14 @@ function switchModule(id){
 
 let progCounter=0;
 
-const PROG_SAMPLE=[
-  {id:'PROG-2025-001',periode_type:'Semaine',date_debut:'2026-04-01',date_fin:'2026-04-05',dept:'Dép. Guiglo',sp:'SP Taï',villages:['Taï','Zagné','Diékoué'],agent:'Chigbeu Akoue Florent',op:'Enquête terrain',objectif:25,nb_agents:3,budget:150000,obs:'Bonne accessibilité.',statut:'En cours',realise:23},
-  {id:'PROG-2025-002',periode_type:'Semaine',date_debut:'2026-04-01',date_fin:'2026-04-05',dept:'Dép. Guiglo',sp:'SP Grabo',villages:['Grabo','Kaadé'],agent:'Diby Arnaud',op:'Bornage',objectif:20,nb_agents:2,budget:200000,obs:'',statut:'En cours',realise:20},
-  {id:'PROG-2025-003',periode_type:'Mois',date_debut:'2026-04-01',date_fin:'2026-04-30',dept:'Dép. Bloléquin',sp:'SP Péhé',villages:['Bloléquin','Péhé','Nizahon','Déhiré'],agent:'Samassi Ismael',op:'Constitution dossier',objectif:80,nb_agents:3,budget:450000,obs:'Accès difficile saison pluies.',statut:'En retard',realise:32},
-  {id:'PROG-2025-004',periode_type:'Semaine',date_debut:'2026-04-07',date_fin:'2026-04-11',dept:'Dép. Toulépleu',sp:'SP Bin-Houyé',villages:['Toulépleu','Bin-Houyé'],agent:'Bakayoko Adama',op:'Validation technique',objectif:20,nb_agents:2,budget:180000,obs:'Zone frontalière.',statut:'Planifié',realise:0},
-  {id:'PROG-2025-005',periode_type:'Semaine',date_debut:'2026-03-31',date_fin:'2026-04-04',dept:'Dép. Taï',sp:'SP Taï',villages:['Taï','Aboa'],agent:'Fofana Ahoua',op:'Enquête terrain',objectif:18,nb_agents:1,budget:130000,obs:'Terminé avec succès.',statut:'Terminé',realise:18},
-];
+const PROG_SAMPLE = [];
 
 function progInit(){
-  const s=localStorage.getItem('presfor_progs');
-  if(s){try{programmes=JSON.parse(s);progCounter=programmes.length;}catch(e){programmes=[...PROG_SAMPLE];progCounter=5;}}
-  else{programmes=[...PROG_SAMPLE];progCounter=5;}
-  progGenRef();progRenderAll();
+  // Ne charger localStorage que comme cache temporaire - Firebase écrasera
+  const s=localStorage.getItem('presfor_programmes')||localStorage.getItem('presfor_progs');
+  if(s){try{programmes=JSON.parse(s);progCounter=Math.max(programmes.length,5);}catch(e){programmes=[];progCounter=0;}}
+  progGenRef();
+  // Ne pas render ici - serverLoad() rendra après Firebase
 }
 function progSave(){try{localStorage.setItem('presfor_progs',JSON.stringify(programmes));}catch(e){}}
 function progRenderAll(){progRenderKPI();progRenderTable();document.getElementById('prog-nb').textContent=programmes.length;}
@@ -1697,15 +1692,7 @@ function progClearAll(){
 
 let saisieDosList=[];
 
-const SAISIE_SAMPLE=[
-  {id:'SAI-2025-001',date:'2026-04-01',agent:'Chigbeu Akoue Florent',dept:'Dép. Guiglo',sp:'SP Taï',village:'Taï',etape:'Enquête terrain',ndos:8,dossiers:[],hdep:'07:00',hret:'17:30',duree:'10h30',km:38,incident:'',meteo:'Ensoleillé',obs:'Bonne collaboration des chefs de village.',prog_ref:'PROG-2025-001'},
-  {id:'SAI-2025-002',date:'2026-04-01',agent:'Diby Arnaud',dept:'Dép. Guiglo',sp:'SP Grabo',village:'Grabo',etape:'Bornage',ndos:7,dossiers:[],hdep:'06:30',hret:'18:00',duree:'11h30',km:52,incident:'',meteo:'Ensoleillé',obs:'',prog_ref:'PROG-2025-002'},
-  {id:'SAI-2025-003',date:'2026-04-02',agent:'Chigbeu Akoue Florent',dept:'Dép. Guiglo',sp:'SP Taï',village:'Zagné',etape:'Enquête terrain',ndos:9,dossiers:[],hdep:'07:00',hret:'17:00',duree:'10h00',km:42,incident:'',meteo:'Nuageux',obs:'Présence du chef de canton facilitatrice.',prog_ref:'PROG-2025-001'},
-  {id:'SAI-2025-004',date:'2026-04-02',agent:'Samassi Ismael',dept:'Dép. Bloléquin',sp:'SP Péhé',village:'Péhé',etape:'Constitution',ndos:5,dossiers:[],hdep:'07:30',hret:'16:00',duree:'8h30',km:29,incident:'Piste impraticable',meteo:'Forte pluie',obs:'Pluies abondantes — programme revu.',prog_ref:'PROG-2025-003'},
-  {id:'SAI-2025-005',date:'2026-04-03',agent:'Fofana Ahoua',dept:'Dép. Taï',sp:'SP Taï',village:'Taï',etape:'Enquête terrain',ndos:6,dossiers:[],hdep:'07:00',hret:'17:00',duree:'10h00',km:18,incident:'',meteo:'Ensoleillé',obs:'Programme terminé avec succès.',prog_ref:'PROG-2025-005'},
-  {id:'SAI-2025-006',date:'2026-04-03',agent:'Bakayoko Adama',dept:'Dép. Toulépleu',sp:'SP Bin-Houyé',village:'Bin-Houyé',etape:'Validation techn.',ndos:6,dossiers:[],hdep:'07:30',hret:'16:30',duree:'9h00',km:65,incident:'',meteo:'Ensoleillé',obs:'Aucun incident.',prog_ref:'PROG-2025-004'},
-  {id:'SAI-2025-007',date:'2026-04-04',agent:'Diby Arnaud',dept:'Dép. Guiglo',sp:'SP Grabo',village:'Kaadé',etape:'Bornage',ndos:4,dossiers:[],hdep:'07:00',hret:'14:00',duree:'7h00',km:58,incident:'Problème matériel / GPS',meteo:'Nuageux',obs:'Panne GPS — retour anticipé.',prog_ref:'PROG-2025-002'},
-];
+const SAISIE_SAMPLE = [];
 
 function saisieInit(){
   try{
@@ -1715,7 +1702,7 @@ function saisieInit(){
     saisieLoadProgs();
     saisieGenRef();
     saisieCalcDuree();
-    saisieRenderAll();
+    // render différé jusqu'à Firebase
   }catch(e){console.error('saisieInit error:',e);}
 }
 function saisSave(){try{localStorage.setItem('presfor_saisies',JSON.stringify(saisies));}catch(e){}}
@@ -2330,13 +2317,7 @@ function syncAll(){
 const DOS_ETAPES=['Enquête terrain','Bornage','Constitution du dossier','PV de constat de limite','Recensement droit coutumier','Demande certificat foncier','Clôturé'];
 const DOS_COLORS={'Enquête terrain':{bg:'var(--blue-lt)',tx:'var(--blue-txt)'},'Bornage':{bg:'var(--teal-lt)',tx:'var(--teal-txt)'},'Constitution du dossier':{bg:'var(--amber-lt)',tx:'var(--amber-txt)'},'PV de constat de limite':{bg:'#EDE9FE',tx:'#4C1D95'},'Recensement droit coutumier':{bg:'#FEF3C7',tx:'#92400E'},'Demande certificat foncier':{bg:'var(--red-lt)',tx:'var(--red-txt)'},'Clôturé':{bg:'var(--accent-lt)',tx:'var(--accent-txt)'}};
 
-const DOS_SAMPLE=[
-  {id:'DOS-CAV-001',ref_officiel:'CF-CAV-2025-001',date_ouverture:'2025-04-01',agent:'Chigbeu Akoue Florent',dept:'Dép. Guiglo',village:'Taï',demandeur:'Kouakou Jean',tel:'07 01 23 45 67',superficie:3.5,type_parcelle:'Agricole',activite:'CF',etape:'Bornage',etape_date:'2025-04-10',obs:'',historique:[{etape:'Enquête terrain',date:'2025-04-01'},{etape:'Bornage',date:'2025-04-10'}]},
-  {id:'DOS-CAV-002',ref_officiel:'CF-CAV-2025-002',date_ouverture:'2025-04-02',agent:'Diby Arnaud',dept:'Dép. Guiglo',village:'Grabo',demandeur:'Kouamé Marie',tel:'',superficie:1.8,type_parcelle:'Habitation',activite:'CF',etape:'Constitution du dossier',etape_date:'2025-04-08',obs:'',historique:[{etape:'Enquête terrain',date:'2025-04-02'},{etape:'Bornage',date:'2025-04-05'},{etape:'Constitution du dossier',date:'2025-04-08'}]},
-  {id:'DOS-CAV-003',ref_officiel:'CF-CAV-2025-003',date_ouverture:'2025-03-15',agent:'Samassi Ismael',dept:'Dép. Bloléquin',village:'Péhé',demandeur:'Traoré Moussa',tel:'',superficie:5.2,type_parcelle:'Agricole',activite:'CF',etape:'PV de constat de limite',etape_date:'2025-04-01',obs:'',historique:[{etape:'Enquête terrain',date:'2025-03-15'},{etape:'Bornage',date:'2025-03-22'},{etape:'Constitution du dossier',date:'2025-03-28'},{etape:'PV de constat de limite',date:'2025-04-01'}]},
-  {id:'DOS-CAV-004',ref_officiel:'CF-CAV-2025-004',date_ouverture:'2025-03-01',agent:'Bakayoko Adama',dept:'Dép. Toulépleu',village:'Bin-Houyé',demandeur:'Coulibaly Adjo',tel:'',superficie:2.1,type_parcelle:'Mixte',activite:'CF',etape:'Demande certificat foncier',etape_date:'2025-04-05',obs:'Dossier complet.',historique:[{etape:'Enquête terrain',date:'2025-03-01'},{etape:'Bornage',date:'2025-03-08'},{etape:'Constitution du dossier',date:'2025-03-15'},{etape:'PV de constat de limite',date:'2025-03-22'},{etape:'Recensement droit coutumier',date:'2025-03-29'},{etape:'Demande certificat foncier',date:'2025-04-05'}]},
-  {id:'DOS-CAV-005',ref_officiel:'CF-CAV-2025-005',date_ouverture:'2025-04-05',agent:'Fofana Ahoua',dept:'Dép. Taï',village:'Taï',demandeur:'Yao Pierre',tel:'',superficie:0.9,type_parcelle:'Habitation',activite:'ISF',etape:'Information, sensibilisation et dialogue communautaire',etape_date:'2025-04-05',obs:'',historique:[{etape:'Enquête terrain',date:'2025-04-05'}]},
-];
+const DOS_SAMPLE = [];
 // ── Fonctions activités Module 1 ──
 // ── Mise à jour des activités disponibles selon l'agent ──
 function progOnAgentChange(agentNom){
@@ -5027,7 +5008,7 @@ async function syncPoll(){
 }
 
 // Polling toutes les 30 secondes
-setInterval(syncPoll, 30 * 1000);
+setInterval(syncPoll, 15 * 1000); // 15 secondes
 
 // ── Sync différée (2s après dernière modif) ──
 function scheduleSave(){
@@ -5209,14 +5190,24 @@ function peuplerTousAgents() {
 peuplerTousAgents();
 // Initialiser EmailJS
 emailjs.init('pz4y-Ub1sZ5LQ_Fpd');
-// Charger les données locales d'abord
+// Charger le cache local d'abord (affichage rapide)
 progInit();
 saisieInit();
 dosInit();
 agInit();
 zvInit();
-// Synchroniser avec Firebase au démarrage
-serverLoad();
+// Firebase est la source de vérité - charger et écraser les données locales
+showToast('Chargement des données...');
+serverLoad().then(ok => {
+  if(!ok) {
+    // Pas de Firebase - utiliser localStorage
+    progRenderAll();
+    saisieRenderAll();
+    dosRenderAll();
+    dashRenderAll();
+    showToast('Mode hors-ligne - données locales');
+  }
+});
 // Peupler les selects agents
 ['pf-agent','sf-agent','df-agent','abs-agent'].forEach(id=>buildAgentOptions(id,false));
 ['saisie-f-agent','dos-f-agent'].forEach(id=>buildAgentOptions(id,true));
