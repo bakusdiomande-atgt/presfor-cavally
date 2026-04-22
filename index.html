@@ -1595,9 +1595,19 @@ function progValidate(){
   rq('pf-dept','Département requis','pe-dept');
   rq('pf-agent','Agent requis','pe-agent');
   rq('pf-operation','Opération requise','pe-op');
-  const obj=parseInt(document.getElementById('pf-objectif').value);
-  if(!obj||obj<1||obj>200){document.getElementById('pe-obj').classList.add('show');document.getElementById('pf-objectif').classList.add('err');errs.push('Objectif 1–200');}
-  else{document.getElementById('pe-obj').classList.remove('show');document.getElementById('pf-objectif').classList.remove('err');}
+  // Valider au moins un objectif selon la fonction de l'agent
+  const agentNom = document.getElementById('pf-agent').value;
+  const unite = getAgentUnite(agentNom);
+  const objHa  = parseFloat(document.getElementById('pf-objectif')?.value)||0;
+  const objDos = parseFloat(document.getElementById('pf-objectif-dos')?.value)||0;
+  const objVil = parseFloat(document.getElementById('pf-objectif-vil')?.value)||0;
+  const hasObj = objHa > 0 || objDos > 0 || objVil > 0;
+  if(!hasObj){
+    document.getElementById('pe-obj').classList.add('show');
+    errs.push('Objectif requis (Ha, Dossiers ou Villages selon votre fonction)');
+  } else {
+    document.getElementById('pe-obj').classList.remove('show');
+  }
   const d1=document.getElementById('pf-debut').value,d2=document.getElementById('pf-fin').value;
   if(!d1){document.getElementById('pe-debut').classList.add('show');errs.push('Date début requise');}else document.getElementById('pe-debut').classList.remove('show');
   if(!d2||d2<=d1){document.getElementById('pe-fin').classList.add('show');errs.push('Date fin invalide');}else document.getElementById('pe-fin').classList.remove('show');
@@ -1624,7 +1634,9 @@ function progSubmit(e){
     agent:document.getElementById('pf-agent').value,
     op:document.getElementById('pf-operation').value,
     sousetapes:JSON.parse(document.getElementById('pf-sousetapes').value||'[]'),
-    objectif:parseInt(document.getElementById('pf-objectif').value),
+    objectif: parseFloat(document.getElementById('pf-objectif')?.value)||0,
+    objectif_dos: parseFloat(document.getElementById('pf-objectif-dos')?.value)||0,
+    objectif_vil: parseFloat(document.getElementById('pf-objectif-vil')?.value)||0,
     nb_agents:parseInt(document.getElementById('pf-nragents').value)||1,
     budget:parseInt(document.getElementById('pf-budget').value)||0,
     obs:document.getElementById('pf-obs').value,
@@ -2776,17 +2788,19 @@ function progImportExcel(input){
         const fin=fmtD(fin_raw);
         const op=get(row,['activite','operation','type','op','activiteprincipal']);
         const etape_prog=get(row,['etapeprincipale','etape','step','bornage','enquete']);
-        const obj_dos=parseFloat(get(row,['objectifdossiers','objectif_dossiers','dossiers','nbredossiers','nbdossiers']))||0;
+        const obj_dos=parseFloat(get(row,['objectifdossiers','objectif_dossiers','dossiers','nbredossiers','nbdossiers','objectifdossier']))||0;
+        const obj_vil=parseFloat(get(row,['objectifvillages','objectif_villages','villages','nbrevillages','nbvillages','objectifvillage']))||0;
         const sp=get(row,['sousprefecture','sp','sous_pref','sous-prefecture','sousprefecture','souspref']);
         const obs=get(row,['observation','obs','commentaire']);
         const nb_agents=parseInt(get(row,['nbagents','effectif','nombreagents']))||1;
         const budget=parseInt(get(row,['budget']))||0;
         if(!agent)errs.push('Agent manquant');
         if(!dept)errs.push('Département manquant');
-        // Valider : au moins un objectif (Ha pour Topo OU Dossiers pour CE)
-        const hasObjHa = objectif && !isNaN(parseFloat(objectif)) && parseFloat(objectif) > 0;
+        // Valider : au moins un objectif selon la fonction
+        const hasObjHa  = objectif && !isNaN(parseFloat(objectif)) && parseFloat(objectif) > 0;
         const hasObjDos = obj_dos && !isNaN(parseFloat(obj_dos)) && parseFloat(obj_dos) > 0;
-        if(!hasObjHa && !hasObjDos) errs.push('Objectif manquant (Ha ou Dossiers)');
+        const hasObjVil = obj_vil && !isNaN(parseFloat(obj_vil)) && parseFloat(obj_vil) > 0;
+        if(!hasObjHa && !hasObjDos && !hasObjVil) errs.push('Objectif manquant');
         const prog={
           id:'PROG-'+new Date().getFullYear()+'-IMP'+String(i+1).padStart(3,'0'),
           periode_type:'Semaine',
@@ -2796,6 +2810,7 @@ function progImportExcel(input){
           sp,villages:[],agent,op:op||'Enquête terrain',
           objectif:parseFloat(objectif)||0, // Ha pour Topo
           objectif_dos:obj_dos,
+          objectif_vil:obj_vil,
           etape_prog:etape_prog,
           nb_agents,budget,obs,statut:(()=>{
           if(!debut)return'Planifié';
