@@ -3351,7 +3351,8 @@ function agOpenFiche(nom){
           ${mesProgs.length===0?'<div class="empty-state" style="padding:20px"><p>Aucun programme</p></div>':
           '<table style="width:100%;border-collapse:collapse;font-size:12px;">'+
           mesProgs.slice(0,5).map(p=>{
-            const pct=Math.min(100,Math.round((p.realise||0)/p.objectif*100));
+            const objRef=p.objectif>0?p.objectif:(p.objectif_dos>0?p.objectif_dos:(p.objectif_vil||1));
+            const pct=Math.min(100,Math.round((p.realise||0)/objRef*100));
             const col=pct>=90?'var(--accent)':pct>=60?'var(--amber)':'var(--red)';
             return`<tr style="border-bottom:1px solid var(--border);">
               <td style="padding:7px 12px;font-family:'DM Mono',monospace;font-size:11px;">${p.id}</td>
