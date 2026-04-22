@@ -3273,8 +3273,9 @@ function agRenderList(){
 
 // ── Fiche détaillée ──
 function agOpenFiche(nom){
+  try {
   const a = AGENTS_FULL.find(x=>x.nom===nom);
-  if(!a) return;
+  if(!a){ console.error('Agent non trouvé:', nom); return; }
   const c = agFonctionColor(a.fonction);
   const init = a.nom.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
   const today = new Date().toISOString().split('T')[0];
@@ -3383,6 +3384,10 @@ function agOpenFiche(nom){
     </div>`;
 
   agShowPanel('fiche');
+  } catch(e) {
+    console.error('Erreur agOpenFiche:', e);
+    alert('Erreur affichage fiche: ' + e.message);
+  }
 }
 
 // ── Performance comparative ──
