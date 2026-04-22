@@ -3314,7 +3314,7 @@ function agOpenFiche(nom){
           <div style="font-size:13px;margin-bottom:12px;">&#128222; ${a.tel}</div>
           <div style="font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Départements</div>
           <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;">
-            ${a.depts.map(d=>`<span style="font-size:11px;background:${c.bg};color:${c.tx};border:1px solid ${c.brd};padding:2px 8px;border-radius:10px;">${d.replace('Dép. ','')}</span>`).join('')}
+            ${(a.depts||[]).map(d=>`<span style="font-size:11px;background:${c.bg};color:${c.tx};border:1px solid ${c.brd};padding:2px 8px;border-radius:10px;">${d.replace('Dép. ','')}</span>`).join('')}
           </div>
           <div style="font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Répartition par activité</div>
           ${Object.entries(parActivite).map(([act,v])=>{
@@ -3499,7 +3499,7 @@ function agExportCSV(){
     const ns=saisies.filter(s=>s.agent===a.nom).length;
     const nd=saisies.filter(s=>s.agent===a.nom).reduce((s,x)=>s+(x.ndos||0),0);
     const ncf=dossiers.filter(d=>d.agent===a.nom).length;
-    return[a.nom,a.fonction,a.tel,a.depts.join(';'),np,ns,nd,ncf].map(v=>`"${v}"`).join(',');
+    return[a.nom,a.fonction,a.tel,(a.depts||[]).join(';'),np,ns,nd,ncf].map(v=>`"${v}"`).join(',');
   });
   const csv=[h,...l].join('\n');
   const el=document.createElement('a');
