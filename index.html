@@ -1492,11 +1492,10 @@ let progCounter=0;
 const PROG_SAMPLE = [];
 
 function progInit(){
-  // Ne charger localStorage que comme cache temporaire - Firebase écrasera
-  const s=localStorage.getItem('presfor_programmes')||localStorage.getItem('presfor_progs');
-  if(s){try{programmes=JSON.parse(s);progCounter=Math.max(programmes.length,5);}catch(e){programmes=[];progCounter=0;}}
+  // Ne pas charger localStorage - Firebase est la seule source de vérité
+  programmes=[];
+  progCounter=0;
   progGenRef();
-  // Ne pas render ici - serverLoad() rendra après Firebase
 }
 function progSave(){try{localStorage.setItem('presfor_progs',JSON.stringify(programmes));}catch(e){}}
 function progRenderAll(){progRenderKPI();progRenderTable();document.getElementById('prog-nb').textContent=programmes.length;}
@@ -1741,16 +1740,11 @@ let saisieDosList=[];
 const SAISIE_SAMPLE = [];
 
 function saisieInit(){
-  try{
-    const s=localStorage.getItem('presfor_saisies');
-    if(s){try{saisies=JSON.parse(s);saisieCounter=saisies.length;}catch(e){saisies=[...SAISIE_SAMPLE];saisieCounter=7;}}
-    else{saisies=[...SAISIE_SAMPLE];saisieCounter=7;}
-    saisieLoadProgs();
-    saisieGenRef();
-    saisieCalcDuree();
-    // render différé jusqu'à Firebase
-  }catch(e){console.error('saisieInit error:',e);}
+  // Ne pas charger localStorage - Firebase est la seule source de vérité
+  saisies=[];
+  saisieCounter=0;
 }
+
 function saisSave(){try{localStorage.setItem('presfor_saisies',JSON.stringify(saisies));}catch(e){}}
 function saisieRenderAll(){saisieRenderKPI();saisieRenderList();saisieRenderCorr();saisieRenderPerf();document.getElementById('saisie-nb').textContent=saisies.length;}
 
@@ -2482,14 +2476,11 @@ function dosSelEtape(el){
 }
 
 function dosInit(){
-  const s=localStorage.getItem('presfor_dossiers');
-  if(s){try{dossiers=JSON.parse(s);}catch(e){dossiers=[...DOS_SAMPLE];}}else{dossiers=[...DOS_SAMPLE];}
-  buildAgentOptions('df-agent',false);
-  buildAgentOptions('dos-f-agent',true);
-  document.getElementById('df-date').value=new Date().toISOString().split('T')[0];
-  document.getElementById('df-etape-date').value=new Date().toISOString().split('T')[0];
-  dosRenderAll();
+  // Ne pas charger localStorage - Firebase est la seule source de vérité
+  dossiers=[];
+  dosCounter=0;
 }
+
 function dosSave(){try{localStorage.setItem('presfor_dossiers',JSON.stringify(dossiers));}catch(e){}}
 function dosRenderAll(){dosRenderKPI();dosRenderList();dosRenderPipeline();dosRenderStats();document.getElementById('dos-nb').textContent=dossiers.length;}
 function dosJours(d){if(!d)return 0;return Math.floor((new Date()-new Date(d))/(1000*60*60*24));}
@@ -4980,7 +4971,18 @@ async function serverLoad(){
     });
     if(!r.ok){ updateSyncIndicator('error'); return false; }
     const d = await r.json();
-    if(!d){ updateSyncIndicator('error'); return false; }
+    // Si Firebase est vide (null) — vider aussi le localStorage
+    if(!d){
+      programmes=[]; saisies=[]; dossiers=[]; absences=[];
+      localStorage.removeItem('presfor_programmes');
+      localStorage.removeItem('presfor_saisies');
+      localStorage.removeItem('presfor_dossiers');
+      localStorage.removeItem('presfor_absences');
+      progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
+      updateSyncIndicator('ok');
+      console.log('Firebase vide — données locales effacées');
+      return true;
+    }
     // Firebase est la source de vérité — remplacer les données locales
     if(Array.isArray(d.programmes)) {
       programmes = d.programmes;
