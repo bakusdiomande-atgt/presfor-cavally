@@ -1690,10 +1690,44 @@ function progResetForm(){
   setTimeout(progUpdateObjUnite, 50);
 }
 function progClearAll(){
-  if(!confirm('Réinitialiser les données ?'))return;
-  programmes=[...PROG_SAMPLE];progCounter=5;
-  try{localStorage.removeItem('presfor_progs');}catch(e){}
-  progRenderAll();showToast('Réinitialisé.');
+  if(!confirm('ATTENTION — Réinitialisation complète\n\nCette action va effacer TOUTES les données (programmes, saisies, dossiers) sur TOUS les appareils connectés.\n\nConfirmer ?'))return;
+  if(!confirm('Dernière confirmation — Voulez-vous vraiment tout effacer ?'))return;
+  // Stopper le polling pendant la réinitialisation
+  const wasSyncPending = syncPending;
+  syncPending = true;
+  // Vider toutes les données
+  programmes=[]; saisies=[]; dossiers=[]; absences=[];
+  progCounter=0;
+  // Vider le localStorage
+  try{
+    localStorage.removeItem('presfor_programmes');
+    localStorage.removeItem('presfor_saisies');
+    localStorage.removeItem('presfor_dossiers');
+    localStorage.removeItem('presfor_absences');
+    localStorage.removeItem('presfor_progs');
+    localStorage.removeItem('presfor_last_notif_sent');
+  }catch(e){}
+  // Sauvegarder sur Firebase (écraser avec données vides)
+  updateSyncIndicator('pending');
+  fetch(FIREBASE_URL + '/presfor.json', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      programmes:[], saisies:[], dossiers:[], absences:[],
+      updated_at: new Date().toISOString()
+    })
+  }).then(r => {
+    if(r.ok){
+      lastServerTimestamp = new Date().toISOString();
+      syncPending = false;
+      updateSyncIndicator('ok');
+      progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
+      showToast('Réinitialisation complète effectuée. Base de données vidée.');
+    }
+  }).catch(e => {
+    syncPending = false;
+    showToast('Erreur réinitialisation: ' + e.message);
+  });
 }
 
 
