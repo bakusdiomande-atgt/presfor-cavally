@@ -4937,7 +4937,7 @@ let syncTimer = null;
 let syncPending = false;
 let lastSyncTime = null;
 let serverAvailable = false;
-let firebaseLoaded = false; // Bloque toute sauvegarde avant chargement complet
+let firebaseLoaded = false;
 // Hash simple pour détecter les changements
 function quickHash(data){
   const str = JSON.stringify(data);
@@ -5018,12 +5018,38 @@ async function serverLoad(){
   }
 }
 
-// ── Sauvegarder sur Firebase ──
+// ── Fusionner deux tableaux par ID (évite les pertes de données) ──
+function mergeArrays(local, remote){
+  if(!Array.isArray(remote) || remote.length === 0) return Array.isArray(local) ? local : [];
+  if(!Array.isArray(local)  || local.length  === 0) return remote;
+  const map = {};
+  remote.forEach(item => { if(item && item.id) map[item.id] = item; });
+  local.forEach(item  => { if(item && item.id) map[item.id] = Object.assign({}, map[item.id] || {}, item); });
+  return Object.values(map);
+}
+
+// ── Sauvegarder sur Firebase (avec fusion préalable) ──
 async function serverSave(){
   if(!navigator.onLine){ updateSyncIndicator('offline'); return; }
+  if(!firebaseLoaded) return; // Bloquer si Firebase pas encore chargé
   updateSyncIndicator('pending');
   const ts = new Date().toISOString();
   try {
+    // 1. Lire les données actuelles de Firebase avant d'écrire
+    const r0 = await fetch(FIREBASE_URL + '/presfor.json', {
+      signal: AbortSignal.timeout(10000)
+    });
+    const remote = (r0.ok) ? await r0.json() : null;
+
+    // 2. Fusionner local + Firebase (aucune donnée ne peut être perdue)
+    if(remote && typeof remote === 'object'){
+      programmes = mergeArrays(programmes, remote.programmes);
+      saisies    = mergeArrays(saisies,    remote.saisies);
+      dossiers   = mergeArrays(dossiers,   remote.dossiers);
+      absences   = mergeArrays(absences,   remote.absences);
+    }
+
+    // 3. Écrire les données fusionnées
     const r = await fetch(FIREBASE_URL + '/presfor.json', {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
@@ -5072,7 +5098,7 @@ setInterval(syncPoll, 15 * 1000); // 15 secondes
 
 // ── Sync différée (2s après dernière modif) ──
 function scheduleSave(){
-  if(!firebaseLoaded) return; // Bloquer toute sauvegarde avant chargement Firebase
+  if(!firebaseLoaded) return;
   syncPending = true;
   if(syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(()=>{
