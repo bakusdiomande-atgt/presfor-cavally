@@ -4937,6 +4937,7 @@ let syncTimer = null;
 let syncPending = false;
 let lastSyncTime = null;
 let serverAvailable = false;
+let firebaseLoaded = false; // Bloque toute sauvegarde avant chargement complet
 // Hash simple pour détecter les changements
 function quickHash(data){
   const str = JSON.stringify(data);
@@ -4980,6 +4981,7 @@ async function serverLoad(){
       localStorage.removeItem('presfor_absences');
       progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
       updateSyncIndicator('ok');
+      firebaseLoaded = true;
       console.log('Firebase vide — données locales effacées');
       return true;
     }
@@ -5001,6 +5003,7 @@ async function serverLoad(){
       localStorage.setItem('presfor_absences', JSON.stringify(absences));
     }
     serverAvailable = true;
+    firebaseLoaded = true;
     lastSyncTime = new Date();
     lastServerTimestamp = d.updated_at || null;
     updateSyncIndicator('ok');
@@ -5069,6 +5072,7 @@ setInterval(syncPoll, 15 * 1000); // 15 secondes
 
 // ── Sync différée (2s après dernière modif) ──
 function scheduleSave(){
+  if(!firebaseLoaded) return; // Bloquer toute sauvegarde avant chargement Firebase
   syncPending = true;
   if(syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(()=>{
