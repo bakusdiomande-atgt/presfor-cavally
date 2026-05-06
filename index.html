@@ -5253,7 +5253,7 @@ saisieInit();
 dosInit();
 agInit();
 zvInit();
-// Firebase est la source de vérité - charger et écraser les données locales
+// Firebase est la source de vérité - charger AVANT tout rendu
 showToast('Chargement des données...');
 serverLoad().then(ok => {
   if(!ok) {
@@ -5261,21 +5261,20 @@ serverLoad().then(ok => {
     progRenderAll();
     saisieRenderAll();
     dosRenderAll();
-    dashRenderAll();
     showToast('Mode hors-ligne - données locales');
   }
+  // Peupler les selects agents APRÈS chargement Firebase
+  ['pf-agent','sf-agent','df-agent','abs-agent'].forEach(id=>buildAgentOptions(id,false));
+  ['saisie-f-agent','dos-f-agent'].forEach(id=>buildAgentOptions(id,true));
+  // Initialiser le dashboard APRÈS que les données Firebase sont chargées
+  dashInit();
+  // Démarrer sur le tableau de bord
+  switchModule('accueil');
+  // Vérifier les alertes au démarrage
+  setTimeout(notifCheck, 3000);
+  // Démarrer le polling de synchronisation
+  setTimeout(syncPoll, 10000);
 });
-// Peupler les selects agents
-['pf-agent','sf-agent','df-agent','abs-agent'].forEach(id=>buildAgentOptions(id,false));
-['saisie-f-agent','dos-f-agent'].forEach(id=>buildAgentOptions(id,true));
-// Initialiser le dashboard APRÈS que toutes les données sont chargées
-dashInit();
-// Démarrer sur le tableau de bord
-switchModule('accueil');
-// Vérifier les alertes au démarrage
-setTimeout(notifCheck, 3000);
-// Démarrer le polling de synchronisation (après 10s pour laisser le temps au chargement)
-setTimeout(syncPoll, 10000);
 
 </script>
 
