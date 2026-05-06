@@ -1497,7 +1497,7 @@ function progInit(){
   progCounter=0;
   progGenRef();
 }
-function progSave(){try{localStorage.setItem('presfor_progs',JSON.stringify(programmes));}catch(e){}}
+function progSave(){try{localStorage.setItem('presfor_progs',JSON.stringify(programmes));}catch(e){}scheduleSave();}
 function progRenderAll(){progRenderKPI();progRenderTable();document.getElementById('prog-nb').textContent=programmes.length;}
 
 function progRenderKPI(){
@@ -1745,7 +1745,7 @@ function saisieInit(){
   saisieCounter=0;
 }
 
-function saisSave(){try{localStorage.setItem('presfor_saisies',JSON.stringify(saisies));}catch(e){}}
+function saisSave(){try{localStorage.setItem('presfor_saisies',JSON.stringify(saisies));}catch(e){}scheduleSave();}
 function saisieRenderAll(){saisieRenderKPI();saisieRenderList();saisieRenderCorr();saisieRenderPerf();document.getElementById('saisie-nb').textContent=saisies.length;}
 
 function saisieRenderKPI(){
@@ -2481,7 +2481,7 @@ function dosInit(){
   dosCounter=0;
 }
 
-function dosSave(){try{localStorage.setItem('presfor_dossiers',JSON.stringify(dossiers));}catch(e){}}
+function dosSave(){try{localStorage.setItem('presfor_dossiers',JSON.stringify(dossiers));}catch(e){}scheduleSave();}
 function dosRenderAll(){dosRenderKPI();dosRenderList();dosRenderPipeline();dosRenderStats();document.getElementById('dos-nb').textContent=dossiers.length;}
 function dosJours(d){if(!d)return 0;return Math.floor((new Date()-new Date(d))/(1000*60*60*24));}
 function dosIdx(e){return DOS_ETAPES.indexOf(e);}
@@ -3204,7 +3204,7 @@ function agInit(){
   agRenderAll();
 }
 
-function agSaveAbs(){ try{localStorage.setItem('presfor_absences',JSON.stringify(absences));}catch(e){} }
+function agSaveAbs(){ try{localStorage.setItem('presfor_absences',JSON.stringify(absences));}catch(e){} scheduleSave(); }
 
 function agRenderAll(){
   agRenderKPI();
