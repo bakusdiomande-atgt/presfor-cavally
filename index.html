@@ -5363,5 +5363,57 @@ setTimeout(syncPoll, 10000);
   </div>
 </div>
 
+<!-- ═══ SYSTÈME RESET ADMIN ═══ -->
+<script>
+(function() {
+  const DB_URL = 'https://presfor-cavally-default-rtdb.europe-west1.firebasedatabase.app';
+  const ADMIN_PWD = 'CAVALLY2026';
+
+  // Vérification au chargement : reset déclenché ?
+  async function checkResetSignal() {
+    try {
+      const res = await fetch(`${DB_URL}/presfor/reset_signal.json`);
+      const signal = await res.json();
+      if (!signal) return;
+      const lastAck = localStorage.getItem('reset_ack') || '0';
+      if (signal > lastAck) {
+        const keys = Object.keys(localStorage);
+        keys.forEach(k => { if (k !== 'reset_ack') localStorage.removeItem(k); });
+        localStorage.setItem('reset_ack', signal);
+        window.location.reload();
+      }
+    } catch(e) {}
+  }
+
+  // Fonction admin : déclencher le reset
+  window.adminResetDB = async function() {
+    const pwd = prompt('Mot de passe administrateur :');
+    if (pwd !== ADMIN_PWD) { alert('Mot de passe incorrect.'); return; }
+    if (!confirm('⚠️ Réinitialiser toute la base pour TOUS les agents ? Irréversible.')) return;
+    const signal = Date.now().toString();
+    await fetch(`${DB_URL}/presfor.json`, {
+      method: 'PUT',
+      body: JSON.stringify({ reset_signal: signal })
+    });
+    localStorage.clear();
+    localStorage.setItem('reset_ack', signal);
+    alert('✅ Base réinitialisée. Les agents verront une base vide à la prochaine connexion.');
+    window.location.reload();
+  };
+
+  checkResetSignal();
+})();
+</script>
+
+<!-- Bouton Admin discret -->
+<div style="position:fixed;bottom:12px;left:12px;z-index:9999;">
+  <button onclick="adminResetDB()"
+    style="background:var(--red-lt);color:var(--red-txt);border:1px solid rgba(184,48,37,.2);
+    padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;opacity:0.3;"
+    onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'">
+    ⚙ Reset
+  </button>
+</div>
+
 </body>
 </html>
