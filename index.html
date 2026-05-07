@@ -1768,31 +1768,58 @@ function saisieRenderList(){
   const fa=document.getElementById('saisie-f-agent').value;
   const fd=document.getElementById('saisie-f-dept').value;
   const fdt=document.getElementById('saisie-f-date').value;
-  const list=saisies.filter(s=>{
-    const mq=!q||s.id.toLowerCase().includes(q)||s.agent.toLowerCase().includes(q)||s.village.toLowerCase().includes(q)||(s.prog_ref||'').toLowerCase().includes(q);
+  const filtered=saisies.filter(s=>{
+    const mq=!q||s.id.toLowerCase().includes(q)||s.agent.toLowerCase().includes(q)||s.village.toLowerCase().includes(q)||(s.prog_ref||'').toLowerCase().includes(q)||(s.etape||'').toLowerCase().includes(q);
     return mq&&(!fa||s.agent===fa)&&(!fd||s.dept===fd)&&(!fdt||s.date===fdt);
-  }).sort((a,b)=>b.date.localeCompare(a.date));
+  });
   const tbody=document.getElementById('saisie-tbody');
   const empty=document.getElementById('saisie-empty');
-  if(!list.length){tbody.innerHTML='';empty.style.display='block';return;}
+  if(!filtered.length){tbody.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
-  const eb=e=>{const m={'Enquête terrain':'b-blue','Bornage':'b-teal','Constitution':'b-amber','Validation techn.':'b-amber','Enregistrement':'b-green','Demande CF':'b-blue','RDC':'b-teal','PV de constat de limite':'b-amber','Levé et bornage':'b-teal','Ouverture de publicité':'b-gray','Clôture de publicité':'b-gray','Approbation CPCDC':'b-green'};return`<span class="badge ${m[e]||'b-gray'}">${e}</span>`;};
-  const ebMulti=s=>{
-    if(s.etapes&&s.etapes.length>1)return s.etapes.map(eb).join(' ');
-    return eb(s.etapeLabel||s.etape||'—');
-  };
-  tbody.innerHTML=list.map(s=>{
+
+  // ── REGROUPEMENT AFFICHAGE ──────────────────────────────────────────────────
+  // Grouper par agent + date + village + dept + prog_ref pour consolider les
+  // saisies multi-lignes déjà stockées (une ligne par étape réalisée)
+  const grpMap={};
+  filtered.forEach(s=>{
+    const gk=[s.agent,s.date,s.village,s.dept||'',s.prog_ref||''].join('||');
+    if(!grpMap[gk]){
+      grpMap[gk]={
+        ids:[s.id], ref:s.id, date:s.date, agent:s.agent, dept:s.dept,
+        sp:s.sp||'', village:s.village, prog_ref:s.prog_ref||'',
+        etapes:[], ndos:s.ndos||0, superficie:0,
+        hdep:s.hdep, hret:s.hret, duree:s.duree||'',
+        activite:s.activite||s.etape||'CF'
+      };
+    }
+    const g=grpMap[gk];
+    // Collecter les étapes uniques (depuis etapes[] ou etape string)
+    const etapesSource=s.etapes&&s.etapes.length?s.etapes:[s.etape].filter(Boolean);
+    etapesSource.forEach(e=>{if(e&&!g.etapes.includes(e))g.etapes.push(e);});
+    // Dossiers : maximum (valeur répétée pour chaque étape dans l'Excel)
+    g.ndos=Math.max(g.ndos,s.ndos||0);
+    // Superficie : sommer
+    g.superficie=Math.round((g.superficie+(s.superficie||0))*100)/100;
+    g.ids.push(s.id);
+  });
+  const list=Object.values(grpMap).sort((a,b)=>b.date.localeCompare(a.date));
+  // ── FIN REGROUPEMENT ────────────────────────────────────────────────────────
+
+  const eb=e=>{const m={'Enquête terrain':'b-blue','Bornage':'b-teal','Constitution':'b-amber','Validation techn.':'b-amber','Enregistrement':'b-green','Demande CF':'b-blue','RDC':'b-teal','PV de constat de limite':'b-amber','Levé et bornage':'b-teal','Ouverture de publicité':'b-gray','Clôture de publicité':'b-gray','Approbation CPCDC':'b-green','CF':'b-blue','DTV':'b-teal','ISF':'b-amber','CONTRAT':'b-green'};return`<span class="badge ${m[e]||'b-gray'}" style="margin-right:2px">${e}</span>`;};
+  tbody.innerHTML=list.map(g=>{
     let ecartHtml='<span class="badge b-gray">—</span>';
-    if(s.prog_ref){const p=PROGS_REF.find(p=>p.id===s.prog_ref);if(p){const cum=saisies.filter(x=>x.prog_ref===s.prog_ref&&x.date<=s.date).reduce((a,x)=>a+x.ndos,0);const pct=Math.round(cum/p.objectif*100);ecartHtml=`<span class="badge ${pct>=90?'b-green':pct>=65?'b-amber':'b-red'}">${pct}%</span>`;}}
-    return`<tr><td class="td-mono">${s.id}</td><td style="font-size:12px;white-space:nowrap">${fmtDate(s.date)}</td>
-      <td style="font-weight:500">${s.agent}</td>
-      <td><span style="font-size:12px">${s.dept}</span><br><span style="font-size:11px;color:var(--text2)">${s.village}</span></td>
-      <td>${ebMulti(s)}</td>
-      <td style="text-align:center;font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--accent)">${s.ndos}</td>
-      <td style="text-align:center;font-size:12px;color:var(--teal);font-weight:600">${s.superficie?s.superficie+' ha':'—'}</td>
-      <td style="font-size:11px;color:var(--text2);white-space:nowrap">${fmtHeure(s.hdep)||"—"}→${fmtHeure(s.hret)||"—"}<br><span style="color:var(--text3)">${s.duree}</span></td>
+    if(g.prog_ref){const p=PROGS_REF.find(p=>p.id===g.prog_ref);if(p){const cum=saisies.filter(x=>x.prog_ref===g.prog_ref&&x.date<=g.date).reduce((a,x)=>a+x.ndos,0);const pct=Math.round(cum/p.objectif*100);ecartHtml=`<span class="badge ${pct>=90?'b-green':pct>=65?'b-amber':'b-red'}">${pct}%</span>`;}}
+    const etapesHtml=g.etapes.length?g.etapes.map(eb).join(''): eb(g.activite||'—');
+    const refId=g.ids[0]||g.ref;
+    return`<tr><td class="td-mono" style="font-size:10px">${refId}</td><td style="font-size:12px;white-space:nowrap">${fmtDate(g.date)}</td>
+      <td style="font-weight:500">${g.agent}</td>
+      <td><span style="font-size:12px">${g.dept}</span><br><span style="font-size:11px;color:var(--text2)">${g.village}</span></td>
+      <td style="max-width:220px">${etapesHtml}</td>
+      <td style="text-align:center;font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--accent)">${g.ndos}</td>
+      <td style="text-align:center;font-size:12px;color:var(--teal);font-weight:600">${g.superficie?g.superficie+' ha':'—'}</td>
+      <td style="font-size:11px;color:var(--text2);white-space:nowrap">${fmtHeure(g.hdep)||"—"}→${fmtHeure(g.hret)||"—"}<br><span style="color:var(--text3)">${g.duree}</span></td>
       <td>${ecartHtml}</td>
-      <td><div style="display:flex;gap:5px"><button class="btn-s" style="font-size:11px;padding:4px 8px" onclick="saisieEdit('${s.id}')">Modifier</button><button class="btn-d" onclick="saisieDelete('${s.id}')">Sup.</button></div></td>
+      <td><div style="display:flex;gap:5px"><button class="btn-s" style="font-size:11px;padding:4px 8px" onclick="saisieEdit('${refId}')">Modifier</button><button class="btn-d" onclick="saisieDelete('${refId}')">Sup.</button></div></td>
     </tr>`;
   }).join('');
 }
