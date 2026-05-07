@@ -1776,14 +1776,18 @@ function saisieRenderList(){
   const empty=document.getElementById('saisie-empty');
   if(!list.length){tbody.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
-  const eb=e=>{const m={'Enquête terrain':'b-blue','Bornage':'b-teal','Constitution':'b-amber','Validation techn.':'b-amber','Enregistrement':'b-green'};return`<span class="badge ${m[e]||'b-gray'}">${e}</span>`;};
+  const eb=e=>{const m={'Enquête terrain':'b-blue','Bornage':'b-teal','Constitution':'b-amber','Validation techn.':'b-amber','Enregistrement':'b-green','Demande CF':'b-blue','RDC':'b-teal','PV de constat de limite':'b-amber','Levé et bornage':'b-teal','Ouverture de publicité':'b-gray','Clôture de publicité':'b-gray','Approbation CPCDC':'b-green'};return`<span class="badge ${m[e]||'b-gray'}">${e}</span>`;};
+  const ebMulti=s=>{
+    if(s.etapes&&s.etapes.length>1)return s.etapes.map(eb).join(' ');
+    return eb(s.etapeLabel||s.etape||'—');
+  };
   tbody.innerHTML=list.map(s=>{
     let ecartHtml='<span class="badge b-gray">—</span>';
     if(s.prog_ref){const p=PROGS_REF.find(p=>p.id===s.prog_ref);if(p){const cum=saisies.filter(x=>x.prog_ref===s.prog_ref&&x.date<=s.date).reduce((a,x)=>a+x.ndos,0);const pct=Math.round(cum/p.objectif*100);ecartHtml=`<span class="badge ${pct>=90?'b-green':pct>=65?'b-amber':'b-red'}">${pct}%</span>`;}}
     return`<tr><td class="td-mono">${s.id}</td><td style="font-size:12px;white-space:nowrap">${fmtDate(s.date)}</td>
       <td style="font-weight:500">${s.agent}</td>
       <td><span style="font-size:12px">${s.dept}</span><br><span style="font-size:11px;color:var(--text2)">${s.village}</span></td>
-      <td>${eb(s.etape)}</td>
+      <td>${ebMulti(s)}</td>
       <td style="text-align:center;font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--accent)">${s.ndos}</td>
       <td style="text-align:center;font-size:12px;color:var(--teal);font-weight:600">${s.superficie?s.superficie+' ha':'—'}</td>
       <td style="font-size:11px;color:var(--text2);white-space:nowrap">${fmtHeure(s.hdep)||"—"}→${fmtHeure(s.hret)||"—"}<br><span style="color:var(--text3)">${s.duree}</span></td>
@@ -2147,7 +2151,8 @@ function saisieImportExcel(input){
         const agent    = get(row,['agent','nom','responsable']);
         const dept     = get(row,['departement','dept','zone']);
         const village  = get(row,['village','localite','lieu']);
-        const etape    = get(row,['etape','phase','activite','operation']);
+        const etape    = get(row,['etaperealisee','etape','phase','operation']);
+        const activite = get(row,['activite','type_activite','act']) || '';
         const ndos     = parseInt(get(row,['dossier','nombre','ndos','traites','production']))||0;
         const hdep = fmtHeure((() => {
           const k = Object.keys(row).find(k2 => {
@@ -2177,15 +2182,15 @@ function saisieImportExcel(input){
         if(!village)errs.push('Village manquant');
 
         const s = {
-          id:(()=>{
-            // ID basé sur le contenu pour éviter les doublons
-            const key = (date||'')+'_'+(agent||'').replace(/\s/g,'')+'_'+(village||'').replace(/\s/g,'')+'_'+(ndos||0);
-            return 'SAI-'+key.replace(/[^a-zA-Z0-9_-]/g,'').substring(0,30)+'-'+(i%1000);
-          })(),
+          // Clé de regroupement : agent + date + village + activite + prog_ref
+          _groupKey: [date, (agent||'').replace(/\s/g,'_'), (village||'').replace(/\s/g,'_'), (activite||'CF'), (prog_ref||'')].join('||'),
+          id:'',// sera généré après regroupement
           date, agent,
           dept: dept?(dept.includes('Dép.')?dept:'Dép. '+dept):'',
           sp, village,
+          activite: activite||'CF',
           etape: etape||'Enquête terrain',
+          etapes: etape ? [etape] : ['Enquête terrain'],
           ndos, superficie, dossiers:[],
           hdep: hdep||'07:00', hret: hret||'17:00',
           duree: duree||'', km, incident, meteo, obs,
@@ -2194,38 +2199,81 @@ function saisieImportExcel(input){
         saisieImportData.push({s, errs, ligne:i+2});
       });
 
+      // ── REGROUPEMENT ────────────────────────────────────────────────────────
+      // Consolider les lignes ayant la même clé (agent+date+village+activite+prog_ref)
+      // → une seule saisie avec toutes les étapes réalisées + somme des dossiers max
+      const groupMap = {};
+      saisieImportData.forEach(({s, errs, ligne}) => {
+        const gk = s._groupKey;
+        if (!groupMap[gk]) {
+          groupMap[gk] = { s: {...s}, errs: [...errs], lignes: [ligne] };
+          groupMap[gk].s.etapes  = s.etapes ? [...s.etapes] : [s.etape];
+          groupMap[gk].s.ndos    = s.ndos;
+          groupMap[gk].s.superficie = s.superficie || 0;
+          groupMap[gk].s._obs    = new Set(s.obs ? [s.obs] : []);
+        } else {
+          const g = groupMap[gk];
+          g.lignes.push(ligne);
+          // Ajouter l'étape si nouvelle
+          if (s.etape && !g.s.etapes.includes(s.etape)) g.s.etapes.push(s.etape);
+          // Nb dossiers : prendre le maximum (valeur répétée dans l'Excel)
+          g.s.ndos = Math.max(g.s.ndos, s.ndos);
+          // Superficie : sommer (varie selon l'étape, ex. Levé et bornage)
+          g.s.superficie = Math.round((g.s.superficie + (s.superficie||0)) * 100) / 100;
+          // Observations : collecter les valeurs uniques
+          if (s.obs) g.s._obs.add(s.obs.trim());
+          // Garder les erreurs de toutes les lignes sources
+          errs.forEach(e => { if (!g.errs.includes(e)) g.errs.push(e); });
+        }
+      });
+      // Finaliser les objets groupés
+      saisieImportData = Object.values(groupMap).map(({s, errs, lignes}) => {
+        s.etapes  = s.etapes.filter(Boolean);
+        s.etape   = s.etapes[0] || 'Enquête terrain'; // étape principale
+        s.etapeLabel = s.etapes.join(' · ');          // affichage multi-étapes
+        s.obs     = [...(s._obs||[])].join(' | ');
+        delete s._groupKey; delete s._obs;
+        // Générer l'ID consolidé basé sur le groupe
+        const key = (s.date||'')+'_'+(s.agent||'').replace(/\s/g,'')+'_'+(s.village||'').replace(/\s/g,'')+'_'+(s.activite||'');
+        s.id = 'SAI-'+key.replace(/[^a-zA-Z0-9_-]/g,'').substring(0,32);
+        return { s, errs, ligne: lignes[0], lignes };
+      });
+      // ── FIN REGROUPEMENT ─────────────────────────────────────────────────────
+
       const total = saisieImportData.length;
       const totalErr = saisieImportData.filter(d=>d.errs.length>0).length;
       const modal = document.getElementById('saisie-import-modal');
 
       document.getElementById('saisie-import-info').textContent =
-        total+' saisie(s) détectée(s). '+(totalErr>0?totalErr+' ligne(s) invalides seront ignorées.':'Toutes les lignes sont valides.');
+        total+' saisie(s) consolidée(s) (regroupement par agent/date/village/activité). '+(totalErr>0?totalErr+' groupe(s) avec erreurs seront ignorés.':'Toutes les lignes sont valides.');
 
       const etapeBadge = e=>{
-        const m={'Enquête terrain':'var(--blue-lt)','Bornage':'var(--teal-lt)','Constitution':'var(--amber-lt)'};
-        return'<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:'+(m[e]||'var(--surface2)')+'">'+e+'</span>';
+        const m={'Enquête terrain':'var(--blue-lt)','Bornage':'var(--teal-lt)','Constitution':'var(--amber-lt)','Demande CF':'var(--blue-lt)','RDC':'var(--teal-lt)','PV de constat de limite':'var(--amber-lt)','Levé et bornage':'var(--teal-lt)','Ouverture de publicité':'var(--surface2)','Clôture de publicité':'var(--surface2)','Approbation CPCDC':'var(--surface2)'};
+        return'<span style="font-size:10px;padding:1px 5px;border-radius:8px;background:'+(m[e]||'var(--surface2)')+';margin-right:2px">'+e+'</span>';
       };
+      const etapesBadges = arr => (arr&&arr.length?arr:['?']).map(etapeBadge).join('');
 
       document.getElementById('saisie-import-preview').innerHTML =
         '<table style="width:100%;border-collapse:collapse;font-size:12px;">'+
         '<thead><tr style="background:var(--surface2)">'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">L.</th>'+
+        '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Src.</th>'+
         '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Date</th>'+
         '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Agent</th>'+
         '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Village</th>'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Étape</th>'+
+        '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Étapes réalisées</th>'+
         '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center">Dos.</th>'+
         '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Statut</th>'+
         '</tr></thead><tbody>'+
         saisieImportData.map(d=>{
           const ok=d.errs.length===0;
           const bg=ok?'':'background:var(--red-lt)';
+          const srcInfo=d.lignes?d.lignes.length+' lig.':'L.'+d.ligne;
           return'<tr style="border-bottom:1px solid var(--border);'+bg+'">'+
-            '<td style="padding:4px 8px;color:var(--text3)">'+d.ligne+'</td>'+
+            '<td style="padding:4px 8px;color:var(--text3);font-size:11px">'+srcInfo+'</td>'+
             '<td style="padding:4px 8px;font-family:DM Mono,monospace;font-size:11px">'+d.s.date+'</td>'+
             '<td style="padding:4px 8px;font-weight:500">'+d.s.agent+'</td>'+
             '<td style="padding:4px 8px">'+d.s.village+'</td>'+
-            '<td style="padding:4px 8px">'+etapeBadge(d.s.etape)+'</td>'+
+            '<td style="padding:4px 8px">'+etapesBadges(d.s.etapes)+'</td>'+
             '<td style="padding:4px 8px;text-align:center;font-weight:600;color:var(--accent)">'+d.s.ndos+'</td>'+
             '<td style="padding:4px 8px">'+(ok?'<span style="color:var(--accent);font-weight:500">OK</span>':
               '<span style="color:var(--red-txt)">'+d.errs.join(', ')+'</span>')+'</td>'+
@@ -2253,7 +2301,7 @@ function saisieImportConfirm(){
   });
   saisSave();
   document.getElementById('saisie-import-modal').style.display='none';
-  showToast(nb+' saisie(s) importée(s) !');
+  showToast(nb+' saisie(s) consolidée(s) importée(s) !');
   saisieImportData=[];
   saisieRenderAll();
   dashRenderAll();
