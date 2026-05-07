@@ -2328,13 +2328,17 @@ function saisieImportConfirm(){
   });
   saisSave();
   document.getElementById('saisie-import-modal').style.display='none';
-  showToast(nb+' saisie(s) consolidée(s) importée(s) !');
   saisieImportData=[];
   saisieRenderAll();
   dashRenderAll();
-  // Forcer la sauvegarde immédiate sur Firebase
+  // Sauvegarde immédiate sur Firebase + confirmation par rechargement
+  syncPending = false;
+  updateSyncIndicator('pending');
   serverSave().then(()=>{
-    console.log('Import sauvegardé sur Firebase');
+    showToast(nb+' saisie(s) consolidée(s) importée(s) et synchronisée(s) !');
+    console.log('Import synchronisé sur Firebase:', nb, 'saisie(s)');
+  }).catch(()=>{
+    showToast(nb+' saisie(s) importée(s) — synchronisation en attente.');
   });
 }
 
@@ -5147,29 +5151,30 @@ async function serverSave(){
   }
 }
 
-// ── Polling Firebase toutes les 30 secondes ──
+// ── Polling Firebase toutes les 10 secondes — sync multi-utilisateurs ──
 async function syncPoll(){
   if(!navigator.onLine) return;
   if(syncPending) return; // Ne pas polluer si sauvegarde en cours
   try {
-    // Vérifier d'abord le timestamp
+    // Vérifier d'abord le timestamp (léger)
     const r1 = await fetch(FIREBASE_URL + '/presfor/updated_at.json', {
-      signal: AbortSignal.timeout(10000)
+      signal: AbortSignal.timeout(8000)
     });
     if(!r1.ok) return;
     const serverTs = await r1.json();
-    // Si même timestamp → pas de changement
+    // Si même timestamp → pas de changement, rien à faire
     if(serverTs && serverTs === lastServerTimestamp) return;
-    // Données changées → charger tout depuis Firebase
-    console.log('Nouveau timestamp Firebase, rechargement...');
+    // Nouveau timestamp détecté → recharger toutes les données depuis Firebase
+    console.log('Changement Firebase détecté — rechargement multi-utilisateur...');
     await serverLoad();
+    // serverLoad() met à jour lastServerTimestamp et rafraîchit tous les renderers
   } catch(e) {
     console.log('syncPoll erreur:', e.message);
   }
 }
 
 // Polling toutes les 30 secondes
-setInterval(syncPoll, 15 * 1000); // 15 secondes
+setInterval(syncPoll, 10 * 1000); // 10 secondes — sync multi-utilisateurs
 
 // ── Sync différée (2s après dernière modif) ──
 function scheduleSave(){
@@ -5191,91 +5196,6 @@ setInterval(()=>{ if(serverAvailable) serverSave(); }, 5*60*1000);
 let lastServerTimestamp = null;
 
 // Hash simple pour détecter les changements
-function quickHash(data){
-  const str = JSON.stringify(data);
-  let hash = 0;
-  for(let i=0;i<str.length;i++){
-    hash = ((hash<<5)-hash)+str.charCodeAt(i);
-    hash |= 0;
-  }
-  return hash;
-}
-
-async function syncPoll(){
-  if(!navigator.onLine) return;
-  try {
-    const r = await fetch(FIREBASE_URL + '/presfor.json', {
-      signal: AbortSignal.timeout(15000)
-    });
-    if(!r.ok) return;
-    const json = await r.json();
-    const d = json.record;
-    if(!d) return;
-
-    let changed = false;
-
-    // Comparer hash local vs serveur
-    // Fusion intelligente: prendre le tableau le plus long (le plus complet)
-    function mergeData(local, server){
-      if(!server) return local;
-      if(!local || local.length === 0) return server;
-      if(server.length > local.length) return server;
-      // Même longueur: vérifier si le serveur a des entrées non présentes en local
-      const localIds = new Set(local.map(x=>x.id));
-      const newItems = server.filter(x=>x.id && !localIds.has(x.id));
-      if(newItems.length > 0) return [...local, ...newItems];
-      return local;
-    }
-    if(d.programmes !== undefined){
-      const merged = mergeData(programmes, d.programmes);
-      if(quickHash(merged) !== quickHash(programmes)){
-        programmes = merged;
-        localStorage.setItem('presfor_programmes', JSON.stringify(programmes));
-        changed = true;
-      }
-    }
-    if(d.saisies !== undefined){
-      const merged = mergeData(saisies, d.saisies);
-      if(quickHash(merged) !== quickHash(saisies)){
-        saisies = merged;
-        localStorage.setItem('presfor_saisies', JSON.stringify(saisies));
-        changed = true;
-      }
-    }
-    if(d.dossiers !== undefined){
-      const merged = mergeData(dossiers, d.dossiers);
-      if(quickHash(merged) !== quickHash(dossiers)){
-        dossiers = merged;
-        localStorage.setItem('presfor_dossiers', JSON.stringify(dossiers));
-        changed = true;
-      }
-    }
-    if(d.absences !== undefined){
-      const merged = mergeData(absences, d.absences);
-      if(quickHash(merged) !== quickHash(absences)){
-        absences = merged;
-        localStorage.setItem('presfor_absences', JSON.stringify(absences));
-        changed = true;
-      }
-    }
-
-    if(changed){
-      const activeModule = document.querySelector('.module.active')?.id?.replace('module-','');
-      if(activeModule==='prog') progRenderAll();
-      else if(activeModule==='saisie') saisieRenderAll();
-      else if(activeModule==='dossier') dosRenderAll();
-      else if(activeModule==='accueil') dashRenderAll();
-      else if(activeModule==='agents') agRenderAll();
-      showToast('Données synchronisées');
-      updateSyncIndicator('ok');
-    }
-  } catch(e) {
-    console.log('syncPoll erreur:', e.message);
-  }
-}
-
-// Polling toutes les 30 secondes
-setInterval(syncPoll, 60 * 1000); // Toutes les 60 secondes
 
 // ── Formater une heure depuis Excel (fraction ou Date ou string HH:MM) ──
 function fmtHeure(val){
