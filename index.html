@@ -1492,12 +1492,13 @@ let progCounter=0;
 const PROG_SAMPLE = [];
 
 function progInit(){
-  // Ne pas charger localStorage - Firebase est la seule source de vérité
   programmes=[];
   progCounter=0;
   progGenRef();
 }
-function progSave(){try{localStorage.setItem('presfor_progs',JSON.stringify(programmes));}catch(e){}scheduleSave();}
+
+function progSave(){  scheduleSave();
+}
 function progRenderAll(){progRenderKPI();progRenderTable();document.getElementById('prog-nb').textContent=programmes.length;}
 
 function progRenderKPI(){
@@ -1708,20 +1709,22 @@ function progClearAll(){
   }catch(e){}
   // Sauvegarder sur Firebase (écraser avec données vides)
   updateSyncIndicator('pending');
+  const resetTs = new Date().toISOString();
   fetch(FIREBASE_URL + '/presfor.json', {
     method: 'PUT',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
       programmes:[], saisies:[], dossiers:[], absences:[],
-      updated_at: new Date().toISOString()
+      reset: true,
+      updated_at: resetTs
     })
   }).then(r => {
     if(r.ok){
-      lastServerTimestamp = new Date().toISOString();
+      lastServerTimestamp = resetTs;
       syncPending = false;
       updateSyncIndicator('ok');
       progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
-      showToast('Réinitialisation complète effectuée. Base de données vidée.');
+      showToast('Réinitialisation complète. Toutes les machines seront vidées dans 15 secondes.');
     }
   }).catch(e => {
     syncPending = false;
@@ -1740,12 +1743,13 @@ let saisieDosList=[];
 const SAISIE_SAMPLE = [];
 
 function saisieInit(){
-  // Ne pas charger localStorage - Firebase est la seule source de vérité
   saisies=[];
   saisieCounter=0;
+  
 }
 
-function saisSave(){try{localStorage.setItem('presfor_saisies',JSON.stringify(saisies));}catch(e){}scheduleSave();}
+function saisSave(){  scheduleSave();
+}
 function saisieRenderAll(){saisieRenderKPI();saisieRenderList();saisieRenderCorr();saisieRenderPerf();document.getElementById('saisie-nb').textContent=saisies.length;}
 
 function saisieRenderKPI(){
@@ -1768,58 +1772,27 @@ function saisieRenderList(){
   const fa=document.getElementById('saisie-f-agent').value;
   const fd=document.getElementById('saisie-f-dept').value;
   const fdt=document.getElementById('saisie-f-date').value;
-  const filtered=saisies.filter(s=>{
-    const mq=!q||s.id.toLowerCase().includes(q)||s.agent.toLowerCase().includes(q)||s.village.toLowerCase().includes(q)||(s.prog_ref||'').toLowerCase().includes(q)||(s.etape||'').toLowerCase().includes(q);
+  const list=saisies.filter(s=>{
+    const mq=!q||s.id.toLowerCase().includes(q)||s.agent.toLowerCase().includes(q)||s.village.toLowerCase().includes(q)||(s.prog_ref||'').toLowerCase().includes(q);
     return mq&&(!fa||s.agent===fa)&&(!fd||s.dept===fd)&&(!fdt||s.date===fdt);
-  });
+  }).sort((a,b)=>b.date.localeCompare(a.date));
   const tbody=document.getElementById('saisie-tbody');
   const empty=document.getElementById('saisie-empty');
-  if(!filtered.length){tbody.innerHTML='';empty.style.display='block';return;}
+  if(!list.length){tbody.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
-
-  // ── REGROUPEMENT AFFICHAGE ──────────────────────────────────────────────────
-  // Grouper par agent + date + village + dept + prog_ref pour consolider les
-  // saisies multi-lignes déjà stockées (une ligne par étape réalisée)
-  const grpMap={};
-  filtered.forEach(s=>{
-    const gk=[s.agent,s.date,s.village,s.dept||'',s.prog_ref||''].join('||');
-    if(!grpMap[gk]){
-      grpMap[gk]={
-        ids:[s.id], ref:s.id, date:s.date, agent:s.agent, dept:s.dept,
-        sp:s.sp||'', village:s.village, prog_ref:s.prog_ref||'',
-        etapes:[], ndos:s.ndos||0, superficie:0,
-        hdep:s.hdep, hret:s.hret, duree:s.duree||'',
-        activite:s.activite||s.etape||'CF'
-      };
-    }
-    const g=grpMap[gk];
-    // Collecter les étapes uniques (depuis etapes[] ou etape string)
-    const etapesSource=s.etapes&&s.etapes.length?s.etapes:[s.etape].filter(Boolean);
-    etapesSource.forEach(e=>{if(e&&!g.etapes.includes(e))g.etapes.push(e);});
-    // Dossiers : maximum (valeur répétée pour chaque étape dans l'Excel)
-    g.ndos=Math.max(g.ndos,s.ndos||0);
-    // Superficie : sommer
-    g.superficie=Math.round((g.superficie+(s.superficie||0))*100)/100;
-    g.ids.push(s.id);
-  });
-  const list=Object.values(grpMap).sort((a,b)=>b.date.localeCompare(a.date));
-  // ── FIN REGROUPEMENT ────────────────────────────────────────────────────────
-
-  const eb=e=>{const m={'Enquête terrain':'b-blue','Bornage':'b-teal','Constitution':'b-amber','Validation techn.':'b-amber','Enregistrement':'b-green','Demande CF':'b-blue','RDC':'b-teal','PV de constat de limite':'b-amber','Levé et bornage':'b-teal','Ouverture de publicité':'b-gray','Clôture de publicité':'b-gray','Approbation CPCDC':'b-green','CF':'b-blue','DTV':'b-teal','ISF':'b-amber','CONTRAT':'b-green'};return`<span class="badge ${m[e]||'b-gray'}" style="margin-right:2px">${e}</span>`;};
-  tbody.innerHTML=list.map(g=>{
+  const eb=e=>{const m={'Enquête terrain':'b-blue','Bornage':'b-teal','Constitution':'b-amber','Validation techn.':'b-amber','Enregistrement':'b-green'};return`<span class="badge ${m[e]||'b-gray'}">${e}</span>`;};
+  tbody.innerHTML=list.map(s=>{
     let ecartHtml='<span class="badge b-gray">—</span>';
-    if(g.prog_ref){const p=PROGS_REF.find(p=>p.id===g.prog_ref);if(p){const cum=saisies.filter(x=>x.prog_ref===g.prog_ref&&x.date<=g.date).reduce((a,x)=>a+x.ndos,0);const pct=Math.round(cum/p.objectif*100);ecartHtml=`<span class="badge ${pct>=90?'b-green':pct>=65?'b-amber':'b-red'}">${pct}%</span>`;}}
-    const etapesHtml=g.etapes.length?g.etapes.map(eb).join(''): eb(g.activite||'—');
-    const refId=g.ids[0]||g.ref;
-    return`<tr><td class="td-mono" style="font-size:10px">${refId}</td><td style="font-size:12px;white-space:nowrap">${fmtDate(g.date)}</td>
-      <td style="font-weight:500">${g.agent}</td>
-      <td><span style="font-size:12px">${g.dept}</span><br><span style="font-size:11px;color:var(--text2)">${g.village}</span></td>
-      <td style="max-width:220px">${etapesHtml}</td>
-      <td style="text-align:center;font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--accent)">${g.ndos}</td>
-      <td style="text-align:center;font-size:12px;color:var(--teal);font-weight:600">${g.superficie?g.superficie+' ha':'—'}</td>
-      <td style="font-size:11px;color:var(--text2);white-space:nowrap">${fmtHeure(g.hdep)||"—"}→${fmtHeure(g.hret)||"—"}<br><span style="color:var(--text3)">${g.duree}</span></td>
+    if(s.prog_ref){const p=PROGS_REF.find(p=>p.id===s.prog_ref);if(p){const cum=saisies.filter(x=>x.prog_ref===s.prog_ref&&x.date<=s.date).reduce((a,x)=>a+x.ndos,0);const pct=Math.round(cum/p.objectif*100);ecartHtml=`<span class="badge ${pct>=90?'b-green':pct>=65?'b-amber':'b-red'}">${pct}%</span>`;}}
+    return`<tr><td class="td-mono">${s.id}</td><td style="font-size:12px;white-space:nowrap">${fmtDate(s.date)}</td>
+      <td style="font-weight:500">${s.agent}</td>
+      <td><span style="font-size:12px">${s.dept}</span><br><span style="font-size:11px;color:var(--text2)">${s.village}</span></td>
+      <td>${eb(s.etape)}</td>
+      <td style="text-align:center;font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--accent)">${s.ndos}</td>
+      <td style="text-align:center;font-size:12px;color:var(--teal);font-weight:600">${s.superficie?s.superficie+' ha':'—'}</td>
+      <td style="font-size:11px;color:var(--text2);white-space:nowrap">${fmtHeure(s.hdep)||"—"}→${fmtHeure(s.hret)||"—"}<br><span style="color:var(--text3)">${s.duree}</span></td>
       <td>${ecartHtml}</td>
-      <td><div style="display:flex;gap:5px"><button class="btn-s" style="font-size:11px;padding:4px 8px" onclick="saisieEdit('${refId}')">Modifier</button><button class="btn-d" onclick="saisieDelete('${refId}')">Sup.</button></div></td>
+      <td><div style="display:flex;gap:5px"><button class="btn-s" style="font-size:11px;padding:4px 8px" onclick="saisieEdit('${s.id}')">Modifier</button><button class="btn-d" onclick="saisieDelete('${s.id}')">Sup.</button></div></td>
     </tr>`;
   }).join('');
 }
@@ -2178,8 +2151,7 @@ function saisieImportExcel(input){
         const agent    = get(row,['agent','nom','responsable']);
         const dept     = get(row,['departement','dept','zone']);
         const village  = get(row,['village','localite','lieu']);
-        const etape    = get(row,['etaperealisee','etape','phase','operation']);
-        const activite = get(row,['activite','type_activite','act']) || '';
+        const etape    = get(row,['etape','phase','activite','operation']);
         const ndos     = parseInt(get(row,['dossier','nombre','ndos','traites','production']))||0;
         const hdep = fmtHeure((() => {
           const k = Object.keys(row).find(k2 => {
@@ -2209,15 +2181,15 @@ function saisieImportExcel(input){
         if(!village)errs.push('Village manquant');
 
         const s = {
-          // Clé de regroupement : agent + date + village + activite + prog_ref
-          _groupKey: [date, (agent||'').replace(/\s/g,'_'), (village||'').replace(/\s/g,'_'), (activite||'CF'), (prog_ref||'')].join('||'),
-          id:'',// sera généré après regroupement
+          id:(()=>{
+            // ID basé sur le contenu pour éviter les doublons
+            const key = (date||'')+'_'+(agent||'').replace(/\s/g,'')+'_'+(village||'').replace(/\s/g,'')+'_'+(ndos||0);
+            return 'SAI-'+key.replace(/[^a-zA-Z0-9_-]/g,'').substring(0,30)+'-'+(i%1000);
+          })(),
           date, agent,
           dept: dept?(dept.includes('Dép.')?dept:'Dép. '+dept):'',
           sp, village,
-          activite: activite||'CF',
           etape: etape||'Enquête terrain',
-          etapes: etape ? [etape] : ['Enquête terrain'],
           ndos, superficie, dossiers:[],
           hdep: hdep||'07:00', hret: hret||'17:00',
           duree: duree||'', km, incident, meteo, obs,
@@ -2226,81 +2198,38 @@ function saisieImportExcel(input){
         saisieImportData.push({s, errs, ligne:i+2});
       });
 
-      // ── REGROUPEMENT ────────────────────────────────────────────────────────
-      // Consolider les lignes ayant la même clé (agent+date+village+activite+prog_ref)
-      // → une seule saisie avec toutes les étapes réalisées + somme des dossiers max
-      const groupMap = {};
-      saisieImportData.forEach(({s, errs, ligne}) => {
-        const gk = s._groupKey;
-        if (!groupMap[gk]) {
-          groupMap[gk] = { s: {...s}, errs: [...errs], lignes: [ligne] };
-          groupMap[gk].s.etapes  = s.etapes ? [...s.etapes] : [s.etape];
-          groupMap[gk].s.ndos    = s.ndos;
-          groupMap[gk].s.superficie = s.superficie || 0;
-          groupMap[gk].s._obs    = new Set(s.obs ? [s.obs] : []);
-        } else {
-          const g = groupMap[gk];
-          g.lignes.push(ligne);
-          // Ajouter l'étape si nouvelle
-          if (s.etape && !g.s.etapes.includes(s.etape)) g.s.etapes.push(s.etape);
-          // Nb dossiers : prendre le maximum (valeur répétée dans l'Excel)
-          g.s.ndos = Math.max(g.s.ndos, s.ndos);
-          // Superficie : sommer (varie selon l'étape, ex. Levé et bornage)
-          g.s.superficie = Math.round((g.s.superficie + (s.superficie||0)) * 100) / 100;
-          // Observations : collecter les valeurs uniques
-          if (s.obs) g.s._obs.add(s.obs.trim());
-          // Garder les erreurs de toutes les lignes sources
-          errs.forEach(e => { if (!g.errs.includes(e)) g.errs.push(e); });
-        }
-      });
-      // Finaliser les objets groupés
-      saisieImportData = Object.values(groupMap).map(({s, errs, lignes}) => {
-        s.etapes  = s.etapes.filter(Boolean);
-        s.etape   = s.etapes[0] || 'Enquête terrain'; // étape principale
-        s.etapeLabel = s.etapes.join(' · ');          // affichage multi-étapes
-        s.obs     = [...(s._obs||[])].join(' | ');
-        delete s._groupKey; delete s._obs;
-        // Générer l'ID consolidé basé sur le groupe
-        const key = (s.date||'')+'_'+(s.agent||'').replace(/\s/g,'')+'_'+(s.village||'').replace(/\s/g,'')+'_'+(s.activite||'');
-        s.id = 'SAI-'+key.replace(/[^a-zA-Z0-9_-]/g,'').substring(0,32);
-        return { s, errs, ligne: lignes[0], lignes };
-      });
-      // ── FIN REGROUPEMENT ─────────────────────────────────────────────────────
-
       const total = saisieImportData.length;
       const totalErr = saisieImportData.filter(d=>d.errs.length>0).length;
       const modal = document.getElementById('saisie-import-modal');
 
       document.getElementById('saisie-import-info').textContent =
-        total+' saisie(s) consolidée(s) (regroupement par agent/date/village/activité). '+(totalErr>0?totalErr+' groupe(s) avec erreurs seront ignorés.':'Toutes les lignes sont valides.');
+        total+' saisie(s) détectée(s). '+(totalErr>0?totalErr+' ligne(s) invalides seront ignorées.':'Toutes les lignes sont valides.');
 
       const etapeBadge = e=>{
-        const m={'Enquête terrain':'var(--blue-lt)','Bornage':'var(--teal-lt)','Constitution':'var(--amber-lt)','Demande CF':'var(--blue-lt)','RDC':'var(--teal-lt)','PV de constat de limite':'var(--amber-lt)','Levé et bornage':'var(--teal-lt)','Ouverture de publicité':'var(--surface2)','Clôture de publicité':'var(--surface2)','Approbation CPCDC':'var(--surface2)'};
-        return'<span style="font-size:10px;padding:1px 5px;border-radius:8px;background:'+(m[e]||'var(--surface2)')+';margin-right:2px">'+e+'</span>';
+        const m={'Enquête terrain':'var(--blue-lt)','Bornage':'var(--teal-lt)','Constitution':'var(--amber-lt)'};
+        return'<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:'+(m[e]||'var(--surface2)')+'">'+e+'</span>';
       };
-      const etapesBadges = arr => (arr&&arr.length?arr:['?']).map(etapeBadge).join('');
 
       document.getElementById('saisie-import-preview').innerHTML =
         '<table style="width:100%;border-collapse:collapse;font-size:12px;">'+
         '<thead><tr style="background:var(--surface2)">'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Src.</th>'+
+        '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">L.</th>'+
         '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Date</th>'+
         '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Agent</th>'+
         '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Village</th>'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Étapes réalisées</th>'+
+        '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Étape</th>'+
         '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center">Dos.</th>'+
         '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Statut</th>'+
         '</tr></thead><tbody>'+
         saisieImportData.map(d=>{
           const ok=d.errs.length===0;
           const bg=ok?'':'background:var(--red-lt)';
-          const srcInfo=d.lignes?d.lignes.length+' lig.':'L.'+d.ligne;
           return'<tr style="border-bottom:1px solid var(--border);'+bg+'">'+
-            '<td style="padding:4px 8px;color:var(--text3);font-size:11px">'+srcInfo+'</td>'+
+            '<td style="padding:4px 8px;color:var(--text3)">'+d.ligne+'</td>'+
             '<td style="padding:4px 8px;font-family:DM Mono,monospace;font-size:11px">'+d.s.date+'</td>'+
             '<td style="padding:4px 8px;font-weight:500">'+d.s.agent+'</td>'+
             '<td style="padding:4px 8px">'+d.s.village+'</td>'+
-            '<td style="padding:4px 8px">'+etapesBadges(d.s.etapes)+'</td>'+
+            '<td style="padding:4px 8px">'+etapeBadge(d.s.etape)+'</td>'+
             '<td style="padding:4px 8px;text-align:center;font-weight:600;color:var(--accent)">'+d.s.ndos+'</td>'+
             '<td style="padding:4px 8px">'+(ok?'<span style="color:var(--accent);font-weight:500">OK</span>':
               '<span style="color:var(--red-txt)">'+d.errs.join(', ')+'</span>')+'</td>'+
@@ -2328,24 +2257,20 @@ function saisieImportConfirm(){
   });
   saisSave();
   document.getElementById('saisie-import-modal').style.display='none';
+  showToast(nb+' saisie(s) importée(s) !');
   saisieImportData=[];
   saisieRenderAll();
   dashRenderAll();
-  // Sauvegarde immédiate sur Firebase + confirmation par rechargement
-  syncPending = false;
-  updateSyncIndicator('pending');
+  // Forcer la sauvegarde immédiate sur Firebase
   serverSave().then(()=>{
-    showToast(nb+' saisie(s) consolidée(s) importée(s) et synchronisée(s) !');
-    console.log('Import synchronisé sur Firebase:', nb, 'saisie(s)');
-  }).catch(()=>{
-    showToast(nb+' saisie(s) importée(s) — synchronisation en attente.');
+    console.log('Import sauvegardé sur Firebase');
   });
 }
 
 function saisClearAll(){
   if(!confirm('Réinitialiser ?'))return;
   saisies=[...SAISIE_SAMPLE];saisieCounter=7;
-  try{localStorage.removeItem('presfor_saisies');}catch(e){}
+  
   saisieRenderAll();showToast('Réinitialisé.');
 }
 
@@ -2555,12 +2480,13 @@ function dosSelEtape(el){
 }
 
 function dosInit(){
-  // Ne pas charger localStorage - Firebase est la seule source de vérité
   dossiers=[];
   dosCounter=0;
+  
 }
 
-function dosSave(){try{localStorage.setItem('presfor_dossiers',JSON.stringify(dossiers));}catch(e){}scheduleSave();}
+function dosSave(){  scheduleSave();
+}
 function dosRenderAll(){dosRenderKPI();dosRenderList();dosRenderPipeline();dosRenderStats();document.getElementById('dos-nb').textContent=dossiers.length;}
 function dosJours(d){if(!d)return 0;return Math.floor((new Date()-new Date(d))/(1000*60*60*24));}
 function dosIdx(e){return DOS_ETAPES.indexOf(e);}
@@ -3157,7 +3083,7 @@ function dosImportConfirm(){
   showToast(msg);
   dosImportData=[];
 }
-function dosClearAll(){if(!confirm('Réinitialiser les dossiers ?'))return;dossiers=[...DOS_SAMPLE];try{localStorage.removeItem('presfor_dossiers');}catch(e){}dosSave();dosRenderAll();showToast('Réinitialisé.');}
+function dosClearAll(){if(!confirm('Réinitialiser les dossiers ?'))return;dossiers=[...DOS_SAMPLE];dosSave();dosRenderAll();showToast('Réinitialisé.');}
 
 // ═══════════════════════════════════════════
 // MODULE 4 · AGENTS ET ÉQUIPES
@@ -3283,7 +3209,7 @@ function agInit(){
   agRenderAll();
 }
 
-function agSaveAbs(){ try{localStorage.setItem('presfor_absences',JSON.stringify(absences));}catch(e){} scheduleSave(); }
+function agSaveAbs(){  }
 
 function agRenderAll(){
   agRenderKPI();
@@ -4688,7 +4614,7 @@ let notifPanelOpen = false;
 let lastNotifSent = localStorage.getItem('presfor_last_notif_sent') || null;
 
 function notifSaveConfig(){
-  localStorage.setItem('presfor_notif_config', JSON.stringify(notifConfig));
+  
 }
 
 // ── Générer les alertes ──
@@ -4841,13 +4767,13 @@ function notifRender(){
 
 function notifMarqueLue(id){
   if(!notifLues.includes(id)) notifLues.push(id);
-  localStorage.setItem('presfor_notif_lues', JSON.stringify(notifLues));
+  
   notifRender();
 }
 
 function notifMarkAll(){
   notifGetAlertes().forEach(a => { if(!notifLues.includes(a.id)) notifLues.push(a.id); });
-  localStorage.setItem('presfor_notif_lues', JSON.stringify(notifLues));
+  
   notifRender();
 }
 
@@ -4962,7 +4888,7 @@ async function notifSendSummary(){
   }
 
   lastNotifSent = new Date().toISOString();
-  localStorage.setItem('presfor_last_notif_sent', lastNotifSent);
+  
   console.log('Résumé quotidien envoyé à', Object.keys(parResponsable).length + 1, 'destinataires');
   showToast('Alertes envoyées à ' + (Object.keys(parResponsable).length + 1) + ' destinataire(s)');
 }
@@ -5007,230 +4933,139 @@ function notifCheck(){
 setInterval(notifCheck, 60 * 60 * 1000);
 
 // ═══════════════════════════════════════════
-// SAUVEGARDE PERSISTANTE// ═══════════════════════════════════════════
-// SAUVEGARDE PERSISTANTE — Firebase Realtime Database
+// ═══════════════════════════════════════════
+// SYNCHRONISATION FIREBASE — SOURCE UNIQUE DE VÉRITÉ
+// Aucun localStorage. Firebase = seule et unique source.
 // ═══════════════════════════════════════════
 
 const FIREBASE_URL = 'https://presfor-cavally-default-rtdb.europe-west1.firebasedatabase.app';
-let syncTimer = null;
-let syncPending = false;
-let lastSyncTime = null;
+let isSaving = false;
+let saveQueue = false;
+let lastKnownTs = null;
+let isOnline = navigator.onLine;
+let fbInitialized = false;
+let saveTimer = null;
+// Garder serverAvailable pour compatibilité
 let serverAvailable = false;
-let firebaseLoaded = false;
-// Hash simple pour détecter les changements
-function quickHash(data){
-  const str = JSON.stringify(data);
-  let hash = 0;
-  for(let i=0;i<str.length;i++){
-    hash = ((hash<<5)-hash)+str.charCodeAt(i);
-    hash |= 0;
-  }
-  return hash;
-}
 
-// Indicateur de sync dans la topbar
-function updateSyncIndicator(status){
-  const el = document.getElementById('sync-indicator');
-  if(!el) return;
-  const icons = {
-    ok:      {icon:'✓', txt:'Synchronisé', color:'var(--accent)'},
-    pending: {icon:'↑', txt:'Envoi...',    color:'var(--amber)'},
-    syncing: {icon:'↻', txt:'Sync...',     color:'var(--blue)'},
-    error:   {icon:'!', txt:'Local seul',  color:'var(--red)'},
-    offline: {icon:'↓', txt:'Hors-ligne',  color:'var(--text3)'},
-  };
-  const s = icons[status] || icons.ok;
-  el.innerHTML = `<span style="color:${s.color};font-size:11px;font-weight:600">${s.icon} ${s.txt}</span>`;
-}
-
-// ── Charger depuis Firebase (Firebase = source de vérité) ──
+// ── Charger depuis Firebase ──
 async function serverLoad(){
+  updateSyncIndicator('pending');
   try {
     const r = await fetch(FIREBASE_URL + '/presfor.json', {
       signal: AbortSignal.timeout(20000)
     });
-    if(!r.ok){ updateSyncIndicator('error'); return false; }
+    if(!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
-    // Si Firebase est vide (null) — vider aussi le localStorage
-    if(!d){
+
+    if(!d || d.reset){
       programmes=[]; saisies=[]; dossiers=[]; absences=[];
-      localStorage.removeItem('presfor_programmes');
-      localStorage.removeItem('presfor_saisies');
-      localStorage.removeItem('presfor_dossiers');
-      localStorage.removeItem('presfor_absences');
-      progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
+      progCounter=0; saisieCounter=0; dosCounter=0;
+      lastKnownTs = d ? d.updated_at : null;
+      fbInitialized = true; serverAvailable = true;
       updateSyncIndicator('ok');
-      firebaseLoaded = true;
-      console.log('Firebase vide — données locales effacées');
+      progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
+      console.log('Firebase vide — application réinitialisée');
       return true;
     }
-    // Firebase est la source de vérité — remplacer les données locales
-    if(Array.isArray(d.programmes)) {
-      programmes = d.programmes;
-      localStorage.setItem('presfor_programmes', JSON.stringify(programmes));
-    }
-    if(Array.isArray(d.saisies)) {
-      saisies = d.saisies;
-      localStorage.setItem('presfor_saisies', JSON.stringify(saisies));
-    }
-    if(Array.isArray(d.dossiers)) {
-      dossiers = d.dossiers;
-      localStorage.setItem('presfor_dossiers', JSON.stringify(dossiers));
-    }
-    if(Array.isArray(d.absences)) {
-      absences = d.absences;
-      localStorage.setItem('presfor_absences', JSON.stringify(absences));
-    }
+
+    programmes = Array.isArray(d.programmes) ? d.programmes : [];
+    saisies    = Array.isArray(d.saisies)    ? d.saisies    : [];
+    dossiers   = Array.isArray(d.dossiers)   ? d.dossiers   : [];
+    absences   = Array.isArray(d.absences)   ? d.absences   : [];
+    progCounter    = programmes.length;
+    saisieCounter  = saisies.length;
+    dosCounter     = dossiers.length;
+    lastKnownTs    = d.updated_at || null;
+    fbInitialized  = true;
     serverAvailable = true;
-    firebaseLoaded = true;
-    lastSyncTime = new Date();
-    lastServerTimestamp = d.updated_at || null;
+
     updateSyncIndicator('ok');
-    // Rafraîchir l'affichage
     progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
-    console.log('✓ Firebase chargé:', saisies.length, 'saisies,', programmes.length, 'programmes');
+    console.log('Firebase chargé:', saisies.length, 'saisies,', programmes.length, 'programmes');
     return true;
   } catch(e) {
-    console.log('Firebase non disponible:', e.message);
+    console.log('Firebase erreur:', e.message);
     updateSyncIndicator('offline');
+    fbInitialized = true;
     return false;
   }
 }
 
-// ── Fusionner deux tableaux par ID (évite les pertes de données) ──
-function mergeArrays(local, remote){
-  if(!Array.isArray(remote) || remote.length === 0) return Array.isArray(local) ? local : [];
-  if(!Array.isArray(local)  || local.length  === 0) return remote;
-  const map = {};
-  remote.forEach(item => { if(item && item.id) map[item.id] = item; });
-  local.forEach(item  => { if(item && item.id) map[item.id] = Object.assign({}, map[item.id] || {}, item); });
-  return Object.values(map);
-}
-
-// ── Sauvegarder sur Firebase (avec fusion préalable) ──
+// ── Sauvegarder sur Firebase ──
 async function serverSave(){
-  if(!navigator.onLine){ updateSyncIndicator('offline'); return; }
-  if(!firebaseLoaded) return; // Bloquer si Firebase pas encore chargé
+  if(isSaving){ saveQueue = true; return; }
+  if(!isOnline){ updateSyncIndicator('offline'); return; }
+  if(!fbInitialized) return;
+
+  isSaving = true;
   updateSyncIndicator('pending');
   const ts = new Date().toISOString();
   try {
-    // 1. Lire les données actuelles de Firebase avant d'écrire
-    const r0 = await fetch(FIREBASE_URL + '/presfor.json', {
-      signal: AbortSignal.timeout(10000)
-    });
-    const remote = (r0.ok) ? await r0.json() : null;
-
-    // 2. Fusionner local + Firebase (aucune donnée ne peut être perdue)
-    if(remote && typeof remote === 'object'){
-      programmes = mergeArrays(programmes, remote.programmes);
-      saisies    = mergeArrays(saisies,    remote.saisies);
-      dossiers   = mergeArrays(dossiers,   remote.dossiers);
-      absences   = mergeArrays(absences,   remote.absences);
-    }
-
-    // 3. Écrire les données fusionnées
     const r = await fetch(FIREBASE_URL + '/presfor.json', {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        programmes, saisies, dossiers, absences, updated_at: ts
-      }),
+      body: JSON.stringify({programmes, saisies, dossiers, absences, updated_at: ts, reset: false}),
       signal: AbortSignal.timeout(25000)
     });
     if(r.ok){
+      lastKnownTs = ts;
       serverAvailable = true;
-      lastSyncTime = new Date();
-      lastServerTimestamp = ts;
       updateSyncIndicator('ok');
-    } else {
-      updateSyncIndicator('error');
-    }
+    } else { updateSyncIndicator('error'); }
   } catch(e) {
-    serverAvailable = false;
     updateSyncIndicator('error');
+    console.log('Erreur save:', e.message);
+  } finally {
+    isSaving = false;
+    if(saveQueue){ saveQueue = false; setTimeout(serverSave, 500); }
   }
 }
 
-// ── Polling Firebase toutes les 10 secondes — sync multi-utilisateurs ──
+// ── Sauvegarde différée après chaque modification ──
+function scheduleSave(){
+  if(!fbInitialized) return;
+  if(saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(serverSave, 1500);
+}
+
+// ── Polling toutes les 10 secondes ──
 async function syncPoll(){
-  if(!navigator.onLine) return;
-  if(syncPending) return; // Ne pas polluer si sauvegarde en cours
+  if(!isOnline || isSaving) return;
   try {
-    // Vérifier d'abord le timestamp (léger)
-    const r1 = await fetch(FIREBASE_URL + '/presfor/updated_at.json', {
+    const r = await fetch(FIREBASE_URL + '/presfor/updated_at.json', {
       signal: AbortSignal.timeout(8000)
     });
-    if(!r1.ok) return;
-    const serverTs = await r1.json();
-    // Si même timestamp → pas de changement, rien à faire
-    if(serverTs && serverTs === lastServerTimestamp) return;
-    // Nouveau timestamp détecté → recharger toutes les données depuis Firebase
-    console.log('Changement Firebase détecté — rechargement multi-utilisateur...');
-    await serverLoad();
-    // serverLoad() met à jour lastServerTimestamp et rafraîchit tous les renderers
-  } catch(e) {
-    console.log('syncPoll erreur:', e.message);
-  }
-}
-
-// Polling toutes les 30 secondes
-setInterval(syncPoll, 10 * 1000); // 10 secondes — sync multi-utilisateurs
-
-// ── Sync différée (2s après dernière modif) ──
-function scheduleSave(){
-  if(!firebaseLoaded) return;
-  syncPending = true;
-  if(syncTimer) clearTimeout(syncTimer);
-  syncTimer = setTimeout(()=>{
-    if(syncPending){
-      syncPending = false;
-      serverSave();
+    if(!r.ok) return;
+    const ts = await r.json();
+    if(ts && ts !== lastKnownTs){
+      console.log('Mise à jour Firebase détectée, rechargement...');
+      await serverLoad();
     }
-  }, 2000);
+  } catch(e) {}
+}
+setInterval(syncPoll, 10000);
+
+// ── Connectivité ──
+window.addEventListener('online',  ()=>{ isOnline=true;  updateSyncIndicator('ok');      serverLoad(); });
+window.addEventListener('offline', ()=>{ isOnline=false; updateSyncIndicator('offline'); });
+
+// ── Indicateur ──
+function updateSyncIndicator(status){
+  const el = document.getElementById('sync-indicator');
+  if(!el) return;
+  const s = {
+    ok:      {icon:'✓', txt:'Synchronisé', color:'var(--accent)'},
+    pending: {icon:'↻', txt:'Sync...',     color:'var(--amber)'},
+    error:   {icon:'!', txt:'Erreur sync', color:'var(--red)'},
+    offline: {icon:'↓', txt:'Hors-ligne',  color:'var(--text3)'},
+  }[status] || {icon:'✓', txt:'Synchronisé', color:'var(--accent)'};
+  el.innerHTML = '<span style="color:'+s.color+';font-size:11px;font-weight:600">'+s.icon+' '+s.txt+'</span>';
 }
 
-// ── Sync automatique toutes les 5 minutes ──
-setInterval(()=>{ if(serverAvailable) serverSave(); }, 5*60*1000);
-
-// ── Polling toutes les 30 secondes pour récupérer les données des autres utilisateurs ──
-let lastServerTimestamp = null;
-
-// Hash simple pour détecter les changements
-
-// ── Formater une heure depuis Excel (fraction ou Date ou string HH:MM) ──
-function fmtHeure(val){
-  if(!val && val !== 0) return '';
-  // Si c'est un nombre décimal (fraction Excel : 0.5 = 12:00)
-  if(typeof val === 'number'){
-    const totalMin = Math.round(val * 24 * 60);
-    const h = Math.floor(totalMin / 60) % 24;
-    const m = totalMin % 60;
-    return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
-  }
-  // Si c'est une Date (Excel date 1899-12-30)
-  if(val instanceof Date){
-    const h = val.getHours();
-    const m = val.getMinutes();
-    return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
-  }
-  // Si c'est un string
-  const s = String(val).trim();
-  // Format HH:MM déjà correct
-  if(/^\d{1,2}:\d{2}$/.test(s)) return s;
-  // Format avec secondes HH:MM:SS
-  if(/^\d{1,2}:\d{2}:\d{2}/.test(s)) return s.substring(0,5);
-  // Format "Sat Dec 30 1899 17:00:00..." — extraire l'heure
-  const m2 = s.match(/(\d{2}):(\d{2}):\d{2}/);
-  if(m2) return m2[1]+':'+m2[2];
-  return s;
-}
-
-// ═══════════════════════════════════════════
-// STATUT RÉSEAU (version légère)
-// ═══════════════════════════════════════════
 function updateNetworkStatus(){
+  const online = navigator.onLine;
   try {
-    const online = navigator.onLine;
     const dot = document.getElementById('net-dot');
     const label = document.getElementById('net-label');
     const banner = document.getElementById('offline-banner');
@@ -5239,8 +5074,8 @@ function updateNetworkStatus(){
     if(banner) banner.style.display = online ? 'none' : 'block';
   } catch(e) {}
 }
-window.addEventListener('online', updateNetworkStatus);
-window.addEventListener('offline', updateNetworkStatus);
+window.addEventListener('online', ()=>{ updateNetworkStatus(); isOnline=true; serverLoad(); });
+window.addEventListener('offline', ()=>{ updateNetworkStatus(); isOnline=false; updateSyncIndicator('offline'); });
 
 // ═══════════════════════════════════════════
 // INIT GLOBAL
@@ -5278,7 +5113,7 @@ saisieInit();
 dosInit();
 agInit();
 zvInit();
-// Firebase est la source de vérité - charger AVANT tout rendu
+// Firebase est la source de vérité - charger et écraser les données locales
 showToast('Chargement des données...');
 serverLoad().then(ok => {
   if(!ok) {
@@ -5286,20 +5121,21 @@ serverLoad().then(ok => {
     progRenderAll();
     saisieRenderAll();
     dosRenderAll();
+    dashRenderAll();
     showToast('Mode hors-ligne - données locales');
   }
-  // Peupler les selects agents APRÈS chargement Firebase
-  ['pf-agent','sf-agent','df-agent','abs-agent'].forEach(id=>buildAgentOptions(id,false));
-  ['saisie-f-agent','dos-f-agent'].forEach(id=>buildAgentOptions(id,true));
-  // Initialiser le dashboard APRÈS que les données Firebase sont chargées
-  dashInit();
-  // Démarrer sur le tableau de bord
-  switchModule('accueil');
-  // Vérifier les alertes au démarrage
-  setTimeout(notifCheck, 3000);
-  // Démarrer le polling de synchronisation
-  setTimeout(syncPoll, 10000);
 });
+// Peupler les selects agents
+['pf-agent','sf-agent','df-agent','abs-agent'].forEach(id=>buildAgentOptions(id,false));
+['saisie-f-agent','dos-f-agent'].forEach(id=>buildAgentOptions(id,true));
+// Initialiser le dashboard APRÈS que toutes les données sont chargées
+dashInit();
+// Démarrer sur le tableau de bord
+switchModule('accueil');
+// Vérifier les alertes au démarrage
+setTimeout(notifCheck, 3000);
+// Démarrer le polling de synchronisation (après 10s pour laisser le temps au chargement)
+setTimeout(syncPoll, 10000);
 
 </script>
 
@@ -5385,58 +5221,6 @@ serverLoad().then(ok => {
       <div id="rpt-contenu"></div>
     </div>
   </div>
-</div>
-
-<!-- ═══ SYSTÈME RESET ADMIN ═══ -->
-<script>
-(function() {
-  const DB_URL = 'https://presfor-cavally-default-rtdb.europe-west1.firebasedatabase.app';
-  const ADMIN_PWD = 'CAVALLY2026';
-
-  // Vérification au chargement : reset déclenché ?
-  async function checkResetSignal() {
-    try {
-      const res = await fetch(`${DB_URL}/presfor/reset_signal.json`);
-      const signal = await res.json();
-      if (!signal) return;
-      const lastAck = localStorage.getItem('reset_ack') || '0';
-      if (signal > lastAck) {
-        const keys = Object.keys(localStorage);
-        keys.forEach(k => { if (k !== 'reset_ack') localStorage.removeItem(k); });
-        localStorage.setItem('reset_ack', signal);
-        window.location.reload();
-      }
-    } catch(e) {}
-  }
-
-  // Fonction admin : déclencher le reset
-  window.adminResetDB = async function() {
-    const pwd = prompt('Mot de passe administrateur :');
-    if (pwd !== ADMIN_PWD) { alert('Mot de passe incorrect.'); return; }
-    if (!confirm('⚠️ Réinitialiser toute la base pour TOUS les agents ? Irréversible.')) return;
-    const signal = Date.now().toString();
-    await fetch(`${DB_URL}/presfor.json`, {
-      method: 'PUT',
-      body: JSON.stringify({ reset_signal: signal })
-    });
-    localStorage.clear();
-    localStorage.setItem('reset_ack', signal);
-    alert('✅ Base réinitialisée. Les agents verront une base vide à la prochaine connexion.');
-    window.location.reload();
-  };
-
-  checkResetSignal();
-})();
-</script>
-
-<!-- Bouton Admin discret -->
-<div style="position:fixed;bottom:12px;left:12px;z-index:9999;">
-  <button onclick="adminResetDB()"
-    style="background:var(--red-lt);color:var(--red-txt);border:1px solid rgba(184,48,37,.2);
-    padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;opacity:0.3;"
-    onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'">
-    ⚙ Reset
-  </button>
 </div>
 
 </body>
