@@ -1462,6 +1462,7 @@ const PROGS_REF=[
 ];
 
 function fmtDate(d){if(!d)return'—';return new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});}
+function fmtHeure(h){if(!h)return'';return h;}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 
 // ── Navigation modules ──
