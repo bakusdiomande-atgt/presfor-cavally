@@ -1718,8 +1718,11 @@ function progEdit(id){
   document.getElementById('pf-periode').value=p.periode_type;
   document.getElementById('pf-debut').value=p.date_debut;
   document.getElementById('pf-fin').value=p.date_fin;
+  // Département → peupler SP → fixer valeur SP → peupler Villages
   document.getElementById('pf-dept').value=p.dept;
+  geoUpdateSP('pf-dept','pf-sp','pf-village-sel');
   document.getElementById('pf-sp').value=p.sp||'';
+  geoUpdateVillage('pf-dept','pf-sp','pf-village-sel');
   document.getElementById('pf-agent').value=p.agent;
   progRestoreSousEtapes(p.op, p.sousetapes||[]);
   document.getElementById('pf-objectif').value=p.objectif;
@@ -3110,7 +3113,7 @@ function progImportExcel(input){
           date_fin:fin||'',
           dept:dept?(dept.includes('Dép.')?dept:'Dép. '+dept):'',
           sp,villages:[],agent,op:op||'Enquête terrain',
-          objectif:parseFloat(objectif)||0, // Ha pour Topo
+          objectif:parseFloat(objectif)||0,
           objectif_dos:obj_dos,
           objectif_vil:obj_vil,
           etape_prog:etape_prog,
@@ -3121,7 +3124,7 @@ function progImportExcel(input){
           if(fin&&fin<now)return'En retard';
           return'En cours';
         })(),realise:0,
-          sousetapes:[]
+          sousetapes:(()=>{ const se=getSousActivites(agent,op||'Enquête terrain'); return se.length?se:(ACTIVITES[op||'Enquête terrain']?.etapes||[]); })()
         };
         progImportData.push({prog,errs,ligne:i+2});
       });
