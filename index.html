@@ -322,90 +322,44 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 <!-- ══════════════════════════════════════════════
      MODULE ACCUEIL · TABLEAU DE BORD
 ══════════════════════════════════════════════ -->
-<div id="module-accueil" class="module" style="display:none;flex:1;min-width:0;overflow-y:auto;">
-  <div style="padding:20px 24px;max-width:1200px;margin:0 auto;">
+<div id="module-accueil" class="module" style="display:none;flex:1;min-width:0;overflow-y:auto;background:#F0F2EF;">
 
-    <!-- En-tête avec date et heure -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+  <!-- ── En-tête ── -->
+  <div style="background:#fff;border-bottom:1px solid #E0E0E0;padding:16px 24px 14px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <div>
-        <h1 style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--text1);margin:0">Tableau de bord PRESFOR</h1>
-        <p style="font-size:13px;color:var(--text2);margin:3px 0 0" id="dash-date">Région du Cavally</p>
+        <h1 style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:#1A1916;margin:0;">Tableau de Bord</h1>
+        <p id="dash-date" style="font-size:12px;color:#5C5A55;margin:3px 0 0;">PRESFOR · Région du Cavally</p>
       </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn-s" onclick="dashRefresh()" style="display:flex;align-items:center;gap:5px;">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/><path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"/></svg>
-          Actualiser
-        </button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div id="dash-alertes-badge" style="display:none;background:#DC2626;color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;"></div>
+        <button onclick="dashRefresh()" class="btn-s" style="display:flex;align-items:center;gap:5px;font-size:12px;">↻ Actualiser</button>
       </div>
     </div>
-
-    <!-- KPI principaux -->
-    <div id="dash-kpi-main" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;"></div>
-
-    <!-- Alertes -->
-    <div id="dash-alertes-wrap" style="margin-bottom:18px;display:none;">
-      <div style="background:var(--red-lt);border:1px solid rgba(184,48,37,.2);border-radius:var(--radius);padding:12px 16px;">
-        <div style="font-size:12px;font-weight:700;color:var(--red-txt);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg>
-          Alertes terrain
-        </div>
-        <div id="dash-alertes-list" style="display:flex;flex-direction:column;gap:5px;"></div>
-      </div>
-    </div>
-
-    <!-- Ligne 2 : Activité récente + Couverture départements -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
-
-      <!-- Activité récente -->
-      <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;">
-        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;">Saisies récentes</span>
-          <button class="btn-s" style="font-size:10px;padding:3px 8px" onclick="switchModule('saisie')">Voir tout</button>
-        </div>
-        <div id="dash-recent-saisies" style="max-height:280px;overflow-y:auto;"></div>
-      </div>
-
-      <!-- Couverture par département -->
-      <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;">
-        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;">Couverture par département</span>
-          <button class="btn-s" style="font-size:10px;padding:3px 8px" onclick="switchModule('zones')">Voir tout</button>
-        </div>
-        <div id="dash-couverture" style="padding:14px 16px;"></div>
-      </div>
-    </div>
-
-    <!-- Ligne 3 : Performance agents + Progression activités -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
-
-      <!-- Top agents -->
-      <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;">
-        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;">Top agents — Production</span>
-          <button class="btn-s" style="font-size:10px;padding:3px 8px" onclick="switchModule('agents')">Voir tout</button>
-        </div>
-        <div id="dash-top-agents" style="padding:10px 14px;"></div>
-      </div>
-
-      <!-- Progression par activité -->
-      <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;">
-        <div style="padding:12px 16px;border-bottom:1px solid var(--border);">
-          <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;">Progression par activité</span>
-        </div>
-        <div id="dash-activites" style="padding:14px 16px;"></div>
-      </div>
-    </div>
-
-    <!-- Ligne 4 : Programmes en cours -->
-    <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:18px;">
-      <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;">Programmes en cours</span>
-        <button class="btn-s" style="font-size:10px;padding:3px 8px" onclick="switchModule('prog')">Voir tout</button>
-      </div>
-      <div id="dash-programmes" style="overflow-x:auto;"></div>
-    </div>
-
+    <div id="dash-kpi-main" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
   </div>
+
+  <!-- ── Alertes ── -->
+  <div id="dash-alertes-wrap" style="display:none;padding:10px 24px 0;">
+    <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;">
+      <div id="dash-alertes-list"></div>
+    </div>
+  </div>
+
+  <!-- ── Contenu 2 colonnes ── -->
+  <div style="padding:14px 24px 24px;display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div id="dash-card-saisies"    style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #E5E7EB;overflow:hidden;"></div>
+      <div id="dash-card-depts"      style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #E5E7EB;overflow:hidden;"></div>
+      <div id="dash-card-agents"     style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #E5E7EB;overflow:hidden;"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div id="dash-card-dossiers"   style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #E5E7EB;overflow:hidden;"></div>
+      <div id="dash-card-activites"  style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #E5E7EB;overflow:hidden;"></div>
+      <div id="dash-card-programmes" style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #E5E7EB;overflow:hidden;"></div>
+    </div>
+  </div>
+
 </div>
 
 <!-- ══════════════════════════════════════════════
@@ -4245,270 +4199,257 @@ function zvExportCSV(){
 // ═══════════════════════════════════════════
 
 function dashInit(){
-  // Afficher date/heure
-  const now = new Date();
-  const opts = {weekday:'long',day:'numeric',month:'long',year:'numeric'};
-  document.getElementById('dash-date').textContent =
-    now.toLocaleDateString('fr-FR', opts) + ' — ' +
-    now.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+  const now=new Date();
+  const el=document.getElementById('dash-date');
+  if(el) el.textContent='PRESFOR · Région du Cavally · '+now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+' — '+now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
   dashRenderAll();
 }
-
-function dashRefresh(){
-  dashRenderAll();
-  showToast('Tableau de bord actualisé');
-}
-
+function dashRefresh(){ dashRenderAll(); showToast('Tableau de bord actualisé'); }
 function dashRenderAll(){
-  dashRenderKPI();
-  dashRenderAlertes();
-  dashRenderRecentSaisies();
-  dashRenderCouverture();
-  dashRenderTopAgents();
-  dashRenderActivites();
-  dashRenderProgrammes();
+  dashRenderKPI(); dashRenderAlertes();
+  dashRenderCardSaisies(); dashRenderCardDossiers();
+  dashRenderCardDepts(); dashRenderCardActivites();
+  dashRenderCardAgents(); dashRenderCardProgrammes();
 }
 
-// ── KPI principaux ──
-function dashRenderKPI(){
-  const today = new Date().toISOString().split('T')[0];
-  const totDos = saisies.reduce((s,x)=>s+(x.ndos||0),0);
-  const totSup = saisies.reduce((s,x)=>s+(x.superficie||0),0);
-  const agentsActifs = new Set(saisies.filter(s=>s.date===today).map(s=>s.agent)).size;
-  const progsEnCours = programmes.filter(p=>p.statut==='En cours').length;
-  const progsRetard = programmes.filter(p=>p.statut==='En retard').length;
-  const dossActifs = dossiers.filter(d=>d.etape!=='Clôturé').length;
-  const dossClos = dossiers.filter(d=>d.etape==='Clôturé').length;
-  const txCloture = dossiers.length>0?Math.round(dossClos/dossiers.length*100):0;
-  const saisiesAuj = saisies.filter(s=>s.date===today).length;
-  const supAuj = saisies.filter(s=>s.date===today).reduce((s,x)=>s+(x.superficie||0),0);
+// ── Pie chart SVG ──
+function makePieSVG(segs, size=130){
+  const cx=size/2, cy=size/2, r=size/2-3;
+  const tot=segs.reduce((s,x)=>s+(x.val||0),0);
+  if(!tot) return `<svg viewBox="0 0 ${size} ${size}" style="width:${size}px;height:${size}px;flex-shrink:0"><circle cx="${cx}" cy="${cy}" r="${r}" fill="#E5E7EB"/><text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="#9CA3AF">—</text></svg>`;
+  let ang=-Math.PI/2;
+  const paths=segs.filter(s=>s.val>0).map(s=>{
+    const sw=(s.val/tot)*2*Math.PI;
+    const x1=cx+r*Math.cos(ang), y1=cy+r*Math.sin(ang);
+    ang+=sw;
+    const x2=cx+r*Math.cos(ang), y2=cy+r*Math.sin(ang);
+    return `<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${sw>Math.PI?1:0},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${s.c}" stroke="#fff" stroke-width="2"/>`;
+  });
+  return `<svg viewBox="0 0 ${size} ${size}" style="width:${size}px;height:${size}px;flex-shrink:0">${paths.join('')}</svg>`;
+}
 
-  document.getElementById('dash-kpi-main').innerHTML = `
-    <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;border-top:3px solid var(--accent2);">
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px;">Dossiers traités</div>
-      <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:700;color:var(--accent)">${totDos}</div>
-      <div style="font-size:11px;color:var(--text3);margin-top:4px;">Superficie : ${totSup.toFixed(1)} ha</div>
-      <div style="margin-top:8px;font-size:11px;color:var(--text2);padding-top:8px;border-top:1px solid var(--border);">
-        Aujourd'hui : <b style="color:var(--accent)">${saisiesAuj}</b> saisie(s) · <b>${supAuj.toFixed(1)}</b> ha
+// ── Helpers HTML ──
+function cardHdr(title, action, label){
+  return `<div style="padding:13px 16px;border-bottom:1px solid #F3F4F6;display:flex;justify-content:space-between;align-items:center;">
+    <span style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:#111827;">${title}</span>
+    ${action?`<button onclick="${action}" style="font-size:10px;padding:3px 10px;border:1px solid #D1D5DB;background:#fff;border-radius:6px;cursor:pointer;color:#374151;font-family:'Instrument Sans',sans-serif;">${label}</button>`:''}
+  </div>`;
+}
+
+function pieCard(title, action, label, descHtml, pieSVG, footerHtml=''){
+  return cardHdr(title,action,label)+
+    `<div style="padding:14px 16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+        <div style="flex:1;min-width:0;">${descHtml}</div>
+        ${pieSVG}
       </div>
-    </div>
-    <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;border-top:3px solid var(--blue);">
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px;">Agents actifs</div>
-      <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:700;color:var(--blue)">${agentsActifs}</div>
-      <div style="font-size:11px;color:var(--text3);margin-top:4px;">sur ${AGENTS.length} agents au total</div>
-      <div style="margin-top:8px;font-size:11px;color:var(--text2);padding-top:8px;border-top:1px solid var(--border);">
-        Ayant saisi aujourd'hui
+      ${footerHtml}
+    </div>`;
+}
+
+function tableCard(title, action, label, rowsHtml, barColor='#3B82F6'){
+  return cardHdr(title,action,label)+
+    `<div style="padding:0 16px 14px;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr style="border-bottom:2px solid #F3F4F6;">
+          <th style="text-align:left;padding:8px 6px 6px 0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6B7280;">Libellé</th>
+          <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6B7280;">Nb</th>
+          <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6B7280;">Taux</th>
+          <th style="padding:8px 0 6px 6px;min-width:100px;"></th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>`;
+}
+
+function tRow(label, val, tot, color){
+  const pct=tot>0?Math.round(val/tot*100):0;
+  return `<tr style="border-bottom:1px solid #F9FAFB;">
+    <td style="padding:7px 6px 7px 0;font-size:12px;color:#374151;">${label}</td>
+    <td style="padding:7px 6px;text-align:right;font-weight:600;font-size:12px;color:#111827;">${val.toLocaleString('fr-FR')}</td>
+    <td style="padding:7px 6px;text-align:right;font-size:12px;color:#6B7280;">${pct}%</td>
+    <td style="padding:7px 0 7px 8px;">
+      <div style="height:8px;background:#F3F4F6;border-radius:4px;overflow:hidden;">
+        <div style="width:${pct}%;height:100%;background:${color};border-radius:4px;"></div>
       </div>
-    </div>
-    <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;border-top:3px solid ${progsRetard>0?'var(--red)':'var(--amber)'};">
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px;">Programmes</div>
-      <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:700;color:var(--amber)">${progsEnCours}</div>
-      <div style="font-size:11px;color:var(--text3);margin-top:4px;">En cours sur ${programmes.length} total</div>
-      <div style="margin-top:8px;font-size:11px;padding-top:8px;border-top:1px solid var(--border);color:${progsRetard>0?'var(--red-txt)':'var(--text2)'};">
-        ${progsRetard>0?`⚠ ${progsRetard} en retard`:'Tous dans les délais'}
+    </td>
+  </tr>`;
+}
+
+// ── KPI pills ──
+function dashRenderKPI(){
+  const today=new Date().toISOString().split('T')[0];
+  const totDos=saisies.reduce((s,x)=>s+(x.ndos||0),0);
+  const totSaisies=saisies.length;
+  const totSup=saisies.reduce((s,x)=>s+(x.superficie||0),0);
+  const agAct=new Set(saisies.filter(s=>s.date===today).map(s=>s.agent)).size;
+  const progEC=programmes.filter(p=>p.statut==='En cours').length;
+  const pill=(bg,icon,val,label)=>
+    `<div style="background:${bg};color:#fff;padding:10px 18px;border-radius:8px;display:flex;align-items:center;gap:10px;min-width:140px;">
+      <span style="font-size:20px;">${icon}</span>
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;line-height:1;">${typeof val==='number'?val.toLocaleString('fr-FR'):val}</div>
+        <div style="font-size:10px;opacity:.85;margin-top:2px;">${label}</div>
       </div>
-    </div>
-    <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;border-top:3px solid var(--accent);">
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px;">Dossiers fonciers</div>
-      <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:700;color:var(--accent)">${dossActifs}</div>
-      <div style="font-size:11px;color:var(--text3);margin-top:4px;">Actifs · ${dossClos} clôturés</div>
-      <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
-        <div style="display:flex;align-items:center;gap:6px;">
-          <div style="flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;">
-            <div style="width:${txCloture}%;height:100%;background:var(--accent);border-radius:3px;"></div>
-          </div>
-          <span style="font-size:11px;font-weight:600;color:var(--accent)">${txCloture}%</span>
+    </div>`;
+  document.getElementById('dash-kpi-main').innerHTML=
+    pill('#1B7A4A','📋',totDos,'Dossiers traités')+
+    pill('#1565C0','📁',totSaisies,'Saisies enregistrées')+
+    pill('#E65100','📅',progEC,'Programmes en cours')+
+    pill('#00796B','👥',agAct,'Agents actifs ce jour')+
+    pill('#F57F17','🗺️',totSup.toFixed(1)+'ha','Superficie traitée');
+}
+
+// ── Card : Répartition saisies ──
+function dashRenderCardSaisies(){
+  const tot=saisies.reduce((s,x)=>s+(x.ndos||0),0);
+  const enq=saisies.filter(s=>['Enquête terrain','Recensement coutumier','Recensement droit coutumier'].includes(s.etape)).reduce((s,x)=>s+(x.ndos||0),0);
+  const born=saisies.filter(s=>s.etape==='Bornage').reduce((s,x)=>s+(x.ndos||0),0);
+  const const_=saisies.filter(s=>['Constitution du dossier','PV constat limite','PV de constat de limite'].includes(s.etape)).reduce((s,x)=>s+(x.ndos||0),0);
+  const autre=tot-enq-born-const_;
+  const pEnq=tot>0?Math.round(enq/tot*100):0;
+  const pBorn=tot>0?Math.round(born/tot*100):0;
+  const segs=[{val:enq,c:'#3B82F6'},{val:born,c:'#F97316'},{val:const_,c:'#22C55E'},{val:Math.max(0,autre),c:'#8B5CF6'}];
+  const desc=`<div style="font-size:13px;color:#374151;margin-bottom:8px;">
+    <b style="font-size:16px;color:#111827;">${tot.toLocaleString('fr-FR')}</b> dossiers saisis dont
+  </div>
+  <div style="font-size:13px;color:#374151;line-height:1.9;">
+    <b style="color:#3B82F6;">${enq.toLocaleString('fr-FR')}</b> enquêtes terrain soit <b>${pEnq}%</b><br>
+    <b style="color:#F97316;">${born.toLocaleString('fr-FR')}</b> bornages soit <b>${pBorn}%</b><br>
+    <b style="color:#22C55E;">${const_.toLocaleString('fr-FR')}</b> constitutions dossier
+  </div>`;
+  document.getElementById('dash-card-saisies').innerHTML=
+    pieCard('Répartition des saisies',"switchModule('saisie')",'Voir tout',desc,makePieSVG(segs));
+}
+
+// ── Card : État dossiers fonciers ──
+function dashRenderCardDossiers(){
+  const tot=dossiers.length;
+  const clos=dossiers.filter(d=>d.etape==='Clôturé').length;
+  const blq=dossiers.filter(d=>d.etape!=='Clôturé'&&dosJours(d.etape_date)>30).length;
+  const act=tot-clos-blq;
+  const pClos=tot>0?Math.round(clos/tot*100):0;
+  const pAct=tot>0?Math.round(act/tot*100):0;
+  const segs=[{val:clos,c:'#22C55E'},{val:act,c:'#3B82F6'},{val:blq,c:'#EF4444'}];
+  const desc=`<div style="font-size:13px;color:#374151;margin-bottom:8px;">
+    <b style="font-size:16px;color:#111827;">${tot.toLocaleString('fr-FR')}</b> dossiers fonciers dont
+  </div>
+  <div style="font-size:13px;color:#374151;line-height:1.9;">
+    <b style="color:#22C55E;">${clos.toLocaleString('fr-FR')}</b> clôturés soit <b>${pClos}%</b><br>
+    <b style="color:#3B82F6;">${act.toLocaleString('fr-FR')}</b> en cours soit <b>${pAct}%</b><br>
+    <b style="color:#EF4444;">${blq.toLocaleString('fr-FR')}</b> bloqués depuis +30 jours
+  </div>`;
+  document.getElementById('dash-card-dossiers').innerHTML=
+    pieCard('État des dossiers fonciers',"switchModule('dossier')",'Voir tout',desc,makePieSVG(segs));
+}
+
+// ── Card : Par département ──
+function dashRenderCardDepts(){
+  const DEPTS=['Dép. Guiglo','Dép. Bloléquin','Dép. Taï','Dép. Toulépleu'];
+  const tot=saisies.reduce((s,x)=>s+(x.ndos||0),0)||1;
+  const rows=DEPTS.map(d=>{
+    const val=saisies.filter(s=>s.dept===d).reduce((s,x)=>s+(x.ndos||0),0);
+    return tRow(d.replace('Dép. ',''),val,tot,'#3B82F6');
+  }).join('');
+  document.getElementById('dash-card-depts').innerHTML=tableCard('Par département',"switchModule('zones')",'Zones',rows,'#3B82F6');
+}
+
+// ── Card : Par activité ──
+function dashRenderCardActivites(){
+  const ACT_C={'ISF':'#8B5CF6','CF':'#22C55E','DTV':'#F97316','CONTRAT':'#3B82F6'};
+  const tot=dossiers.length||1;
+  const rows=Object.keys(ACTIVITES).map(k=>{
+    const val=dossiers.filter(d=>d.activite===k).length;
+    return tRow(k,val,tot,ACT_C[k]||'#22C55E');
+  }).join('');
+  document.getElementById('dash-card-activites').innerHTML=tableCard('Par activité',null,'',rows,'#22C55E');
+}
+
+// ── Card : Top agents ──
+function dashRenderCardAgents(){
+  const data=AGENTS.map(a=>({nom:a,val:saisies.filter(s=>s.agent===a).reduce((s,x)=>s+(x.ndos||0),0)}))
+    .filter(d=>d.val>0).sort((a,b)=>b.val-a.val).slice(0,8);
+  const tot=data[0]?.val||1;
+  const M=['🥇','🥈','🥉'];
+  const rows=data.map((d,i)=>
+    `<tr style="border-bottom:1px solid #F9FAFB;">
+      <td style="padding:7px 6px 7px 0;font-size:12px;color:#374151;">${M[i]||'<span style="color:#9CA3AF;font-size:11px">'+(i+1)+'.</span>'} ${d.nom.split(' ')[0]+' '+d.nom.split(' ').slice(-1)[0]}</td>
+      <td style="padding:7px 6px;text-align:right;font-weight:700;font-size:12px;color:#111827;">${d.val}</td>
+      <td style="padding:7px 6px;text-align:right;font-size:12px;color:#6B7280;">${Math.round(d.val/tot*100)}%</td>
+      <td style="padding:7px 0 7px 8px;min-width:100px;">
+        <div style="height:8px;background:#F3F4F6;border-radius:4px;overflow:hidden;">
+          <div style="width:${Math.round(d.val/tot*100)}%;height:100%;background:${i===0?'#F59E0B':i===1?'#9CA3AF':i===2?'#B45309':'#3B82F6'};border-radius:4px;"></div>
         </div>
-      </div>
+      </td>
+    </tr>`).join('');
+  document.getElementById('dash-card-agents').innerHTML=
+    (!data.length?cardHdr('Top agents — Production',null,'')+'<p style="font-size:12px;color:#9CA3AF;padding:16px;text-align:center;">Aucune donnée</p>':
+    tableCard('Top agents — Production',"switchModule('saisie')",'Stats',rows));
+}
+
+// ── Card : Programmes en cours ──
+function dashRenderCardProgrammes(){
+  const enCours=programmes.filter(p=>p.statut==='En cours'||p.statut==='En retard')
+    .sort((a,b)=>(b.statut==='En retard'?1:0)-(a.statut==='En retard'?1:0)).slice(0,6);
+  const rows=enCours.map(p=>{
+    const real=saisies.filter(s=>s.prog_ref===p.id).reduce((s,x)=>s+(x.ndos||0),0);
+    const pct=p.objectif>0?Math.min(100,Math.round(real/p.objectif*100)):0;
+    const col=pct>=90?'#22C55E':pct>=60?'#F59E0B':'#EF4444';
+    const retard=p.statut==='En retard';
+    return `<tr style="border-bottom:1px solid #F9FAFB;${retard?'background:#FFF7F7':''}">
+      <td style="padding:7px 6px 7px 0;font-family:'DM Mono',monospace;font-size:10px;color:#6B7280;">${p.id}</td>
+      <td style="padding:7px 6px;font-size:12px;font-weight:500;color:#111827;">${p.agent.split(' ').slice(0,2).join(' ')}</td>
+      <td style="padding:7px 6px;font-size:11px;color:#6B7280;">${p.dept.replace('Dép. ','')}</td>
+      <td style="padding:7px 0 7px 8px;min-width:120px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="flex:1;height:7px;background:#F3F4F6;border-radius:4px;overflow:hidden;">
+            <div style="width:${pct}%;height:100%;background:${col};border-radius:4px;"></div>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:${col};min-width:28px">${pct}%</span>
+        </div>
+      </td>
+      <td style="padding:7px 0 7px 8px;text-align:center;">
+        <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:${retard?'#FEE2E2':'#DCFCE7'};color:${retard?'#991B1B':'#14532D'}">${p.statut}</span>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('dash-card-programmes').innerHTML=
+    cardHdr('Programmes en cours',"switchModule('prog')",'Voir tout')+
+    `<div style="padding:0 16px 14px;">
+      ${!enCours.length?'<p style="font-size:12px;color:#9CA3AF;padding:12px 0;text-align:center;">Aucun programme en cours</p>':
+      `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr style="border-bottom:2px solid #F3F4F6;">
+          <th style="text-align:left;padding:8px 6px 6px 0;font-size:10px;font-weight:600;text-transform:uppercase;color:#6B7280;">Réf.</th>
+          <th style="text-align:left;padding:8px 6px;font-size:10px;font-weight:600;text-transform:uppercase;color:#6B7280;">Agent</th>
+          <th style="text-align:left;padding:8px 6px;font-size:10px;font-weight:600;text-transform:uppercase;color:#6B7280;">Dép.</th>
+          <th style="text-align:left;padding:8px 0 6px 8px;font-size:10px;font-weight:600;text-transform:uppercase;color:#6B7280;min-width:120px">Progression</th>
+          <th style="text-align:center;padding:8px 0 6px 8px;font-size:10px;font-weight:600;text-transform:uppercase;color:#6B7280;">Statut</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`}
     </div>`;
 }
 
 // ── Alertes ──
 function dashRenderAlertes(){
-  const alertes = [];
-  const today = new Date().toISOString().split('T')[0];
-
-  // Dossiers bloqués > 30 jours
-  const bloques = dossiers.filter(d=>d.etape!=='Clôturé'&&dosJours(d.etape_date)>30);
-  if(bloques.length>0)
-    alertes.push({type:'red', msg:`${bloques.length} dossier(s) bloqué(s) depuis plus de 30 jours`, action:"switchModule('dossier')", label:'Voir dossiers'});
-
-  // Programmes en retard
-  const retard = programmes.filter(p=>p.statut==='En retard');
-  if(retard.length>0)
-    alertes.push({type:'red', msg:`${retard.length} programme(s) en retard`, action:"switchModule('prog')", label:'Voir programmes'});
-
-  // Agents sans saisie depuis 3 jours
-  const il3j = new Date(); il3j.setDate(il3j.getDate()-3);
-  const dateLimite = il3j.toISOString().split('T')[0];
-  const sansSaisie = AGENTS.filter(a=>{
-    const last = saisies.filter(s=>s.agent===a).sort((x,y)=>y.date.localeCompare(x.date))[0];
-    return last && last.date < dateLimite;
-  });
-  if(sansSaisie.length>0)
-    alertes.push({type:'amber', msg:`${sansSaisie.length} agent(s) sans saisie depuis plus de 3 jours`, action:"switchModule('agents')", label:'Voir agents'});
-
-  const wrap = document.getElementById('dash-alertes-wrap');
-  const list = document.getElementById('dash-alertes-list');
-  if(!alertes.length){wrap.style.display='none';return;}
-  wrap.style.display='block';
-  list.innerHTML = alertes.map(a=>`
-    <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.5);padding:6px 10px;border-radius:var(--radius-sm);">
-      <span style="font-size:12px;color:var(--red-txt)">⚠ ${a.msg}</span>
-      <button onclick="${a.action}" style="font-size:10px;padding:3px 9px;border:1px solid var(--red);background:transparent;color:var(--red-txt);border-radius:4px;cursor:pointer">${a.label}</button>
-    </div>`).join('');
+  const alertes=[];
+  const bloques=dossiers.filter(d=>d.etape!=='Clôturé'&&dosJours(d.etape_date)>30);
+  if(bloques.length) alertes.push({msg:`${bloques.length} dossier(s) bloqué(s) depuis +30j`,action:"switchModule('dossier')"});
+  const retard=programmes.filter(p=>p.statut==='En retard');
+  if(retard.length) alertes.push({msg:`${retard.length} programme(s) en retard`,action:"switchModule('prog')"});
+  const il3j=new Date(); il3j.setDate(il3j.getDate()-3);
+  const lim=il3j.toISOString().split('T')[0];
+  const inact=AGENTS.filter(a=>{const l=saisies.filter(s=>s.agent===a).sort((x,y)=>y.date.localeCompare(x.date))[0];return l&&l.date<lim;});
+  if(inact.length) alertes.push({msg:`${inact.length} agent(s) inactif(s) +3 jours`,action:"switchModule('agents')"});
+  const badge=document.getElementById('dash-alertes-badge');
+  const wrap=document.getElementById('dash-alertes-wrap');
+  const list=document.getElementById('dash-alertes-list');
+  if(!alertes.length){if(wrap)wrap.style.display='none';if(badge)badge.style.display='none';return;}
+  if(badge){badge.style.display='block';badge.textContent=alertes.length+' alerte'+(alertes.length>1?'s':'');}
+  if(wrap)wrap.style.display='block';
+  if(list)list.innerHTML=alertes.map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;color:#991B1B;">⚠ ${a.msg} <button onclick="${a.action}" style="font-size:10px;padding:2px 9px;border:1px solid #DC2626;background:transparent;color:#DC2626;border-radius:4px;cursor:pointer;margin-left:8px;flex-shrink:0">Voir</button></div>`).join('');
 }
 
-// ── Saisies récentes ──
-function dashRenderRecentSaisies(){
-  const recent = [...saisies].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
-  const div = document.getElementById('dash-recent-saisies');
-  if(!recent.length){div.innerHTML='<p style="font-size:12px;color:var(--text3);padding:16px;text-align:center;">Aucune saisie enregistrée</p>';return;}
-  div.innerHTML = recent.map(s=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);">
-      <div style="min-width:70px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${fmtDate(s.date)}</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.agent}</div>
-        <div style="font-size:11px;color:var(--text2)">${s.village} · ${s.dept.replace('Dép. ','')}</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0;">
-        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--accent)">${s.ndos}</div>
-        <div style="font-size:10px;color:var(--text3)">${s.superficie?s.superficie+'ha':''}</div>
-      </div>
-    </div>`).join('');
-}
-
-// ── Couverture par département ──
-function dashRenderCouverture(){
-  const div = document.getElementById('dash-couverture');
-  const depts = Object.keys(ZV_GEO);
-  div.innerHTML = depts.map(dept=>{
-    const info = ZV_GEO[dept];
-    const allV = Object.values(info.sp).flat();
-    const couverts = allV.filter(v=>dossiers.some(d=>d.village===v&&d.dept===dept)).length;
-    const partiels = allV.filter(v=>!dossiers.some(d=>d.village===v&&d.dept===dept)&&saisies.some(s=>s.village===v)).length;
-    const pct = allV.length>0?Math.round(couverts/allV.length*100):0;
-    const col = pct>=70?'var(--accent)':pct>=40?'var(--amber)':'var(--red)';
-    return`<div style="margin-bottom:14px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <div>
-          <span style="font-size:12px;font-weight:600">${dept.replace('Dép. ','')}</span>
-          <span style="font-size:10px;color:var(--text2);margin-left:6px;">${allV.length} villages</span>
-        </div>
-        <div style="text-align:right;">
-          <span style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:${col}">${pct}%</span>
-          <span style="font-size:10px;color:var(--text3);margin-left:4px;">${couverts} couverts</span>
-        </div>
-      </div>
-      <div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;position:relative;">
-        <div style="width:${pct}%;height:100%;background:${col};border-radius:4px;"></div>
-        ${partiels>0?`<div style="position:absolute;left:${pct}%;top:0;width:${Math.round(partiels/allV.length*100)}%;height:100%;background:var(--amber);opacity:.5;"></div>`:''}
-      </div>
-      <div style="display:flex;gap:10px;margin-top:3px;font-size:10px;color:var(--text3);">
-        <span>✓ ${couverts} couverts</span>
-        <span>~ ${partiels} partiels</span>
-        <span>○ ${allV.length-couverts-partiels} non traités</span>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ── Top agents ──
-function dashRenderTopAgents(){
-  const div = document.getElementById('dash-top-agents');
-  const data = AGENTS.map(a=>{
-    const tot = saisies.filter(s=>s.agent===a).reduce((s,x)=>s+(x.ndos||0),0);
-    const sup = saisies.filter(s=>s.agent===a).reduce((s,x)=>s+(x.superficie||0),0);
-    return {nom:a, tot, sup};
-  }).filter(d=>d.tot>0).sort((a,b)=>b.tot-a.tot).slice(0,7);
-  const max = data[0]?.tot||1;
-  if(!data.length){div.innerHTML='<p style="font-size:12px;color:var(--text3);text-align:center;padding:12px;">Aucune donnée</p>';return;}
-  div.innerHTML = data.map((d,i)=>`
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;">
-      <span style="font-size:11px;font-weight:700;color:${i<3?'var(--accent)':'var(--text3)'};min-width:16px">${i+1}</span>
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
-          <span style="font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px">${d.nom.split(' ')[0]+' '+d.nom.split(' ').slice(-1)[0]}</span>
-          <span style="font-size:11px;font-weight:700;color:var(--accent);flex-shrink:0;margin-left:4px">${d.tot} dos.</span>
-        </div>
-        <div style="height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;">
-          <div style="width:${Math.round(d.tot/max*100)}%;height:100%;background:var(--accent);border-radius:3px;"></div>
-        </div>
-      </div>
-    </div>`).join('');
-}
-
-// ── Progression par activité ──
-function dashRenderActivites(){
-  const div = document.getElementById('dash-activites');
-  div.innerHTML = Object.entries(ACTIVITES).map(([key, act])=>{
-    const mesDos = dossiers.filter(d=>d.activite===key);
-    const clos = mesDos.filter(d=>d.etape==='Clôturé').length;
-    const total = mesDos.length;
-    const pct = total>0?Math.round(clos/total*100):0;
-    const supTot = mesDos.reduce((s,d)=>s+(d.superficie||0),0);
-    return`<div style="margin-bottom:14px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-        <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;background:${act.couleur.bg};color:${act.couleur.tx}">${key}</span>
-        <span style="font-size:11px;color:var(--text2)">${total} dossiers · ${supTot.toFixed(1)} ha</span>
-      </div>
-      <div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;margin-bottom:3px;">
-        <div style="width:${pct}%;height:100%;background:${act.couleur.brd||'var(--accent)'};border-radius:4px;"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);">
-        <span>${clos} clôturés</span>
-        <span style="font-weight:600;color:${act.couleur.brd||'var(--accent)'}">${pct}% clôturé</span>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ── Programmes en cours ──
-function dashRenderProgrammes(){
-  const div = document.getElementById('dash-programmes');
-  const enCours = programmes.filter(p=>p.statut==='En cours'||p.statut==='En retard')
-    .sort((a,b)=>(b.statut==='En retard'?1:0)-(a.statut==='En retard'?1:0))
-    .slice(0,6);
-  if(!enCours.length){div.innerHTML='<p style="font-size:12px;color:var(--text3);padding:16px;text-align:center;">Aucun programme en cours</p>';return;}
-  div.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
-    <thead><tr style="background:var(--surface2);">
-      <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Référence</th>
-      <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Agent</th>
-      <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Département</th>
-      <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Activité</th>
-      <th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Obj. Ha</th>
-      <th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Obj. Dos.</th>
-      <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Progression</th>
-      <th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);">Statut</th>
-    </tr></thead>
-    <tbody>` +
-    enCours.map(p=>{
-      const real = saisies.filter(s=>s.prog_ref===p.id).reduce((s,x)=>s+(x.superficie||x.ndos||0),0);
-      const pct = p.objectif>0?Math.min(100,Math.round(real/p.objectif*100)):0;
-      const col = pct>=90?'var(--accent)':pct>=60?'var(--amber)':'var(--red)';
-      const retard = p.statut==='En retard';
-      const actInfo = ACTIVITES[p.op]||ACTIVITES['CF'];
-      return`<tr style="border-bottom:1px solid var(--border);${retard?'background:rgba(184,48,37,0.03)':''}">
-        <td style="padding:9px 12px;font-family:'DM Mono',monospace;font-size:11px;">${p.id}</td>
-        <td style="padding:9px 12px;font-weight:500">${p.agent.split(' ').slice(0,2).join(' ')}</td>
-        <td style="padding:9px 12px;font-size:11px;color:var(--text2)">${p.dept.replace('Dép. ','')}</td>
-        <td style="padding:9px 12px;"><span style="font-size:10px;padding:2px 6px;border-radius:4px;background:${actInfo?actInfo.couleur.bg:'var(--surface2)'};color:${actInfo?actInfo.couleur.tx:'var(--text2)'}">${p.op||'—'}</span></td>
-        <td style="padding:9px 12px;text-align:right;font-weight:600">${p.objectif?p.objectif+" ha":"—"}</td><td style="padding:9px 12px;text-align:right;color:var(--text2)">${p.objectif_dos?p.objectif_dos+" dos.":"—"}</td>
-        <td style="padding:9px 12px;min-width:120px;">
-          <div style="display:flex;align-items:center;gap:6px;">
-            <div style="flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;">
-              <div style="width:${pct}%;height:100%;background:${col};border-radius:3px;"></div>
-            </div>
-            <span style="font-size:11px;font-weight:600;color:${col};min-width:28px">${pct}%</span>
-          </div>
-        </td>
-        <td style="padding:9px 12px;text-align:center;">
-          <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:${retard?'var(--red-lt)':'var(--accent-lt)'};color:${retard?'var(--red-txt)':'var(--accent-txt)'}">${p.statut}</span>
-        </td>
-      </tr>`;
-    }).join('') +
-    '</tbody></table>';
-}
 
 // ═══════════════════════════════════════════
 // MODULE RAPPORT
