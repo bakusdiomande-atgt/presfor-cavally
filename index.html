@@ -496,7 +496,13 @@ tbody td{padding:9px 12px;vertical-align:middle;}
                 <span class="ferr" id="pe-op">Requis.</span>
               </div>
               <div class="ff full" id="pf-sousetapes-wrap" style="display:none">
-                <label class="fl">Sous-étapes à réaliser <span style="color:var(--text3);font-weight:400">(auto selon activité)</span></label>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                  <label class="fl" style="margin:0">Sous-étapes à réaliser <span style="color:var(--text3);font-weight:400">(auto selon activité)</span></label>
+                  <div style="display:flex;gap:4px;">
+                    <button type="button" style="font-size:10px;padding:2px 8px;border:1px solid var(--border);background:var(--surface2);border-radius:4px;cursor:pointer;" onclick="document.querySelectorAll('#pf-sousetapes-list input').forEach(cb=>cb.checked=true);progSaveSousEtapes()">Tout cocher</button>
+                    <button type="button" style="font-size:10px;padding:2px 8px;border:1px solid var(--border);background:var(--surface2);border-radius:4px;cursor:pointer;" onclick="document.querySelectorAll('#pf-sousetapes-list input').forEach(cb=>cb.checked=false);progSaveSousEtapes()">Tout décocher</button>
+                  </div>
+                </div>
                 <div id="pf-sousetapes-list" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;"></div>
                 <input type="hidden" id="pf-sousetapes">
               </div>
@@ -2723,14 +2729,18 @@ function progSaveSousEtapes(){
 
 function progRestoreSousEtapes(activite, sousetapes){
   document.getElementById('pf-operation').value = activite;
-  progUpdateSousEtapes();
-  if(!sousetapes||!sousetapes.length)return;
+  progUpdateSousEtapes(); // génère les checkboxes (toutes cochées par défaut)
   setTimeout(()=>{
-    document.querySelectorAll('#pf-sousetapes-list input[type=checkbox]').forEach(cb=>{
-      cb.checked = sousetapes.includes(cb.value);
-    });
+    const boxes = document.querySelectorAll('#pf-sousetapes-list input[type=checkbox]');
+    if(sousetapes && sousetapes.length > 0){
+      // Restaurer exactement l'état enregistré
+      boxes.forEach(cb=>{ cb.checked = sousetapes.includes(cb.value); });
+    } else {
+      // Pas de config sauvegardée → décocher tout (l'agent choisira explicitement)
+      boxes.forEach(cb=>{ cb.checked = false; });
+    }
     progSaveSousEtapes();
-  },50);
+  }, 80);
 }
 
 // ── Fonctions activités Module 3 ──
