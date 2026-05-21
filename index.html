@@ -274,8 +274,13 @@ tbody td{padding:9px 12px;vertical-align:middle;}
   </div>
 </div>
 
-<div id="offline-banner" style="display:none;position:fixed;top:0;left:0;width:100%;background:#92400E;color:#FEF3C7;text-align:center;font-size:12px;font-weight:600;padding:5px;z-index:9999;">
-  📵 Mode hors-ligne — Les données sont sauvegardées localement et seront synchronisées à la reconnexion
+<div id="offline-banner" style="display:none;position:fixed;top:0;left:0;width:100%;background:#92400E;color:#FEF3C7;z-index:9999;padding:6px 16px;font-size:12px;font-weight:600;display:none;align-items:center;justify-content:space-between;gap:10px;">
+  <span>📵 Mode hors-ligne — <span id="offline-queue-info">Les modifications seront synchronisées à la reconnexion</span></span>
+  <span id="offline-queue-badge" style="background:rgba(255,255,255,0.2);padding:1px 8px;border-radius:10px;font-size:11px;"></span>
+</div>
+<div id="merge-banner" style="display:none;position:fixed;top:52px;left:0;width:100%;background:#0E5C4A;color:#E0F0EB;z-index:9997;padding:7px 16px;font-size:12px;font-weight:500;align-items:center;justify-content:space-between;gap:10px;">
+  <span>↕ <span id="merge-banner-msg"></span></span>
+  <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
     <div class="tb-title">PRESFOR <span>· Cavally</span></div>
@@ -4986,6 +4991,94 @@ async function serverLoad(){
   }
 }
 
+// ── File d'attente hors-ligne ──
+const OFFLINE_QUEUE_KEY = 'presfor_offline_queue';
+
+function saveToOfflineQueue(){
+  const snapshot = {
+    ts: new Date().toISOString(),
+    saisies:    [...saisies],
+    programmes: [...programmes],
+    dossiers:   [...dossiers],
+    absences:   [...absences]
+  };
+  localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(snapshot));
+  updateOfflineBanner();
+  console.log('Données sauvegardées hors-ligne :', snapshot.ts);
+}
+
+function getOfflineSnapshot(){
+  try { return JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || 'null'); }
+  catch(e) { return null; }
+}
+
+function clearOfflineQueue(){
+  localStorage.removeItem(OFFLINE_QUEUE_KEY);
+  updateOfflineBanner();
+}
+
+function updateOfflineBanner(){
+  const banner  = document.getElementById('offline-banner');
+  const info    = document.getElementById('offline-queue-info');
+  const badge   = document.getElementById('offline-queue-badge');
+  if(!banner) return;
+  const snapshot = getOfflineSnapshot();
+  const online   = navigator.onLine;
+  if(!online){
+    banner.style.display = 'flex';
+    if(snapshot && info){
+      const d = new Date(snapshot.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      info.textContent = 'Modifications en attente (dernière : ' + d + ')';
+    } else if(info){
+      info.textContent = 'Les modifications seront synchronisées à la reconnexion';
+    }
+    if(badge) badge.textContent = snapshot ? '1 snapshot en attente' : '';
+  } else if(snapshot){
+    // En ligne mais snapshot non encore envoyé
+    banner.style.display = 'flex';
+    banner.style.background = '#92400E';
+    if(info) info.textContent = 'Reconnecté — synchronisation en cours...';
+    if(badge) badge.textContent = '';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+async function flushOfflineQueue(){
+  const snapshot = getOfflineSnapshot();
+  if(!snapshot) return;
+  showToast('Synchronisation des données hors-ligne...');
+  updateSyncIndicator('pending');
+  // Fusionner le snapshot hors-ligne avec les données courantes
+  saisies    = mergeById(snapshot.saisies,    saisies);
+  programmes = mergeById(snapshot.programmes, programmes);
+  dossiers   = mergeById(snapshot.dossiers,   dossiers);
+  absences   = mergeById(snapshot.absences,   absences);
+  clearOfflineQueue();
+  // serverSave fera un read-merge-write avec Firebase
+  await serverSave();
+  progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
+  showToast('✓ Données hors-ligne synchronisées !');
+}
+
+// ── Bannière de fusion inter-agents ──
+function showMergeBanner(saisiesAdded, progsAdded, dosAdded){
+  const total = saisiesAdded + progsAdded + dosAdded;
+  if(total === 0) return;
+  const parts = [];
+  if(saisiesAdded > 0) parts.push(saisiesAdded + ' saisie' + (saisiesAdded>1?'s':''));
+  if(progsAdded   > 0) parts.push(progsAdded   + ' programme' + (progsAdded>1?'s':''));
+  if(dosAdded     > 0) parts.push(dosAdded      + ' dossier' + (dosAdded>1?'s':''));
+  const banner = document.getElementById('merge-banner');
+  const msg    = document.getElementById('merge-banner-msg');
+  if(banner && msg){
+    msg.textContent = parts.join(', ') + ' intégré' + (total>1?'s':'') + ' depuis d\'autres agents';
+    banner.style.display = 'flex';
+    clearTimeout(banner._hideTimer);
+    banner._hideTimer = setTimeout(()=>{ banner.style.display='none'; }, 9000);
+  }
+}
+
 // ── Fusionner deux tableaux par ID (sans doublon) ──
 function mergeById(local, remote){
   const merged = [...(Array.isArray(remote) ? remote : [])];
@@ -5012,12 +5105,17 @@ async function serverSave(){
         const remote = await rGet.json();
         if(remote && !remote.reset && remote.updated_at && remote.updated_at !== lastKnownTs){
           // Un autre agent a sauvegardé entre-temps → fusionner
+          const prevS = saisies.length, prevP = programmes.length, prevD = dossiers.length;
           programmes = mergeById(programmes, remote.programmes);
           saisies    = mergeById(saisies,    remote.saisies);
           dossiers   = mergeById(dossiers,   remote.dossiers);
           absences   = mergeById(absences,   remote.absences);
           lastKnownTs = remote.updated_at;
           needsUIRefresh = true;
+          const sAdded = saisies.length - prevS;
+          const pAdded = programmes.length - prevP;
+          const dAdded = dossiers.length - prevD;
+          if(sAdded + pAdded + dAdded > 0) showMergeBanner(sAdded, pAdded, dAdded);
           console.log('Fusion avant sauvegarde — données mergées depuis Firebase');
         }
       }
@@ -5052,6 +5150,11 @@ async function serverSave(){
 // ── Sauvegarde différée après chaque modification ──
 function scheduleSave(){
   if(!fbInitialized) return;
+  if(!isOnline){
+    // Hors-ligne : stocker dans localStorage
+    saveToOfflineQueue();
+    return;
+  }
   if(saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(serverSave, 1500);
 }
@@ -5074,10 +5177,23 @@ async function syncPoll(){
 setInterval(syncPoll, 10000);
 
 // ── Connectivité ──
-window.addEventListener('online',  ()=>{ isOnline=true;  updateSyncIndicator('ok');      serverLoad(); });
-window.addEventListener('offline', ()=>{ isOnline=false; updateSyncIndicator('offline'); });
-
-// ── Indicateur ──
+window.addEventListener('online', async ()=>{
+  isOnline = true;
+  updateSyncIndicator('pending');
+  updateNetworkStatus();
+  const hadQueue = !!getOfflineSnapshot();
+  if(hadQueue){
+    await flushOfflineQueue();
+  } else {
+    await serverLoad();
+  }
+});
+window.addEventListener('offline', ()=>{
+  isOnline = false;
+  updateSyncIndicator('offline');
+  updateNetworkStatus();
+  updateOfflineBanner();
+});
 function updateSyncIndicator(status){
   const el = document.getElementById('sync-indicator');
   if(!el) return;
@@ -5101,8 +5217,6 @@ function updateNetworkStatus(){
     if(banner) banner.style.display = online ? 'none' : 'block';
   } catch(e) {}
 }
-window.addEventListener('online', ()=>{ updateNetworkStatus(); isOnline=true; serverLoad(); });
-window.addEventListener('offline', ()=>{ updateNetworkStatus(); isOnline=false; updateSyncIndicator('offline'); });
 
 // ═══════════════════════════════════════════
 // INIT GLOBAL
@@ -5150,6 +5264,12 @@ serverLoad().then(ok => {
     dosRenderAll();
     dashRenderAll();
     showToast('Mode hors-ligne - données locales');
+    updateOfflineBanner();
+  } else {
+    // En ligne : vérifier si une queue hors-ligne attend d'être envoyée
+    if(getOfflineSnapshot()){
+      flushOfflineQueue();
+    }
   }
 });
 // Peupler les selects agents
