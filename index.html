@@ -506,7 +506,10 @@ tbody td{padding:9px 12px;vertical-align:middle;}
                 <div id="pf-sousetapes-list" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;"></div>
                 <input type="hidden" id="pf-sousetapes">
               </div>
-              <div class="ff"><label class="fl">Objectif (Ha) <span class="req">*</span></label><input class="fi" type="number" id="pf-objectif" min="0.1" step="0.1" placeholder="Ex : 25.5"><span class="ferr" id="pe-obj">Requis.</span><span class="fhint">Superficie totale à traiter en Ha</span></div>
+              <div id="wrap-obj-ha" style="display:none" class="ff"><label class="fl" id="lbl-obj-ha">Objectif (Ha) <span class="req">*</span></label><input class="fi" type="number" id="pf-objectif" min="0" step="0.1" placeholder="Ex : 25.5"><span class="fhint">Superficie totale à traiter en Ha</span></div>
+              <div id="wrap-obj-dos" style="display:none" class="ff"><label class="fl" id="lbl-obj-dos">Objectif (Dossiers) <span class="req">*</span></label><input class="fi" type="number" id="pf-objectif-dos" min="0" step="1" placeholder="Ex : 50"><span class="fhint">Nombre de dossiers à traiter</span></div>
+              <div id="wrap-obj-vil" style="display:none" class="ff"><label class="fl">Objectif (Villages) <span class="req">*</span></label><input class="fi" type="number" id="pf-objectif-vil" min="0" step="1" placeholder="Ex : 5"><span class="fhint">Nombre de villages à couvrir</span></div>
+              <span class="ferr" id="pe-obj">Requis.</span>
             </div>
           </div>
           <div class="fs">
@@ -1731,6 +1734,11 @@ function progEdit(id){
   document.getElementById('pf-agent').value=p.agent||'';
   progRestoreSousEtapes(p.op||'', p.sousetapes||[]);
   document.getElementById('pf-objectif').value=p.objectif||0;
+  const elDos=document.getElementById('pf-objectif-dos');
+  const elVil=document.getElementById('pf-objectif-vil');
+  if(elDos) elDos.value=p.objectif_dos||0;
+  if(elVil) elVil.value=p.objectif_vil||0;
+  setTimeout(progUpdateObjUnite, 50);
   document.getElementById('pf-nragents').value=p.nb_agents||1;
   document.getElementById('pf-budget').value=p.budget||'';
   document.getElementById('pf-obs').value=p.obs||'';
@@ -2730,17 +2738,16 @@ function progSaveSousEtapes(){
 function progRestoreSousEtapes(activite, sousetapes){
   document.getElementById('pf-operation').value = activite;
   progUpdateSousEtapes(); // génère les checkboxes (toutes cochées par défaut)
-  setTimeout(()=>{
-    const boxes = document.querySelectorAll('#pf-sousetapes-list input[type=checkbox]');
-    if(sousetapes && sousetapes.length > 0){
-      // Restaurer exactement l'état enregistré
-      boxes.forEach(cb=>{ cb.checked = sousetapes.includes(cb.value); });
-    } else {
-      // Pas de config sauvegardée → décocher tout (l'agent choisira explicitement)
-      boxes.forEach(cb=>{ cb.checked = false; });
-    }
-    progSaveSousEtapes();
-  }, 80);
+  if(sousetapes && sousetapes.length > 0){
+    // Restaurer exactement l'état enregistré
+    setTimeout(()=>{
+      document.querySelectorAll('#pf-sousetapes-list input[type=checkbox]').forEach(cb=>{
+        cb.checked = sousetapes.includes(cb.value);
+      });
+      progSaveSousEtapes();
+    }, 80);
+  }
+  // Si sousetapes vide : laisser toutes cochées (défaut = toutes étapes prévues)
 }
 
 // ── Fonctions activités Module 3 ──
@@ -3482,15 +3489,19 @@ function getAgentActivites(nom){
 // ── Obtenir l'unité d'objectif d'un agent ──
 function getAgentUnite(nom){
   const f = getAgentFonction(nom);
-  if(!f || !ACTIVITES_PAR_FONCTION[f]) return 'dossiers';
-  return ACTIVITES_PAR_FONCTION[f].unite;
+  if(!f) return 'dossiers';
+  const key = Object.keys(ACTIVITES_PAR_FONCTION).find(k=>k.toLowerCase()===f.toLowerCase());
+  return key ? (ACTIVITES_PAR_FONCTION[key].unite||'dossiers') : 'dossiers';
 }
 
 // ── Obtenir les sous-activités selon agent + activité ──
 function getSousActivites(nomAgent, activite){
   const f = getAgentFonction(nomAgent);
-  if(!f || !ACTIVITES_PAR_FONCTION[f]) return [];
-  return ACTIVITES_PAR_FONCTION[f].sousActivites[activite] || [];
+  if(!f) return [];
+  // Lookup insensible à la casse (évite échec si majuscules différentes)
+  const key = Object.keys(ACTIVITES_PAR_FONCTION).find(k => k.toLowerCase() === f.toLowerCase());
+  if(!key) return [];
+  return ACTIVITES_PAR_FONCTION[key].sousActivites[activite] || [];
 }
 
 let absences = [];
