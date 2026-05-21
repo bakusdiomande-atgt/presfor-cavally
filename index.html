@@ -3109,7 +3109,7 @@ function progImportExcel(input){
         const fin_raw=get(row,['fin','datefin','datedefin','date_fin','datedefin']);
         const fin=fmtD(fin_raw);
         const op=get(row,['activite','operation','type','op','activiteprincipal']);
-        const etape_prog=get(row,['etapeprincipale','etape','step','bornage','enquete']);
+        const etape_prog=get(row,['sousactiviteprincipale','sousactivitesprincipale','sousactivite','sousactivites','sousetape','sousetapes','etapeprincipale','etape','step','bornage','enquete']);
         const obj_dos=parseFloat(get(row,['objectifdossiers','objectif_dossiers','dossiers','nbredossiers','nbdossiers','objectifdossier']))||0;
         const obj_vil=parseFloat(get(row,['objectifvillages','objectif_villages','villages','nbrevillages','nbvillages','objectifvillage']))||0;
         const sp_raw=get(row,['sousprefecture','sp','sous_pref','sous-prefecture','sousprefecture','souspref']);
@@ -3152,7 +3152,7 @@ function progImportExcel(input){
           if(fin&&fin<now)return'En retard';
           return'En cours';
         })(),realise:0,
-          sousetapes:[]  // L'utilisateur sélectionne les sous-étapes à l'édition
+          sousetapes: etape_prog ? [etape_prog] : []  // Seule la sous-étape du fichier est cochée
         };
         progImportData.push({prog,errs,ligne:i+2});
       });
