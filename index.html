@@ -1513,7 +1513,6 @@ function progRenderKPI(){
     <div class="kpi blue"><div class="kpi-l">Taux global</div><div class="kpi-v">${taux}%</div><div class="kpi-s">${tReal} / ${tObj} dos.</div></div>
     <div class="kpi"><div class="kpi-l">Planifiés</div><div class="kpi-v">${programmes.filter(p=>p.statut==='Planifié').length}</div><div class="kpi-s">À démarrer</div></div>
     <div class="kpi ${ret>0?'red':''}"><div class="kpi-l">En retard</div><div class="kpi-v">${ret}</div><div class="kpi-s">${ret>0?'Action requise':'Aucun'}</div></div>`;
-  scheduleSave();
 }
 
 function progRenderTable(){
@@ -1765,7 +1764,6 @@ function saisieRenderKPI(){
     <div class="kpi blue"><div class="kpi-l">Total saisis</div><div class="kpi-v">${tAll}</div><div class="kpi-s">${saisies.length} saisies</div></div>
     <div class="kpi"><div class="kpi-l">Ce mois</div><div class="kpi-v">${saisies.filter(s=>s.date&&s.date.startsWith(new Date().toISOString().slice(0,7))).length}</div><div class="kpi-s">Saisies</div></div>
     <div class="kpi ${inc>0?'amber':''}"><div class="kpi-l">Incidents</div><div class="kpi-v">${inc}</div><div class="kpi-s">${inc>0?'À suivre':'Aucun'}</div></div>`;
-  scheduleSave();
 }
 
 function saisieRenderList(){
@@ -2256,16 +2254,12 @@ function saisieImportConfirm(){
   valides.forEach(({s})=>{
     if(!saisies.find(x=>x.id===s.id)){saisies.unshift({...s,created_at:new Date().toLocaleString('fr-FR')});nb++;}
   });
-  saisSave();
   document.getElementById('saisie-import-modal').style.display='none';
   showToast(nb+' saisie(s) importée(s) !');
   saisieImportData=[];
   saisieRenderAll();
   dashRenderAll();
-  // Forcer la sauvegarde immédiate sur Firebase
-  serverSave().then(()=>{
-    console.log('Import sauvegardé sur Firebase');
-  });
+  scheduleSave();
 }
 
 function saisClearAll(){
@@ -2498,7 +2492,6 @@ function dosRenderKPI(){
   const blq=dossiers.filter(d=>d.etape!=='Clôturé'&&dosJours(d.etape_date)>30).length;
   const sup=dossiers.reduce((s,d)=>s+(parseFloat(d.superficie)||0),0);
   document.getElementById('dos-kpi').innerHTML=`<div class="kpi blue"><div class="kpi-l">Total dossiers</div><div class="kpi-v">${tot}</div><div class="kpi-s">${tot-clo} actifs</div></div><div class="kpi green"><div class="kpi-l">Clôturés</div><div class="kpi-v">${clo}</div><div class="kpi-s">Certificat demandé</div></div><div class="kpi ${blq>0?'red':''}"><div class="kpi-l">Bloqués +30j</div><div class="kpi-v">${blq}</div><div class="kpi-s">Même étape &gt;30j</div></div><div class="kpi amber"><div class="kpi-l">Superficie tot.</div><div class="kpi-v">${sup.toFixed(1)}</div><div class="kpi-s">hectares</div></div>`;
-  scheduleSave();
 }
 function dosRenderList(){
   const q=(document.getElementById('dos-srch').value||'').toLowerCase();
@@ -4993,7 +4986,16 @@ async function serverLoad(){
   }
 }
 
-// ── Sauvegarder sur Firebase ──
+// ── Fusionner deux tableaux par ID (sans doublon) ──
+function mergeById(local, remote){
+  const merged = [...(Array.isArray(remote) ? remote : [])];
+  (Array.isArray(local) ? local : []).forEach(item => {
+    if(item && item.id && !merged.find(r => r.id === item.id)) merged.push(item);
+  });
+  return merged;
+}
+
+// ── Sauvegarder sur Firebase (read-merge-write) ──
 async function serverSave(){
   if(isSaving){ saveQueue = true; return; }
   if(!isOnline){ updateSyncIndicator('offline'); return; }
@@ -5001,8 +5003,28 @@ async function serverSave(){
 
   isSaving = true;
   updateSyncIndicator('pending');
-  const ts = new Date().toISOString();
   try {
+    // 1. Lire l'état actuel sur Firebase avant d'écrire
+    let needsUIRefresh = false;
+    try {
+      const rGet = await fetch(FIREBASE_URL + '/presfor.json', { signal: AbortSignal.timeout(10000) });
+      if(rGet.ok){
+        const remote = await rGet.json();
+        if(remote && !remote.reset && remote.updated_at && remote.updated_at !== lastKnownTs){
+          // Un autre agent a sauvegardé entre-temps → fusionner
+          programmes = mergeById(programmes, remote.programmes);
+          saisies    = mergeById(saisies,    remote.saisies);
+          dossiers   = mergeById(dossiers,   remote.dossiers);
+          absences   = mergeById(absences,   remote.absences);
+          lastKnownTs = remote.updated_at;
+          needsUIRefresh = true;
+          console.log('Fusion avant sauvegarde — données mergées depuis Firebase');
+        }
+      }
+    } catch(eMerge){ console.log('Lecture pré-save ignorée:', eMerge.message); }
+
+    // 2. Écrire l'état fusionné
+    const ts = new Date().toISOString();
     const r = await fetch(FIREBASE_URL + '/presfor.json', {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
@@ -5013,6 +5035,10 @@ async function serverSave(){
       lastKnownTs = ts;
       serverAvailable = true;
       updateSyncIndicator('ok');
+      // Rafraîchir l'UI si on a mergé des données tierces
+      if(needsUIRefresh){
+        progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
+      }
     } else { updateSyncIndicator('error'); }
   } catch(e) {
     updateSyncIndicator('error');
