@@ -2678,27 +2678,11 @@ function progOnAgentChange(agentNom){
 
 // ── Mise à jour de l'unité objectif selon l'agent ──
 function progUpdateObjUnite(){
-  const agentNom = document.getElementById('pf-agent').value;
-  const unite = getAgentUnite(agentNom);
-  const lblHa  = document.getElementById('lbl-obj-ha');
-  const lblDos = document.getElementById('lbl-obj-dos');
+  // Les deux champs Ha et Dossiers sont toujours visibles
   const wrapHa  = document.getElementById('wrap-obj-ha');
   const wrapDos = document.getElementById('wrap-obj-dos');
-  const wrapVil = document.getElementById('wrap-obj-vil');
-  if(!lblHa) return;
-  // Masquer tout d'abord
-  if(wrapHa)  wrapHa.style.display  = 'none';
-  if(wrapDos) wrapDos.style.display = 'none';
-  if(wrapVil) wrapVil.style.display = 'none';
-  // Afficher selon l'unité
-  if(unite === 'villages'){
-    if(wrapVil) wrapVil.style.display = '';
-  } else if(unite === 'dossiers+ha'){
-    if(wrapDos) wrapDos.style.display = '';
-    if(wrapHa)  wrapHa.style.display  = '';
-  } else { // dossiers
-    if(wrapDos) wrapDos.style.display = '';
-  }
+  if(wrapHa)  wrapHa.style.display  = '';
+  if(wrapDos) wrapDos.style.display = '';
 }
 
 function progUpdateSousEtapes(){
