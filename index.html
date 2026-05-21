@@ -1714,22 +1714,21 @@ function progEdit(id){
   const p=programmes.find(x=>x.id===id);if(!p)return;
   progEditingId=id;
   document.getElementById('prog-form-title').textContent='Modifier le programme';
-  document.getElementById('pf-ref').value=p.id;
-  document.getElementById('pf-periode').value=p.periode_type;
-  document.getElementById('pf-debut').value=p.date_debut;
-  document.getElementById('pf-fin').value=p.date_fin;
-  // Département → peupler SP → fixer valeur SP → peupler Villages
-  document.getElementById('pf-dept').value=p.dept;
+  document.getElementById('pf-ref').value=p.id||'';
+  document.getElementById('pf-periode').value=p.periode_type||'Semaine';
+  document.getElementById('pf-debut').value=p.date_debut||'';
+  document.getElementById('pf-fin').value=p.date_fin||'';
+  document.getElementById('pf-dept').value=p.dept||'';
   geoUpdateSP('pf-dept','pf-sp','pf-village-sel');
   document.getElementById('pf-sp').value=p.sp||'';
   geoUpdateVillage('pf-dept','pf-sp','pf-village-sel');
-  document.getElementById('pf-agent').value=p.agent;
-  progRestoreSousEtapes(p.op, p.sousetapes||[]);
-  document.getElementById('pf-objectif').value=p.objectif;
-  document.getElementById('pf-nragents').value=p.nb_agents;
+  document.getElementById('pf-agent').value=p.agent||'';
+  progRestoreSousEtapes(p.op||'', p.sousetapes||[]);
+  document.getElementById('pf-objectif').value=p.objectif||0;
+  document.getElementById('pf-nragents').value=p.nb_agents||1;
   document.getElementById('pf-budget').value=p.budget||'';
   document.getElementById('pf-obs').value=p.obs||'';
-  progVillages=[...p.villages];progRenderVtags();
+  progVillages=[...(p.villages||[])];progRenderVtags();
   progShowPanel('form');window.scrollTo(0,0);
 }
 
