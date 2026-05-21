@@ -506,10 +506,9 @@ tbody td{padding:9px 12px;vertical-align:middle;}
                 <div id="pf-sousetapes-list" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;"></div>
                 <input type="hidden" id="pf-sousetapes">
               </div>
-              <div id="wrap-obj-ha" style="display:none" class="ff"><label class="fl" id="lbl-obj-ha">Objectif (Ha) <span class="req">*</span></label><input class="fi" type="number" id="pf-objectif" min="0" step="0.1" placeholder="Ex : 25.5"><span class="fhint">Superficie totale à traiter en Ha</span></div>
-              <div id="wrap-obj-dos" style="display:none" class="ff"><label class="fl" id="lbl-obj-dos">Objectif (Dossiers) <span class="req">*</span></label><input class="fi" type="number" id="pf-objectif-dos" min="0" step="1" placeholder="Ex : 50"><span class="fhint">Nombre de dossiers à traiter</span></div>
-              <div id="wrap-obj-vil" style="display:none" class="ff"><label class="fl">Objectif (Villages) <span class="req">*</span></label><input class="fi" type="number" id="pf-objectif-vil" min="0" step="1" placeholder="Ex : 5"><span class="fhint">Nombre de villages à couvrir</span></div>
-              <span class="ferr" id="pe-obj">Requis.</span>
+              <div id="wrap-obj-ha" class="ff"><label class="fl" id="lbl-obj-ha">Objectif (Ha)</label><input class="fi" type="number" id="pf-objectif" min="0" step="0.1" placeholder="Ex : 25.5"><span class="fhint">Superficie totale en Ha</span></div>
+              <div id="wrap-obj-dos" class="ff"><label class="fl" id="lbl-obj-dos">Objectif (Dossiers) <span class="req">*</span></label><input class="fi" type="number" id="pf-objectif-dos" min="0" step="1" placeholder="Ex : 50"><span class="ferr" id="pe-obj">Requis.</span><span class="fhint">Nombre de dossiers à traiter</span></div>
+              <div id="wrap-obj-vil" style="display:none" class="ff"><label class="fl">Objectif (Villages)</label><input class="fi" type="number" id="pf-objectif-vil" min="0" step="1" placeholder="Ex : 5"><span class="fhint">Nombre de villages</span></div>
             </div>
           </div>
           <div class="fs">
@@ -2738,16 +2737,18 @@ function progSaveSousEtapes(){
 function progRestoreSousEtapes(activite, sousetapes){
   document.getElementById('pf-operation').value = activite;
   progUpdateSousEtapes(); // génère les checkboxes (toutes cochées par défaut)
-  if(sousetapes && sousetapes.length > 0){
-    // Restaurer exactement l'état enregistré
-    setTimeout(()=>{
-      document.querySelectorAll('#pf-sousetapes-list input[type=checkbox]').forEach(cb=>{
-        cb.checked = sousetapes.includes(cb.value);
-      });
-      progSaveSousEtapes();
-    }, 80);
-  }
-  // Si sousetapes vide : laisser toutes cochées (défaut = toutes étapes prévues)
+  // Toujours passer par le setTimeout pour écraser l'état par défaut
+  setTimeout(()=>{
+    const boxes = document.querySelectorAll('#pf-sousetapes-list input[type=checkbox]');
+    if(sousetapes && sousetapes.length > 0){
+      // Restaurer exactement l'état enregistré
+      boxes.forEach(cb=>{ cb.checked = sousetapes.includes(cb.value); });
+    } else {
+      // Pas de sous-étapes configurées → décocher tout, l'utilisateur choisit
+      boxes.forEach(cb=>{ cb.checked = false; });
+    }
+    progSaveSousEtapes();
+  }, 80);
 }
 
 // ── Fonctions activités Module 3 ──
@@ -3120,9 +3121,9 @@ function progImportExcel(input){
           const spMatch=spKeys.find(k=>k.toLowerCase().replace(/\s/g,'').includes(sp_raw.toLowerCase().replace(/\s/g,'').replace(/^sp/,''))||sp_raw.toLowerCase().replace(/\s/g,'').includes(k.toLowerCase().replace(/\s/g,'').replace(/^sp/,'')));
           if(spMatch) sp=spMatch;
         }
-        // Lire les villages depuis le fichier (colonne villages / village / villagescibles)
-        const villages_raw=get(row,['villages','village','villagescibles','villagecible','localites','localite','lieuxintervention']);
-        const villages=villages_raw?villages_raw.split(/[,;\/|]/).map(v=>v.trim()).filter(Boolean):[];
+        // Lire les villages depuis le fichier (plusieurs noms de colonnes possibles)
+        const villages_raw=get(row,['villages','village','villagescibles','villagecible','villagesciblés','villageciblés','villagescible','localites','localité','localites','lieuxintervention','lieuxdintervention','sitesintervention','zonesintervention','villagesconcernes']);
+        const villages=villages_raw ? villages_raw.split(/[,;\/|\n\r]+/).map(v=>v.trim()).filter(v=>v.length>0) : [];
         const obs=get(row,['observation','obs','commentaire']);
         const nb_agents=parseInt(get(row,['nbagents','effectif','nombreagents']))||1;
         const budget=parseInt(get(row,['budget']))||0;
@@ -3151,7 +3152,7 @@ function progImportExcel(input){
           if(fin&&fin<now)return'En retard';
           return'En cours';
         })(),realise:0,
-          sousetapes:(()=>{ const se=getSousActivites(agent,op||'Enquête terrain'); return se.length?se:(ACTIVITES[op||'Enquête terrain']?.etapes||[]); })()
+          sousetapes:[]  // L'utilisateur sélectionne les sous-étapes à l'édition
         };
         progImportData.push({prog,errs,ligne:i+2});
       });
