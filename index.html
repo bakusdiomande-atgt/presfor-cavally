@@ -3104,7 +3104,18 @@ function progImportExcel(input){
         const etape_prog=get(row,['etapeprincipale','etape','step','bornage','enquete']);
         const obj_dos=parseFloat(get(row,['objectifdossiers','objectif_dossiers','dossiers','nbredossiers','nbdossiers','objectifdossier']))||0;
         const obj_vil=parseFloat(get(row,['objectifvillages','objectif_villages','villages','nbrevillages','nbvillages','objectifvillage']))||0;
-        const sp=get(row,['sousprefecture','sp','sous_pref','sous-prefecture','sousprefecture','souspref']);
+        const sp_raw=get(row,['sousprefecture','sp','sous_pref','sous-prefecture','sousprefecture','souspref']);
+        // Normaliser SP pour correspondre aux clés GEO ('SP Bloléquin' etc.)
+        const dept_full=dept?(dept.includes('Dép.')?dept:'Dép. '+dept):'';
+        let sp=sp_raw;
+        if(sp_raw && GEO[dept_full]){
+          const spKeys=Object.keys(GEO[dept_full].sp||{});
+          const spMatch=spKeys.find(k=>k.toLowerCase().replace(/\s/g,'').includes(sp_raw.toLowerCase().replace(/\s/g,'').replace(/^sp/,''))||sp_raw.toLowerCase().replace(/\s/g,'').includes(k.toLowerCase().replace(/\s/g,'').replace(/^sp/,'')));
+          if(spMatch) sp=spMatch;
+        }
+        // Lire les villages depuis le fichier (colonne villages / village / villagescibles)
+        const villages_raw=get(row,['villages','village','villagescibles','villagecible','localites','localite','lieuxintervention']);
+        const villages=villages_raw?villages_raw.split(/[,;\/|]/).map(v=>v.trim()).filter(Boolean):[];
         const obs=get(row,['observation','obs','commentaire']);
         const nb_agents=parseInt(get(row,['nbagents','effectif','nombreagents']))||1;
         const budget=parseInt(get(row,['budget']))||0;
@@ -3121,7 +3132,7 @@ function progImportExcel(input){
           date_debut:debut||new Date().toISOString().split('T')[0],
           date_fin:fin||'',
           dept:dept?(dept.includes('Dép.')?dept:'Dép. '+dept):'',
-          sp,villages:[],agent,op:op||'Enquête terrain',
+          sp, villages, agent, op:op||'Enquête terrain',
           objectif:parseFloat(objectif)||0,
           objectif_dos:obj_dos,
           objectif_vil:obj_vil,
