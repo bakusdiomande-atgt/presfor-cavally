@@ -665,6 +665,10 @@ tbody td{padding:9px 12px;vertical-align:middle;}
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z"/></svg>
         Nouvelle saisie
       </button>
+      <button class="nav-item" onclick="srOpen()" style="color:var(--amber-txt);">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M11.251.068a.5.5 0 0 1 .227.58L9.677 6.5H13a.5.5 0 0 1 .364.843l-8 8.5a.5.5 0 0 1-.842-.49L6.323 9.5H3a.5.5 0 0 1-.364-.843l8-8.5a.5.5 0 0 1 .615-.09z"/></svg>
+        Saisie rapide
+      </button>
     </div>
     <div class="sb-sec">
       <div class="sb-label">Analyse</div>
@@ -851,8 +855,100 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     <div id="saisie-import-preview" style="overflow-x:auto;margin-bottom:12px;"></div>
     <div id="saisie-import-errors" style="display:none;background:var(--red-lt);border:1px solid rgba(184,48,37,.2);border-radius:var(--radius-sm);padding:10px 13px;margin-bottom:12px;font-size:12px;color:var(--red-txt);"></div>
     <div style="display:flex;gap:8px;">
-      <button class="btn-p" onclick="saisieImportConfirm()">Confirmer l'import</button>
+      <button class="btn-p" onclick="saisieImportConfirm(false)">Confirmer l'import</button>
+      <button class="btn-s" id="btn-import-skip-doublons" style="display:none" onclick="saisieImportConfirm(true)">Ignorer les doublons</button>
       <button class="btn-s" onclick="document.getElementById('saisie-import-modal').style.display='none'">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal verrou superviseur ── -->
+<div id="lock-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);z-index:600;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:24px 28px;max-width:420px;width:92%;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="width:36px;height:36px;border-radius:50%;background:var(--amber-lt);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="var(--amber)"><path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/></svg>
+      </div>
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;">Saisie verrouillée</div>
+        <div id="lock-modal-info" style="font-size:11px;color:var(--text2);margin-top:2px;"></div>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:14px;">Cette saisie date de plus de 7 jours. Entrez le code coordinateur pour la modifier.</p>
+    <div class="ff" style="margin-bottom:12px;">
+      <label class="fl">Code coordinateur</label>
+      <input class="fi" type="password" id="lock-pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')lockConfirm()">
+      <span id="lock-pwd-err" style="display:none;font-size:11px;color:var(--red);margin-top:3px;">Code incorrect.</span>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-p" onclick="lockConfirm()">Déverrouiller</button>
+      <button class="btn-s" onclick="document.getElementById('lock-modal').style.display='none'">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal saisie rapide ── -->
+<div id="sr-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:600;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:22px 24px;max-width:480px;width:94%;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:18px;">⚡</span>
+        <span style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;">Saisie rapide</span>
+      </div>
+      <button onclick="srClose()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);">×</button>
+    </div>
+    <div id="sr-suc" style="display:none;background:var(--accent-lt);border:1px solid rgba(28,74,46,.18);border-radius:var(--radius-sm);padding:9px 12px;font-size:12px;color:var(--accent-txt);font-weight:500;margin-bottom:12px;"></div>
+    <div class="fg" style="gap:10px;">
+      <div class="ff">
+        <label class="fl">Date <span class="req">*</span></label>
+        <input class="fi" type="date" id="sr-date">
+      </div>
+      <div class="ff">
+        <label class="fl">Agent <span class="req">*</span></label>
+        <select class="fsel" id="sr-agent" onchange="srUpdateVillages()"><option value="">-- Agent --</option></select>
+      </div>
+      <div class="ff">
+        <label class="fl">Département <span class="req">*</span></label>
+        <select class="fsel" id="sr-dept" onchange="srUpdateVillages()">
+          <option value="">-- Dép. --</option>
+          <option>Dép. Guiglo</option><option>Dép. Bloléquin</option><option>Dép. Toulépleu</option><option>Dép. Taï</option>
+        </select>
+      </div>
+      <div class="ff">
+        <label class="fl">Village <span class="req">*</span></label>
+        <select class="fsel" id="sr-village"><option value="">-- Village --</option></select>
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <label class="fl" style="margin-bottom:6px;display:block;">Étape réalisée <span class="req">*</span></label>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;" id="sr-chips">
+        <span class="chip" data-v="Enquête terrain" onclick="srSelEtape(this)">Enquête terrain</span>
+        <span class="chip" data-v="Bornage" onclick="srSelEtape(this)">Bornage</span>
+        <span class="chip" data-v="Constitution du dossier" onclick="srSelEtape(this)">Constitution dossier</span>
+        <span class="chip" data-v="PV de constat de limite" onclick="srSelEtape(this)">PV constat limite</span>
+        <span class="chip" data-v="Demande certificat foncier" onclick="srSelEtape(this)">Demande CF</span>
+        <span class="chip" data-v="Enregistrement" onclick="srSelEtape(this)">Enregistrement</span>
+      </div>
+      <input type="hidden" id="sr-etape">
+    </div>
+    <div class="fg3" style="margin-top:12px;gap:10px;">
+      <div class="ff">
+        <label class="fl">Dossiers traités <span class="req">*</span></label>
+        <div class="counter-wrap"><button type="button" class="counter-btn" onclick="srAdj(-1)">−</button><input type="number" class="counter-val" id="sr-ndos" value="0" min="0" max="99"><button type="button" class="counter-btn" onclick="srAdj(1)">+</button></div>
+      </div>
+      <div class="ff">
+        <label class="fl">Superficie (Ha)</label>
+        <input class="fi" type="number" id="sr-superficie" min="0" step="0.1" placeholder="Ex: 12.5">
+      </div>
+      <div class="ff">
+        <label class="fl">Incident</label>
+        <select class="fsel" id="sr-incident"><option value="">Aucun</option><option>Piste impraticable</option><option>Absence de population</option><option>Conflit foncier détecté</option><option>Problème matériel / GPS</option><option>Intempéries</option><option>Autre</option></select>
+      </div>
+    </div>
+    <div id="sr-err" style="display:none;background:var(--red-lt);border:1px solid rgba(184,48,37,.2);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;color:var(--red-txt);margin-top:12px;"></div>
+    <div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
+      <button class="btn-p" onclick="srSubmit()" style="flex:1;">⚡ Enregistrer</button>
+      <button class="btn-s" onclick="srClose()">Annuler</button>
     </div>
   </div>
 </div>
@@ -1796,7 +1892,9 @@ function saisieRenderList(){
       <td style="text-align:center;font-size:12px;color:var(--teal);font-weight:600">${s.superficie?s.superficie+' ha':'—'}</td>
       <td style="font-size:11px;color:var(--text2);white-space:nowrap">${fmtHeure(s.hdep)||"—"}→${fmtHeure(s.hret)||"—"}<br><span style="color:var(--text3)">${s.duree}</span></td>
       <td>${ecartHtml}</td>
-      <td><div style="display:flex;gap:5px"><button class="btn-s" style="font-size:11px;padding:4px 8px" onclick="saisieEdit('${s.id}')">Modifier</button><button class="btn-d" onclick="saisieDelete('${s.id}')">Sup.</button></div></td>
+      <td><div style="display:flex;gap:5px;align-items:center">
+        ${saisieIsLocked(s)?'<span title="Saisie verrouillée (+7j)" style="color:var(--amber);font-size:13px;">🔒</span>':''}
+        <button class="btn-s" style="font-size:11px;padding:4px 8px" onclick="saisieEdit('${s.id}')">Modifier</button><button class="btn-d" onclick="saisieDelete('${s.id}')">Sup.</button></div></td>
     </tr>`;
   }).join('');
 }
@@ -2010,7 +2108,53 @@ function saisieSubmit(e){
   setTimeout(()=>saisieShowPanel('list'),900);
 }
 
+// ═══════════════════════════════════════════
+// VERROU SAISIES > 7 JOURS
+// ═══════════════════════════════════════════
+const LOCK_DAYS = 7;
+let lockPendingId = null;
+let lockPendingAction = null;
+
+function getLockPassword(){
+  return localStorage.getItem('presfor_lock_pwd') || 'COORD2026';
+}
+
+function saisieIsLocked(s){
+  if(!s || !s.date) return false;
+  const diff = Math.floor((new Date() - new Date(s.date + 'T12:00:00')) / 86400000);
+  return diff > LOCK_DAYS;
+}
+
+function showLockModal(s, action, id){
+  lockPendingId = id;
+  lockPendingAction = action;
+  const info = document.getElementById('lock-modal-info');
+  if(info) info.textContent = `Saisie du ${fmtDate(s.date)} — ${s.agent} — ${Math.floor((new Date()-new Date(s.date+'T12:00:00'))/86400000)} jours`;
+  document.getElementById('lock-pwd').value = '';
+  document.getElementById('lock-pwd-err').style.display = 'none';
+  document.getElementById('lock-modal').style.display = 'flex';
+  setTimeout(()=>document.getElementById('lock-pwd').focus(), 100);
+}
+
+function lockConfirm(){
+  const pwd = document.getElementById('lock-pwd').value;
+  if(pwd !== getLockPassword()){
+    document.getElementById('lock-pwd-err').style.display = 'block';
+    return;
+  }
+  document.getElementById('lock-modal').style.display = 'none';
+  if(lockPendingAction === 'edit')   saisieEditUnlocked(lockPendingId);
+  if(lockPendingAction === 'delete') saisieDeleteUnlocked(lockPendingId);
+  lockPendingId = null; lockPendingAction = null;
+}
+
 function saisieEdit(id){
+  const s=saisies.find(x=>x.id===id);if(!s)return;
+  if(saisieIsLocked(s)){ showLockModal(s,'edit',id); return; }
+  saisieEditUnlocked(id);
+}
+
+function saisieEditUnlocked(id){
   const s=saisies.find(x=>x.id===id);if(!s)return;
   saisieEditingId=id;
   document.getElementById('saisie-form-title').textContent='Modifier la saisie';
@@ -2036,8 +2180,135 @@ function saisieEdit(id){
 }
 
 function saisieDelete(id){
+  const s=saisies.find(x=>x.id===id);
+  if(s && saisieIsLocked(s)){ showLockModal(s,'delete',id); return; }
+  saisieDeleteUnlocked(id);
+}
+
+function saisieDeleteUnlocked(id){
   if(!confirm(`Supprimer ${id} ?`))return;
   saisies=saisies.filter(s=>s.id!==id);saisSave();saisieRenderAll();showToast('Supprimé.');
+}
+
+// ═══════════════════════════════════════════
+// SAISIE RAPIDE
+// ═══════════════════════════════════════════
+function srOpen(){
+  const modal = document.getElementById('sr-modal');
+  document.getElementById('sr-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('sr-ndos').value = 0;
+  document.getElementById('sr-superficie').value = '';
+  document.getElementById('sr-incident').value = '';
+  document.getElementById('sr-etape').value = '';
+  document.getElementById('sr-err').style.display = 'none';
+  document.getElementById('sr-suc').style.display = 'none';
+  document.querySelectorAll('#sr-chips .chip').forEach(c=>c.classList.remove('selected'));
+  // Peupler les agents
+  const sel = document.getElementById('sr-agent');
+  sel.innerHTML = '<option value="">-- Agent --</option>';
+  AGENTS_DATA.forEach(a=>{
+    const opt = document.createElement('option');
+    opt.value = a.nom; opt.textContent = a.nom + ' — ' + a.fonction;
+    sel.appendChild(opt);
+  });
+  srUpdateVillages();
+  modal.style.display = 'flex';
+}
+
+function srClose(){
+  document.getElementById('sr-modal').style.display = 'none';
+}
+
+function srSelEtape(el){
+  document.querySelectorAll('#sr-chips .chip').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('sr-etape').value = el.dataset.v;
+}
+
+function srAdj(n){
+  const inp = document.getElementById('sr-ndos');
+  inp.value = Math.max(0, Math.min(99, (parseInt(inp.value)||0) + n));
+}
+
+function srUpdateVillages(){
+  const dept = document.getElementById('sr-dept').value;
+  const agent = document.getElementById('sr-agent').value;
+  const sel = document.getElementById('sr-village');
+  sel.innerHTML = '<option value="">-- Village --</option>';
+  if(!dept) return;
+  // Chercher les villages depuis les données existantes ou le référentiel zones
+  const vilsFromSaisies = [...new Set(
+    saisies.filter(s=>s.dept===dept).map(s=>s.village).filter(Boolean)
+  )].sort();
+  vilsFromSaisies.forEach(v=>{
+    const o = document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o);
+  });
+  // Compléter avec les villages du référentiel si disponible
+  if(typeof ZONES_DATA !== 'undefined'){
+    const zone = ZONES_DATA.find(z=>z.dept===dept);
+    if(zone && zone.villages){
+      zone.villages.forEach(v=>{
+        if(!vilsFromSaisies.includes(v)){
+          const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o);
+        }
+      });
+    }
+  }
+}
+
+function srSubmit(){
+  const date   = document.getElementById('sr-date').value;
+  const agent  = document.getElementById('sr-agent').value;
+  const dept   = document.getElementById('sr-dept').value;
+  const village= document.getElementById('sr-village').value;
+  const etape  = document.getElementById('sr-etape').value;
+  const ndos   = parseInt(document.getElementById('sr-ndos').value)||0;
+
+  const errs = [];
+  if(!date)    errs.push('Date requise');
+  if(!agent)   errs.push('Agent requis');
+  if(!dept)    errs.push('Département requis');
+  if(!village) errs.push('Village requis');
+  if(!etape)   errs.push('Étape requise');
+  if(ndos < 0) errs.push('Nombre de dossiers invalide');
+
+  const errDiv = document.getElementById('sr-err');
+  if(errs.length){ errDiv.style.display='block'; errDiv.textContent=errs.join(' · '); return; }
+  errDiv.style.display='none';
+
+  // Vérifier doublon (même agent + date + village)
+  const doublon = saisies.find(x =>
+    x.date===date &&
+    x.agent.toLowerCase().trim()===agent.toLowerCase().trim() &&
+    x.village.toLowerCase().trim()===village.toLowerCase().trim()
+  );
+  if(doublon && !confirm(`Une saisie similaire existe déjà pour ${agent} à ${village} le ${fmtDate(date)}.\nContinuer quand même ?`)) return;
+
+  saisieCounter = (saisieCounter||0) + 1;
+  const id = 'SAI-'+ date.replace(/-/g,'') +'-'+ agent.replace(/\s/g,'').substring(0,6).toUpperCase() +'-'+ String(saisieCounter).padStart(3,'0');
+  const superficie = parseFloat(document.getElementById('sr-superficie').value)||0;
+  const incident   = document.getElementById('sr-incident').value;
+
+  saisies.unshift({
+    id, date, agent, dept,
+    sp: '', village, etape, ndos, superficie,
+    dossiers:[], hdep:'07:00', hret:'17:00', duree:'10h00',
+    km:0, incident, meteo:'Ensoleillé', obs:'',
+    prog_ref:'', created_at:new Date().toLocaleString('fr-FR')
+  });
+
+  saisSave(); saisieRenderAll(); dashRenderAll();
+
+  const sucDiv = document.getElementById('sr-suc');
+  sucDiv.textContent = `✓ ${id} enregistrée — ${ndos} dossier(s) à ${village}`;
+  sucDiv.style.display = 'block';
+  // Réinitialiser pour une saisie suivante rapide
+  document.getElementById('sr-ndos').value = 0;
+  document.getElementById('sr-superficie').value = '';
+  document.getElementById('sr-incident').value = '';
+  document.getElementById('sr-etape').value = '';
+  document.querySelectorAll('#sr-chips .chip').forEach(c=>c.classList.remove('selected'));
+  showToast('Saisie rapide enregistrée !');
 }
 
 function saisieResetForm(){
@@ -2202,16 +2473,52 @@ function saisieImportExcel(input){
         saisieImportData.push({s, errs, ligne:i+2});
       });
 
+      // ── Détection des doublons potentiels ──
+      let totalDoublons = 0;
+      saisieImportData.forEach((d, di) => {
+        if(d.errs.length > 0) return;
+        const s = d.s;
+        // Doublon exact : même ID déjà en base
+        if(saisies.find(x => x.id === s.id)){
+          d.doublon = 'exact'; totalDoublons++; return;
+        }
+        // Doublon potentiel : même agent + date + village en base
+        const enBase = saisies.find(x =>
+          x.date === s.date &&
+          x.agent.toLowerCase().trim() === s.agent.toLowerCase().trim() &&
+          x.village.toLowerCase().trim() === s.village.toLowerCase().trim()
+        );
+        if(enBase){ d.doublon = 'base'; d.doublon_ref = enBase.id; totalDoublons++; return; }
+        // Doublon dans le batch lui-même (même agent + date + village)
+        const enBatch = saisieImportData.slice(0, di).find(other =>
+          other.errs.length === 0 && !other.doublon &&
+          other.s.date === s.date &&
+          other.s.agent.toLowerCase().trim() === s.agent.toLowerCase().trim() &&
+          other.s.village.toLowerCase().trim() === s.village.toLowerCase().trim()
+        );
+        if(enBatch){ d.doublon = 'batch'; totalDoublons++; }
+      });
+
       const total = saisieImportData.length;
       const totalErr = saisieImportData.filter(d=>d.errs.length>0).length;
       const modal = document.getElementById('saisie-import-modal');
-
+      const msgDoublons = totalDoublons > 0 ? ` · ⚠ ${totalDoublons} doublon(s) détecté(s)` : '';
       document.getElementById('saisie-import-info').textContent =
-        total+' saisie(s) détectée(s). '+(totalErr>0?totalErr+' ligne(s) invalides seront ignorées.':'Toutes les lignes sont valides.');
+        total+' saisie(s) détectée(s). '+(totalErr>0?totalErr+' ligne(s) invalides seront ignorées.':'Toutes les lignes sont valides.')+msgDoublons;
+      // Afficher/masquer le bouton "Ignorer les doublons"
+      const btnSkip = document.getElementById('btn-import-skip-doublons');
+      if(btnSkip) btnSkip.style.display = totalDoublons > 0 ? 'inline-flex' : 'none';
 
       const etapeBadge = e=>{
         const m={'Enquête terrain':'var(--blue-lt)','Bornage':'var(--teal-lt)','Constitution':'var(--amber-lt)'};
         return'<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:'+(m[e]||'var(--surface2)')+'">'+e+'</span>';
+      };
+      const doublonBadge = d => {
+        if(!d.doublon) return '<span style="color:var(--accent);font-weight:500">OK</span>';
+        if(d.doublon === 'exact') return '<span style="color:var(--red-txt);font-weight:500">Doublon exact</span>';
+        if(d.doublon === 'base') return `<span style="color:var(--amber-txt);font-weight:500" title="Déjà en base : ${d.doublon_ref}">⚠ Doublon base</span>`;
+        if(d.doublon === 'batch') return '<span style="color:var(--amber-txt);font-weight:500">⚠ Doublon batch</span>';
+        return '<span style="color:var(--red-txt)">'+d.errs.join(', ')+'</span>';
       };
 
       document.getElementById('saisie-import-preview').innerHTML =
@@ -2226,8 +2533,10 @@ function saisieImportExcel(input){
         '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Statut</th>'+
         '</tr></thead><tbody>'+
         saisieImportData.map(d=>{
-          const ok=d.errs.length===0;
-          const bg=ok?'':'background:var(--red-lt)';
+          const ok=d.errs.length===0 && !d.doublon;
+          const isErreur = d.errs.length > 0;
+          const isDoublon = !!d.doublon;
+          const bg = isErreur ? 'background:var(--red-lt)' : isDoublon ? 'background:var(--amber-lt)' : '';
           return'<tr style="border-bottom:1px solid var(--border);'+bg+'">'+
             '<td style="padding:4px 8px;color:var(--text3)">'+d.ligne+'</td>'+
             '<td style="padding:4px 8px;font-family:DM Mono,monospace;font-size:11px">'+d.s.date+'</td>'+
@@ -2235,8 +2544,7 @@ function saisieImportExcel(input){
             '<td style="padding:4px 8px">'+d.s.village+'</td>'+
             '<td style="padding:4px 8px">'+etapeBadge(d.s.etape)+'</td>'+
             '<td style="padding:4px 8px;text-align:center;font-weight:600;color:var(--accent)">'+d.s.ndos+'</td>'+
-            '<td style="padding:4px 8px">'+(ok?'<span style="color:var(--accent);font-weight:500">OK</span>':
-              '<span style="color:var(--red-txt)">'+d.errs.join(', ')+'</span>')+'</td>'+
+            '<td style="padding:4px 8px">'+(isErreur ? '<span style="color:var(--red-txt)">'+d.errs.join(', ')+'</span>' : doublonBadge(d))+'</td>'+
           '</tr>';
         }).join('')+'</tbody></table>';
 
@@ -2252,15 +2560,23 @@ function saisieImportExcel(input){
   reader.readAsArrayBuffer(file);
 }
 
-function saisieImportConfirm(){
-  const valides = saisieImportData.filter(d=>d.errs.length===0);
+function saisieImportConfirm(skipDoublons){
+  const valides = saisieImportData.filter(d => {
+    if(d.errs.length > 0) return false;
+    if(skipDoublons && d.doublon) return false;
+    if(d.doublon === 'exact') return false; // toujours ignoré
+    return true;
+  });
   if(!valides.length){showToast('Aucune saisie valide à importer.');return;}
   let nb=0;
   valides.forEach(({s})=>{
     if(!saisies.find(x=>x.id===s.id)){saisies.unshift({...s,created_at:new Date().toLocaleString('fr-FR')});nb++;}
   });
+  const doublonsGardes = valides.filter(d => d.doublon && d.doublon !== 'exact').length;
   document.getElementById('saisie-import-modal').style.display='none';
-  showToast(nb+' saisie(s) importée(s) !');
+  let msg = nb + ' saisie(s) importée(s)';
+  if(doublonsGardes > 0) msg += ' dont ' + doublonsGardes + ' doublon(s) potentiel(s)';
+  showToast(msg + ' !');
   saisieImportData=[];
   saisieRenderAll();
   dashRenderAll();
