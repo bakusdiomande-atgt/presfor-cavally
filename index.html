@@ -424,6 +424,13 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       </div>
       <div class="kpi-bar" id="prog-kpi"></div>
       <div class="filter-bar">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+          <label style="font-size:12px;font-weight:600;color:var(--text2)">Période :</label>
+          <input type="date" id="prog-f-debut" onchange="progRenderAll()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px">
+          <span style="font-size:12px;color:var(--text2)">→</span>
+          <input type="date" id="prog-f-fin" onchange="progRenderAll()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px">
+          <button onclick="progResetPeriode()" style="font-size:11px;padding:4px 10px;background:var(--border);border:none;border-radius:6px;cursor:pointer;color:var(--text2)">✕ Tout</button>
+        </div>
         <input type="text" id="prog-search" placeholder="Rechercher..." oninput="progRenderTable()">
         <select id="prog-f-dept" onchange="progRenderTable()">
           <option value="">Tous les départements</option>
@@ -1568,16 +1575,41 @@ function progSave(){  scheduleSave();
 }
 function progRenderAll(){progRenderKPI();progRenderTable();document.getElementById('prog-nb').textContent=programmes.length;}
 
+function progGetPeriodFilter(){
+  const d=document.getElementById('prog-f-debut')?.value;
+  const f=document.getElementById('prog-f-fin')?.value;
+  return {d,f};
+}
+
+function progFilterByPeriode(list){
+  const {d,f}=progGetPeriodFilter();
+  return list.filter(p=>{
+    if(d && p.date_fin < d) return false;
+    if(f && p.date_debut > f) return false;
+    return true;
+  });
+}
+
+function progResetPeriode(){
+  const el1=document.getElementById('prog-f-debut');
+  const el2=document.getElementById('prog-f-fin');
+  if(el1) el1.value='';
+  if(el2) el2.value='';
+  progRenderAll();
+}
+
 function progRenderKPI(){
-  const ec=programmes.filter(p=>p.statut==='En cours').length;
-  const ret=programmes.filter(p=>p.statut==='En retard').length;
-  const tObj=programmes.reduce((s,p)=>s+p.objectif,0);
-  const tReal=programmes.reduce((s,p)=>s+(p.realise||0),0);
+  const filtered=progFilterByPeriode(programmes);
+  const ec=filtered.filter(p=>p.statut==='En cours').length;
+  const ret=filtered.filter(p=>p.statut==='En retard').length;
+  const tObj=filtered.reduce((s,p)=>s+p.objectif,0);
+  const tReal=filtered.reduce((s,p)=>s+(p.realise||0),0);
   const taux=tObj>0?Math.round(tReal/tObj*100):0;
+  const label=filtered.length<programmes.length?`sur ${filtered.length}`:`sur ${programmes.length}`;
   document.getElementById('prog-kpi').innerHTML=`
-    <div class="kpi green"><div class="kpi-l">En cours</div><div class="kpi-v">${ec}</div><div class="kpi-s">sur ${programmes.length}</div></div>
+    <div class="kpi green"><div class="kpi-l">En cours</div><div class="kpi-v">${ec}</div><div class="kpi-s">${label}</div></div>
     <div class="kpi blue"><div class="kpi-l">Taux global</div><div class="kpi-v">${taux}%</div><div class="kpi-s">${tReal} / ${tObj} dos.</div></div>
-    <div class="kpi"><div class="kpi-l">Planifiés</div><div class="kpi-v">${programmes.filter(p=>p.statut==='Planifié').length}</div><div class="kpi-s">À démarrer</div></div>
+    <div class="kpi"><div class="kpi-l">Planifiés</div><div class="kpi-v">${filtered.filter(p=>p.statut==='Planifié').length}</div><div class="kpi-s">À démarrer</div></div>
     <div class="kpi ${ret>0?'red':''}"><div class="kpi-l">En retard</div><div class="kpi-v">${ret}</div><div class="kpi-s">${ret>0?'Action requise':'Aucun'}</div></div>`;
 }
 
@@ -1585,7 +1617,7 @@ function progRenderTable(){
   const q=(document.getElementById('prog-search').value||'').toLowerCase();
   const fd=document.getElementById('prog-f-dept').value;
   const fs=document.getElementById('prog-f-statut').value;
-  const list=programmes.filter(p=>{
+  const list=progFilterByPeriode(programmes).filter(p=>{
     const mq=!q||p.id.toLowerCase().includes(q)||p.agent.toLowerCase().includes(q)||p.villages.join(' ').toLowerCase().includes(q);
     return mq&&(!fd||p.dept===fd)&&(!fs||p.statut===fs);
   });
