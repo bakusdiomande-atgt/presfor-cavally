@@ -451,6 +451,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
           <p>Aucun programme. Créez le premier.</p>
           <button class="btn-p" onclick="progShowPanel('form')">+ Créer</button>
         </div>
+        <div id="prog-pagination"></div>
       </div>
     </div>
 
@@ -693,6 +694,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
           <tbody id="saisie-tbody"></tbody>
         </table>
         <div id="saisie-empty" class="empty-state" style="display:none"><p>Aucune saisie. Démarrez la première déclaration.</p><button class="btn-p" onclick="saisieShowPanel('form')">+ Nouvelle saisie</button></div>
+        <div id="saisie-pagination"></div>
       </div>
     </div>
 
@@ -1009,6 +1011,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
           <p>Aucun dossier enregistré.</p>
           <button class="btn-p" onclick="dosShowPanel('form')">+ Nouveau dossier</button>
         </div>
+        <div id="dos-pagination"></div>
       </div>
     </div>
 
@@ -1429,6 +1432,15 @@ let progVillages = [];
 let dosImportData = [];
 let progImportData = [];
 
+// ── Pagination ──
+const PAGE_SIZE = 50;
+let progPage = 0;
+let saisiePage = 0;
+let dosPage = 0;
+let progListFiltered = [];
+let saisieListFiltered = [];
+let dosListFiltered = [];
+
 // ════════════════════════════════════════
 // RÉFÉRENTIEL ACTIVITÉS PRESFOR CAVALLY
 // ════════════════════════════════════════
@@ -1534,6 +1546,39 @@ const PROGS_REF=[
   {id:'PROG-2025-005',agent:'Fofana Ahoua',dept:'Dép. Taï',objectif:18},
 ];
 
+
+// ── Rendu barre de pagination ──
+function renderPagination(containerId, page, total, pageSize, onPageFn){
+  const totalPages = Math.ceil(total / pageSize);
+  if(totalPages <= 1) return '';
+  const start = page * pageSize + 1;
+  const end = Math.min((page + 1) * pageSize, total);
+  const btnStyle = 'border:1px solid var(--border-med);background:var(--surface);color:var(--text);padding:4px 10px;border-radius:var(--radius-sm);font-family:\'Instrument Sans\',sans-serif;font-size:12px;cursor:pointer;';
+  const btnActiveStyle = 'border:1px solid var(--accent);background:var(--accent);color:#fff;padding:4px 10px;border-radius:var(--radius-sm);font-family:\'Instrument Sans\',sans-serif;font-size:12px;cursor:pointer;';
+  let pages = '';
+  // Max 7 boutons de page
+  const maxBtn = 5;
+  let startP = Math.max(0, page - 2);
+  let endP = Math.min(totalPages - 1, startP + maxBtn - 1);
+  if(endP - startP < maxBtn - 1) startP = Math.max(0, endP - maxBtn + 1);
+  if(startP > 0) pages += `<button style="${btnStyle}" onclick="${onPageFn}(0)">1</button><span style="padding:0 4px;color:var(--text3)">…</span>`;
+  for(let i = startP; i <= endP; i++){
+    pages += `<button style="${i===page?btnActiveStyle:btnStyle}" onclick="${onPageFn}(${i})">${i+1}</button>`;
+  }
+  if(endP < totalPages - 1) pages += `<span style="padding:0 4px;color:var(--text3)">…</span><button style="${btnStyle}" onclick="${onPageFn}(${totalPages-1})">${totalPages}</button>`;
+  return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--border);background:var(--surface3);">
+    <span style="font-size:12px;color:var(--text2);">${start}–${end} sur <strong>${total}</strong></span>
+    <div style="display:flex;gap:4px;align-items:center;">
+      <button style="${btnStyle}" onclick="${onPageFn}(${Math.max(0,page-1)})" ${page===0?'disabled':''}>‹</button>
+      ${pages}
+      <button style="${btnStyle}" onclick="${onPageFn}(${Math.min(totalPages-1,page+1)})" ${page===totalPages-1?'disabled':''}>›</button>
+    </div>
+    <span style="font-size:12px;color:var(--text2);">Page ${page+1} / ${totalPages}</span>
+  </div>`;
+}
+function progGoPage(p){ progPage=p; progRenderPage(); }
+function saisieGoPage(p){ saisiePage=p; saisieRenderPage(); }
+function dosGoPage(p){ dosPage=p; dosRenderPage(); }
 function fmtDate(d){if(!d)return'—';return new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});}
 function fmtHeure(h){if(!h)return'';return h;}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
@@ -1621,13 +1666,21 @@ function progRenderTable(){
     const mq=!q||p.id.toLowerCase().includes(q)||p.agent.toLowerCase().includes(q)||p.villages.join(' ').toLowerCase().includes(q);
     return mq&&(!fd||p.dept===fd)&&(!fs||p.statut===fs);
   });
+  progListFiltered = list;
+  progPage = 0;
+  progRenderPage();
+}
+
+function progRenderPage(){
+  const list = progListFiltered;
   const tbody=document.getElementById('prog-tbody');
   const empty=document.getElementById('prog-empty');
-  if(!list.length){tbody.innerHTML='';empty.style.display='block';return;}
+  const paginEl = document.getElementById('prog-pagination');
+  if(!list.length){tbody.innerHTML='';empty.style.display='block';if(paginEl)paginEl.innerHTML='';return;}
   empty.style.display='none';
   const sb=s=>{const m={'En cours':'b-green','Planifié':'b-blue','Terminé':'b-gray','En retard':'b-red'};return`<span class="badge ${m[s]||'b-gray'}">${s}</span>`;};
-  tbody.innerHTML=list.map(p=>{
-    // Calcul progression : Ha pour Topo, Dossiers pour CE
+  const page = progListFiltered.slice(progPage*PAGE_SIZE, (progPage+1)*PAGE_SIZE);
+  tbody.innerHTML=page.map(p=>{
     const objRef = p.objectif > 0 ? p.objectif : (p.objectif_dos > 0 ? p.objectif_dos : 1);
     const pct = Math.min(100, Math.round((p.realise||0) / objRef * 100));
     const fc = pct>=90?'var(--accent)':pct>=60?'var(--amber)':'var(--red)';
@@ -1643,6 +1696,7 @@ function progRenderTable(){
       <td><div style="display:flex;gap:5px"><button class="btn-s" style="font-size:11px;padding:4px 8px" onclick="progEdit('${p.id}')">Modifier</button><button class="btn-d" onclick="progDelete('${p.id}')">Sup.</button></div></td>
     </tr>`;
   }).join('');
+  if(paginEl) paginEl.innerHTML = renderPagination('prog-pagination', progPage, list.length, PAGE_SIZE, 'progGoPage');
 }
 
 function progShowPanel(id,btn){
@@ -1880,12 +1934,21 @@ function saisieRenderList(){
     const mq=!q||s.id.toLowerCase().includes(q)||s.agent.toLowerCase().includes(q)||s.village.toLowerCase().includes(q)||(s.prog_ref||'').toLowerCase().includes(q);
     return mq&&(!fa||s.agent===fa)&&(!fd||s.dept===fd)&&(!fdt||s.date===fdt);
   }).sort((a,b)=>b.date.localeCompare(a.date));
+  saisieListFiltered = list;
+  saisiePage = 0;
+  saisieRenderPage();
+}
+
+function saisieRenderPage(){
+  const list = saisieListFiltered;
   const tbody=document.getElementById('saisie-tbody');
   const empty=document.getElementById('saisie-empty');
-  if(!list.length){tbody.innerHTML='';empty.style.display='block';return;}
+  const paginEl = document.getElementById('saisie-pagination');
+  if(!list.length){tbody.innerHTML='';empty.style.display='block';if(paginEl)paginEl.innerHTML='';return;}
   empty.style.display='none';
   const eb=e=>{const m={'Enquête terrain':'b-blue','Bornage':'b-teal','Constitution':'b-amber','Validation techn.':'b-amber','Enregistrement':'b-green'};return`<span class="badge ${m[e]||'b-gray'}">${e}</span>`;};
-  tbody.innerHTML=list.map(s=>{
+  const page = list.slice(saisiePage*PAGE_SIZE, (saisiePage+1)*PAGE_SIZE);
+  tbody.innerHTML=page.map(s=>{
     let ecartHtml='<span class="badge b-gray">—</span>';
     if(s.prog_ref){const p=PROGS_REF.find(p=>p.id===s.prog_ref);if(p){const cum=saisies.filter(x=>x.prog_ref===s.prog_ref&&x.date<=s.date).reduce((a,x)=>a+x.ndos,0);const pct=Math.round(cum/p.objectif*100);ecartHtml=`<span class="badge ${pct>=90?'b-green':pct>=65?'b-amber':'b-red'}">${pct}%</span>`;}}
     return`<tr><td class="td-mono">${s.id}</td><td style="font-size:12px;white-space:nowrap">${fmtDate(s.date)}</td>
@@ -1901,6 +1964,7 @@ function saisieRenderList(){
         <button class="btn-s" style="font-size:11px;padding:4px 8px" onclick="saisieEdit('${s.id}')">Modifier</button><button class="btn-d" onclick="saisieDelete('${s.id}')">Sup.</button></div></td>
     </tr>`;
   }).join('');
+  if(paginEl) paginEl.innerHTML = renderPagination('saisie-pagination', saisiePage, list.length, PAGE_SIZE, 'saisieGoPage');
 }
 
 function saisieRenderCorr(){
@@ -2817,16 +2881,20 @@ function dosRenderList(){
     const ms=!fs||(fs==='actif'&&d.etape!=='Clôturé')||(fs==='cloture'&&d.etape==='Clôturé')||(fs==='bloque'&&d.etape!=='Clôturé'&&dosJours(d.etape_date)>30);
     return mq&&(!fd||d.dept===fd)&&(!fa||d.agent===fa)&&ms;
   }).sort((a,b)=>b.date_ouverture.localeCompare(a.date_ouverture));
+  dosListFiltered = list;
+  dosPage = 0;
+  dosRenderPage();
+}
 
+function dosRenderPage(){
+  const list = dosListFiltered;
   const empty=document.getElementById('dos-empty');
   const tbody=document.getElementById('dos-tbody');
-  if(!list.length){tbody.innerHTML='';empty.style.display='block';dosRenderMatrixHead([]);return;}
+  const paginEl = document.getElementById('dos-pagination');
+  if(!list.length){tbody.innerHTML='';empty.style.display='block';dosRenderMatrixHead([]);if(paginEl)paginEl.innerHTML='';return;}
   empty.style.display='none';
 
-  // Collecter toutes les étapes uniques présentes dans la liste filtrée
-  // Grouper par activité pour l'en-tête
   const activitesPresentes = [...new Set(list.map(d=>d.activite||'CF').filter(Boolean))];
-  // Construire ETAPES_ABBR en fonction des activités présentes
   let ETAPES_ABBR = [];
   if(activitesPresentes.length===1){
     const act = ACTIVITES[activitesPresentes[0]];
@@ -2835,7 +2903,6 @@ function dosRenderList(){
       ETAPES_ABBR.push({full:'Clôturé', abbr:'Clôt.', short:'Clôturé', activite:''});
     }
   } else {
-    // Mode multi-activité : union de toutes les étapes
     const seen = new Set();
     activitesPresentes.forEach(actKey=>{
       const act = ACTIVITES[actKey];
@@ -2846,7 +2913,8 @@ function dosRenderList(){
 
   dosRenderMatrixHead(ETAPES_ABBR, activitesPresentes);
 
-  tbody.innerHTML=list.map(d=>{
+  const page = list.slice(dosPage*PAGE_SIZE, (dosPage+1)*PAGE_SIZE);
+  tbody.innerHTML=page.map(d=>{
     const blq=d.etape!=='Clôturé'&&dosJours(d.etape_date)>30;
     const curIdx=DOS_ETAPES.indexOf(d.etape);
     // Activité du dossier
@@ -2910,6 +2978,7 @@ function dosRenderList(){
       </td>
     </tr>`;
   }).join('');
+  if(paginEl) paginEl.innerHTML = renderPagination('dos-pagination', dosPage, list.length, PAGE_SIZE, 'dosGoPage');
 }
 
 function dosRenderMatrixHead(etapes, activites){
