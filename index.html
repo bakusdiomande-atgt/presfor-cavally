@@ -3151,7 +3151,14 @@ function progImportExcel(input){
         const hasObjVil = obj_vil && !isNaN(parseFloat(obj_vil)) && parseFloat(obj_vil) > 0;
         if(!hasObjHa && !hasObjDos && !hasObjVil) errs.push('Objectif manquant');
         const prog={
-          id:'PROG-'+new Date().getFullYear()+'-IMP'+String(i+1).padStart(3,'0'),
+          id:(()=>{
+          // ID basé sur le contenu : évite les collisions entre imports successifs
+          const agSlug=(agent||'').replace(/[^a-zA-Z]/g,'').substring(0,8).toUpperCase();
+          const spSlug=(sp_raw||sp||'').replace(/[^a-zA-Z]/g,'').substring(0,5).toUpperCase();
+          const opSlug=(op||'').replace(/[^a-zA-Z]/g,'').substring(0,4).toUpperCase();
+          const dateSlug=(debut||new Date().toISOString().split('T')[0]).replace(/-/g,'');
+          return 'PROG-'+new Date().getFullYear()+'-'+agSlug+'-'+spSlug+opSlug+dateSlug;
+        })(),
           periode_type:'Semaine',
           date_debut:debut||new Date().toISOString().split('T')[0],
           date_fin:fin||'',
@@ -3218,10 +3225,12 @@ function progImportConfirm(){
   if(!valides.length){showToast('Aucun programme valide.');return;}
   let nb=0, doublons=0;
   valides.forEach(({prog})=>{
-    // Vérifier doublon : même agent + même département + même date début
+    // Vérifier doublon : même agent + département + SP + activité + date début
     const existe=programmes.find(p=>
       p.agent===prog.agent &&
       p.dept===prog.dept &&
+      p.sp===prog.sp &&
+      p.op===prog.op &&
       p.date_debut===prog.date_debut
     );
     if(existe){
