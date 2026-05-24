@@ -1549,29 +1549,35 @@ const PROGS_REF=[
 
 // ── Rendu barre de pagination ──
 function renderPagination(containerId, page, total, pageSize, onPageFn){
-  const totalPages = Math.ceil(total / pageSize);
-  if(totalPages <= 1) return '';
+  if(total === 0) return '';
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const start = page * pageSize + 1;
   const end = Math.min((page + 1) * pageSize, total);
-  const btnStyle = 'border:1px solid var(--border-med);background:var(--surface);color:var(--text);padding:4px 10px;border-radius:var(--radius-sm);font-family:\'Instrument Sans\',sans-serif;font-size:12px;cursor:pointer;';
-  const btnActiveStyle = 'border:1px solid var(--accent);background:var(--accent);color:#fff;padding:4px 10px;border-radius:var(--radius-sm);font-family:\'Instrument Sans\',sans-serif;font-size:12px;cursor:pointer;';
+  const btnStyle = 'border:1px solid var(--border-med);background:var(--surface);color:var(--text);padding:5px 11px;border-radius:var(--radius-sm);font-family:\'Instrument Sans\',sans-serif;font-size:12px;cursor:pointer;transition:background .1s;';
+  const btnActiveStyle = 'border:1px solid var(--accent);background:var(--accent);color:#fff;padding:5px 11px;border-radius:var(--radius-sm);font-family:\'Instrument Sans\',sans-serif;font-size:12px;cursor:pointer;';
+  const btnDisabledStyle = 'border:1px solid var(--border);background:var(--surface2);color:var(--text3);padding:5px 11px;border-radius:var(--radius-sm);font-family:\'Instrument Sans\',sans-serif;font-size:12px;cursor:default;opacity:.5;';
+  // Si 1 seule page : afficher juste le compteur
+  if(totalPages <= 1){
+    return `<div style="display:flex;align-items:center;justify-content:flex-end;padding:8px 14px;border-top:1px solid var(--border);background:var(--surface3);">
+      <span style="font-size:12px;color:var(--text2);"><strong>${total}</strong> résultat${total>1?'s':''}</span>
+    </div>`;
+  }
   let pages = '';
-  // Max 7 boutons de page
   const maxBtn = 5;
   let startP = Math.max(0, page - 2);
   let endP = Math.min(totalPages - 1, startP + maxBtn - 1);
   if(endP - startP < maxBtn - 1) startP = Math.max(0, endP - maxBtn + 1);
-  if(startP > 0) pages += `<button style="${btnStyle}" onclick="${onPageFn}(0)">1</button><span style="padding:0 4px;color:var(--text3)">…</span>`;
+  if(startP > 0) pages += `<button style="${btnStyle}" onclick="${onPageFn}(0)">1</button><span style="padding:0 4px;color:var(--text3);font-size:13px;">…</span>`;
   for(let i = startP; i <= endP; i++){
     pages += `<button style="${i===page?btnActiveStyle:btnStyle}" onclick="${onPageFn}(${i})">${i+1}</button>`;
   }
-  if(endP < totalPages - 1) pages += `<span style="padding:0 4px;color:var(--text3)">…</span><button style="${btnStyle}" onclick="${onPageFn}(${totalPages-1})">${totalPages}</button>`;
-  return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--border);background:var(--surface3);">
+  if(endP < totalPages - 1) pages += `<span style="padding:0 4px;color:var(--text3);font-size:13px;">…</span><button style="${btnStyle}" onclick="${onPageFn}(${totalPages-1})">${totalPages}</button>`;
+  return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-top:1px solid var(--border);background:var(--surface3);">
     <span style="font-size:12px;color:var(--text2);">${start}–${end} sur <strong>${total}</strong></span>
     <div style="display:flex;gap:4px;align-items:center;">
-      <button style="${btnStyle}" onclick="${onPageFn}(${Math.max(0,page-1)})" ${page===0?'disabled':''}>‹</button>
+      <button style="${page===0?btnDisabledStyle:btnStyle}" onclick="${page>0?onPageFn+'('+Math.max(0,page-1)+')':'void 0'}">‹</button>
       ${pages}
-      <button style="${btnStyle}" onclick="${onPageFn}(${Math.min(totalPages-1,page+1)})" ${page===totalPages-1?'disabled':''}>›</button>
+      <button style="${page===totalPages-1?btnDisabledStyle:btnStyle}" onclick="${page<totalPages-1?onPageFn+'('+Math.min(totalPages-1,page+1)+')':'void 0'}">›</button>
     </div>
     <span style="font-size:12px;color:var(--text2);">Page ${page+1} / ${totalPages}</span>
   </div>`;
