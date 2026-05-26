@@ -5924,32 +5924,46 @@ async function authLogin(){
   const pwd = document.getElementById('auth-pwd').value;
   const err = document.getElementById('auth-err');
   const btn = document.getElementById('auth-btn');
-  err.className = 'auth-err'; err.textContent = '';
-  if(!id||!pwd){ err.textContent='Identifiant et mot de passe requis.'; err.className='auth-err err show'; return; }
-  btn.textContent = 'Connexion...'; btn.disabled = true;
+  // Reset affichage
+  err.style.display='none'; err.textContent='';
+  if(!id||!pwd){
+    err.textContent='Identifiant et mot de passe requis.';
+    err.style.cssText='display:block;background:#FAEBEA;color:#6E1C17;padding:10px;border-radius:6px;margin-top:10px;font-size:13px;';
+    return;
+  }
+  btn.textContent='Vérification...'; btn.disabled=true;
   try{
-    // Recharger depuis Firebase pour avoir les données fraîches
+    // 1. Recharger users_db depuis Firebase
+    err.textContent='Chargement...';
+    err.style.cssText='display:block;background:#E4EFE8;color:#0F2F1C;padding:10px;border-radius:6px;margin-top:10px;font-size:12px;';
     await authLoadUsersFromFirebase();
+    // 2. Chercher l'utilisateur
+    err.textContent='Recherche compte...';
     const user = users_db[id];
     if(!user || !user.id){
-      throw new Error('Identifiant "'+id+'" introuvable.');
+      throw new Error('Compte "'+id+'" introuvable. Vérifiez l\'identifiant ou contactez le coordinateur.');
     }
+    // 3. Vérifier le mot de passe
+    err.textContent='Vérification mot de passe...';
     const hash = await hashPassword(pwd);
     if(hash !== user.password_hash){
       throw new Error('Mot de passe incorrect.');
     }
+    // 4. Connexion réussie
+    err.textContent='Connexion réussie !';
     currentUser = {id:user.id, nom:user.nom, role:user.role, loginAt:new Date().toISOString()};
     localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(currentUser));
     users_db[id].last_login = new Date().toISOString();
     authWriteUser(id, users_db[id]).catch(()=>{});
     authApplyUI();
-    document.getElementById('auth-overlay').style.display = 'none';
-    showToast('Bienvenue, ' + user.nom.split(' ')[0] + ' !');
+    document.getElementById('auth-overlay').style.display='none';
+    showToast('Bienvenue, '+user.nom.split(' ')[0]+' !');
   }catch(e){
-    err.textContent = e.message;
-    err.className = 'auth-err err show';
+    err.textContent = '✗ '+e.message;
+    err.style.cssText='display:block;background:#FAEBEA;border:1px solid rgba(184,48,37,.3);color:#6E1C17;padding:10px;border-radius:6px;margin-top:10px;font-size:13px;font-weight:500;';
+    console.error('authLogin error:', e);
   }finally{
-    btn.textContent = 'Se connecter'; btn.disabled = false;
+    btn.textContent='Se connecter'; btn.disabled=false;
   }
 }
 
