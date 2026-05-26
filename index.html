@@ -6006,16 +6006,26 @@ async function adminCreateUser(){
     const hash = await hashPassword(pwd);
     const role = (id==='coordinateur'||nom.toLowerCase().includes('coordinateur')) ? 'admin' : 'agent';
     const userData = {id, nom, role, password_hash:hash, created_at:new Date().toISOString(), last_login:null};
-    await authWriteUser(id, userData);
+    // 1. Mémoire en premier → affichage immédiat garanti
     users_db[id] = userData;
+    adminLoadUsers();
     document.getElementById('adm-id').value='';
     document.getElementById('adm-nom').value='';
     document.getElementById('adm-pwd').value='';
-    msg.textContent='✓ Compte "'+id+'" créé et enregistré';
-    msg.style.color='var(--accent)'; msg.style.display='block';
-    setTimeout(()=>msg.style.display='none', 5000);
     showToast('Compte '+id+' créé !');
-    adminLoadUsers();
+    // 2. Firebase en arrière-plan
+    authWriteUser(id, userData)
+      .then(()=>{
+        msg.textContent='✓ Compte "'+id+'" enregistré sur le serveur';
+        msg.style.color='var(--accent)'; msg.style.display='block';
+        setTimeout(()=>msg.style.display='none', 5000);
+      })
+      .catch(e=>{
+        // L'utilisateur est en mémoire mais pas sur Firebase — on force un serverSave
+        msg.textContent='⚠ Visible localement, sync Firebase en cours...';
+        msg.style.color='var(--amber)'; msg.style.display='block';
+        scheduleSave();
+      });
   }catch(e){
     msg.textContent='✗ '+e.message; msg.style.color='var(--red)'; msg.style.display='block';
     console.error('adminCreateUser:', e);
