@@ -5823,8 +5823,21 @@ async function authLogin(){
   const btn = document.querySelector('.auth-btn');
   btn.textContent='Connexion...'; btn.disabled=true;
   try{
-    // Vérifier dans users_db (déjà chargé depuis Firebase)
-    const user = users_db[id];
+    // Vérifier dans users_db (chargé au démarrage)
+    let user = users_db[id];
+    if(!user || !user.id){
+      // Pas trouvé en mémoire → recharger depuis Firebase
+      try{
+        const reload = await fetch(FIREBASE_URL+'/presfor.json', {signal:AbortSignal.timeout(12000)});
+        if(reload.ok){
+          const d = await reload.json();
+          if(d && d.users_db && typeof d.users_db === 'object'){
+            users_db = d.users_db;
+            user = users_db[id];
+          }
+        }
+      }catch(reloadErr){ console.log('Reload auth:', reloadErr.message); }
+    }
     if(!user || !user.id){
       throw new Error('Compte introuvable');
     }
@@ -5842,8 +5855,13 @@ async function authLogin(){
     document.getElementById('auth-overlay').style.display='none';
     showToast('Bienvenue, '+user.nom.split(' ')[0]+' !');
   }catch(e){
-    errEl.textContent = e.message === 'Compte introuvable' || e.message === 'Mot de passe incorrect'
-      ? 'Identifiant ou mot de passe incorrect.' : 'Erreur de connexion. Vérifiez votre connexion internet.';
+    if(e.message === 'Compte introuvable'){
+      errEl.textContent = 'Identifiant "'+id+'" introuvable. Vérifiez votre identifiant.';
+    } else if(e.message === 'Mot de passe incorrect'){
+      errEl.textContent = 'Mot de passe incorrect.';
+    } else {
+      errEl.textContent = 'Erreur de connexion : '+e.message;
+    }
     errEl.style.background='var(--red-lt)';errEl.style.color='var(--red-txt)';
     errEl.classList.add('show');
   }finally{
