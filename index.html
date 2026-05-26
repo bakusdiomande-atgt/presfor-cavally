@@ -5836,154 +5836,149 @@ function updateNetworkStatus(){
 // SYSTÈME D'AUTHENTIFICATION PRESFOR CAVALLY
 // ═══════════════════════════════════════════
 
-// [Auth v2 remplacé par v3]
 
-// ── Hash SHA-256 du mot de passe ──
+// ═══════════════════════════════════════════
+// AUTHENTIFICATION PRESFOR CAVALLY
+// ═══════════════════════════════════════════
+const AUTH_SESSION_KEY = 'presfor_session_v3';
+
 async function hashPassword(pwd){
-  const encoder = new TextEncoder();
-  const data = encoder.encode(pwd + 'PRESFOR_CAV_2026');
+  const data = new TextEncoder().encode(pwd + 'PRESFOR_CAV_2026');
   const hash = await crypto.subtle.digest('SHA-256', data);
   return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
-// ── Vérifier et restaurer la session ──
+// ── Écrire un utilisateur directement dans Firebase via PATCH ──
+async function authWriteUser(id, userData){
+  const patch = {};
+  patch['users_db/' + id] = userData;
+  const r = await fetch(FIREBASE_URL + '/presfor.json', {
+    method: 'PATCH',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(patch),
+    signal: AbortSignal.timeout(15000)
+  });
+  if(!r.ok){
+    const t = await r.text().catch(()=>'');
+    throw new Error('Firebase PATCH HTTP ' + r.status + (t ? ' — ' + t.substring(0,80) : ''));
+  }
+  return true;
+}
+
+// ── Lire users_db depuis Firebase ──
+async function authLoadUsersFromFirebase(){
+  try{
+    const r = await fetch(FIREBASE_URL + '/presfor/users_db.json', {signal:AbortSignal.timeout(10000)});
+    if(r.ok){
+      const d = await r.json();
+      if(d && typeof d === 'object'){
+        // Merger : local prend priorité
+        users_db = Object.assign({}, d, users_db);
+        return true;
+      }
+    }
+  }catch(e){ console.log('authLoadUsers:', e.message); }
+  return false;
+}
+
+// ── Init ──
 async function authInit(){
-  // users_db est déjà chargé par serverLoad — on l'utilise directement
+  // Charger users_db depuis Firebase (en plus de ce que serverLoad a chargé)
+  await authLoadUsersFromFirebase();
+  // Vérifier session locale
   try{
     const stored = localStorage.getItem(AUTH_SESSION_KEY);
     if(stored){
       const session = JSON.parse(stored);
-      const user = users_db[session.id];
-      if(user && user.id){
+      if(users_db[session.id] && users_db[session.id].id){
         currentUser = session;
         authApplyUI();
-        document.getElementById('auth-overlay').style.display='none';
-        // Mettre à jour last_login en mémoire + Firebase
+        document.getElementById('auth-overlay').style.display = 'none';
         users_db[session.id].last_login = new Date().toISOString();
-        scheduleSave();
+        authWriteUser(session.id, users_db[session.id]).catch(()=>{});
         return true;
       }
     }
-  }catch(e){ console.log('Session check:', e.message); }
-  await authBootstrap();
+  }catch(e){ console.log('authInit session:', e.message); }
+  // Pas de session → vérifier si admin existe
+  if(!users_db['coordinateur']){
+    await authCreateDefaultAdmin();
+  }
+  document.getElementById('auth-overlay').style.display = 'flex';
   return false;
 }
 
-// ── Bootstrap : créer compte admin par défaut si aucun utilisateur ──
-async function authBootstrap(){
-  // Si aucun compte en mémoire, créer l'admin par défaut
-  if(!users_db || Object.keys(users_db).length === 0){
-    try{
-      const defaultPwd = 'Presfor2026!';
-      const hash = await hashPassword(defaultPwd);
-      users_db['coordinateur'] = {
-        id:'coordinateur', nom:'DIOMANDE Bakary — Coordinateur',
-        role:'admin', password_hash:hash,
-        created_at:new Date().toISOString(), last_login:null
-      };
-      scheduleSave();
-      document.getElementById('auth-err').textContent =
-        '⚡ Premier accès — Compte admin créé. ID : coordinateur | Mot de passe : Presfor2026! — Changez-le immédiatement.';
-      document.getElementById('auth-err').style.background='var(--accent-lt)';
-      document.getElementById('auth-err').style.color='var(--accent-txt)';
-      document.getElementById('auth-err').classList.add('show');
-    }catch(e){ console.log('Bootstrap:', e.message); }
-  }
-  document.getElementById('auth-overlay').style.display='flex';
+async function authCreateDefaultAdmin(){
+  const hash = await hashPassword('Presfor2026!');
+  const admin = {id:'coordinateur', nom:'DIOMANDE Bakary — Coordinateur', role:'admin',
+    password_hash:hash, created_at:new Date().toISOString(), last_login:null};
+  users_db['coordinateur'] = admin;
+  await authWriteUser('coordinateur', admin).catch(()=>{});
+  const err = document.getElementById('auth-err');
+  err.textContent = '⚡ Premier accès — ID : coordinateur | Mot de passe : Presfor2026!';
+  err.className = 'auth-err ok show';
 }
 
-// ── Connexion ──
 async function authLogin(){
   const id = (document.getElementById('auth-id').value||'').trim().toLowerCase();
   const pwd = document.getElementById('auth-pwd').value;
-  const errEl = document.getElementById('auth-err');
-  errEl.classList.remove('show');
-  if(!id || !pwd){
-    errEl.textContent='Veuillez renseigner votre identifiant et mot de passe.';
-    errEl.style.background='var(--red-lt)';errEl.style.color='var(--red-txt)';
-    errEl.classList.add('show'); return;
-  }
-  const btn = document.querySelector('.auth-btn');
-  btn.textContent='Connexion...'; btn.disabled=true;
+  const err = document.getElementById('auth-err');
+  const btn = document.getElementById('auth-btn');
+  err.className = 'auth-err'; err.textContent = '';
+  if(!id||!pwd){ err.textContent='Identifiant et mot de passe requis.'; err.className='auth-err err show'; return; }
+  btn.textContent = 'Connexion...'; btn.disabled = true;
   try{
-    // Vérifier dans users_db (chargé au démarrage)
-    let user = users_db[id];
+    // Recharger depuis Firebase pour avoir les données fraîches
+    await authLoadUsersFromFirebase();
+    const user = users_db[id];
     if(!user || !user.id){
-      // Pas trouvé en mémoire → recharger depuis Firebase
-      try{
-        const reload = await fetch(FIREBASE_URL+'/presfor.json', {signal:AbortSignal.timeout(12000)});
-        if(reload.ok){
-          const d = await reload.json();
-          if(d && d.users_db && typeof d.users_db === 'object'){
-            users_db = d.users_db;
-            user = users_db[id];
-          }
-        }
-      }catch(reloadErr){ console.log('Reload auth:', reloadErr.message); }
-    }
-    if(!user || !user.id){
-      throw new Error('Compte introuvable');
+      throw new Error('Identifiant "'+id+'" introuvable.');
     }
     const hash = await hashPassword(pwd);
     if(hash !== user.password_hash){
-      throw new Error('Mot de passe incorrect');
+      throw new Error('Mot de passe incorrect.');
     }
-    // Connexion réussie
     currentUser = {id:user.id, nom:user.nom, role:user.role, loginAt:new Date().toISOString()};
     localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(currentUser));
-    // Mettre à jour last_login
     users_db[id].last_login = new Date().toISOString();
-    scheduleSave();
+    authWriteUser(id, users_db[id]).catch(()=>{});
     authApplyUI();
-    document.getElementById('auth-overlay').style.display='none';
-    showToast('Bienvenue, '+user.nom.split(' ')[0]+' !');
+    document.getElementById('auth-overlay').style.display = 'none';
+    showToast('Bienvenue, ' + user.nom.split(' ')[0] + ' !');
   }catch(e){
-    if(e.message === 'Compte introuvable'){
-      errEl.textContent = 'Identifiant "'+id+'" introuvable. Vérifiez votre identifiant.';
-    } else if(e.message === 'Mot de passe incorrect'){
-      errEl.textContent = 'Mot de passe incorrect.';
-    } else {
-      errEl.textContent = 'Erreur de connexion : '+e.message;
-    }
-    errEl.style.background='var(--red-lt)';errEl.style.color='var(--red-txt)';
-    errEl.classList.add('show');
+    err.textContent = e.message;
+    err.className = 'auth-err err show';
   }finally{
-    btn.textContent='Se connecter'; btn.disabled=false;
+    btn.textContent = 'Se connecter'; btn.disabled = false;
   }
 }
 
-// ── Déconnexion ──
 function authLogout(){
   if(!confirm('Se déconnecter ?')) return;
   localStorage.removeItem(AUTH_SESSION_KEY);
   currentUser = null;
-  document.getElementById('auth-id').value='';
-  document.getElementById('auth-pwd').value='';
-  document.getElementById('auth-err').classList.remove('show');
-  document.getElementById('auth-overlay').style.display='flex';
+  document.getElementById('auth-id').value = '';
+  document.getElementById('auth-pwd').value = '';
+  document.getElementById('auth-err').className = 'auth-err';
+  document.getElementById('auth-overlay').style.display = 'flex';
   authApplyUI();
 }
 
-// ── Appliquer l'UI selon le rôle ──
 function authApplyUI(){
-  if(!currentUser){ return; }
-  const isAdmin = currentUser.role === 'admin';
-  // Topbar
+  const isAdmin = currentUser && currentUser.role === 'admin';
   const ui = document.getElementById('tb-user-info');
-  ui.style.display='flex';
-  document.getElementById('tb-user-name').textContent = currentUser.nom.split('—')[0].trim().split(' ').slice(0,2).join(' ');
-  document.getElementById('tb-user-role').textContent = isAdmin ? 'Admin' : 'Agent';
-  document.getElementById('tb-admin-btn').style.display = isAdmin ? 'block' : 'none';
-  document.getElementById('tb-logout-btn').style.display = 'block';
-  // Appliquer restrictions visuelles
-  authApplyRestrictions();
-}
-
-// ── Restrictions visuelles selon le rôle ──
-function authApplyRestrictions(){
-  if(!currentUser) return;
-  const isAdmin = currentUser.role === 'admin';
-  // Les boutons "Réinitialiser" dans les sidebars
+  if(currentUser){
+    ui.style.display = 'flex';
+    document.getElementById('tb-user-name').textContent = currentUser.nom.split('—')[0].trim().split(' ').slice(0,2).join(' ');
+    document.getElementById('tb-user-role').textContent = isAdmin ? 'Admin' : 'Agent';
+    document.getElementById('tb-logout-btn').style.display = 'block';
+    document.getElementById('tb-admin-btn').style.display = isAdmin ? 'block' : 'none';
+  } else {
+    ui.style.display = 'none';
+    document.getElementById('tb-logout-btn').style.display = 'none';
+    document.getElementById('tb-admin-btn').style.display = 'none';
+  }
+  // Masquer boutons Réinitialiser pour agents
   document.querySelectorAll('.nav-item').forEach(btn=>{
     if(btn.textContent.trim().startsWith('Réinitialiser')){
       btn.style.display = isAdmin ? '' : 'none';
@@ -5991,35 +5986,23 @@ function authApplyRestrictions(){
   });
 }
 
-// ── Vérifier permission avant action ──
 function canDelete(){ return currentUser && currentUser.role === 'admin'; }
-function canEdit(){ return !!currentUser; }
 function canModifyProg(prog){
   if(!currentUser) return false;
   if(currentUser.role === 'admin') return true;
-  // Agent : seulement dans les 24h
   if(!prog.created_at) return false;
-  const created = new Date(prog.created_at);
-  const now = new Date();
-  const heures = (now - created) / 3600000;
-  return heures <= 24;
+  return (new Date() - new Date(prog.created_at)) / 3600000 <= 24;
 }
 
 // ═══════════════════════════════════════════
-// PANNEAU ADMIN — GESTION DES UTILISATEURS
+// PANNEAU ADMIN
 // ═══════════════════════════════════════════
-
-async function adminOpenPanel(){
-  if(!currentUser || currentUser.role !== 'admin'){
-    showToast('Accès refusé.');return;
-  }
-  // Peupler le select agents
-  const selNom = document.getElementById('adm-nom');
-  selNom.innerHTML = '<option value="">-- Sélectionner un agent --</option>';
-  AGENTS_FULL.forEach(a=>{
-    selNom.innerHTML += `<option value="${a.nom}">${a.nom} — ${a.fonction}</option>`;
-  });
-  selNom.innerHTML += '<option value="DIOMANDE Bakary — Coordinateur">DIOMANDE Bakary — Coordinateur</option>';
+function adminOpenPanel(){
+  if(!currentUser || currentUser.role !== 'admin'){ showToast('Accès refusé.'); return; }
+  const sel = document.getElementById('adm-nom');
+  sel.innerHTML = '<option value="">-- Sélectionner un agent --</option>';
+  AGENTS_FULL.forEach(a=>{ sel.innerHTML += `<option value="${a.nom}">${a.nom} — ${a.fonction}</option>`; });
+  sel.innerHTML += '<option value="DIOMANDE Bakary — Coordinateur">DIOMANDE Bakary — Coordinateur</option>';
   document.getElementById('admin-overlay').classList.add('show');
   adminLoadUsers();
 }
@@ -6032,18 +6015,15 @@ function adminLoadUsers(){
   const tbody = document.getElementById('adm-users-tbody');
   const resetSel = document.getElementById('adm-reset-user');
   if(!tbody) return;
-  if(!users_db || Object.keys(users_db).length === 0){
-    tbody.innerHTML='<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3);font-size:12px;">Aucun compte</td></tr>';
+  const list = Object.values(users_db).filter(u=>u&&u.id).sort((a,b)=>a.role==='admin'?-1:1);
+  if(!list.length){
+    tbody.innerHTML = '<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">Aucun compte</td></tr>';
     return;
   }
-  const list = Object.values(users_db).sort((a,b)=> a.role==='admin'?-1:1);
   resetSel.innerHTML = '<option value="">-- Sélectionner --</option>';
   tbody.innerHTML = list.map(u=>{
-    if(!u || !u.id) return '';
     const isMe = u.id === currentUser.id;
-    const roleB = u.role==='admin'
-      ? '<span class="badge b-green">Admin</span>'
-      : '<span class="badge b-blue">Agent</span>';
+    const roleB = u.role==='admin' ? '<span class="badge b-green">Admin</span>' : '<span class="badge b-blue">Agent</span>';
     const created = u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—';
     const last = u.last_login ? new Date(u.last_login).toLocaleDateString('fr-FR') : 'Jamais';
     resetSel.innerHTML += `<option value="${u.id}">${u.id} — ${(u.nom||'').split('—')[0].trim()}</option>`;
@@ -6053,98 +6033,83 @@ function adminLoadUsers(){
       <td style="padding:8px 12px;">${roleB}</td>
       <td style="padding:8px 12px;font-size:11px;color:var(--text2);">${created}</td>
       <td style="padding:8px 12px;font-size:11px;color:var(--text2);">${last}</td>
-      <td style="padding:8px 12px;">${isMe
-        ? '<span style="font-size:11px;color:var(--text3)">Vous</span>'
-        : `<button class="btn-d" onclick="adminDeleteUser('${u.id}')">Sup.</button>`
-      }</td>
+      <td style="padding:8px 12px;">${isMe ? '<span style="font-size:11px;color:var(--text3)">Vous</span>' : `<button class="btn-d" onclick="adminDeleteUser('${u.id}')">Sup.</button>`}</td>
     </tr>`;
   }).join('');
 }
 
 async function adminRefreshUsers(){
-  // Forcer rechargement depuis Firebase (bouton Actualiser)
-  try{
-    const r = await fetch(FIREBASE_URL+'/presfor.json', {signal:AbortSignal.timeout(12000)});
-    if(r.ok){
-      const d = await r.json();
-      if(d && d.users_db && typeof d.users_db === 'object'){
-        users_db = d.users_db;
-        showToast('Liste actualisée depuis le serveur.');
-      }
-    }
-  }catch(e){ showToast('Erreur réseau : '+e.message); }
+  showToast('Actualisation...');
+  await authLoadUsersFromFirebase();
   adminLoadUsers();
+  showToast('Liste actualisée.');
 }
-
 
 async function adminCreateUser(){
   const id = (document.getElementById('adm-id').value||'').trim().toLowerCase();
   const nom = document.getElementById('adm-nom').value;
   const pwd = document.getElementById('adm-pwd').value;
   const msg = document.getElementById('adm-msg');
+  const btn = document.getElementById('adm-create-btn');
   msg.style.display='none';
   if(!id){ showToast('Identifiant requis.'); return; }
   if(!nom){ showToast('Sélectionnez un nom.'); return; }
-  if(!pwd || pwd.length < 6){ showToast('Mot de passe : 6 caractères minimum.'); return; }
-  const btn = document.querySelector('.admin-card .btn-p');
-  if(btn){ btn.textContent='Création...'; btn.disabled=true; }
+  if(!pwd||pwd.length<6){ showToast('Mot de passe : 6 caractères minimum.'); return; }
+  if(users_db[id]){ showToast('Identifiant "'+id+'" déjà utilisé.'); return; }
+  btn.textContent='Création...'; btn.disabled=true;
   try{
-    // Vérifier doublon en mémoire
-    if(users_db[id]){ showToast('Identifiant "'+id+'" déjà utilisé.'); return; }
-    // Créer l'objet utilisateur
     const hash = await hashPassword(pwd);
-    const role = (id==='coordinateur' || nom.toLowerCase().includes('coordinateur')) ? 'admin' : 'agent';
-    const userData = {
-      id, nom, role, password_hash:hash,
-      created_at: new Date().toISOString(),
-      last_login: null
-    };
-    // ── Écriture directe dans Firebase (chemin ciblé, sans toucher aux autres données) ──
-    const writeR = await fetch(
-      FIREBASE_URL + '/presfor/users_db/' + id + '.json',
-      {
-        method: 'PUT',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(userData),
-        signal: AbortSignal.timeout(15000)
-      }
-    );
-    if(!writeR.ok){
-      const errTxt = await writeR.text().catch(()=>'');
-      throw new Error('Firebase a refusé l\'écriture : HTTP ' + writeR.status + (errTxt?' — '+errTxt.substring(0,80):''));
-    }
-    // Confirmer que Firebase a bien enregistré
-    const written = await writeR.json();
-    if(!written || !written.id){
-      throw new Error('Firebase n\'a pas confirmé l\'enregistrement.');
-    }
-    // Mettre à jour la mémoire locale
-    users_db[id] = written;
-    // Mettre à jour lastKnownTs pour éviter que syncPoll écrase
-    lastKnownTs = null;
-    // Vider le formulaire
+    const role = (id==='coordinateur'||nom.toLowerCase().includes('coordinateur')) ? 'admin' : 'agent';
+    const userData = {id, nom, role, password_hash:hash, created_at:new Date().toISOString(), last_login:null};
+    await authWriteUser(id, userData);
+    users_db[id] = userData;
     document.getElementById('adm-id').value='';
     document.getElementById('adm-nom').value='';
     document.getElementById('adm-pwd').value='';
-    msg.textContent = '✓ Compte "'+id+'" créé et enregistré dans Firebase';
-    msg.style.color = 'var(--accent)';
-    msg.style.display = 'block';
-    setTimeout(()=>{ msg.style.display='none'; }, 5000);
+    msg.textContent='✓ Compte "'+id+'" créé et enregistré';
+    msg.style.color='var(--accent)'; msg.style.display='block';
+    setTimeout(()=>msg.style.display='none', 5000);
     showToast('Compte '+id+' créé !');
     adminLoadUsers();
   }catch(e){
-    msg.textContent = '✗ Erreur : ' + e.message;
-    msg.style.color = 'var(--red)';
-    msg.style.display = 'block';
+    msg.textContent='✗ '+e.message; msg.style.color='var(--red)'; msg.style.display='block';
     console.error('adminCreateUser:', e);
-  }finally{
-    if(btn){ btn.textContent='+ Créer le compte'; btn.disabled=false; }
-  }
+  }finally{ btn.textContent='+ Créer le compte'; btn.disabled=false; }
 }
 
+async function adminDeleteUser(id){
+  if(!confirm('Supprimer le compte "'+id+'" ?')) return;
+  try{
+    const patch = {}; patch['users_db/'+id] = null;
+    await fetch(FIREBASE_URL+'/presfor.json', {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(patch), signal:AbortSignal.timeout(10000)
+    });
+    delete users_db[id];
+    adminLoadUsers();
+    showToast('Compte "'+id+'" supprimé.');
+  }catch(e){ showToast('Erreur : '+e.message); }
+}
 
+async function adminResetPwd(){
+  const id = document.getElementById('adm-reset-user').value;
+  const pwd = document.getElementById('adm-reset-pwd').value;
+  if(!id||!pwd){ showToast('Sélectionnez un compte et entrez le nouveau mot de passe.'); return; }
+  if(pwd.length<6){ showToast('Mot de passe : 6 caractères minimum.'); return; }
+  try{
+    const hash = await hashPassword(pwd);
+    const patch = {}; patch['users_db/'+id+'/password_hash'] = hash;
+    const r = await fetch(FIREBASE_URL+'/presfor.json', {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(patch), signal:AbortSignal.timeout(10000)
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    if(users_db[id]) users_db[id].password_hash = hash;
+    document.getElementById('adm-reset-pwd').value='';
+    showToast('Mot de passe de "'+id+'" réinitialisé !');
+  }catch(e){ showToast('Erreur : '+e.message); }
+}
 
-// ── adminDeleteUser et adminResetPwd (PATCH Firebase) ──
 async function adminDeleteUser(id){
   if(!confirm('Supprimer le compte "'+id+'" ?')) return;
   try{
