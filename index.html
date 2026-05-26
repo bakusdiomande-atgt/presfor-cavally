@@ -215,10 +215,117 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 @media(max-width:900px){.kpi-bar{grid-template-columns:repeat(2,1fr);}.fg3,.fg4{grid-template-columns:repeat(2,1fr);}
   .tb-mod .mod-num{display:none;}}
 @media(max-width:640px){.sidebar{display:none;}.main{padding:14px;}.fg,.fg3,.fg4{grid-template-columns:1fr;}}
+
+/* ── Authentification ── */
+.auth-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#1C4A2E 0%,#0F2F1C 100%);z-index:10000;display:flex;align-items:center;justify-content:center;}
+.auth-card{background:#fff;border-radius:16px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 24px 64px rgba(0,0,0,0.35);}
+.auth-logo{display:flex;align-items:center;gap:12px;margin-bottom:28px;}
+.auth-logo-badge{width:48px;height:48px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:#fff;}
+.auth-logo-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text);}
+.auth-logo-sub{font-size:11px;color:var(--text3);margin-top:1px;}
+.auth-field{margin-bottom:16px;}
+.auth-field label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;}
+.auth-field input{width:100%;padding:10px 13px;border:1.5px solid var(--border-med);border-radius:var(--radius-sm);font-family:'Instrument Sans',sans-serif;font-size:14px;color:var(--text);transition:border-color .15s;box-sizing:border-box;}
+.auth-field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(28,74,46,.1);}
+.auth-btn{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-family:'Instrument Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s;margin-top:8px;}
+.auth-btn:hover{opacity:.88;}
+.auth-err{background:var(--red-lt);border:1px solid rgba(184,48,37,.25);border-radius:var(--radius-sm);padding:9px 12px;font-size:12px;color:var(--red-txt);margin-top:12px;display:none;}
+.auth-err.show{display:block;}
+/* ── Admin users panel ── */
+.admin-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9000;display:none;align-items:center;justify-content:center;}
+.admin-overlay.show{display:flex;}
+.admin-card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:28px 32px;width:100%;max-width:700px;max-height:88vh;overflow-y:auto;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
+
+<!-- ══ LOGIN OVERLAY ══ -->
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-badge">PF</div>
+      <div>
+        <div class="auth-logo-title">PRESFOR · Cavally</div>
+        <div class="auth-logo-sub">Plateforme de suivi foncier — Groupement CAG</div>
+      </div>
+    </div>
+    <div class="auth-field">
+      <label>Identifiant</label>
+      <input type="text" id="auth-id" placeholder="Ex : nguetta" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('auth-pwd').focus()">
+    </div>
+    <div class="auth-field">
+      <label>Mot de passe</label>
+      <input type="password" id="auth-pwd" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')authLogin()">
+    </div>
+    <button class="auth-btn" onclick="authLogin()">Se connecter</button>
+    <div class="auth-err" id="auth-err">Identifiant ou mot de passe incorrect.</div>
+    <div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center;">
+      PRESFOR · Région du Cavally · Côte d'Ivoire
+    </div>
+  </div>
+</div>
+
+<!-- ══ ADMIN PANEL (gestion utilisateurs) ══ -->
+<div class="admin-overlay" id="admin-overlay">
+  <div class="admin-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;">Gestion des comptes</div>
+        <div style="font-size:12px;color:var(--text2);">Créer et gérer les accès agents</div>
+      </div>
+      <button onclick="adminClosePanel()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);">×</button>
+    </div>
+
+    <!-- Formulaire création -->
+    <div style="background:var(--surface3);border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent2);margin-bottom:12px;">Nouveau compte</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div class="ff">
+          <label class="fl">Identifiant <span class="req">*</span></label>
+          <input class="fi" id="adm-id" placeholder="Ex : nguetta" style="font-size:12px;">
+        </div>
+        <div class="ff">
+          <label class="fl">Nom complet <span class="req">*</span></label>
+          <select class="fsel" id="adm-nom" style="font-size:12px;">
+            <option value="">-- Sélectionner un agent --</option>
+          </select>
+        </div>
+        <div class="ff">
+          <label class="fl">Mot de passe <span class="req">*</span></label>
+          <input class="fi" type="password" id="adm-pwd" placeholder="Min. 6 caractères" style="font-size:12px;">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn-p" onclick="adminCreateUser()" style="font-size:12px;">+ Créer le compte</button>
+        <span id="adm-msg" style="font-size:12px;color:var(--accent);display:none;"></span>
+      </div>
+    </div>
+
+    <!-- Liste comptes -->
+    <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">Comptes existants</div>
+    <div class="tw">
+      <table style="font-size:12px;">
+        <thead><tr>
+          <th>Identifiant</th><th>Nom complet</th><th>Rôle</th>
+          <th>Créé le</th><th>Dernière connexion</th><th></th>
+        </tr></thead>
+        <tbody id="adm-users-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Reset mot de passe -->
+    <div style="margin-top:16px;padding:12px 16px;background:var(--amber-lt);border-radius:var(--radius-sm);border:1px solid rgba(181,112,10,.2);">
+      <div style="font-size:11px;font-weight:600;color:var(--amber-txt);margin-bottom:8px;">Réinitialiser un mot de passe</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select class="fsel" id="adm-reset-user" style="font-size:12px;flex:1;"></select>
+        <input class="fi" type="password" id="adm-reset-pwd" placeholder="Nouveau mot de passe" style="font-size:12px;flex:1;">
+        <button class="btn-s" onclick="adminResetPwd()" style="font-size:12px;">Réinitialiser</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <!-- ══ TOP BAR ══ -->
 <header class="topbar">
@@ -314,6 +421,14 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       Rapports
     </button>
   </nav>
+  <div style="display:flex;align-items:center;gap:6px;margin-left:8px;">
+    <div id="tb-user-info" style="display:none;align-items:center;gap:6px;">
+      <span id="tb-user-name" style="font-size:11px;color:rgba(255,255,255,0.8);font-family:'DM Mono',monospace;"></span>
+      <span id="tb-user-role" style="font-size:10px;background:rgba(255,255,255,0.15);padding:2px 7px;border-radius:8px;color:rgba(255,255,255,0.7);"></span>
+    </div>
+    <button id="tb-admin-btn" onclick="adminOpenPanel()" title="Gestion des comptes" style="display:none;background:rgba(255,255,255,0.12);border:none;color:rgba(255,255,255,0.8);padding:4px 9px;border-radius:6px;cursor:pointer;font-size:13px;">🔑</button>
+    <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;background:rgba(255,255,255,0.12);border:none;color:rgba(255,255,255,0.8);padding:4px 9px;border-radius:6px;cursor:pointer;font-size:11px;">⏻</button>
+  </div>
   <span class="tb-right" id="hdate"></span>
 </header>
 
@@ -1812,6 +1927,7 @@ function progSubmit(e){
 
 function progEdit(id){
   const p=programmes.find(x=>x.id===id);if(!p)return;
+  if(!canModifyProg(p)){showToast('Modification impossible : délai de 24h dépassé.');return;}
   progEditingId=id;
   document.getElementById('prog-form-title').textContent='Modifier le programme';
   document.getElementById('pf-ref').value=p.id||'';
@@ -1838,6 +1954,7 @@ function progEdit(id){
 }
 
 function progDelete(id){
+  if(!canDelete()){showToast('Action réservée au coordinateur.');return;}
   if(!confirm(`Supprimer ${id} ?`))return;
   programmes=programmes.filter(p=>p.id!==id);progSave();progRenderAll();showToast('Supprimé.');
 }
@@ -2260,6 +2377,7 @@ function saisieDelete(id){
 }
 
 function saisieDeleteUnlocked(id){
+  if(!canDelete()){showToast('Action réservée au coordinateur.');return;}
   if(!confirm(`Supprimer ${id} ?`))return;
   saisies=saisies.filter(s=>s.id!==id);saisSave();saisieRenderAll();showToast('Supprimé.');
 }
@@ -3089,7 +3207,7 @@ function dosEdit(id){
   document.getElementById('df-etape-date').value=d.etape_date||'';document.getElementById('df-obs').value=d.obs||'';
   dosShowPanel('form');window.scrollTo(0,0);
 }
-function dosDel(id){if(!confirm('Supprimer ce dossier ?'))return;dossiers=dossiers.filter(d=>d.id!==id);dosSave();dosRenderAll();showToast('Supprimé.');}
+function dosDel(id){if(!canDelete()){showToast('Action réservée au coordinateur.');return;}if(!confirm('Supprimer ce dossier ?'))return;dossiers=dossiers.filter(d=>d.id!==id);dosSave();dosRenderAll();showToast('Supprimé.');}
 function dosResetForm(){
   dosEditingId=null;
   document.getElementById('dos-form-title').textContent='Nouveau dossier foncier';
@@ -3930,6 +4048,7 @@ function agRenderAbsences(){
 }
 
 function agDelAbsence(id){
+  if(!canDelete()){showToast('Action réservée au coordinateur.');return;}
   if(!confirm('Supprimer cette absence ?'))return;
   absences=absences.filter(a=>a.id!==id);
   agSaveAbs();agRenderAbsences();agRenderKPI();showToast('Supprimée.');
@@ -5618,6 +5737,282 @@ function updateNetworkStatus(){
 // ═══════════════════════════════════════════
 // INIT GLOBAL
 // ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+// SYSTÈME D'AUTHENTIFICATION PRESFOR CAVALLY
+// ═══════════════════════════════════════════
+
+let currentUser = null; // {id, nom, role, loginAt}
+const AUTH_SESSION_KEY = 'presfor_session_v2';
+const ADMIN_ID = 'coordinateur';
+
+// ── Hash SHA-256 du mot de passe ──
+async function hashPassword(pwd){
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pwd + 'PRESFOR_CAV_2026');
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// ── Vérifier et restaurer la session ──
+async function authInit(){
+  try{
+    const stored = localStorage.getItem(AUTH_SESSION_KEY);
+    if(stored){
+      const session = JSON.parse(stored);
+      // Vérifier que le compte existe encore en Firebase
+      const r = await fetch(FIREBASE_URL+'/presfor/users/'+session.id+'.json', {signal:AbortSignal.timeout(8000)});
+      if(r.ok){
+        const user = await r.json();
+        if(user && user.id){
+          currentUser = session;
+          authApplyUI();
+          document.getElementById('auth-overlay').style.display='none';
+          // Mettre à jour last_login
+          fetch(FIREBASE_URL+'/presfor/users/'+session.id+'/last_login.json',{method:'PUT',body:JSON.stringify(new Date().toISOString()),headers:{'Content-Type':'application/json'}}).catch(()=>{});
+          return true;
+        }
+      }
+    }
+  }catch(e){ console.log('Session check:', e.message); }
+  // Pas de session valide → bootstrap ou login
+  await authBootstrap();
+  return false;
+}
+
+// ── Bootstrap : créer compte admin par défaut si aucun utilisateur ──
+async function authBootstrap(){
+  try{
+    const r = await fetch(FIREBASE_URL+'/presfor/users.json', {signal:AbortSignal.timeout(8000)});
+    if(r.ok){
+      const users = await r.json();
+      if(!users || Object.keys(users).length === 0){
+        // Première utilisation : créer le compte admin par défaut
+        const defaultPwd = 'Presfor2026!';
+        const hash = await hashPassword(defaultPwd);
+        await fetch(FIREBASE_URL+'/presfor/users/coordinateur.json',{
+          method:'PUT',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            id:'coordinateur', nom:'DIOMANDE Bakary — Coordinateur',
+            role:'admin', password_hash:hash,
+            created_at:new Date().toISOString(), last_login:null
+          })
+        });
+        document.getElementById('auth-err').textContent =
+          '⚡ Premier accès — Compte admin créé. ID : coordinateur | Mot de passe : Presfor2026! — Changez-le immédiatement.';
+        document.getElementById('auth-err').style.background='var(--accent-lt)';
+        document.getElementById('auth-err').style.color='var(--accent-txt)';
+        document.getElementById('auth-err').classList.add('show');
+      }
+    }
+  }catch(e){ console.log('Bootstrap:', e.message); }
+  document.getElementById('auth-overlay').style.display='flex';
+}
+
+// ── Connexion ──
+async function authLogin(){
+  const id = (document.getElementById('auth-id').value||'').trim().toLowerCase();
+  const pwd = document.getElementById('auth-pwd').value;
+  const errEl = document.getElementById('auth-err');
+  errEl.classList.remove('show');
+  if(!id || !pwd){
+    errEl.textContent='Veuillez renseigner votre identifiant et mot de passe.';
+    errEl.style.background='var(--red-lt)';errEl.style.color='var(--red-txt)';
+    errEl.classList.add('show'); return;
+  }
+  const btn = document.querySelector('.auth-btn');
+  btn.textContent='Connexion...'; btn.disabled=true;
+  try{
+    const r = await fetch(FIREBASE_URL+'/presfor/users/'+id+'.json', {signal:AbortSignal.timeout(10000)});
+    if(!r.ok) throw new Error('Erreur réseau');
+    const user = await r.json();
+    if(!user || !user.id){
+      throw new Error('Compte introuvable');
+    }
+    const hash = await hashPassword(pwd);
+    if(hash !== user.password_hash){
+      throw new Error('Mot de passe incorrect');
+    }
+    // Connexion réussie
+    currentUser = {id:user.id, nom:user.nom, role:user.role, loginAt:new Date().toISOString()};
+    localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(currentUser));
+    // Mettre à jour last_login
+    fetch(FIREBASE_URL+'/presfor/users/'+id+'/last_login.json',{
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(new Date().toISOString())
+    }).catch(()=>{});
+    authApplyUI();
+    document.getElementById('auth-overlay').style.display='none';
+    showToast('Bienvenue, '+user.nom.split(' ')[0]+' !');
+  }catch(e){
+    errEl.textContent = e.message === 'Compte introuvable' || e.message === 'Mot de passe incorrect'
+      ? 'Identifiant ou mot de passe incorrect.' : 'Erreur de connexion. Vérifiez votre connexion internet.';
+    errEl.style.background='var(--red-lt)';errEl.style.color='var(--red-txt)';
+    errEl.classList.add('show');
+  }finally{
+    btn.textContent='Se connecter'; btn.disabled=false;
+  }
+}
+
+// ── Déconnexion ──
+function authLogout(){
+  if(!confirm('Se déconnecter ?')) return;
+  localStorage.removeItem(AUTH_SESSION_KEY);
+  currentUser = null;
+  document.getElementById('auth-id').value='';
+  document.getElementById('auth-pwd').value='';
+  document.getElementById('auth-err').classList.remove('show');
+  document.getElementById('auth-overlay').style.display='flex';
+  authApplyUI();
+}
+
+// ── Appliquer l'UI selon le rôle ──
+function authApplyUI(){
+  if(!currentUser){ return; }
+  const isAdmin = currentUser.role === 'admin';
+  // Topbar
+  const ui = document.getElementById('tb-user-info');
+  ui.style.display='flex';
+  document.getElementById('tb-user-name').textContent = currentUser.nom.split('—')[0].trim().split(' ').slice(0,2).join(' ');
+  document.getElementById('tb-user-role').textContent = isAdmin ? 'Admin' : 'Agent';
+  document.getElementById('tb-admin-btn').style.display = isAdmin ? 'block' : 'none';
+  document.getElementById('tb-logout-btn').style.display = 'block';
+  // Appliquer restrictions visuelles
+  authApplyRestrictions();
+}
+
+// ── Restrictions visuelles selon le rôle ──
+function authApplyRestrictions(){
+  if(!currentUser) return;
+  const isAdmin = currentUser.role === 'admin';
+  // Les boutons "Réinitialiser" dans les sidebars
+  document.querySelectorAll('.nav-item').forEach(btn=>{
+    if(btn.textContent.trim().startsWith('Réinitialiser')){
+      btn.style.display = isAdmin ? '' : 'none';
+    }
+  });
+}
+
+// ── Vérifier permission avant action ──
+function canDelete(){ return currentUser && currentUser.role === 'admin'; }
+function canEdit(){ return !!currentUser; }
+function canModifyProg(prog){
+  if(!currentUser) return false;
+  if(currentUser.role === 'admin') return true;
+  // Agent : seulement dans les 24h
+  if(!prog.created_at) return false;
+  const created = new Date(prog.created_at);
+  const now = new Date();
+  const heures = (now - created) / 3600000;
+  return heures <= 24;
+}
+
+// ═══════════════════════════════════════════
+// PANNEAU ADMIN — GESTION DES UTILISATEURS
+// ═══════════════════════════════════════════
+
+async function adminOpenPanel(){
+  if(!currentUser || currentUser.role !== 'admin'){
+    showToast('Accès refusé.');return;
+  }
+  // Peupler le select agents
+  const selNom = document.getElementById('adm-nom');
+  selNom.innerHTML = '<option value="">-- Sélectionner un agent --</option>';
+  AGENTS_FULL.forEach(a=>{
+    selNom.innerHTML += `<option value="${a.nom}">${a.nom} — ${a.fonction}</option>`;
+  });
+  selNom.innerHTML += '<option value="DIOMANDE Bakary — Coordinateur">DIOMANDE Bakary — Coordinateur</option>';
+  document.getElementById('admin-overlay').classList.add('show');
+  await adminLoadUsers();
+}
+
+function adminClosePanel(){
+  document.getElementById('admin-overlay').classList.remove('show');
+}
+
+async function adminLoadUsers(){
+  try{
+    const r = await fetch(FIREBASE_URL+'/presfor/users.json',{signal:AbortSignal.timeout(10000)});
+    if(!r.ok) throw new Error('Erreur réseau');
+    const users = await r.json();
+    const tbody = document.getElementById('adm-users-tbody');
+    const resetSel = document.getElementById('adm-reset-user');
+    if(!users){tbody.innerHTML='<tr><td colspan="6" style="padding:12px;text-align:center;color:var(--text3)">Aucun compte</td></tr>';return;}
+    const list = Object.values(users).sort((a,b)=>a.role==='admin'?-1:1);
+    resetSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+    tbody.innerHTML = list.map(u=>{
+      const isMe = u.id === currentUser.id;
+      const roleB = u.role==='admin'
+        ? '<span class="badge b-green">Admin</span>'
+        : '<span class="badge b-blue">Agent</span>';
+      const last = u.last_login ? new Date(u.last_login).toLocaleDateString('fr-FR') : '—';
+      resetSel.innerHTML += `<option value="${u.id}">${u.id} — ${u.nom.split('—')[0].trim()}</option>`;
+      return `<tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:8px 12px;font-family:'DM Mono',monospace;font-size:11px;">${u.id}</td>
+        <td style="padding:8px 12px;font-size:12px;font-weight:500;">${u.nom}</td>
+        <td style="padding:8px 12px;">${roleB}</td>
+        <td style="padding:8px 12px;font-size:11px;color:var(--text2);">${u.created_at?new Date(u.created_at).toLocaleDateString('fr-FR'):'—'}</td>
+        <td style="padding:8px 12px;font-size:11px;color:var(--text2);">${last}</td>
+        <td style="padding:8px 12px;">${isMe?'<span style="font-size:11px;color:var(--text3)">Vous</span>':`<button class="btn-d" onclick="adminDeleteUser('${u.id}')">Sup.</button>`}</td>
+      </tr>`;
+    }).join('');
+  }catch(e){ showToast('Erreur chargement comptes : '+e.message); }
+}
+
+async function adminCreateUser(){
+  const id = (document.getElementById('adm-id').value||'').trim().toLowerCase();
+  const nom = document.getElementById('adm-nom').value;
+  const pwd = document.getElementById('adm-pwd').value;
+  const msg = document.getElementById('adm-msg');
+  if(!id||!nom||!pwd){showToast('Remplissez tous les champs.');return;}
+  if(pwd.length < 6){showToast('Mot de passe : 6 caractères minimum.');return;}
+  try{
+    // Vérifier si l'ID existe déjà
+    const check = await fetch(FIREBASE_URL+'/presfor/users/'+id+'.json',{signal:AbortSignal.timeout(8000)});
+    const existing = await check.json();
+    if(existing && existing.id){showToast('Cet identifiant existe déjà.');return;}
+    const hash = await hashPassword(pwd);
+    const role = (id === 'coordinateur' || nom.includes('Coordinateur')) ? 'admin' : 'agent';
+    await fetch(FIREBASE_URL+'/presfor/users/'+id+'.json',{
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({id, nom, role, password_hash:hash, created_at:new Date().toISOString(), last_login:null})
+    });
+    document.getElementById('adm-id').value='';
+    document.getElementById('adm-nom').value='';
+    document.getElementById('adm-pwd').value='';
+    msg.textContent='✓ Compte créé : '+id;msg.style.display='block';
+    setTimeout(()=>msg.style.display='none',3000);
+    await adminLoadUsers();
+    showToast('Compte '+id+' créé !');
+  }catch(e){ showToast('Erreur : '+e.message); }
+}
+
+async function adminDeleteUser(id){
+  if(!confirm('Supprimer le compte '+id+' ?')) return;
+  try{
+    await fetch(FIREBASE_URL+'/presfor/users/'+id+'.json',{method:'DELETE'});
+    await adminLoadUsers();
+    showToast('Compte supprimé.');
+  }catch(e){ showToast('Erreur : '+e.message); }
+}
+
+async function adminResetPwd(){
+  const id = document.getElementById('adm-reset-user').value;
+  const pwd = document.getElementById('adm-reset-pwd').value;
+  if(!id||!pwd){showToast('Sélectionnez un compte et entrez le nouveau mot de passe.');return;}
+  if(pwd.length<6){showToast('Mot de passe : 6 caractères minimum.');return;}
+  try{
+    const hash = await hashPassword(pwd);
+    await fetch(FIREBASE_URL+'/presfor/users/'+id+'/password_hash.json',{
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(hash)
+    });
+    document.getElementById('adm-reset-pwd').value='';
+    showToast('Mot de passe de '+id+' réinitialisé !');
+  }catch(e){ showToast('Erreur : '+e.message); }
+}
+
+
 document.getElementById('hdate').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
 document.getElementById('sf-date').value=new Date().toISOString().split('T')[0];
 // ── Peupler tous les selects agents avant les inits ──
@@ -5655,19 +6050,15 @@ zvInit();
 showToast('Chargement des données...');
 serverLoad().then(ok => {
   if(!ok) {
-    // Pas de Firebase - utiliser localStorage
-    progRenderAll();
-    saisieRenderAll();
-    dosRenderAll();
-    dashRenderAll();
-    showToast('Mode hors-ligne - données locales');
+    progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
     updateOfflineBanner();
   } else {
-    // En ligne : vérifier si une queue hors-ligne attend d'être envoyée
-    if(getOfflineSnapshot()){
-      flushOfflineQueue();
-    }
+    if(getOfflineSnapshot()){ flushOfflineQueue(); }
   }
+  // Auth après chargement des données
+  authInit().then(loggedIn => {
+    if(loggedIn){ serverLoad(); }
+  });
 });
 // Peupler les selects agents
 ['pf-agent','sf-agent','df-agent','abs-agent'].forEach(id=>buildAgentOptions(id,false));
