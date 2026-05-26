@@ -248,7 +248,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       <div>
         <div class="auth-logo-title">PRESFOR · Cavally</div>
         <div class="auth-logo-sub">Plateforme de suivi foncier — Groupement CAG</div>
-      <div style="font-size:10px;color:#2A6B42;font-weight:700;margin-top:4px;">v3.5 — 26/05/2026</div>
+      <div style="font-size:10px;color:#2A6B42;font-weight:700;margin-top:4px;">v3.6 — 26/05/2026</div>
       </div>
     </div>
     <div class="auth-field">
@@ -6008,6 +6008,36 @@ async function adminRefreshUsers(){
   showToast('Liste actualisée.');
 }
 
+
+// ── Sauvegarde directe et fiable de users_db ──
+async function saveUsersToDB(){
+  try{
+    // Lire les données actuelles
+    const r = await fetch(FIREBASE_URL+'/presfor.json', {signal:AbortSignal.timeout(15000)});
+    if(!r.ok) throw new Error('Lecture Firebase HTTP '+r.status);
+    const current = await r.json();
+    // Fusionner users_db (local prend priorité)
+    const mergedUsers = Object.assign({}, (current&&current.users_db)||{}, users_db);
+    // Écrire tout avec users_db mis à jour
+    const payload = Object.assign({}, current||{}, {
+      users_db: mergedUsers,
+      updated_at: new Date().toISOString()
+    });
+    const w = await fetch(FIREBASE_URL+'/presfor.json', {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(20000)
+    });
+    if(!w.ok) throw new Error('Écriture Firebase HTTP '+w.status);
+    users_db = mergedUsers;
+    lastKnownTs = payload.updated_at;
+    return true;
+  }catch(e){
+    console.error('saveUsersToDB:', e.message);
+    throw e;
+  }
+}
 async function adminCreateUser(){
   const id = (document.getElementById('adm-id').value||'').trim().toLowerCase();
   const nom = document.getElementById('adm-nom').value;
@@ -6033,15 +6063,15 @@ async function adminCreateUser(){
     document.getElementById('adm-pwd').value='';
     showToast('Compte '+id+' créé !');
     // 2. Firebase en arrière-plan
-    // Sauvegarder via serverSave (PUT complet qui inclut users_db)
-    serverSave().then(()=>{
+    // Sauvegarder via saveUsersToDB (lecture-fusion-écriture directe)
+    saveUsersToDB().then(()=>{
       msg.textContent='✓ Compte "'+id+'" créé et sauvegardé';
       msg.style.color='var(--accent)'; msg.style.display='block';
       setTimeout(()=>msg.style.display='none', 5000);
     }).catch(e=>{
-      msg.textContent='⚠ Compte créé localement, sync en attente';
-      msg.style.color='var(--amber)'; msg.style.display='block';
-      scheduleSave();
+      msg.textContent='⚠ Sauvegarde échouée : '+e.message+' — Réessayez ou rechargez.';
+      msg.style.color='var(--red)'; msg.style.display='block';
+      console.error('save users:', e);
     });
   }catch(e){
     msg.textContent='✗ '+e.message; msg.style.color='var(--red)'; msg.style.display='block';
