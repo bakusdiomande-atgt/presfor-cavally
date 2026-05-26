@@ -248,7 +248,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       <div>
         <div class="auth-logo-title">PRESFOR · Cavally</div>
         <div class="auth-logo-sub">Plateforme de suivi foncier — Groupement CAG</div>
-      <div style="font-size:10px;color:#2A6B42;font-weight:700;margin-top:4px;">v3.5-test — 26/05/2026</div>
+      <div style="font-size:10px;color:#2A6B42;font-weight:700;margin-top:4px;">v3.5 — 26/05/2026</div>
       </div>
     </div>
     <div class="auth-field">
@@ -6009,7 +6009,6 @@ async function adminRefreshUsers(){
 }
 
 async function adminCreateUser(){
-  alert('adminCreateUser appelée !');
   const id = (document.getElementById('adm-id').value||'').trim().toLowerCase();
   const nom = document.getElementById('adm-nom').value;
   const pwd = document.getElementById('adm-pwd').value;
@@ -6034,18 +6033,16 @@ async function adminCreateUser(){
     document.getElementById('adm-pwd').value='';
     showToast('Compte '+id+' créé !');
     // 2. Firebase en arrière-plan
-    authWriteUser(id, userData)
-      .then(()=>{
-        msg.textContent='✓ Compte "'+id+'" enregistré sur le serveur';
-        msg.style.color='var(--accent)'; msg.style.display='block';
-        setTimeout(()=>msg.style.display='none', 5000);
-      })
-      .catch(e=>{
-        // L'utilisateur est en mémoire mais pas sur Firebase — on force un serverSave
-        msg.textContent='⚠ Visible localement, sync Firebase en cours...';
-        msg.style.color='var(--amber)'; msg.style.display='block';
-        scheduleSave();
-      });
+    // Sauvegarder via serverSave (PUT complet qui inclut users_db)
+    serverSave().then(()=>{
+      msg.textContent='✓ Compte "'+id+'" créé et sauvegardé';
+      msg.style.color='var(--accent)'; msg.style.display='block';
+      setTimeout(()=>msg.style.display='none', 5000);
+    }).catch(e=>{
+      msg.textContent='⚠ Compte créé localement, sync en attente';
+      msg.style.color='var(--amber)'; msg.style.display='block';
+      scheduleSave();
+    });
   }catch(e){
     msg.textContent='✗ '+e.message; msg.style.color='var(--red)'; msg.style.display='block';
     console.error('adminCreateUser:', e);
@@ -6055,13 +6052,10 @@ async function adminCreateUser(){
 async function adminDeleteUser(id){
   if(!confirm('Supprimer le compte "'+id+'" ?')) return;
   try{
-    const patch = {}; patch['users_db/'+id] = null;
-    await fetch(FIREBASE_URL+'/presfor.json', {
-      method:'PATCH', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(patch), signal:AbortSignal.timeout(10000)
-    });
+    // Supprimer en mémoire puis serverSave
     delete users_db[id];
     adminLoadUsers();
+    serverSave().catch(()=>scheduleSave());
     showToast('Compte "'+id+'" supprimé.');
   }catch(e){ showToast('Erreur : '+e.message); }
 }
@@ -6073,13 +6067,8 @@ async function adminResetPwd(){
   if(pwd.length<6){ showToast('Mot de passe : 6 caractères minimum.'); return; }
   try{
     const hash = await hashPassword(pwd);
-    const patch = {}; patch['users_db/'+id+'/password_hash'] = hash;
-    const r = await fetch(FIREBASE_URL+'/presfor.json', {
-      method:'PATCH', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(patch), signal:AbortSignal.timeout(10000)
-    });
-    if(!r.ok) throw new Error('HTTP '+r.status);
     if(users_db[id]) users_db[id].password_hash = hash;
+    await serverSave();
     document.getElementById('adm-reset-pwd').value='';
     showToast('Mot de passe de "'+id+'" réinitialisé !');
   }catch(e){ showToast('Erreur : '+e.message); }
