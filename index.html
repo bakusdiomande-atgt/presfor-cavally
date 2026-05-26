@@ -229,26 +229,6 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 .auth-field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(28,74,46,.1);}
 .auth-btn{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-family:'Instrument Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s;margin-top:8px;}
 .auth-btn:hover{opacity:.88;}
-.auth-err{background:var(--red-lt);border:1px solid rgba(184,48,37,.25);border-radius:var(--radius-sm);padding:9px 12px;font-size:12px;color:var(--red-txt);margin-top:12px;display:none;}
-.auth-err.show{display:block;}
-/* ── Admin users panel ── */
-.admin-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9000;display:none;align-items:center;justify-content:center;}
-.admin-overlay.show{display:flex;}
-.admin-card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:28px 32px;width:100%;max-width:700px;max-height:88vh;overflow-y:auto;}
-
-/* ── Auth ── */
-.auth-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#1C4A2E 0%,#0F2F1C 100%);z-index:10000;display:flex;align-items:center;justify-content:center;}
-.auth-card{background:#fff;border-radius:16px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 24px 64px rgba(0,0,0,0.35);}
-.auth-logo{display:flex;align-items:center;gap:12px;margin-bottom:28px;}
-.auth-logo-badge{width:48px;height:48px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:#fff;}
-.auth-logo-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text);}
-.auth-logo-sub{font-size:11px;color:var(--text3);margin-top:1px;}
-.auth-field{margin-bottom:16px;}
-.auth-field label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;}
-.auth-field input{width:100%;padding:10px 13px;border:1.5px solid var(--border-med);border-radius:var(--radius-sm);font-family:'Instrument Sans',sans-serif;font-size:14px;color:var(--text);transition:border-color .15s;box-sizing:border-box;}
-.auth-field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(28,74,46,.1);}
-.auth-btn{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-family:'Instrument Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s;margin-top:8px;}
-.auth-btn:hover{opacity:.88;}
 .auth-err{border-radius:var(--radius-sm);padding:9px 12px;font-size:12px;margin-top:12px;display:none;}
 .auth-err.show{display:block;}
 .auth-err.err{background:var(--red-lt);border:1px solid rgba(184,48,37,.25);color:var(--red-txt);}
@@ -265,60 +245,10 @@ tbody td{padding:9px 12px;vertical-align:middle;}
   <div class="auth-card">
     <div class="auth-logo">
       <div class="auth-logo-badge">PF</div>
-      <div><div class="auth-logo-title">PRESFOR · Cavally</div><div class="auth-logo-sub">Plateforme de suivi foncier — Groupement CAG</div>
-      <div style="font-size:10px;color:#2A6B42;font-weight:700;margin-top:4px;">v3.1 — 26/05/2026</div></div>
-    </div>
-    <div class="auth-field"><label>Identifiant</label><input type="text" id="auth-id" placeholder="Ex : nguetta" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('auth-pwd').focus()"></div>
-    <div class="auth-field"><label>Mot de passe</label><input type="password" id="auth-pwd" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')authLogin()"></div>
-    <button class="auth-btn" id="auth-btn" onclick="authLogin()">Se connecter</button>
-    <div class="auth-err" id="auth-err"></div>
-    <div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center;">PRESFOR · Région du Cavally · Côte d'Ivoire</div>
-  </div>
-</div>
-
-<div class="admin-overlay" id="admin-overlay">
-  <div class="admin-card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-      <div><div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;">Gestion des comptes</div><div style="font-size:12px;color:var(--text2);">Créer et gérer les accès agents</div></div>
-      <div style="display:flex;gap:8px;">
-        <button onclick="adminRefreshUsers()" style="background:var(--accent-lt);border:none;color:var(--accent-txt);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;">↻ Actualiser</button>
-        <button onclick="adminClosePanel()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);">×</button>
-      </div>
-    </div>
-    <div style="background:var(--surface3);border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;">
-      <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent2);margin-bottom:12px;">Nouveau compte</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
-        <div class="ff"><label class="fl">Identifiant <span class="req">*</span></label><input class="fi" id="adm-id" placeholder="Ex : nguetta" style="font-size:12px;"></div>
-        <div class="ff"><label class="fl">Nom complet <span class="req">*</span></label><select class="fsel" id="adm-nom" style="font-size:12px;"><option value="">-- Sélectionner un agent --</option></select></div>
-        <div class="ff"><label class="fl">Mot de passe <span class="req">*</span></label><input class="fi" type="password" id="adm-pwd" placeholder="Min. 6 caractères" style="font-size:12px;"></div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn-p" id="adm-create-btn" onclick="adminCreateUser()" style="font-size:12px;">+ Créer le compte</button>
-        <span id="adm-msg" style="font-size:12px;display:none;"></span>
-      </div>
-    </div>
-    <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">Comptes existants</div>
-    <div class="tw"><table style="font-size:12px;"><thead><tr><th>Identifiant</th><th>Nom complet</th><th>Rôle</th><th>Créé le</th><th>Dernière connexion</th><th></th></tr></thead><tbody id="adm-users-tbody"></tbody></table></div>
-    <div style="margin-top:16px;padding:12px 16px;background:var(--amber-lt);border-radius:var(--radius-sm);border:1px solid rgba(181,112,10,.2);">
-      <div style="font-size:11px;font-weight:600;color:var(--amber-txt);margin-bottom:8px;">Réinitialiser un mot de passe</div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <select class="fsel" id="adm-reset-user" style="font-size:12px;flex:1;"></select>
-        <input class="fi" type="password" id="adm-reset-pwd" placeholder="Nouveau mot de passe" style="font-size:12px;flex:1;">
-        <button class="btn-s" onclick="adminResetPwd()" style="font-size:12px;">Réinitialiser</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<!-- ══ LOGIN OVERLAY ══ -->
-<div class="auth-overlay" id="auth-overlay">
-  <div class="auth-card">
-    <div class="auth-logo">
-      <div class="auth-logo-badge">PF</div>
       <div>
         <div class="auth-logo-title">PRESFOR · Cavally</div>
         <div class="auth-logo-sub">Plateforme de suivi foncier — Groupement CAG</div>
+      <div style="font-size:10px;color:#2A6B42;font-weight:700;margin-top:4px;">v3.2 — 26/05/2026</div>
       </div>
     </div>
     <div class="auth-field">
@@ -329,7 +259,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       <label>Mot de passe</label>
       <input type="password" id="auth-pwd" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')authLogin()">
     </div>
-    <button class="auth-btn" onclick="authLogin()">Se connecter</button>
+    <button class="auth-btn" id="auth-btn" onclick="authLogin()">Se connecter</button>
     <div class="auth-err" id="auth-err">Identifiant ou mot de passe incorrect.</div>
     <div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center;">
       PRESFOR · Région du Cavally · Côte d'Ivoire
