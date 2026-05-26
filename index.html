@@ -275,7 +275,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
         <div style="font-size:12px;color:var(--text2);">Créer et gérer les accès agents</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button onclick="adminLoadUsers()" style="background:var(--accent-lt);border:none;color:var(--accent-txt);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;">↻ Actualiser</button>
+        <button onclick="adminRefreshUsers()" style="background:var(--accent-lt);border:none;color:var(--accent-txt);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;">↻ Actualiser</button>
         <button onclick="adminClosePanel()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);">×</button>
       </div>
     </div>
@@ -5920,53 +5920,59 @@ async function adminOpenPanel(){
   });
   selNom.innerHTML += '<option value="DIOMANDE Bakary — Coordinateur">DIOMANDE Bakary — Coordinateur</option>';
   document.getElementById('admin-overlay').classList.add('show');
-  await adminLoadUsers();
+  adminLoadUsers();
 }
 
 function adminClosePanel(){
   document.getElementById('admin-overlay').classList.remove('show');
 }
 
-async function adminLoadUsers(){
+function adminLoadUsers(){
   const tbody = document.getElementById('adm-users-tbody');
   const resetSel = document.getElementById('adm-reset-user');
+  if(!tbody) return;
+  if(!users_db || Object.keys(users_db).length === 0){
+    tbody.innerHTML='<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3);font-size:12px;">Aucun compte</td></tr>';
+    return;
+  }
+  const list = Object.values(users_db).sort((a,b)=> a.role==='admin'?-1:1);
+  resetSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+  tbody.innerHTML = list.map(u=>{
+    if(!u || !u.id) return '';
+    const isMe = u.id === currentUser.id;
+    const roleB = u.role==='admin'
+      ? '<span class="badge b-green">Admin</span>'
+      : '<span class="badge b-blue">Agent</span>';
+    const created = u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—';
+    const last = u.last_login ? new Date(u.last_login).toLocaleDateString('fr-FR') : 'Jamais';
+    resetSel.innerHTML += `<option value="${u.id}">${u.id} — ${(u.nom||'').split('—')[0].trim()}</option>`;
+    return `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:8px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent)">${u.id}</td>
+      <td style="padding:8px 12px;font-size:12px;font-weight:500;">${u.nom||'—'}</td>
+      <td style="padding:8px 12px;">${roleB}</td>
+      <td style="padding:8px 12px;font-size:11px;color:var(--text2);">${created}</td>
+      <td style="padding:8px 12px;font-size:11px;color:var(--text2);">${last}</td>
+      <td style="padding:8px 12px;">${isMe
+        ? '<span style="font-size:11px;color:var(--text3)">Vous</span>'
+        : `<button class="btn-d" onclick="adminDeleteUser('${u.id}')">Sup.</button>`
+      }</td>
+    </tr>`;
+  }).join('');
+}
+
+async function adminRefreshUsers(){
+  // Forcer rechargement depuis Firebase (bouton Actualiser)
   try{
-    // Relire depuis Firebase pour avoir les données fraîches
     const r = await fetch(FIREBASE_URL+'/presfor.json', {signal:AbortSignal.timeout(12000)});
     if(r.ok){
       const d = await r.json();
-      if(d && d.users_db) users_db = d.users_db;
+      if(d && d.users_db && typeof d.users_db === 'object'){
+        users_db = d.users_db;
+        showToast('Liste actualisée depuis le serveur.');
+      }
     }
-    if(!users_db || Object.keys(users_db).length === 0){
-      tbody.innerHTML='<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3);font-size:12px;">Aucun compte trouvé</td></tr>';
-      return;
-    }
-    const list = Object.values(users_db).sort((a,b)=> a.role==='admin'?-1:1);
-    resetSel.innerHTML = '<option value="">-- Sélectionner --</option>';
-    tbody.innerHTML = list.map(u=>{
-      const isMe = u.id === currentUser.id;
-      const roleB = u.role==='admin'
-        ? '<span class="badge b-green">Admin</span>'
-        : '<span class="badge b-blue">Agent</span>';
-      const created = u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—';
-      const last = u.last_login ? new Date(u.last_login).toLocaleDateString('fr-FR') : 'Jamais';
-      resetSel.innerHTML += `<option value="${u.id}">${u.id} — ${(u.nom||'').split('—')[0].trim()}</option>`;
-      return `<tr style="border-bottom:1px solid var(--border);">
-        <td style="padding:8px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent)">${u.id}</td>
-        <td style="padding:8px 12px;font-size:12px;font-weight:500;">${u.nom||'—'}</td>
-        <td style="padding:8px 12px;">${roleB}</td>
-        <td style="padding:8px 12px;font-size:11px;color:var(--text2);">${created}</td>
-        <td style="padding:8px 12px;font-size:11px;color:var(--text2);">${last}</td>
-        <td style="padding:8px 12px;">${isMe
-          ? '<span style="font-size:11px;color:var(--text3)">Vous</span>'
-          : `<button class="btn-d" onclick="adminDeleteUser('${u.id}')">Sup.</button>`
-        }</td>
-      </tr>`;
-    }).join('');
-  }catch(e){
-    if(tbody) tbody.innerHTML=`<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--red-txt);font-size:12px;">Erreur chargement : ${e.message}</td></tr>`;
-    console.error('adminLoadUsers:', e);
-  }
+  }catch(e){ showToast('Erreur réseau : '+e.message); }
+  adminLoadUsers();
 }
 
 
@@ -5988,11 +5994,8 @@ async function adminCreateUser(){
     const hash = await hashPassword(pwd);
     const role = (id==='coordinateur' || nom.toLowerCase().includes('coordinateur')) ? 'admin' : 'agent';
     const userData = {id, nom, role, password_hash:hash, created_at:new Date().toISOString(), last_login:null};
-    // Écrire dans users_db en mémoire, puis synchroniser via scheduleSave
+    // Écrire dans users_db en mémoire
     users_db[id] = userData;
-    scheduleSave();
-    // Forcer une sauvegarde immédiate pour confirmer
-    await serverSave();
     // Succès confirmé
     document.getElementById('adm-id').value='';
     document.getElementById('adm-nom').value='';
@@ -6002,7 +6005,8 @@ async function adminCreateUser(){
     msg.style.display='block';
     setTimeout(()=>msg.style.display='none', 4000);
     showToast('Compte '+id+' créé !');
-    await adminLoadUsers();
+    adminLoadUsers(); // Affiche depuis mémoire immédiatement
+    scheduleSave();   // Synchronise en arrière-plan
   }catch(e){
     msg.textContent='✗ Erreur : '+e.message;
     msg.style.color='var(--red)';
@@ -6017,8 +6021,8 @@ async function adminCreateUser(){
 async function adminDeleteUser(id){
   if(!confirm('Supprimer le compte '+id+' ?')) return;
   delete users_db[id];
-  await serverSave();
-  await adminLoadUsers();
+  adminLoadUsers();   // Mise à jour immédiate
+  scheduleSave();     // Sync en arrière-plan
   showToast('Compte supprimé.');
 }
 
