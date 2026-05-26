@@ -274,7 +274,10 @@ tbody td{padding:9px 12px;vertical-align:middle;}
         <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;">Gestion des comptes</div>
         <div style="font-size:12px;color:var(--text2);">Créer et gérer les accès agents</div>
       </div>
-      <button onclick="adminClosePanel()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);">×</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button onclick="adminLoadUsers()" style="background:var(--accent-lt);border:none;color:var(--accent-txt);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;">↻ Actualiser</button>
+        <button onclick="adminClosePanel()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);">×</button>
+      </div>
     </div>
 
     <!-- Formulaire création -->
@@ -5931,61 +5934,99 @@ function adminClosePanel(){
 }
 
 async function adminLoadUsers(){
+  const tbody = document.getElementById('adm-users-tbody');
+  const resetSel = document.getElementById('adm-reset-user');
+  if(tbody) tbody.innerHTML='<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3);font-size:12px;">Chargement...</td></tr>';
   try{
-    const r = await fetch(FIREBASE_URL+'/presfor_users.json',{signal:AbortSignal.timeout(10000)});
-    if(!r.ok) throw new Error('Erreur réseau');
+    const r = await fetch(FIREBASE_URL+'/presfor_users.json', {signal:AbortSignal.timeout(12000)});
+    if(!r.ok) throw new Error('HTTP '+r.status);
     const users = await r.json();
-    const tbody = document.getElementById('adm-users-tbody');
-    const resetSel = document.getElementById('adm-reset-user');
-    if(!users){tbody.innerHTML='<tr><td colspan="6" style="padding:12px;text-align:center;color:var(--text3)">Aucun compte</td></tr>';return;}
-    const list = Object.values(users).sort((a,b)=>a.role==='admin'?-1:1);
+    if(!users || Object.keys(users).length === 0){
+      tbody.innerHTML='<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3);font-size:12px;">Aucun compte trouvé</td></tr>';
+      return;
+    }
+    const list = Object.values(users).sort((a,b)=> a.role==='admin'?-1:1);
     resetSel.innerHTML = '<option value="">-- Sélectionner --</option>';
     tbody.innerHTML = list.map(u=>{
       const isMe = u.id === currentUser.id;
       const roleB = u.role==='admin'
         ? '<span class="badge b-green">Admin</span>'
         : '<span class="badge b-blue">Agent</span>';
-      const last = u.last_login ? new Date(u.last_login).toLocaleDateString('fr-FR') : '—';
-      resetSel.innerHTML += `<option value="${u.id}">${u.id} — ${u.nom.split('—')[0].trim()}</option>`;
+      const created = u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—';
+      const last = u.last_login ? new Date(u.last_login).toLocaleDateString('fr-FR') : 'Jamais';
+      resetSel.innerHTML += `<option value="${u.id}">${u.id} — ${(u.nom||'').split('—')[0].trim()}</option>`;
       return `<tr style="border-bottom:1px solid var(--border);">
-        <td style="padding:8px 12px;font-family:'DM Mono',monospace;font-size:11px;">${u.id}</td>
-        <td style="padding:8px 12px;font-size:12px;font-weight:500;">${u.nom}</td>
+        <td style="padding:8px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent)">${u.id}</td>
+        <td style="padding:8px 12px;font-size:12px;font-weight:500;">${u.nom||'—'}</td>
         <td style="padding:8px 12px;">${roleB}</td>
-        <td style="padding:8px 12px;font-size:11px;color:var(--text2);">${u.created_at?new Date(u.created_at).toLocaleDateString('fr-FR'):'—'}</td>
+        <td style="padding:8px 12px;font-size:11px;color:var(--text2);">${created}</td>
         <td style="padding:8px 12px;font-size:11px;color:var(--text2);">${last}</td>
-        <td style="padding:8px 12px;">${isMe?'<span style="font-size:11px;color:var(--text3)">Vous</span>':`<button class="btn-d" onclick="adminDeleteUser('${u.id}')">Sup.</button>`}</td>
+        <td style="padding:8px 12px;">${isMe
+          ? '<span style="font-size:11px;color:var(--text3)">Vous</span>'
+          : `<button class="btn-d" onclick="adminDeleteUser('${u.id}')">Sup.</button>`
+        }</td>
       </tr>`;
     }).join('');
-  }catch(e){ showToast('Erreur chargement comptes : '+e.message); }
+  }catch(e){
+    if(tbody) tbody.innerHTML=`<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--red-txt);font-size:12px;">Erreur chargement : ${e.message}</td></tr>`;
+    console.error('adminLoadUsers:', e);
+  }
 }
+
 
 async function adminCreateUser(){
   const id = (document.getElementById('adm-id').value||'').trim().toLowerCase();
   const nom = document.getElementById('adm-nom').value;
   const pwd = document.getElementById('adm-pwd').value;
   const msg = document.getElementById('adm-msg');
-  if(!id||!nom||!pwd){showToast('Remplissez tous les champs.');return;}
-  if(pwd.length < 6){showToast('Mot de passe : 6 caractères minimum.');return;}
+  msg.style.display='none';
+  if(!id){ showToast('Identifiant requis.'); return; }
+  if(!nom){ showToast('Sélectionnez un nom.'); return; }
+  if(!pwd || pwd.length < 6){ showToast('Mot de passe : 6 caractères minimum.'); return; }
+  const btn = document.querySelector('.admin-card .btn-p');
+  if(btn){ btn.textContent='Création...'; btn.disabled=true; }
   try{
-    // Vérifier si l'ID existe déjà
-    const check = await fetch(FIREBASE_URL+'/presfor_users/'+id+'.json',{signal:AbortSignal.timeout(8000)});
-    const existing = await check.json();
-    if(existing && existing.id){showToast('Cet identifiant existe déjà.');return;}
+    // Vérifier doublon
+    const checkR = await fetch(FIREBASE_URL+'/presfor_users/'+id+'.json', {signal:AbortSignal.timeout(10000)});
+    if(!checkR.ok) throw new Error('Erreur réseau (vérification doublon) : HTTP '+checkR.status);
+    const existing = await checkR.json();
+    if(existing && existing.id){ showToast('Identifiant "'+id+'" déjà utilisé.'); return; }
+    // Hash + écriture
     const hash = await hashPassword(pwd);
-    const role = (id === 'coordinateur' || nom.includes('Coordinateur')) ? 'admin' : 'agent';
-    await fetch(FIREBASE_URL+'/presfor_users/'+id+'.json',{
-      method:'PUT', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({id, nom, role, password_hash:hash, created_at:new Date().toISOString(), last_login:null})
+    const role = (id==='coordinateur' || nom.toLowerCase().includes('coordinateur')) ? 'admin' : 'agent';
+    const userData = {id, nom, role, password_hash:hash, created_at:new Date().toISOString(), last_login:null};
+    const writeR = await fetch(FIREBASE_URL+'/presfor_users/'+id+'.json', {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(userData),
+      signal: AbortSignal.timeout(15000)
     });
+    if(!writeR.ok){
+      const errText = await writeR.text();
+      throw new Error('Échec écriture Firebase : HTTP '+writeR.status+' — '+errText.substring(0,100));
+    }
+    const written = await writeR.json();
+    if(!written || !written.id){ throw new Error('Firebase n\'a pas confirmé l\'écriture.'); }
+    // Succès confirmé
     document.getElementById('adm-id').value='';
     document.getElementById('adm-nom').value='';
     document.getElementById('adm-pwd').value='';
-    msg.textContent='✓ Compte créé : '+id;msg.style.display='block';
-    setTimeout(()=>msg.style.display='none',3000);
-    await adminLoadUsers();
+    msg.textContent='✓ Compte "'+id+'" créé avec succès';
+    msg.style.color='var(--accent)';
+    msg.style.display='block';
+    setTimeout(()=>msg.style.display='none', 4000);
     showToast('Compte '+id+' créé !');
-  }catch(e){ showToast('Erreur : '+e.message); }
+    await adminLoadUsers();
+  }catch(e){
+    msg.textContent='✗ Erreur : '+e.message;
+    msg.style.color='var(--red)';
+    msg.style.display='block';
+    console.error('adminCreateUser:', e);
+  }finally{
+    if(btn){ btn.textContent='+ Créer le compte'; btn.disabled=false; }
+  }
 }
+
 
 async function adminDeleteUser(id){
   if(!confirm('Supprimer le compte '+id+' ?')) return;
