@@ -5760,7 +5760,7 @@ async function authInit(){
     if(stored){
       const session = JSON.parse(stored);
       // Vérifier que le compte existe encore en Firebase
-      const r = await fetch(FIREBASE_URL+'/presfor/users/'+session.id+'.json', {signal:AbortSignal.timeout(8000)});
+      const r = await fetch(FIREBASE_URL+'/presfor_users/'+session.id+'.json', {signal:AbortSignal.timeout(8000)});
       if(r.ok){
         const user = await r.json();
         if(user && user.id){
@@ -5768,7 +5768,7 @@ async function authInit(){
           authApplyUI();
           document.getElementById('auth-overlay').style.display='none';
           // Mettre à jour last_login
-          fetch(FIREBASE_URL+'/presfor/users/'+session.id+'/last_login.json',{method:'PUT',body:JSON.stringify(new Date().toISOString()),headers:{'Content-Type':'application/json'}}).catch(()=>{});
+          fetch(FIREBASE_URL+'/presfor_users/'+session.id+'/last_login.json',{method:'PUT',body:JSON.stringify(new Date().toISOString()),headers:{'Content-Type':'application/json'}}).catch(()=>{});
           return true;
         }
       }
@@ -5782,14 +5782,14 @@ async function authInit(){
 // ── Bootstrap : créer compte admin par défaut si aucun utilisateur ──
 async function authBootstrap(){
   try{
-    const r = await fetch(FIREBASE_URL+'/presfor/users.json', {signal:AbortSignal.timeout(8000)});
+    const r = await fetch(FIREBASE_URL+'/presfor_users.json', {signal:AbortSignal.timeout(8000)});
     if(r.ok){
       const users = await r.json();
       if(!users || Object.keys(users).length === 0){
         // Première utilisation : créer le compte admin par défaut
         const defaultPwd = 'Presfor2026!';
         const hash = await hashPassword(defaultPwd);
-        await fetch(FIREBASE_URL+'/presfor/users/coordinateur.json',{
+        await fetch(FIREBASE_URL+'/presfor_users/coordinateur.json',{
           method:'PUT',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify({
@@ -5823,7 +5823,7 @@ async function authLogin(){
   const btn = document.querySelector('.auth-btn');
   btn.textContent='Connexion...'; btn.disabled=true;
   try{
-    const r = await fetch(FIREBASE_URL+'/presfor/users/'+id+'.json', {signal:AbortSignal.timeout(10000)});
+    const r = await fetch(FIREBASE_URL+'/presfor_users/'+id+'.json', {signal:AbortSignal.timeout(10000)});
     if(!r.ok) throw new Error('Erreur réseau');
     const user = await r.json();
     if(!user || !user.id){
@@ -5837,7 +5837,7 @@ async function authLogin(){
     currentUser = {id:user.id, nom:user.nom, role:user.role, loginAt:new Date().toISOString()};
     localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(currentUser));
     // Mettre à jour last_login
-    fetch(FIREBASE_URL+'/presfor/users/'+id+'/last_login.json',{
+    fetch(FIREBASE_URL+'/presfor_users/'+id+'/last_login.json',{
       method:'PUT', headers:{'Content-Type':'application/json'},
       body:JSON.stringify(new Date().toISOString())
     }).catch(()=>{});
@@ -5932,7 +5932,7 @@ function adminClosePanel(){
 
 async function adminLoadUsers(){
   try{
-    const r = await fetch(FIREBASE_URL+'/presfor/users.json',{signal:AbortSignal.timeout(10000)});
+    const r = await fetch(FIREBASE_URL+'/presfor_users.json',{signal:AbortSignal.timeout(10000)});
     if(!r.ok) throw new Error('Erreur réseau');
     const users = await r.json();
     const tbody = document.getElementById('adm-users-tbody');
@@ -5968,12 +5968,12 @@ async function adminCreateUser(){
   if(pwd.length < 6){showToast('Mot de passe : 6 caractères minimum.');return;}
   try{
     // Vérifier si l'ID existe déjà
-    const check = await fetch(FIREBASE_URL+'/presfor/users/'+id+'.json',{signal:AbortSignal.timeout(8000)});
+    const check = await fetch(FIREBASE_URL+'/presfor_users/'+id+'.json',{signal:AbortSignal.timeout(8000)});
     const existing = await check.json();
     if(existing && existing.id){showToast('Cet identifiant existe déjà.');return;}
     const hash = await hashPassword(pwd);
     const role = (id === 'coordinateur' || nom.includes('Coordinateur')) ? 'admin' : 'agent';
-    await fetch(FIREBASE_URL+'/presfor/users/'+id+'.json',{
+    await fetch(FIREBASE_URL+'/presfor_users/'+id+'.json',{
       method:'PUT', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({id, nom, role, password_hash:hash, created_at:new Date().toISOString(), last_login:null})
     });
@@ -5990,7 +5990,7 @@ async function adminCreateUser(){
 async function adminDeleteUser(id){
   if(!confirm('Supprimer le compte '+id+' ?')) return;
   try{
-    await fetch(FIREBASE_URL+'/presfor/users/'+id+'.json',{method:'DELETE'});
+    await fetch(FIREBASE_URL+'/presfor_users/'+id+'.json',{method:'DELETE'});
     await adminLoadUsers();
     showToast('Compte supprimé.');
   }catch(e){ showToast('Erreur : '+e.message); }
@@ -6003,7 +6003,7 @@ async function adminResetPwd(){
   if(pwd.length<6){showToast('Mot de passe : 6 caractères minimum.');return;}
   try{
     const hash = await hashPassword(pwd);
-    await fetch(FIREBASE_URL+'/presfor/users/'+id+'/password_hash.json',{
+    await fetch(FIREBASE_URL+'/presfor_users/'+id+'/password_hash.json',{
       method:'PUT', headers:{'Content-Type':'application/json'},
       body:JSON.stringify(hash)
     });
