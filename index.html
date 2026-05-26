@@ -248,7 +248,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       <div>
         <div class="auth-logo-title">PRESFOR · Cavally</div>
         <div class="auth-logo-sub">Plateforme de suivi foncier — Groupement CAG</div>
-      <div style="font-size:10px;color:#2A6B42;font-weight:700;margin-top:4px;">v3.2 — 26/05/2026</div>
+      <div style="font-size:10px;color:#2A6B42;font-weight:700;margin-top:4px;">v3.3 — 26/05/2026</div>
       </div>
     </div>
     <div class="auth-field">
@@ -5774,9 +5774,27 @@ function updateNetworkStatus(){
 const AUTH_SESSION_KEY = 'presfor_session_v3';
 
 async function hashPassword(pwd){
-  const data = new TextEncoder().encode(pwd + 'PRESFOR_CAV_2026');
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  // Essayer crypto.subtle (HTTPS) d'abord, fallback simple sinon
+  try{
+    if(crypto && crypto.subtle){
+      const data = new TextEncoder().encode(pwd + 'PRESFOR_CAV_2026');
+      const hash = await crypto.subtle.digest('SHA-256', data);
+      return 'v2_' + Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    }
+  }catch(e){ console.log('crypto.subtle indisponible, fallback simple'); }
+  // Fallback : hash simple compatible HTTP
+  const str = pwd + 'PRESFOR_CAV_2026';
+  let h = 0x811c9dc5;
+  for(let i=0; i<str.length; i++){
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  let h2 = 5381;
+  for(let i=str.length-1;i>=0;i--){
+    h2 = ((h2<<5)+h2) ^ str.charCodeAt(i);
+    h2 = h2 >>> 0;
+  }
+  return 'v1_' + h.toString(16).padStart(8,'0') + h2.toString(16).padStart(8,'0') + str.length.toString(16);
 }
 
 // ── Écrire un utilisateur directement dans Firebase via PATCH ──
@@ -6002,6 +6020,7 @@ async function adminCreateUser(){
   if(!pwd||pwd.length<6){ showToast('Mot de passe : 6 caractères minimum.'); return; }
   if(users_db[id]){ showToast('Identifiant "'+id+'" déjà utilisé.'); return; }
   btn.textContent='Création...'; btn.disabled=true;
+  msg.textContent='Traitement...'; msg.style.color='var(--text2)'; msg.style.display='block';
   try{
     const hash = await hashPassword(pwd);
     const role = (id==='coordinateur'||nom.toLowerCase().includes('coordinateur')) ? 'admin' : 'agent';
