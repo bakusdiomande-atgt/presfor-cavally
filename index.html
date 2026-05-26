@@ -5493,7 +5493,9 @@ async function serverLoad(){
     saisies    = Array.isArray(d.saisies)    ? d.saisies    : [];
     dossiers   = Array.isArray(d.dossiers)   ? d.dossiers   : [];
     absences   = Array.isArray(d.absences)   ? d.absences   : [];
-    users_db   = (d.users_db && typeof d.users_db === 'object') ? d.users_db : {};
+    // Merger users_db (local prend priorité pour éviter d'écraser des comptes récents)
+    const remoteUsers = (d.users_db && typeof d.users_db === 'object') ? d.users_db : {};
+    users_db = Object.assign({}, remoteUsers, users_db);
     progCounter    = programmes.length;
     saisieCounter  = saisies.length;
     dosCounter     = dossiers.length;
@@ -6006,202 +6008,56 @@ async function adminCreateUser(){
   const btn = document.querySelector('.admin-card .btn-p');
   if(btn){ btn.textContent='Création...'; btn.disabled=true; }
   try{
-    // Vérifier doublon dans users_db
+    // Vérifier doublon en mémoire
     if(users_db[id]){ showToast('Identifiant "'+id+'" déjà utilisé.'); return; }
-    // Hash + écriture
+    // Créer l'objet utilisateur
     const hash = await hashPassword(pwd);
     const role = (id==='coordinateur' || nom.toLowerCase().includes('coordinateur')) ? 'admin' : 'agent';
-    const userData = {id, nom, role, password_hash:hash, created_at:new Date().toISOString(), last_login:null};
-    // Écrire dans users_db en mémoire
-    users_db[id] = userData;
-    // Succès confirmé
+    const userData = {
+      id, nom, role, password_hash:hash,
+      created_at: new Date().toISOString(),
+      last_login: null
+    };
+    // ── Écriture directe dans Firebase (chemin ciblé, sans toucher aux autres données) ──
+    const writeR = await fetch(
+      FIREBASE_URL + '/presfor/users_db/' + id + '.json',
+      {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(userData),
+        signal: AbortSignal.timeout(15000)
+      }
+    );
+    if(!writeR.ok){
+      const errTxt = await writeR.text().catch(()=>'');
+      throw new Error('Firebase a refusé l\'écriture : HTTP ' + writeR.status + (errTxt?' — '+errTxt.substring(0,80):''));
+    }
+    // Confirmer que Firebase a bien enregistré
+    const written = await writeR.json();
+    if(!written || !written.id){
+      throw new Error('Firebase n\'a pas confirmé l\'enregistrement.');
+    }
+    // Mettre à jour la mémoire locale
+    users_db[id] = written;
+    // Mettre à jour lastKnownTs pour éviter que syncPoll écrase
+    lastKnownTs = null;
+    // Vider le formulaire
     document.getElementById('adm-id').value='';
     document.getElementById('adm-nom').value='';
     document.getElementById('adm-pwd').value='';
-    msg.textContent='✓ Compte "'+id+'" créé avec succès';
-    msg.style.color='var(--accent)';
-    msg.style.display='block';
-    setTimeout(()=>msg.style.display='none', 4000);
+    msg.textContent = '✓ Compte "'+id+'" créé et enregistré dans Firebase';
+    msg.style.color = 'var(--accent)';
+    msg.style.display = 'block';
+    setTimeout(()=>{ msg.style.display='none'; }, 5000);
     showToast('Compte '+id+' créé !');
-    adminLoadUsers(); // Affiche depuis mémoire immédiatement
-    scheduleSave();   // Synchronise en arrière-plan
+    adminLoadUsers();
   }catch(e){
-    msg.textContent='✗ Erreur : '+e.message;
-    msg.style.color='var(--red)';
-    msg.style.display='block';
+    msg.textContent = '✗ Erreur : ' + e.message;
+    msg.style.color = 'var(--red)';
+    msg.style.display = 'block';
     console.error('adminCreateUser:', e);
   }finally{
     if(btn){ btn.textContent='+ Créer le compte'; btn.disabled=false; }
   }
 }
 
-
-async function adminDeleteUser(id){
-  if(!confirm('Supprimer le compte '+id+' ?')) return;
-  delete users_db[id];
-  adminLoadUsers();   // Mise à jour immédiate
-  scheduleSave();     // Sync en arrière-plan
-  showToast('Compte supprimé.');
-}
-
-async function adminResetPwd(){
-  const id = document.getElementById('adm-reset-user').value;
-  const pwd = document.getElementById('adm-reset-pwd').value;
-  if(!id||!pwd){showToast('Sélectionnez un compte et entrez le nouveau mot de passe.');return;}
-  if(pwd.length<6){showToast('Mot de passe : 6 caractères minimum.');return;}
-  if(!users_db[id]){showToast('Compte introuvable.');return;}
-  const hash = await hashPassword(pwd);
-  users_db[id].password_hash = hash;
-  await serverSave();
-  document.getElementById('adm-reset-pwd').value='';
-  showToast('Mot de passe de '+id+' réinitialisé !');
-}
-
-
-document.getElementById('hdate').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
-document.getElementById('sf-date').value=new Date().toISOString().split('T')[0];
-// ── Peupler tous les selects agents avant les inits ──
-function buildAgentOptions(selectId, allOption) {
-  const sel = document.getElementById(selectId);
-  if (!sel) return;
-  const current = sel.value;
-  sel.innerHTML = allOption
-    ? '<option value="">Tous les agents</option>'
-    : '<option value="">-- Sélectionner un agent --</option>';
-  AGENTS_DATA.forEach(function(a) {
-    const opt = document.createElement('option');
-    opt.value = a.nom;
-    opt.textContent = a.nom + ' — ' + a.fonction;
-    sel.appendChild(opt);
-  });
-  if (current) sel.value = current;
-}
-
-function peuplerTousAgents() {
-  ['pf-agent','sf-agent','df-agent','abs-agent'].forEach(function(id){ buildAgentOptions(id, false); });
-  ['saisie-f-agent','dos-f-agent'].forEach(function(id){ buildAgentOptions(id, true); });
-}
-
-peuplerTousAgents();
-// Initialiser EmailJS
-emailjs.init('pz4y-Ub1sZ5LQ_Fpd');
-// Charger le cache local d'abord (affichage rapide)
-progInit();
-saisieInit();
-dosInit();
-agInit();
-zvInit();
-// Firebase est la source de vérité - charger et écraser les données locales
-showToast('Chargement des données...');
-serverLoad().then(ok => {
-  if(!ok) {
-    progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
-    updateOfflineBanner();
-  } else {
-    if(getOfflineSnapshot()){ flushOfflineQueue(); }
-  }
-  // Auth après chargement des données
-  authInit().then(loggedIn => {
-    if(loggedIn){ serverLoad(); }
-  });
-});
-// Peupler les selects agents
-['pf-agent','sf-agent','df-agent','abs-agent'].forEach(id=>buildAgentOptions(id,false));
-['saisie-f-agent','dos-f-agent'].forEach(id=>buildAgentOptions(id,true));
-// Initialiser le dashboard APRÈS que toutes les données sont chargées
-dashInit();
-// Démarrer sur le tableau de bord
-switchModule('accueil');
-// Vérifier les alertes au démarrage
-setTimeout(notifCheck, 3000);
-// Démarrer le polling de synchronisation (après 10s pour laisser le temps au chargement)
-setTimeout(syncPoll, 10000);
-
-</script>
-
-<!-- MODULE RAPPORT -->
-<div id="module-rapport" class="module" style="display:none;flex:1;min-width:0;overflow-y:auto;">
-  <div style="padding:20px 24px;">
-    <h2 style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin:0 0 4px">Génération de rapport</h2>
-    <p style="font-size:12px;color:var(--text2);margin:0 0 20px">Rapport automatique PRESFOR — Région du Cavally</p>
-
-    <!-- Paramètres -->
-    <div class="fc" style="margin-bottom:16px;">
-      <div class="fs-title">1 · Paramètres du rapport</div>
-      <div class="fg" style="margin-top:12px;">
-        <div class="ff">
-          <label class="fl">Type de période</label>
-          <select class="fsel" id="rpt-periode" onchange="rptUpdateDates()">
-            <option value="semaine">Rapport hebdomadaire</option>
-            <option value="mois">Rapport mensuel</option>
-            <option value="mission">Par mission</option>
-            <option value="custom">Période personnalisée</option>
-          </select>
-        </div>
-        <div class="ff">
-          <label class="fl">Date début</label>
-          <input class="fi" type="date" id="rpt-debut">
-        </div>
-        <div class="ff">
-          <label class="fl">Date fin</label>
-          <input class="fi" type="date" id="rpt-fin">
-        </div>
-        <div class="ff">
-          <label class="fl">Département</label>
-          <select class="fsel" id="rpt-dept" onchange="rptUpdateSP()">
-            <option value="">Tous les départements</option>
-            <option>Dép. Guiglo</option>
-            <option>Dép. Bloléquin</option>
-            <option>Dép. Taï</option>
-            <option>Dép. Toulépleu</option>
-          </select>
-        </div>
-        <div class="ff">
-          <label class="fl">Sous-préfecture</label>
-          <select class="fsel" id="rpt-sp" onchange="rptUpdateVillages()">
-            <option value="">Toutes les SP</option>
-          </select>
-        </div>
-        <div class="ff">
-          <label class="fl">Village</label>
-          <select class="fsel" id="rpt-village">
-            <option value="">Tous les villages</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <!-- Compléments -->
-    <div class="fc" style="margin-bottom:16px;">
-      <div class="fs-title">2 · Compléments qualitatifs</div>
-      <div class="fg" style="margin-top:12px;">
-        <div class="ff">
-          <label class="fl">Succès additionnels</label>
-          <textarea class="fta" id="rpt-succes" placeholder="Ex: Forte mobilisation des chefs de village..."></textarea>
-        </div>
-        <div class="ff">
-          <label class="fl">Difficultés additionnelles</label>
-          <textarea class="fta" id="rpt-difficultes" placeholder="Ex: Accès difficile en saison des pluies..."></textarea>
-        </div>
-        <div class="ff full">
-          <label class="fl">Soutien attendu du corps sous-préfectoral</label>
-          <textarea class="fta" id="rpt-soutien" placeholder="Ex: Facilitation des réunions villageoises, mise à disposition de salle..."></textarea>
-        </div>
-      </div>
-    </div>
-
-    <!-- Bouton -->
-    <div class="fa" style="margin-bottom:20px;">
-      <button class="btn-p" onclick="rptGenerer()">Générer le rapport</button>
-      <button class="btn-s" id="rpt-btn-pdf" onclick="rptExportPDF()" style="display:none;">Télécharger PDF</button>
-    </div>
-
-    <!-- Aperçu -->
-    <div id="rpt-apercu" style="display:none;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
-      <div id="rpt-contenu"></div>
-    </div>
-  </div>
-</div>
-
-</body>
-</html>
