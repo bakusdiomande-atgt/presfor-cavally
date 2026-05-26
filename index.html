@@ -248,7 +248,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       <div>
         <div class="auth-logo-title">PRESFOR · Cavally</div>
         <div class="auth-logo-sub">Plateforme de suivi foncier — Groupement CAG</div>
-      <div style="font-size:10px;color:#2A6B42;font-weight:700;margin-top:4px;">v3.6 — 26/05/2026</div>
+      <div style="font-size:10px;color:#2A6B42;font-weight:700;margin-top:4px;">v3.7 — 26/05/2026</div>
       </div>
     </div>
     <div class="auth-field">
@@ -5508,7 +5508,7 @@ async function serverLoad(){
       users_db = Object.assign({}, d.users_db, users_db);
     }
     // Merger users_db (local prend priorité pour éviter d'écraser des comptes récents)
-    const remoteUsers = (d.users_db && typeof d.users_db === 'object') ? d.users_db : {};
+    const remoteUsers = usersFromFirebase(d.users_db || {});
     users_db = Object.assign({}, remoteUsers, users_db);
     progCounter    = programmes.length;
     saisieCounter  = saisies.length;
@@ -5668,7 +5668,7 @@ async function serverSave(){
     const r = await fetch(FIREBASE_URL + '/presfor.json', {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({programmes, saisies, dossiers, absences, users_db, updated_at: ts, reset: false}),
+      body: JSON.stringify({programmes, saisies, dossiers, absences, users_db:usersToFirebase(users_db), updated_at: ts, reset: false}),
       signal: AbortSignal.timeout(25000)
     });
     if(r.ok){
@@ -5817,12 +5817,14 @@ async function authWriteUser(id, userData){
 // ── Lire users_db depuis Firebase ──
 async function authLoadUsersFromFirebase(){
   try{
-    const r = await fetch(FIREBASE_URL + '/presfor/users_db.json', {signal:AbortSignal.timeout(10000)});
+    // Lire depuis /presfor.json (chemin fiable) et extraire users_db
+    const r = await fetch(FIREBASE_URL + '/presfor.json', {signal:AbortSignal.timeout(10000)});
     if(r.ok){
-      const d = await r.json();
-      if(d && typeof d === 'object'){
+      const data = await r.json();
+      if(data && data.users_db && typeof data.users_db === 'object'){
+        const decoded = usersFromFirebase(data.users_db);
         // Merger : local prend priorité
-        users_db = Object.assign({}, d, users_db);
+        users_db = Object.assign({}, decoded, users_db);
         return true;
       }
     }
@@ -6009,6 +6011,24 @@ async function adminRefreshUsers(){
 }
 
 
+
+// ── Encodage des clés Firebase (les points '.' sont interdits dans les clés Firebase) ──
+function fbKey(id){ return id.replace(/\./g,'__dot__'); }
+function fbKeyDecode(k){ return k.replace(/__dot__/g,'.'); }
+function usersToFirebase(udb){
+  const out={};
+  Object.keys(udb).forEach(k=>{ out[fbKey(k)]=udb[k]; });
+  return out;
+}
+function usersFromFirebase(raw){
+  if(!raw||typeof raw!=='object') return {};
+  const out={};
+  Object.keys(raw).forEach(k=>{ 
+    const decoded=fbKeyDecode(k);
+    out[decoded]=Object.assign({},raw[k],{id:raw[k].id||decoded});
+  });
+  return out;
+}
 // ── Sauvegarde directe et fiable de users_db ──
 async function saveUsersToDB(){
   try{
@@ -6016,11 +6036,12 @@ async function saveUsersToDB(){
     const r = await fetch(FIREBASE_URL+'/presfor.json', {signal:AbortSignal.timeout(15000)});
     if(!r.ok) throw new Error('Lecture Firebase HTTP '+r.status);
     const current = await r.json();
-    // Fusionner users_db (local prend priorité)
-    const mergedUsers = Object.assign({}, (current&&current.users_db)||{}, users_db);
-    // Écrire tout avec users_db mis à jour
+    // Fusionner users_db (local prend priorité, clés encodées pour Firebase)
+    const remoteUsers = usersFromFirebase((current&&current.users_db)||{});
+    const mergedUsers = Object.assign({}, remoteUsers, users_db);
+    // Écrire tout avec users_db encodé pour Firebase
     const payload = Object.assign({}, current||{}, {
-      users_db: mergedUsers,
+      users_db: usersToFirebase(mergedUsers),
       updated_at: new Date().toISOString()
     });
     const w = await fetch(FIREBASE_URL+'/presfor.json', {
