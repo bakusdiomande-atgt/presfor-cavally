@@ -235,10 +235,80 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 .admin-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9000;display:none;align-items:center;justify-content:center;}
 .admin-overlay.show{display:flex;}
 .admin-card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:28px 32px;width:100%;max-width:700px;max-height:88vh;overflow-y:auto;}
+
+/* ── Auth ── */
+.auth-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#1C4A2E 0%,#0F2F1C 100%);z-index:10000;display:flex;align-items:center;justify-content:center;}
+.auth-card{background:#fff;border-radius:16px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 24px 64px rgba(0,0,0,0.35);}
+.auth-logo{display:flex;align-items:center;gap:12px;margin-bottom:28px;}
+.auth-logo-badge{width:48px;height:48px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:#fff;}
+.auth-logo-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text);}
+.auth-logo-sub{font-size:11px;color:var(--text3);margin-top:1px;}
+.auth-field{margin-bottom:16px;}
+.auth-field label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;}
+.auth-field input{width:100%;padding:10px 13px;border:1.5px solid var(--border-med);border-radius:var(--radius-sm);font-family:'Instrument Sans',sans-serif;font-size:14px;color:var(--text);transition:border-color .15s;box-sizing:border-box;}
+.auth-field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(28,74,46,.1);}
+.auth-btn{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-family:'Instrument Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s;margin-top:8px;}
+.auth-btn:hover{opacity:.88;}
+.auth-err{border-radius:var(--radius-sm);padding:9px 12px;font-size:12px;margin-top:12px;display:none;}
+.auth-err.show{display:block;}
+.auth-err.err{background:var(--red-lt);border:1px solid rgba(184,48,37,.25);color:var(--red-txt);}
+.auth-err.ok{background:var(--accent-lt);border:1px solid rgba(28,74,46,.2);color:var(--accent-txt);}
+.admin-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9000;display:none;align-items:center;justify-content:center;}
+.admin-overlay.show{display:flex;}
+.admin-card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:28px 32px;width:100%;max-width:700px;max-height:88vh;overflow-y:auto;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
+
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-badge">PF</div>
+      <div><div class="auth-logo-title">PRESFOR · Cavally</div><div class="auth-logo-sub">Plateforme de suivi foncier — Groupement CAG</div></div>
+    </div>
+    <div class="auth-field"><label>Identifiant</label><input type="text" id="auth-id" placeholder="Ex : nguetta" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('auth-pwd').focus()"></div>
+    <div class="auth-field"><label>Mot de passe</label><input type="password" id="auth-pwd" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')authLogin()"></div>
+    <button class="auth-btn" id="auth-btn" onclick="authLogin()">Se connecter</button>
+    <div class="auth-err" id="auth-err"></div>
+    <div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center;">PRESFOR · Région du Cavally · Côte d'Ivoire</div>
+  </div>
+</div>
+
+<div class="admin-overlay" id="admin-overlay">
+  <div class="admin-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div><div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;">Gestion des comptes</div><div style="font-size:12px;color:var(--text2);">Créer et gérer les accès agents</div></div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="adminRefreshUsers()" style="background:var(--accent-lt);border:none;color:var(--accent-txt);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;">↻ Actualiser</button>
+        <button onclick="adminClosePanel()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);">×</button>
+      </div>
+    </div>
+    <div style="background:var(--surface3);border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent2);margin-bottom:12px;">Nouveau compte</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div class="ff"><label class="fl">Identifiant <span class="req">*</span></label><input class="fi" id="adm-id" placeholder="Ex : nguetta" style="font-size:12px;"></div>
+        <div class="ff"><label class="fl">Nom complet <span class="req">*</span></label><select class="fsel" id="adm-nom" style="font-size:12px;"><option value="">-- Sélectionner un agent --</option></select></div>
+        <div class="ff"><label class="fl">Mot de passe <span class="req">*</span></label><input class="fi" type="password" id="adm-pwd" placeholder="Min. 6 caractères" style="font-size:12px;"></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn-p" id="adm-create-btn" onclick="adminCreateUser()" style="font-size:12px;">+ Créer le compte</button>
+        <span id="adm-msg" style="font-size:12px;display:none;"></span>
+      </div>
+    </div>
+    <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">Comptes existants</div>
+    <div class="tw"><table style="font-size:12px;"><thead><tr><th>Identifiant</th><th>Nom complet</th><th>Rôle</th><th>Créé le</th><th>Dernière connexion</th><th></th></tr></thead><tbody id="adm-users-tbody"></tbody></table></div>
+    <div style="margin-top:16px;padding:12px 16px;background:var(--amber-lt);border-radius:var(--radius-sm);border:1px solid rgba(181,112,10,.2);">
+      <div style="font-size:11px;font-weight:600;color:var(--amber-txt);margin-bottom:8px;">Réinitialiser un mot de passe</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select class="fsel" id="adm-reset-user" style="font-size:12px;flex:1;"></select>
+        <input class="fi" type="password" id="adm-reset-pwd" placeholder="Nouveau mot de passe" style="font-size:12px;flex:1;">
+        <button class="btn-s" onclick="adminResetPwd()" style="font-size:12px;">Réinitialiser</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <!-- ══ LOGIN OVERLAY ══ -->
 <div class="auth-overlay" id="auth-overlay">
@@ -431,6 +501,14 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     </div>
     <button id="tb-admin-btn" onclick="adminOpenPanel()" title="Gestion des comptes" style="display:none;background:rgba(255,255,255,0.12);border:none;color:rgba(255,255,255,0.8);padding:4px 9px;border-radius:6px;cursor:pointer;font-size:13px;">🔑</button>
     <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;background:rgba(255,255,255,0.12);border:none;color:rgba(255,255,255,0.8);padding:4px 9px;border-radius:6px;cursor:pointer;font-size:11px;">⏻</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;margin-left:8px;">
+    <div id="tb-user-info" style="display:none;align-items:center;gap:6px;">
+      <span id="tb-user-name" style="font-size:11px;color:rgba(255,255,255,0.8);font-family:'DM Mono',monospace;"></span>
+      <span id="tb-user-role" style="font-size:10px;background:rgba(255,255,255,0.15);padding:2px 7px;border-radius:8px;color:rgba(255,255,255,0.7);"></span>
+    </div>
+    <button id="tb-admin-btn" onclick="adminOpenPanel()" title="Gestion des comptes" style="display:none;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 9px;border-radius:6px;cursor:pointer;font-size:13px;">🔑</button>
+    <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 9px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">⏻</button>
   </div>
   <span class="tb-right" id="hdate"></span>
 </header>
@@ -1549,7 +1627,8 @@ let saisieCounter = 0;
 let progVillages = [];
 let dosImportData = [];
 let progImportData = [];
-let users_db = {}; // Comptes utilisateurs (persisté dans Firebase)
+let users_db = {}; // Comptes utilisateurs
+let currentUser = null;
 
 // ── Pagination ──
 const PAGE_SIZE = 50;
@@ -1931,6 +2010,7 @@ function progSubmit(e){
 
 function progEdit(id){
   const p=programmes.find(x=>x.id===id);if(!p)return;
+  if(!canModifyProg(p)){showToast('Modification impossible : délai de 24h dépassé.');return;}
   if(!canModifyProg(p)){showToast('Modification impossible : délai de 24h dépassé.');return;}
   progEditingId=id;
   document.getElementById('prog-form-title').textContent='Modifier le programme';
@@ -5493,6 +5573,9 @@ async function serverLoad(){
     saisies    = Array.isArray(d.saisies)    ? d.saisies    : [];
     dossiers   = Array.isArray(d.dossiers)   ? d.dossiers   : [];
     absences   = Array.isArray(d.absences)   ? d.absences   : [];
+    if(d.users_db && typeof d.users_db === 'object'){
+      users_db = Object.assign({}, d.users_db, users_db);
+    }
     // Merger users_db (local prend priorité pour éviter d'écraser des comptes récents)
     const remoteUsers = (d.users_db && typeof d.users_db === 'object') ? d.users_db : {};
     users_db = Object.assign({}, remoteUsers, users_db);
@@ -5753,9 +5836,7 @@ function updateNetworkStatus(){
 // SYSTÈME D'AUTHENTIFICATION PRESFOR CAVALLY
 // ═══════════════════════════════════════════
 
-let currentUser = null; // {id, nom, role, loginAt}
-const AUTH_SESSION_KEY = 'presfor_session_v2';
-const ADMIN_ID = 'coordinateur';
+// [Auth v2 remplacé par v3]
 
 // ── Hash SHA-256 du mot de passe ──
 async function hashPassword(pwd){
@@ -6061,3 +6142,95 @@ async function adminCreateUser(){
   }
 }
 
+
+
+// ── adminDeleteUser et adminResetPwd (PATCH Firebase) ──
+async function adminDeleteUser(id){
+  if(!confirm('Supprimer le compte "'+id+'" ?')) return;
+  try{
+    const patch = {}; patch['users_db/'+id] = null;
+    await fetch(FIREBASE_URL+'/presfor.json', {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(patch), signal:AbortSignal.timeout(10000)
+    });
+    delete users_db[id];
+    adminLoadUsers();
+    showToast('Compte "'+id+'" supprimé.');
+  }catch(e){ showToast('Erreur suppression : '+e.message); }
+}
+
+async function adminResetPwd(){
+  const id = document.getElementById('adm-reset-user').value;
+  const pwd = document.getElementById('adm-reset-pwd').value;
+  if(!id||!pwd){ showToast('Sélectionnez un compte et entrez le nouveau mot de passe.'); return; }
+  if(pwd.length<6){ showToast('Mot de passe : 6 caractères minimum.'); return; }
+  try{
+    const hash = await hashPassword(pwd);
+    const patch = {}; patch['users_db/'+id+'/password_hash'] = hash;
+    const r = await fetch(FIREBASE_URL+'/presfor.json', {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(patch), signal:AbortSignal.timeout(10000)
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    if(users_db[id]) users_db[id].password_hash = hash;
+    document.getElementById('adm-reset-pwd').value='';
+    showToast('Mot de passe de "'+id+'" réinitialisé !');
+  }catch(e){ showToast('Erreur : '+e.message); }
+}
+
+// ═══════════════════════════════════════════
+// INIT GLOBAL
+// ═══════════════════════════════════════════
+document.getElementById('hdate').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
+document.getElementById('sf-date').value=new Date().toISOString().split('T')[0];
+
+function buildAgentOptions(selectId, allOption) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = allOption
+    ? '<option value="">Tous les agents</option>'
+    : '<option value="">-- Sélectionner un agent --</option>';
+  AGENTS_DATA.forEach(function(a) {
+    const opt = document.createElement('option');
+    opt.value = a.nom;
+    opt.textContent = a.nom + ' — ' + a.fonction;
+    sel.appendChild(opt);
+  });
+  if (current) sel.value = current;
+}
+
+function peuplerTousAgents() {
+  ['pf-agent','sf-agent','df-agent','abs-agent'].forEach(function(id){ buildAgentOptions(id, false); });
+  ['saisie-f-agent','dos-f-agent'].forEach(function(id){ buildAgentOptions(id, true); });
+}
+
+peuplerTousAgents();
+emailjs.init('pz4y-Ub1sZ5LQ_Fpd');
+progInit();
+saisieInit();
+dosInit();
+agInit();
+zvInit();
+
+serverLoad().then(ok => {
+  if(!ok){
+    progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
+    updateOfflineBanner();
+  } else {
+    if(getOfflineSnapshot()){ flushOfflineQueue(); }
+  }
+  authInit();
+});
+
+['pf-agent','sf-agent','df-agent','abs-agent'].forEach(id=>buildAgentOptions(id,false));
+['saisie-f-agent','dos-f-agent'].forEach(id=>buildAgentOptions(id,true));
+dashInit();
+switchModule('accueil');
+setTimeout(notifCheck, 3000);
+setTimeout(syncPoll, 10000);
+
+</script>
+
+</body>
+</html>
