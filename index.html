@@ -1549,6 +1549,7 @@ let saisieCounter = 0;
 let progVillages = [];
 let dosImportData = [];
 let progImportData = [];
+let users_db = {}; // Comptes utilisateurs (persisté dans Firebase)
 
 // ── Pagination ──
 const PAGE_SIZE = 50;
@@ -2000,6 +2001,7 @@ function progClearAll(){
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
       programmes:[], saisies:[], dossiers:[], absences:[],
+      users_db,
       reset: true,
       updated_at: resetTs
     })
@@ -5491,6 +5493,7 @@ async function serverLoad(){
     saisies    = Array.isArray(d.saisies)    ? d.saisies    : [];
     dossiers   = Array.isArray(d.dossiers)   ? d.dossiers   : [];
     absences   = Array.isArray(d.absences)   ? d.absences   : [];
+    users_db   = (d.users_db && typeof d.users_db === 'object') ? d.users_db : {};
     progCounter    = programmes.length;
     saisieCounter  = saisies.length;
     dosCounter     = dossiers.length;
@@ -5629,6 +5632,10 @@ async function serverSave(){
           saisies    = mergeById(saisies,    remote.saisies);
           dossiers   = mergeById(dossiers,   remote.dossiers);
           absences   = mergeById(absences,   remote.absences);
+          // Fusionner users_db (les comptes ne se perdent jamais)
+          if(remote.users_db && typeof remote.users_db === 'object'){
+            users_db = Object.assign({}, remote.users_db, users_db);
+          }
           lastKnownTs = remote.updated_at;
           needsUIRefresh = true;
           const sAdded = saisies.length - prevS;
@@ -5645,7 +5652,7 @@ async function serverSave(){
     const r = await fetch(FIREBASE_URL + '/presfor.json', {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({programmes, saisies, dossiers, absences, updated_at: ts, reset: false}),
+      body: JSON.stringify({programmes, saisies, dossiers, absences, users_db, updated_at: ts, reset: false}),
       signal: AbortSignal.timeout(25000)
     });
     if(r.ok){
@@ -5758,57 +5765,47 @@ async function hashPassword(pwd){
 
 // ── Vérifier et restaurer la session ──
 async function authInit(){
+  // users_db est déjà chargé par serverLoad — on l'utilise directement
   try{
     const stored = localStorage.getItem(AUTH_SESSION_KEY);
     if(stored){
       const session = JSON.parse(stored);
-      // Vérifier que le compte existe encore en Firebase
-      const r = await fetch(FIREBASE_URL+'/presfor_users/'+session.id+'.json', {signal:AbortSignal.timeout(8000)});
-      if(r.ok){
-        const user = await r.json();
-        if(user && user.id){
-          currentUser = session;
-          authApplyUI();
-          document.getElementById('auth-overlay').style.display='none';
-          // Mettre à jour last_login
-          fetch(FIREBASE_URL+'/presfor_users/'+session.id+'/last_login.json',{method:'PUT',body:JSON.stringify(new Date().toISOString()),headers:{'Content-Type':'application/json'}}).catch(()=>{});
-          return true;
-        }
+      const user = users_db[session.id];
+      if(user && user.id){
+        currentUser = session;
+        authApplyUI();
+        document.getElementById('auth-overlay').style.display='none';
+        // Mettre à jour last_login en mémoire + Firebase
+        users_db[session.id].last_login = new Date().toISOString();
+        scheduleSave();
+        return true;
       }
     }
   }catch(e){ console.log('Session check:', e.message); }
-  // Pas de session valide → bootstrap ou login
   await authBootstrap();
   return false;
 }
 
 // ── Bootstrap : créer compte admin par défaut si aucun utilisateur ──
 async function authBootstrap(){
-  try{
-    const r = await fetch(FIREBASE_URL+'/presfor_users.json', {signal:AbortSignal.timeout(8000)});
-    if(r.ok){
-      const users = await r.json();
-      if(!users || Object.keys(users).length === 0){
-        // Première utilisation : créer le compte admin par défaut
-        const defaultPwd = 'Presfor2026!';
-        const hash = await hashPassword(defaultPwd);
-        await fetch(FIREBASE_URL+'/presfor_users/coordinateur.json',{
-          method:'PUT',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({
-            id:'coordinateur', nom:'DIOMANDE Bakary — Coordinateur',
-            role:'admin', password_hash:hash,
-            created_at:new Date().toISOString(), last_login:null
-          })
-        });
-        document.getElementById('auth-err').textContent =
-          '⚡ Premier accès — Compte admin créé. ID : coordinateur | Mot de passe : Presfor2026! — Changez-le immédiatement.';
-        document.getElementById('auth-err').style.background='var(--accent-lt)';
-        document.getElementById('auth-err').style.color='var(--accent-txt)';
-        document.getElementById('auth-err').classList.add('show');
-      }
-    }
-  }catch(e){ console.log('Bootstrap:', e.message); }
+  // Si aucun compte en mémoire, créer l'admin par défaut
+  if(!users_db || Object.keys(users_db).length === 0){
+    try{
+      const defaultPwd = 'Presfor2026!';
+      const hash = await hashPassword(defaultPwd);
+      users_db['coordinateur'] = {
+        id:'coordinateur', nom:'DIOMANDE Bakary — Coordinateur',
+        role:'admin', password_hash:hash,
+        created_at:new Date().toISOString(), last_login:null
+      };
+      scheduleSave();
+      document.getElementById('auth-err').textContent =
+        '⚡ Premier accès — Compte admin créé. ID : coordinateur | Mot de passe : Presfor2026! — Changez-le immédiatement.';
+      document.getElementById('auth-err').style.background='var(--accent-lt)';
+      document.getElementById('auth-err').style.color='var(--accent-txt)';
+      document.getElementById('auth-err').classList.add('show');
+    }catch(e){ console.log('Bootstrap:', e.message); }
+  }
   document.getElementById('auth-overlay').style.display='flex';
 }
 
@@ -5826,9 +5823,8 @@ async function authLogin(){
   const btn = document.querySelector('.auth-btn');
   btn.textContent='Connexion...'; btn.disabled=true;
   try{
-    const r = await fetch(FIREBASE_URL+'/presfor_users/'+id+'.json', {signal:AbortSignal.timeout(10000)});
-    if(!r.ok) throw new Error('Erreur réseau');
-    const user = await r.json();
+    // Vérifier dans users_db (déjà chargé depuis Firebase)
+    const user = users_db[id];
     if(!user || !user.id){
       throw new Error('Compte introuvable');
     }
@@ -5840,10 +5836,8 @@ async function authLogin(){
     currentUser = {id:user.id, nom:user.nom, role:user.role, loginAt:new Date().toISOString()};
     localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(currentUser));
     // Mettre à jour last_login
-    fetch(FIREBASE_URL+'/presfor_users/'+id+'/last_login.json',{
-      method:'PUT', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(new Date().toISOString())
-    }).catch(()=>{});
+    users_db[id].last_login = new Date().toISOString();
+    scheduleSave();
     authApplyUI();
     document.getElementById('auth-overlay').style.display='none';
     showToast('Bienvenue, '+user.nom.split(' ')[0]+' !');
@@ -5936,16 +5930,18 @@ function adminClosePanel(){
 async function adminLoadUsers(){
   const tbody = document.getElementById('adm-users-tbody');
   const resetSel = document.getElementById('adm-reset-user');
-  if(tbody) tbody.innerHTML='<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3);font-size:12px;">Chargement...</td></tr>';
   try{
-    const r = await fetch(FIREBASE_URL+'/presfor_users.json', {signal:AbortSignal.timeout(12000)});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const users = await r.json();
-    if(!users || Object.keys(users).length === 0){
+    // Relire depuis Firebase pour avoir les données fraîches
+    const r = await fetch(FIREBASE_URL+'/presfor.json', {signal:AbortSignal.timeout(12000)});
+    if(r.ok){
+      const d = await r.json();
+      if(d && d.users_db) users_db = d.users_db;
+    }
+    if(!users_db || Object.keys(users_db).length === 0){
       tbody.innerHTML='<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3);font-size:12px;">Aucun compte trouvé</td></tr>';
       return;
     }
-    const list = Object.values(users).sort((a,b)=> a.role==='admin'?-1:1);
+    const list = Object.values(users_db).sort((a,b)=> a.role==='admin'?-1:1);
     resetSel.innerHTML = '<option value="">-- Sélectionner --</option>';
     tbody.innerHTML = list.map(u=>{
       const isMe = u.id === currentUser.id;
@@ -5986,27 +5982,17 @@ async function adminCreateUser(){
   const btn = document.querySelector('.admin-card .btn-p');
   if(btn){ btn.textContent='Création...'; btn.disabled=true; }
   try{
-    // Vérifier doublon
-    const checkR = await fetch(FIREBASE_URL+'/presfor_users/'+id+'.json', {signal:AbortSignal.timeout(10000)});
-    if(!checkR.ok) throw new Error('Erreur réseau (vérification doublon) : HTTP '+checkR.status);
-    const existing = await checkR.json();
-    if(existing && existing.id){ showToast('Identifiant "'+id+'" déjà utilisé.'); return; }
+    // Vérifier doublon dans users_db
+    if(users_db[id]){ showToast('Identifiant "'+id+'" déjà utilisé.'); return; }
     // Hash + écriture
     const hash = await hashPassword(pwd);
     const role = (id==='coordinateur' || nom.toLowerCase().includes('coordinateur')) ? 'admin' : 'agent';
     const userData = {id, nom, role, password_hash:hash, created_at:new Date().toISOString(), last_login:null};
-    const writeR = await fetch(FIREBASE_URL+'/presfor_users/'+id+'.json', {
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(userData),
-      signal: AbortSignal.timeout(15000)
-    });
-    if(!writeR.ok){
-      const errText = await writeR.text();
-      throw new Error('Échec écriture Firebase : HTTP '+writeR.status+' — '+errText.substring(0,100));
-    }
-    const written = await writeR.json();
-    if(!written || !written.id){ throw new Error('Firebase n\'a pas confirmé l\'écriture.'); }
+    // Écrire dans users_db en mémoire, puis synchroniser via scheduleSave
+    users_db[id] = userData;
+    scheduleSave();
+    // Forcer une sauvegarde immédiate pour confirmer
+    await serverSave();
     // Succès confirmé
     document.getElementById('adm-id').value='';
     document.getElementById('adm-nom').value='';
@@ -6030,11 +6016,10 @@ async function adminCreateUser(){
 
 async function adminDeleteUser(id){
   if(!confirm('Supprimer le compte '+id+' ?')) return;
-  try{
-    await fetch(FIREBASE_URL+'/presfor_users/'+id+'.json',{method:'DELETE'});
-    await adminLoadUsers();
-    showToast('Compte supprimé.');
-  }catch(e){ showToast('Erreur : '+e.message); }
+  delete users_db[id];
+  await serverSave();
+  await adminLoadUsers();
+  showToast('Compte supprimé.');
 }
 
 async function adminResetPwd(){
@@ -6042,15 +6027,12 @@ async function adminResetPwd(){
   const pwd = document.getElementById('adm-reset-pwd').value;
   if(!id||!pwd){showToast('Sélectionnez un compte et entrez le nouveau mot de passe.');return;}
   if(pwd.length<6){showToast('Mot de passe : 6 caractères minimum.');return;}
-  try{
-    const hash = await hashPassword(pwd);
-    await fetch(FIREBASE_URL+'/presfor_users/'+id+'/password_hash.json',{
-      method:'PUT', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(hash)
-    });
-    document.getElementById('adm-reset-pwd').value='';
-    showToast('Mot de passe de '+id+' réinitialisé !');
-  }catch(e){ showToast('Erreur : '+e.message); }
+  if(!users_db[id]){showToast('Compte introuvable.');return;}
+  const hash = await hashPassword(pwd);
+  users_db[id].password_hash = hash;
+  await serverSave();
+  document.getElementById('adm-reset-pwd').value='';
+  showToast('Mot de passe de '+id+' réinitialisé !');
 }
 
 
