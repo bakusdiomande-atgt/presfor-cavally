@@ -4803,9 +4803,9 @@ function dashRenderCardDossiers(){  const _g=document.getElementById('dash-card-
 function dashRenderCardDepts(){  const _g=document.getElementById('dash-card-depts');if(!_g)return;
   const DEPTS = [
     {label:'Guiglo',    saisie:'Dép. Guiglo',    afor:'GUIGLO'},
-    {label:'Bloléquin', saisie:'Dép. Bloléquin',  afor:'BLOLÉQUIN'},
+    {label:'Bloléquin', saisie:'Dép. Bloléquin',  afor:'BLOLEQUIN'},
     {label:'Taï',       saisie:'Dép. Taï',         afor:'TAI'},
-    {label:'Toulépleu', saisie:'Dép. Toulépleu',  afor:'TOULEPIEU'},
+    {label:'Toulépleu', saisie:'Dép. Toulépleu',  afor:'TOULEPLEU'},
   ];
   const totSaisies = saisies.reduce((s,x)=>s+(x.ndos||0),0)||1;
   const totAfor = dossiersAFOR.length||1;
@@ -4882,17 +4882,13 @@ function dashRenderCardAgents(){  const _g=document.getElementById('dash-card-ag
     const v = saisies.filter(s=>s.agent===a).reduce((s,x)=>s+(x.ndos||0),0);
     if(v>0) agMap[a] = {nom:a, m2:v, cf:0, score:null, retards:0};
   });
-  // AFOR : CE par agent
+  // AFOR : CE par agent (avec mapping exact)
   if(dossiersAFOR.length>0){
     aforGetAgentsData().forEach(ag=>{
-      // Chercher correspondance avec agents M2 (matching partiel)
-      const key = Object.keys(agMap).find(k=>{
-        const kw = k.toLowerCase().split(' ');
-        const agw = ag.nom.toLowerCase().split(' ');
-        return kw.some(w=>w.length>3&&agw.some(aw=>aw.includes(w)||w.includes(aw)));
-      }) || ag.nom;
-      if(agMap[key]) { agMap[key].cf=ag.total; agMap[key].score=ag.score; agMap[key].retards=ag.retards; }
-      else agMap[ag.nom]={nom:ag.nom,m2:0,cf:ag.total,score:ag.score,retards:ag.retards};
+      // Le nom AFOR est déjà normalisé via aforAgentNom à l'import
+      const nomApp = ag.nom; // déjà mappé
+      if(agMap[nomApp]){ agMap[nomApp].cf=ag.total; agMap[nomApp].score=ag.score; agMap[nomApp].retards=ag.retards; }
+      else agMap[nomApp]={nom:nomApp,m2:0,cf:ag.total,score:ag.score,retards:ag.retards};
     });
   }
   const sorted = Object.values(agMap)
@@ -6109,6 +6105,24 @@ function aforCalcRetard(dos){
   return {retard: jours > seuil, jours, seuil};
 }
 
+
+// ── Mapping agents AFOR (Nom CE) ↔ agents app ──
+const AFOR_AGENT_MAP = {
+  'ABOYA Affoua Inès':              'Aboya Affoua Ines',
+  'ANGBONOU AUGUSTIN BROU CEDRIC':  'Agbonou A. B. C. Beranger',
+  'BAKAYOKO ADAMA':                 'Bakayoko Adama',
+  'BIO MICHEL FRANCK OLIVIER':      'Bio Michel Franck',
+  'DAGO GUY-MELAINE GBALOU':        'Dago Guy Melaine',
+  "DIBY N'DA YAO ARNAUD":           'Diby Arnaud',
+  'DJAHI GAPEA':                    'Djahi Gapea',
+  'KOUADIO AHOU ESTELLE':           'Kouadio Ahou Estelle',
+  'KOUASSI KOBINA GREGOIRE PHILIPPE':'Kouassi Kobina Philippe',
+  "N'GUESSAN YAO ARMAND":           "N'Guessan Armand",
+  'SIDIBE IBRAHIMA':                'Sidibe Ibrahima',
+  'TIZIE IRIE PHILIPPE':            'Tizie Irie Phillipe',
+  'YEBOUA ADJIA EMMANUELA':         'Yeboua Adjia Emmanuela',
+};
+function aforAgentNom(raw){ return AFOR_AGENT_MAP[raw] || raw; }
 // ── Import depuis fichier AFOR Excel ──
 function aforImportExcel(input){
   const file = input.files[0];
@@ -6147,10 +6161,10 @@ function aforImportExcel(input){
           id: String(num).trim(),
           prenom: (row[AFOR_COLS.prenom]||'').trim(),
           nom_demandeur: (row[AFOR_COLS.nom]||'').trim(),
-          dept: (row[AFOR_COLS.dept]||'').trim().toUpperCase(),
+          dept: (row[AFOR_COLS.dept]||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''),
           sp: (row[AFOR_COLS.sp]||'').trim(),
           village: (row[AFOR_COLS.village]||'').trim(),
-          agent: (row[AFOR_COLS.agent]||'').trim(),
+          agent: aforAgentNom((row[AFOR_COLS.agent]||'').trim()),
           type: (row[AFOR_COLS.type]||'').trim(),
           etape,
           date_DD:  fmtD(row[AFOR_COLS.date_DD]),
@@ -6244,6 +6258,58 @@ function dosShowPanel(id, btn){
   if(id==='afor-agents') aforRenderAgents();
 }
 
+
+
+// ── Modal dossiers en retard ──
+function openRetardModal(){
+  if(!dossiersAFOR.length){ showToast('Importez la base AFOR d\'abord.'); return; }
+  // Peupler filtre agents
+  const sel = document.getElementById('retard-f-agent');
+  const agents = [...new Set(dossiersAFOR.map(d=>d.agent).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Tous les agents</option>'+agents.map(a=>`<option value="${a}">${a}</option>`).join('');
+  document.getElementById('retard-modal').style.display='flex';
+  retardRenderList();
+}
+function retardRenderList(){
+  const fd = document.getElementById('retard-f-dept')?.value||'';
+  const fe = document.getElementById('retard-f-etape')?.value||'';
+  const fa = document.getElementById('retard-f-agent')?.value||'';
+  const retards = dossiersAFOR
+    .map(d=>({d, r:aforCalcRetard(d)}))
+    .filter(x=>x.r.retard)
+    .filter(x=>(!fd||x.d.dept===fd)&&(!fe||x.d.etape===fe)&&(!fa||x.d.agent===fa))
+    .sort((a,b)=>b.r.jours-a.r.jours);
+  const tbody = document.getElementById('retard-modal-tbody');
+  const count = document.getElementById('retard-modal-count');
+  const subtitle = document.getElementById('retard-modal-subtitle');
+  if(subtitle) subtitle.textContent = `${retards.length} dossier(s) en retard sur ${dossiersAFOR.length} total`;
+  if(count) count.textContent = `${retards.length} dossier(s) affiché(s)`;
+  if(!tbody) return;
+  tbody.innerHTML = retards.map(({d,r})=>{
+    const c = ETAPES_CF_COLORS[d.etape]||{bg:'#eee',tx:'#333'};
+    const gravite = r.jours > r.seuil*3 ? '#7F1D1D' : r.jours > r.seuil*2 ? '#DC2626' : '#F87171';
+    return `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:8px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent)">${d.id}</td>
+      <td style="padding:8px 12px;font-size:12px;font-weight:500">${d.prenom} ${d.nom_demandeur}</td>
+      <td style="padding:8px 12px;font-size:11px">${d.village}<br><span style="color:var(--text3)">${d.dept}</span></td>
+      <td style="padding:8px 12px;font-size:11px">${d.agent}</td>
+      <td style="padding:8px 12px;text-align:center"><span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;background:${c.bg};color:${c.tx}">${d.etape}</span></td>
+      <td style="padding:8px 12px;text-align:right;font-weight:700;font-size:13px;color:${gravite}">${r.jours}j</td>
+      <td style="padding:8px 12px;text-align:right;font-size:11px;color:var(--text3)">${r.seuil}j</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--text3);">Aucun retard avec ces filtres</td></tr>';
+}
+function retardExportCSV(){
+  const retards = dossiersAFOR.map(d=>({d,r:aforCalcRetard(d)})).filter(x=>x.r.retard).sort((a,b)=>b.r.jours-a.r.jours);
+  const rows = [['N° Dossier','Prénom','Nom','Village','Département','Agent CE','Étape','Jours retard','Seuil']];
+  retards.forEach(({d,r})=>rows.push([d.id,d.prenom,d.nom_demandeur,d.village,d.dept,d.agent,d.etape,r.jours,r.seuil]));
+  const csv = rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'dossiers_CF_en_retard.csv';
+  a.click();
+  showToast('Export CSV téléchargé !');
+}
 
 // ═══════════════════════════════════════════
 // INIT GLOBAL
@@ -6708,6 +6774,63 @@ setTimeout(notifCheck, 3000);
 setTimeout(syncPoll, 10000);
 
 </script>
+
+
+<!-- ══ MODAL DOSSIERS EN RETARD ══ -->
+<div id="retard-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:8000;align-items:flex-start;justify-content:center;padding:40px 16px;box-sizing:border-box;overflow-y:auto;">
+  <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);width:100%;max-width:900px;overflow:hidden;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--border);">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;">Dossiers CF en retard</div>
+        <div id="retard-modal-subtitle" style="font-size:12px;color:var(--text2);margin-top:2px;"></div>
+      </div>
+      <button onclick="document.getElementById('retard-modal').style.display='none'" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);">×</button>
+    </div>
+    <div style="padding:0 24px 8px;">
+      <div class="filter-bar" style="padding:10px 0;">
+        <select id="retard-f-dept" onchange="retardRenderList()">
+          <option value="">Tous les dép.</option>
+          <option value="GUIGLO">Guiglo</option>
+          <option value="BLOLEQUIN">Bloléquin</option>
+          <option value="TAI">Taï</option>
+          <option value="TOULEPLEU">Toulépleu</option>
+        </select>
+        <select id="retard-f-etape" onchange="retardRenderList()">
+          <option value="">Toutes les étapes</option>
+          <option value="DD">DD — Demande</option>
+          <option value="RDC">RDC</option>
+          <option value="CL">CL</option>
+          <option value="OV">OV</option>
+          <option value="CP">CP</option>
+          <option value="AP">AP</option>
+        </select>
+        <select id="retard-f-agent" onchange="retardRenderList()">
+          <option value="">Tous les agents</option>
+        </select>
+      </div>
+    </div>
+    <div style="overflow-x:auto;max-height:60vh;overflow-y:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead style="position:sticky;top:0;background:var(--surface2);z-index:1;">
+          <tr>
+            <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);">N° Dossier</th>
+            <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);">Demandeur</th>
+            <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);">Localisation</th>
+            <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);">Agent CE</th>
+            <th style="padding:9px 12px;text-align:center;font-size:11px;font-weight:600;color:var(--text2);">Étape</th>
+            <th style="padding:9px 12px;text-align:right;font-size:11px;font-weight:600;color:#DC2626;">Retard</th>
+            <th style="padding:9px 12px;text-align:right;font-size:11px;font-weight:600;color:var(--text2);">Seuil</th>
+          </tr>
+        </thead>
+        <tbody id="retard-modal-tbody"></tbody>
+      </table>
+    </div>
+    <div style="padding:12px 24px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);display:flex;justify-content:space-between;">
+      <span id="retard-modal-count"></span>
+      <button onclick="retardExportCSV()" style="background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;font-weight:600;">↓ Exporter CSV</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
