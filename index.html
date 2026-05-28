@@ -6157,7 +6157,6 @@ function aforImportExcel(input){
         agentsSel.innerHTML = '<option value="">Tous les agents</option>' +
           agents.map(a=>`<option value="${a}">${a}</option>`).join('');
       }
-      document.getElementById('afor-nb').textContent = nb;
       showToast(`Base AFOR chargée : ${nb} dossiers (${ignore} ignorés)`);
       aforRenderAll();
       dashRenderCardDossiers();
