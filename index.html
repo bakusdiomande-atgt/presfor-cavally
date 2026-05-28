@@ -957,7 +957,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     <div id="saisie-import-errors" style="display:none;background:var(--red-lt);border:1px solid rgba(184,48,37,.2);border-radius:var(--radius-sm);padding:10px 13px;margin-bottom:12px;font-size:12px;color:var(--red-txt);"></div>
     <div style="display:flex;gap:8px;">
       <button class="btn-p" onclick="saisieImportConfirm(false)">Confirmer l'import</button>
-      <button class="btn-s" id="btn-import-skip-doublons" style="display:none" onclick="saisieImportConfirm(true)">Ignorer les doublons</button>
+      <button class="btn-s" id="btn-import-update" style="display:none;background:var(--blue-lt);color:var(--blue-txt);border-color:var(--blue)" onclick="saisieImportConfirm(false, true)">↻ Mettre à jour</button>
       <button class="btn-s" onclick="document.getElementById('saisie-import-modal').style.display='none'">Annuler</button>
     </div>
   </div>
@@ -2012,7 +2012,6 @@ function progClearAll(){
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
       programmes:[], saisies:[], dossiers:[], absences:[],
-      users_db,
       reset: true,
       updated_at: resetTs
     })
@@ -2714,8 +2713,8 @@ function saisieImportExcel(input){
       document.getElementById('saisie-import-info').textContent =
         total+' saisie(s) détectée(s). '+(totalErr>0?totalErr+' ligne(s) invalides seront ignorées.':'Toutes les lignes sont valides.')+msgDoublons;
       // Afficher/masquer le bouton "Ignorer les doublons"
-      const btnSkip = document.getElementById('btn-import-skip-doublons');
-      if(btnSkip) btnSkip.style.display = totalDoublons > 0 ? 'inline-flex' : 'none';
+      const btnUpdate = document.getElementById('btn-import-update');
+      if(btnUpdate) btnUpdate.style.display = totalDoublons > 0 ? 'inline-flex' : 'none';
 
       const etapeBadge = e=>{
         const m={'Enquête terrain':'var(--blue-lt)','Bornage':'var(--teal-lt)','Constitution':'var(--amber-lt)'};
@@ -2768,23 +2767,40 @@ function saisieImportExcel(input){
   reader.readAsArrayBuffer(file);
 }
 
-function saisieImportConfirm(skipDoublons){
+function saisieImportConfirm(skipDoublons, updateMode){
   const valides = saisieImportData.filter(d => {
     if(d.errs.length > 0) return false;
     if(skipDoublons && d.doublon) return false;
-    if(d.doublon === 'exact') return false; // toujours ignoré
+    if(!updateMode && d.doublon === 'exact') return false;
     return true;
   });
   if(!valides.length){showToast('Aucune saisie valide à importer.');return;}
-  let nb=0;
+  let nb=0, updated=0;
   valides.forEach(({s})=>{
-    if(!saisies.find(x=>x.id===s.id)){saisies.unshift({...s,created_at:new Date().toLocaleString('fr-FR')});nb++;}
+    if(updateMode && s.doublon_ref){
+      // Remplacer l'existant (doublon base)
+      const idx = saisies.findIndex(x=>x.id===s.doublon_ref);
+      if(idx>=0){ saisies[idx]={...s,created_at:saisies[idx].created_at,updated_at:new Date().toLocaleString('fr-FR')}; updated++; return; }
+    }
+    if(updateMode){
+      // Chercher par agent+date+village pour mettre à jour
+      const idx = saisies.findIndex(x=>
+        x.date===s.date &&
+        x.agent.toLowerCase().trim()===s.agent.toLowerCase().trim() &&
+        x.village.toLowerCase().trim()===s.village.toLowerCase().trim()
+      );
+      if(idx>=0){ saisies[idx]={...s,created_at:saisies[idx].created_at,updated_at:new Date().toLocaleString('fr-FR')}; updated++; return; }
+    }
+    if(!saisies.find(x=>x.id===s.id)){
+      saisies.unshift({...s,created_at:new Date().toLocaleString('fr-FR')});
+      nb++;
+    }
   });
-  const doublonsGardes = valides.filter(d => d.doublon && d.doublon !== 'exact').length;
   document.getElementById('saisie-import-modal').style.display='none';
-  let msg = nb + ' saisie(s) importée(s)';
-  if(doublonsGardes > 0) msg += ' dont ' + doublonsGardes + ' doublon(s) potentiel(s)';
-  showToast(msg + ' !');
+  let msg = '';
+  if(nb > 0) msg += nb + ' saisie(s) ajoutée(s)';
+  if(updated > 0) msg += (msg?', ':'')+updated+' mise(s) à jour';
+  showToast((msg||'Aucune modification') + ' !');
   saisieImportData=[];
   saisieRenderAll();
   dashRenderAll();
@@ -5509,7 +5525,15 @@ async function serverLoad(){
     }
     // Merger users_db (local prend priorité pour éviter d'écraser des comptes récents)
     const remoteUsers = usersFromFirebase(d.users_db || {});
-    users_db = Object.assign({}, remoteUsers, users_db);
+    // Si Firebase ne renvoie pas users_db, restaurer depuis localStorage
+    if(Object.keys(remoteUsers).length === 0){
+      try{
+        const backup = localStorage.getItem('presfor_users_backup');
+        if(backup){ const bu = JSON.parse(backup); users_db = Object.assign({}, bu, users_db); }
+      }catch(e){}
+    } else {
+      users_db = Object.assign({}, remoteUsers, users_db);
+    }
     progCounter    = programmes.length;
     saisieCounter  = saisies.length;
     dosCounter     = dossiers.length;
@@ -5668,7 +5692,7 @@ async function serverSave(){
     const r = await fetch(FIREBASE_URL + '/presfor.json', {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({programmes, saisies, dossiers, absences, users_db:usersToFirebase(users_db), updated_at: ts, reset: false}),
+      body: JSON.stringify({programmes, saisies, dossiers, absences, updated_at: ts, reset: false}),
       signal: AbortSignal.timeout(25000)
     });
     if(r.ok){
@@ -5834,6 +5858,14 @@ async function authLoadUsersFromFirebase(){
 
 // ── Init ──
 async function authInit(){
+  // Charger depuis localStorage (backup) en premier
+  try{
+    const backup = localStorage.getItem('presfor_users_backup');
+    if(backup){
+      const bu = JSON.parse(backup);
+      users_db = Object.assign({}, bu, users_db);
+    }
+  }catch(e){}
   // Charger users_db depuis Firebase (en plus de ce que serverLoad a chargé)
   await authLoadUsersFromFirebase();
   // Vérifier session locale
@@ -5904,6 +5936,8 @@ async function authLogin(){
     err.textContent='Connexion réussie !';
     currentUser = {id:user.id, nom:user.nom, role:user.role, loginAt:new Date().toISOString()};
     localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(currentUser));
+    // Backup users_db dans localStorage
+    try{ localStorage.setItem('presfor_users_backup', JSON.stringify(users_db)); }catch(e){}
     users_db[id].last_login = new Date().toISOString();
     authWriteUser(id, users_db[id]).catch(()=>{});
     authApplyUI();
@@ -6031,15 +6065,17 @@ function usersFromFirebase(raw){
 }
 // ── Sauvegarde directe et fiable de users_db ──
 async function saveUsersToDB(){
+  // Toujours sauvegarder dans localStorage (backup fiable)
+  try{ localStorage.setItem('presfor_users_backup', JSON.stringify(users_db)); }catch(e){}
   try{
-    // Lire les données actuelles
+    // Lire les données actuelles Firebase (sans users_db dans le payload principal)
     const r = await fetch(FIREBASE_URL+'/presfor.json', {signal:AbortSignal.timeout(15000)});
     if(!r.ok) throw new Error('Lecture Firebase HTTP '+r.status);
     const current = await r.json();
     // Fusionner users_db (local prend priorité, clés encodées pour Firebase)
     const remoteUsers = usersFromFirebase((current&&current.users_db)||{});
     const mergedUsers = Object.assign({}, remoteUsers, users_db);
-    // Écrire tout avec users_db encodé pour Firebase
+    // Écrire users_db séparément dans un nœud dédié
     const payload = Object.assign({}, current||{}, {
       users_db: usersToFirebase(mergedUsers),
       updated_at: new Date().toISOString()
