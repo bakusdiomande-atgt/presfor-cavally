@@ -4060,10 +4060,12 @@ function agRenderList(){
   const grid = document.getElementById('ag-cards-grid');
   grid.innerHTML = list.map(a=>{
     const c = agFonctionColor(a.fonction);
-    const nbProgs = programmes.filter(p=>p.agent===a.nom).length;
-    const nbSaisies = saisies.filter(s=>s.agent===a.nom).length;
-    const nbDos = saisies.filter(s=>s.agent===a.nom).reduce((sum,s)=>sum+(s.ndos||0),0);
+    const nbProgs    = programmes.filter(p=>p.agent===a.nom).length;
+    const nbSaisies  = saisies.filter(s=>s.agent===a.nom).length;
+    const nbDos      = saisies.filter(s=>s.agent===a.nom).reduce((sum,s)=>sum+(s.ndos||0),0);
     const nbDossiers = dossiers.filter(d=>d.agent===a.nom).length;
+    // Fiches CF : compter depuis dossiersAFOR (noms normalisés à l'import)
+    const nbFichesCF = (dossiersAFOR||[]).filter(d=>d.agent===a.nom).length;
     const absent = absences.some(ab=>ab.agent===a.nom&&ab.debut<=today&&ab.fin>=today);
     const init = a.nom.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
 
@@ -4084,7 +4086,7 @@ function agRenderList(){
         <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--accent)">${nbProgs}</div><div style="font-size:9px;color:var(--text3)">Programmes</div></div>
         <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue)">${nbSaisies}</div><div style="font-size:9px;color:var(--text3)">Saisies</div></div>
         <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--amber)">${nbDos}</div><div style="font-size:9px;color:var(--text3)">Dossiers</div></div>
-        <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--teal)">${nbDossiers}</div><div style="font-size:9px;color:var(--text3)">Fiches CF</div></div>
+        <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--teal)">${nbFichesCF}</div><div style="font-size:9px;color:var(--text3)">Fiches CF</div></div>
       </div>
     </div>`;
   }).join('');
@@ -4201,7 +4203,30 @@ function agOpenFiche(nom){
           }).join('')+'</table>'}
         </div>
       </div>
-    </div>`;
+    </div>
+    `;
+  
+  // Ajouter bloc CF si données disponibles
+  if(mesFichesCF.length>0){
+    document.getElementById('ag-fiche-content').innerHTML +=
+      '<div style="grid-column:1/-1;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 20px;border-top:3px solid var(--accent);margin-top:0;">'+
+      '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:12px;">Certificats Fonciers — Base AFOR</div>'+
+      '<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px;">'+
+      '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--accent)">'+mesFichesCF.length+'</div><div style="font-size:10px;color:var(--text3)">Total CF</div></div>'+
+      '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:#22C55E">'+nbCFI+'</div><div style="font-size:10px;color:var(--text3)">CFI</div></div>'+
+      '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:#16A34A">'+nbCFC+'</div><div style="font-size:10px;color:var(--text3)">CFC</div></div>'+
+      '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:'+(nbCFRetards>0?'var(--red)':'var(--accent)')+'">'+nbCFRetards+'</div><div style="font-size:10px;color:var(--text3)">En retard</div></div>'+
+      '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:#0369A1">'+mesFichesCF.filter(function(d){return d.etape==='VA';}).length+'</div><div style="font-size:10px;color:var(--text3)">Validés (VA)</div></div>'+
+      '</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;">'+
+      ETAPES_CF.map(function(e){
+        const n=etapesCF[e]||0; if(!n) return '';
+        const c=ETAPES_CF_COLORS[e]||{bg:'#eee',tx:'#333'};
+        return '<div style="background:'+c.bg+';border-radius:8px;padding:5px 10px;text-align:center;min-width:55px;"><div style="font-size:11px;font-weight:700;color:'+c.tx+'">'+e+'</div><div style="font-size:16px;font-weight:700;color:'+c.tx+'">'+n+'</div></div>';
+      }).join('')+
+      '</div></div>';
+  }
+
 
   agShowPanel('fiche');
   } catch(e) {
