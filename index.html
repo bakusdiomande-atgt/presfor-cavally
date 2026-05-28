@@ -4729,185 +4729,200 @@ function dashRenderKPI(){
 
 // ── Card : Répartition saisies ──
 function dashRenderCardSaisies(){
-  const tot=saisies.reduce((s,x)=>s+(x.ndos||0),0);
-  const enq=saisies.filter(s=>['Enquête terrain','Recensement coutumier','Recensement droit coutumier'].includes(s.etape)).reduce((s,x)=>s+(x.ndos||0),0);
-  const born=saisies.filter(s=>s.etape==='Bornage').reduce((s,x)=>s+(x.ndos||0),0);
-  const const_=saisies.filter(s=>['Constitution du dossier','PV constat limite','PV de constat de limite'].includes(s.etape)).reduce((s,x)=>s+(x.ndos||0),0);
-  const autre=tot-enq-born-const_;
-  const pEnq=tot>0?Math.round(enq/tot*100):0;
-  const pBorn=tot>0?Math.round(born/tot*100):0;
-  const segs=[{val:enq,c:'#3B82F6'},{val:born,c:'#F97316'},{val:const_,c:'#22C55E'},{val:Math.max(0,autre),c:'#8B5CF6'}];
-  const desc=`<div style="font-size:13px;color:#374151;margin-bottom:8px;">
-    <b style="font-size:16px;color:#111827;">${tot.toLocaleString('fr-FR')}</b> dossiers saisis dont
-  </div>
-  <div style="font-size:13px;color:#374151;line-height:1.9;">
-    <b style="color:#3B82F6;">${enq.toLocaleString('fr-FR')}</b> enquêtes terrain soit <b>${pEnq}%</b><br>
-    <b style="color:#F97316;">${born.toLocaleString('fr-FR')}</b> bornages soit <b>${pBorn}%</b><br>
-    <b style="color:#22C55E;">${const_.toLocaleString('fr-FR')}</b> constitutions dossier
-  </div>`;
-  document.getElementById('dash-card-saisies').innerHTML=
-    pieCard('Répartition des saisies',"switchModule('saisie')",'Voir tout',desc,makePieSVG(segs));
+  const el = document.getElementById('dash-card-saisies');
+  if(!el) return;
+  const totM2 = saisies.reduce((s,x)=>s+(x.ndos||0),0);
+  const aforTot = dossiersAFOR.length;
+  const grand_total = totM2 + aforTot;
+  // Activités M2
+  const isf   = saisies.filter(s=>s.activite==='ISF').reduce((s,x)=>s+(x.ndos||0),0);
+  const dtv   = saisies.filter(s=>s.activite==='DTV').reduce((s,x)=>s+(x.ndos||0),0);
+  const contr = saisies.filter(s=>s.activite==='CONTRAT').reduce((s,x)=>s+(x.ndos||0),0);
+  const cfi   = dossiersAFOR.filter(d=>d.type==='CFI').length;
+  const cfc   = dossiersAFOR.filter(d=>d.type==='CFC').length;
+  const retards = dossiersAFOR.filter(d=>aforCalcRetard(d).retard).length;
+  const tot1  = grand_total || 1;
+  const rows = [
+    {label:'ISF',          val:isf,  c:'#8B5CF6', src:'M2'},
+    {label:'DTV',          val:dtv,  c:'#F97316', src:'M2'},
+    {label:'Contrat',      val:contr,c:'#3B82F6', src:'M2'},
+    {label:'CF — CFI',     val:cfi,  c:'#22C55E', src:'AFOR'},
+    {label:'CF — CFC',     val:cfc,  c:'#16A34A', src:'AFOR'},
+  ];
+  const segs = rows.map(r=>({val:r.val, c:r.c}));
+  const descHtml = `
+    <div style="font-size:20px;font-weight:700;color:#111827;line-height:1;">${grand_total.toLocaleString('fr-FR')}</div>
+    <div style="font-size:11px;color:#6B7280;margin-bottom:10px;">dossiers au total</div>
+    ${rows.map(r=>{
+      const pct = Math.round(r.val/tot1*100);
+      return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <div style="width:8px;height:8px;border-radius:50%;background:${r.c};flex-shrink:0;"></div>
+        <span style="font-size:12px;color:#374151;flex:1;">${r.label}</span>
+        <span style="font-size:12px;font-weight:600;color:#111827;">${r.val}</span>
+        <span style="font-size:11px;color:#9CA3AF;min-width:30px;text-align:right;">${pct}%</span>
+      </div>`;
+    }).join('')}
+    ${retards>0?`<div style="margin-top:8px;font-size:11px;color:#DC2626;font-weight:600;">⚠ ${retards} CF en retard</div>`:''}`;
+  el.innerHTML = pieCard('Répartition des dossiers',"switchModule('saisie')",'Voir M2',descHtml,makePieSVG(segs));
 }
 
 // ── Card : État dossiers fonciers ──
 function dashRenderCardDossiers(){  const _g=document.getElementById('dash-card-dossiers');if(!_g)return;
-  const tot=dossiers.length;
-  const clos=dossiers.filter(d=>d.etape==='Clôturé').length;
-  const blq=dossiers.filter(d=>d.etape!=='Clôturé'&&dosJours(d.etape_date)>30).length;
-  const act=tot-clos-blq;
-  // AFOR data
-  const aforTot=dossiersAFOR.length;
-  const aforRDC=dossiersAFOR.filter(d=>d.etape==='RDC').length;
-  const aforVA=dossiersAFOR.filter(d=>d.etape==='VA').length;
-  const aforDD=dossiersAFOR.filter(d=>d.etape==='DD').length;
-  const el=document.getElementById('dash-card-dossiers');
-  if(!el) return;
-  const pAfor=aforTot>0?Math.round(aforVA/aforTot*100):0;
-  el.innerHTML=cardHdr('Dossiers fonciers',"switchModule('dossier')","Voir tout")+
-  `<div style="padding:14px 16px;">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-      <div style="background:#F0F9FF;border-radius:8px;padding:10px 12px;">
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#0369A1;margin-bottom:4px;">Suivi PRESFOR (M3)</div>
-        <div style="font-size:20px;font-weight:700;color:#0C4A6E;">${tot}</div>
-        <div style="font-size:11px;color:#0369A1;margin-top:2px;">${clos} clôturés · ${act} actifs</div>
-      </div>
-      <div style="background:#F0FDF4;border-radius:8px;padding:10px 12px;">
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#15803D;margin-bottom:4px;">Base AFOR (CF)</div>
-        <div style="font-size:20px;font-weight:700;color:#14532D;">${aforTot.toLocaleString('fr-FR')}</div>
-        <div style="font-size:11px;color:#15803D;margin-top:2px;">${aforVA} validés · ${pAfor}% avancement</div>
-      </div>
+  const aforTot = dossiersAFOR.length;
+  const dos_presfor = dossiers.length;
+  const total = aforTot + dos_presfor;
+  const aforVA = dossiersAFOR.filter(d=>d.etape==='VA').length;
+  const aforRetards = dossiersAFOR.filter(d=>aforCalcRetard(d).retard).length;
+  const pctAvance = aforTot>0?Math.round((dossiersAFOR.filter(d=>['OV','CP','AP','VA'].includes(d.etape)).length)/aforTot*100):0;
+  const parEtape = ETAPES_CF.map(e=>({e, n:dossiersAFOR.filter(d=>d.etape===e).length, r:dossiersAFOR.filter(d=>d.etape===e&&aforCalcRetard(d).retard).length, c:ETAPES_CF_COLORS[e]||{brd:'#999',bg:'#eee',tx:'#333'}}));
+  const maxN = Math.max(...parEtape.map(x=>x.n),1);
+  _g.innerHTML = cardHdr('Étapes des dossiers fonciers',"switchModule('dossier')",'Voir M3')+
+  `<div style="padding:12px 16px 14px;">
+    <div style="display:flex;gap:16px;margin-bottom:14px;">
+      <div><div style="font-size:22px;font-weight:700;color:#111827;">${aforTot.toLocaleString('fr-FR')}</div><div style="font-size:11px;color:#6B7280;">dossiers CF</div></div>
+      <div style="border-left:1px solid #F3F4F6;padding-left:16px;"><div style="font-size:22px;font-weight:700;color:#16A34A;">${aforVA}</div><div style="font-size:11px;color:#6B7280;">validés</div></div>
+      <div style="border-left:1px solid #F3F4F6;padding-left:16px;"><div style="font-size:22px;font-weight:700;color:${aforRetards>0?'#DC2626':'#16A34A'};">${aforRetards}</div><div style="font-size:11px;color:#6B7280;">en retard</div></div>
+      <div style="border-left:1px solid #F3F4F6;padding-left:16px;"><div style="font-size:22px;font-weight:700;color:#0369A1;">${pctAvance}%</div><div style="font-size:11px;color:#6B7280;">avancés (≥OV)</div></div>
     </div>
-    ${aforTot>0?`<div style="margin-top:4px;">
-      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6B7280;margin-bottom:6px;">Pipeline CF — étape principale</div>
-      <div style="display:flex;gap:4px;align-items:center;">
-        ${['DD','RDC','CL','OV','CP','AP','VA'].map(e=>{
-          const n=dossiersAFOR.filter(d=>d.etape===e).length;
-          const pct=aforTot>0?Math.round(n/aforTot*100):0;
-          const c=ETAPES_CF_COLORS[e]||{brd:'#999',bg:'#eee',tx:'#333'};
-          return n>0?`<div style="flex:${pct||1};text-align:center;">
-            <div style="height:10px;background:${c.brd};border-radius:2px;" title="${e}: ${n} dossiers"></div>
-            <div style="font-size:9px;font-weight:700;color:${c.tx};margin-top:2px;">${e}</div>
-          </div>`:'';
-        }).join('')}
-      </div>
-    </div>`:'<div style="font-size:11px;color:#9CA3AF;text-align:center;padding:8px;">Importez la base AFOR pour voir les données CF</div>'}
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;min-height:90px;">
+      ${parEtape.map(x=>{
+        const h = Math.max(Math.round(x.n/maxN*80),3);
+        const pct = aforTot>0?Math.round(x.n/aforTot*100):0;
+        return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+          ${x.r>0?`<div style="font-size:9px;font-weight:700;color:#DC2626;">⚠${x.r}</div>`:`<div style="height:14px;"></div>`}
+          <div style="font-size:11px;font-weight:700;color:${x.c.tx}">${x.n}</div>
+          <div style="width:100%;height:${h}px;background:${x.c.brd};border-radius:3px 3px 0 0;"></div>
+          <div style="font-size:10px;font-weight:700;padding:2px 4px;border-radius:3px;background:${x.c.bg};color:${x.c.tx}">${x.e}</div>
+          <div style="font-size:9px;color:#9CA3AF;">${pct}%</div>
+        </div>`;
+      }).join('')}
+    </div>
   </div>`;
 }
 
 function dashRenderCardDepts(){  const _g=document.getElementById('dash-card-depts');if(!_g)return;
-  const DEPTS=['Dép. Guiglo','Dép. Bloléquin','Dép. Taï','Dép. Toulépleu'];
-  const DEPTS_AFOR=['GUIGLO','BLOLÉQUIN','TAI','TOULEPIEU'];
-  const totSaisies=saisies.reduce((s,x)=>s+(x.ndos||0),0)||1;
-  const totAfor=dossiersAFOR.length||1;
-  const rows=DEPTS.map((d,i)=>{
-    const valSaisies=saisies.filter(s=>s.dept===d).reduce((s,x)=>s+(x.ndos||0),0);
-    const valAfor=dossiersAFOR.filter(dos=>dos.dept===DEPTS_AFOR[i]).length;
-    const retAfor=dossiersAFOR.filter(dos=>dos.dept===DEPTS_AFOR[i]&&aforCalcRetard(dos).retard).length;
-    const nomCourt=d.replace('Dép. ','');
+  const DEPTS = [
+    {label:'Guiglo',    saisie:'Dép. Guiglo',    afor:'GUIGLO'},
+    {label:'Bloléquin', saisie:'Dép. Bloléquin',  afor:'BLOLÉQUIN'},
+    {label:'Taï',       saisie:'Dép. Taï',         afor:'TAI'},
+    {label:'Toulépleu', saisie:'Dép. Toulépleu',  afor:'TOULEPIEU'},
+  ];
+  const totSaisies = saisies.reduce((s,x)=>s+(x.ndos||0),0)||1;
+  const totAfor = dossiersAFOR.length||1;
+  const rows = DEPTS.map(d=>{
+    const s = saisies.filter(x=>x.dept===d.saisie).reduce((s,x)=>s+(x.ndos||0),0);
+    const a = dossiersAFOR.filter(x=>x.dept===d.afor).length;
+    const r = dossiersAFOR.filter(x=>x.dept===d.afor&&aforCalcRetard(x).retard).length;
+    const total = s + a;
+    const pcts = Math.round(s/totSaisies*100);
+    const pcta = Math.round(a/totAfor*100);
     return `<tr style="border-bottom:1px solid #F9FAFB;">
-      <td style="padding:7px 6px 7px 0;font-size:12px;color:#374151;font-weight:500;">${nomCourt}</td>
-      <td style="padding:7px 6px;text-align:right;font-weight:700;font-size:12px;">${valSaisies}</td>
-      <td style="padding:7px 6px;text-align:right;font-size:11px;color:#0369A1;font-weight:600;">${valAfor}</td>
-      ${retAfor>0?`<td style="padding:7px 0;text-align:right;font-size:10px;color:#DC2626;font-weight:700;">⚠${retAfor}</td>`:'<td style="padding:7px 0;text-align:right;font-size:10px;color:#16A34A;">✓</td>'}
+      <td style="padding:8px 6px 8px 0;font-size:12px;font-weight:600;color:#111827;">${d.label}</td>
+      <td style="padding:8px 6px;text-align:right;font-weight:700;font-size:12px;">${s}</td>
+      <td style="padding:8px 6px;text-align:right;font-weight:700;font-size:12px;color:#0369A1;">${a}</td>
+      <td style="padding:8px 6px;text-align:right;font-weight:700;font-size:13px;color:#111827;">${total}</td>
+      <td style="padding:8px 0;text-align:right;font-size:11px;font-weight:600;color:${r>0?'#DC2626':'#16A34A'};">${r>0?'⚠'+r:'✓'}</td>
     </tr>`;
   }).join('');
-  document.getElementById('dash-card-depts').innerHTML=
-    cardHdr('Par département',"switchModule('zones')",'Zones')+
-    `<div style="padding:0 16px 14px;">
-      <table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <thead><tr style="border-bottom:2px solid #F3F4F6;">
-          <th style="text-align:left;padding:8px 6px 6px 0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6B7280;">Département</th>
-          <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#8B5CF6;">Saisies</th>
-          <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#0369A1;">CF (AFOR)</th>
-          <th style="text-align:right;padding:8px 0 6px 6px;font-size:10px;font-weight:600;color:#DC2626;">Retards</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
+  _g.innerHTML = cardHdr('Par département',"switchModule('zones')",'Zones')+
+  `<div style="padding:0 16px 14px;"><table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead><tr style="border-bottom:2px solid #F3F4F6;">
+      <th style="text-align:left;padding:8px 6px 6px 0;font-size:10px;font-weight:600;text-transform:uppercase;color:#6B7280;">Département</th>
+      <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#8B5CF6;">Saisies</th>
+      <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#0369A1;">CF</th>
+      <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#111827;">Total</th>
+      <th style="text-align:right;padding:8px 0 6px 6px;font-size:10px;font-weight:600;color:#DC2626;">Retards</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
 }
 
-// ── Card : Par activité ──
 function dashRenderCardActivites(){  const _g=document.getElementById('dash-card-activites');if(!_g)return;
-  const ACT_C={'ISF':'#8B5CF6','CF':'#22C55E','DTV':'#F97316','CONTRAT':'#3B82F6'};
-  // Saisies M2
-  const totSaisies=saisies.length||1;
-  const saisiesISF=saisies.filter(s=>s.activite==='ISF').length;
-  const saisieDTV=saisies.filter(s=>s.activite==='DTV').length;
-  const saisieCONTRAT=saisies.filter(s=>s.activite==='CONTRAT').length;
-  // CF depuis AFOR
-  const aforTot=dossiersAFOR.length;
-  const aforCFI=dossiersAFOR.filter(d=>d.type==='CFI').length;
-  const aforCFC=dossiersAFOR.filter(d=>d.type==='CFC').length;
-  // Dossiers M3 manuels
-  const totDos=dossiers.length||1;
-  const rows=[
-    {nom:'ISF',val:saisiesISF,tot:totSaisies,c:'#8B5CF6',src:'M2'},
-    {nom:'DTV',val:saisieDTV,tot:totSaisies,c:'#F97316',src:'M2'},
-    {nom:'CONTRAT',val:saisieCONTRAT,tot:totSaisies,c:'#3B82F6',src:'M2'},
-    {nom:'CF (CFI)',val:aforCFI,tot:Math.max(aforTot,1),c:'#22C55E',src:'AFOR'},
-    {nom:'CF (CFC)',val:aforCFC,tot:Math.max(aforTot,1),c:'#16A34A',src:'AFOR'},
-  ].map(r=>{
-    const pct=Math.round(r.val/r.tot*100);
+  const totM2 = saisies.reduce((s,x)=>s+(x.ndos||0),0);
+  const aforTot = dossiersAFOR.length;
+  const grand = totM2 + aforTot || 1;
+  const acts = [
+    {label:'ISF',     val:saisies.filter(s=>s.activite==='ISF').reduce((s,x)=>s+(x.ndos||0),0),    c:'#8B5CF6'},
+    {label:'DTV',     val:saisies.filter(s=>s.activite==='DTV').reduce((s,x)=>s+(x.ndos||0),0),    c:'#F97316'},
+    {label:'Contrat', val:saisies.filter(s=>s.activite==='CONTRAT').reduce((s,x)=>s+(x.ndos||0),0),c:'#3B82F6'},
+    {label:'CF — CFI',val:dossiersAFOR.filter(d=>d.type==='CFI').length, c:'#22C55E'},
+    {label:'CF — CFC',val:dossiersAFOR.filter(d=>d.type==='CFC').length, c:'#16A34A'},
+  ];
+  const rows = acts.map(a=>{
+    const pct = Math.round(a.val/grand*100);
     return `<tr style="border-bottom:1px solid #F9FAFB;">
-      <td style="padding:7px 6px 7px 0;font-size:12px;color:#374151;">${r.nom} <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#F3F4F6;color:#6B7280;">${r.src}</span></td>
-      <td style="padding:7px 6px;text-align:right;font-weight:700;font-size:12px;">${r.val}</td>
-      <td style="padding:7px 6px;text-align:right;font-size:12px;color:#6B7280;">${pct}%</td>
-      <td style="padding:7px 0 7px 8px;min-width:80px;"><div style="height:6px;background:#F3F4F6;border-radius:3px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${r.c};border-radius:3px;"></div></div></td>
+      <td style="padding:7px 6px 7px 0;font-size:12px;color:#374151;display:flex;align-items:center;gap:6px;">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${a.c};flex-shrink:0;"></span>${a.label}
+      </td>
+      <td style="padding:7px 6px;text-align:right;font-weight:700;font-size:12px;">${a.val}</td>
+      <td style="padding:7px 6px;text-align:right;font-size:11px;color:#6B7280;">${pct}%</td>
+      <td style="padding:7px 0 7px 8px;min-width:80px;"><div style="height:6px;background:#F3F4F6;border-radius:3px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${a.c};border-radius:3px;"></div></div></td>
     </tr>`;
   }).join('');
-  document.getElementById('dash-card-activites').innerHTML=
-    cardHdr('Par activité',null,'')+
-    `<div style="padding:0 16px 14px;"><table style="width:100%;border-collapse:collapse;font-size:12px;">
+  _g.innerHTML = cardHdr('Par activité',null,'')+
+  `<div style="padding:0 16px 14px;">
+    <div style="font-size:11px;color:#6B7280;padding:8px 0 4px;">Total : <b style="color:#111827;">${grand.toLocaleString('fr-FR')}</b> dossiers</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
       <thead><tr style="border-bottom:2px solid #F3F4F6;">
-        <th style="text-align:left;padding:8px 6px 6px 0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6B7280;">Activité</th>
+        <th style="text-align:left;padding:8px 6px 6px 0;font-size:10px;font-weight:600;text-transform:uppercase;color:#6B7280;">Activité</th>
         <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#6B7280;">Nb</th>
         <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#6B7280;">%</th>
-        <th style="padding:8px 0 6px 8px;min-width:80px;"></th>
+        <th style="padding:8px 0 6px 8px;"></th>
       </tr></thead>
       <tbody>${rows}</tbody>
-    </table></div>`;
+    </table>
+  </div>`;
 }
 
-// ── Card : Top agents ──
 function dashRenderCardAgents(){  const _g=document.getElementById('dash-card-agents');if(!_g)return;
-  // Production M2 (saisies journalières)
-  const prodM2=AGENTS.map(a=>({
-    nom:a,
-    prod:saisies.filter(s=>s.agent===a).reduce((s,x)=>s+(x.ndos||0),0)
-  })).filter(d=>d.prod>0).sort((a,b)=>b.prod-a.prod);
-  // Performance AFOR (CE)
-  const aforAgents=dossiersAFOR.length>0?aforGetAgentsData():[];
-  const M=['🥇','🥈','🥉'];
-  // Fusionner : agents apparaissant dans l'un ou l'autre
-  const agentsCombined={};
-  prodM2.forEach(a=>{ agentsCombined[a.nom]={nom:a.nom,prod:a.prod,aforScore:null,aforTotal:0,aforRetards:0}; });
-  aforAgents.forEach(a=>{
-    const key=a.nom;
-    if(!agentsCombined[key]) agentsCombined[key]={nom:key,prod:0,aforScore:a.score,aforTotal:a.total,aforRetards:a.retards};
-    else { agentsCombined[key].aforScore=a.score; agentsCombined[key].aforTotal=a.total; agentsCombined[key].aforRetards=a.retards; }
+  // Fusionner agents M2 + AFOR
+  const agMap = {};
+  // M2 : saisies par agent
+  AGENTS.forEach(a=>{
+    const v = saisies.filter(s=>s.agent===a).reduce((s,x)=>s+(x.ndos||0),0);
+    if(v>0) agMap[a] = {nom:a, m2:v, cf:0, score:null, retards:0};
   });
-  const sorted=Object.values(agentsCombined).sort((a,b)=>b.prod-a.prod||b.aforTotal-a.aforTotal).slice(0,8);
-  const maxProd=sorted[0]?.prod||1;
-  const rows=sorted.map((d,i)=>
-    `<tr style="border-bottom:1px solid #F9FAFB;">
-      <td style="padding:7px 6px 7px 0;font-size:12px;color:#374151;">${M[i]||`<span style="color:#9CA3AF;font-size:11px">${i+1}.</span>`} ${d.nom.split(' ').slice(0,2).join(' ')}</td>
-      <td style="padding:7px 6px;text-align:right;font-weight:700;font-size:12px;">${d.prod||'—'}</td>
-      ${d.aforTotal>0?`<td style="padding:7px 6px;text-align:right;font-size:11px;color:#0369A1;">${d.aforTotal} CF</td>
-      <td style="padding:7px 0;text-align:right;font-size:10px;font-weight:700;color:${d.aforScore>=60?'#16A34A':'#DC2626'}">${d.aforScore}%</td>`:
-      '<td style="padding:7px 6px;font-size:10px;color:#D1D5DB;text-align:right;">—</td><td></td>'}
-    </tr>`
-  ).join('');
-  document.getElementById('dash-card-agents').innerHTML=
-    cardHdr('Top agents — production',null,'')+
-    `<div style="padding:0 16px 14px;"><table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead><tr style="border-bottom:2px solid #F3F4F6;">
-        <th style="text-align:left;padding:8px 6px 6px 0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6B7280;">Agent</th>
-        <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#8B5CF6;">Saisies</th>
-        <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#0369A1;">CF (AFOR)</th>
-        <th style="text-align:right;padding:8px 0 6px 6px;font-size:10px;font-weight:600;color:#16A34A;">Score CF</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>`;
+  // AFOR : CE par agent
+  if(dossiersAFOR.length>0){
+    aforGetAgentsData().forEach(ag=>{
+      // Chercher correspondance avec agents M2 (matching partiel)
+      const key = Object.keys(agMap).find(k=>{
+        const kw = k.toLowerCase().split(' ');
+        const agw = ag.nom.toLowerCase().split(' ');
+        return kw.some(w=>w.length>3&&agw.some(aw=>aw.includes(w)||w.includes(aw)));
+      }) || ag.nom;
+      if(agMap[key]) { agMap[key].cf=ag.total; agMap[key].score=ag.score; agMap[key].retards=ag.retards; }
+      else agMap[ag.nom]={nom:ag.nom,m2:0,cf:ag.total,score:ag.score,retards:ag.retards};
+    });
+  }
+  const sorted = Object.values(agMap)
+    .sort((a,b)=>(b.m2+b.cf)-(a.m2+a.cf))
+    .slice(0,8);
+  const M=['🥇','🥈','🥉'];
+  const rows = sorted.map((d,i)=>{
+    const total = d.m2 + d.cf;
+    const scoreHtml = d.score!==null
+      ? `<td style="padding:7px 0;font-size:11px;font-weight:700;color:${d.score>=60?'#16A34A':'#DC2626'};">${d.score}%</td>`
+      : `<td style="padding:7px 0;font-size:11px;color:#D1D5DB;">—</td>`;
+    return `<tr style="border-bottom:1px solid #F9FAFB;">
+      <td style="padding:7px 6px 7px 0;font-size:12px;">${M[i]||`<span style="color:#9CA3AF;font-size:11px;">${i+1}.</span>`} ${d.nom.split(' ').slice(0,2).join(' ')}</td>
+      <td style="padding:7px 6px;text-align:right;font-weight:600;font-size:12px;color:#8B5CF6;">${d.m2||'—'}</td>
+      <td style="padding:7px 6px;text-align:right;font-weight:600;font-size:12px;color:#0369A1;">${d.cf||'—'}</td>
+      <td style="padding:7px 6px;text-align:right;font-weight:700;font-size:13px;color:#111827;">${total}</td>
+      ${scoreHtml}
+    </tr>`;
+  }).join('');
+  _g.innerHTML = cardHdr('Top agents — production',null,'')+
+  `<div style="padding:0 16px 14px;"><table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead><tr style="border-bottom:2px solid #F3F4F6;">
+      <th style="text-align:left;padding:8px 6px 6px 0;font-size:10px;font-weight:600;text-transform:uppercase;color:#6B7280;">Agent</th>
+      <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#8B5CF6;">Saisies</th>
+      <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#0369A1;">CF</th>
+      <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#111827;">Total</th>
+      <th style="text-align:right;padding:8px 0 6px 6px;font-size:10px;font-weight:600;color:#16A34A;">Score CF</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
 }
 
 function dashRenderCardProgrammes(){
@@ -6166,6 +6181,7 @@ function aforImportExcel(input){
 
 function aforRenderAll(){
   // Met à jour uniquement les cards du dashboard principal
+  dashRenderCardSaisies();
   dashRenderCardDossiers();
   dashRenderCardDepts();
   dashRenderCardActivites();
