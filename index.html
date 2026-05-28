@@ -1,4 +1,14 @@
-<!DOCTYPE html>
+<thead><tr>
+  <th>N° Dossier</th>
+  <th>Prénom · Nom</th>
+  <th>Localisation</th>
+  <th>Code Parcelle</th>
+  <th>Type</th>
+  <th>Étape actuelle</th>
+  <th>Date étape</th>
+  <th>Statut</th>
+  <th>Actions</th>
+</tr></thead><!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -1085,6 +1095,19 @@ tbody td{padding:9px 12px;vertical-align:middle;}
         Statistiques
       </button>
     </div>
+    <div class="nav-div"></div>
+    <div class="sb-sec">
+      <div class="sb-label">Base AFOR</div>
+      <button class="nav-item" onclick="dosShowPanel('afor-cf-liste',this)">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4h12v1.5H2zm0 3h12v1.5H2zm0 3h8v1.5H2z"/></svg>
+        Liste CF
+        <span class="nav-badge" id="afor-list-nb" style="background:var(--accent-lt);color:var(--accent-txt)">0</span>
+      </button>
+      <button class="nav-item" onclick="dosShowPanel('afor-cf-agents',this)">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm4 8H4a4 4 0 0 1 8 0z"/></svg>
+        Performance CE
+      </button>
+    </div>
 
     <div class="nav-div"></div>
     <button class="nav-item" onclick="dosExportCSV()" style="color:var(--blue-txt)">
@@ -1121,23 +1144,40 @@ tbody td{padding:9px 12px;vertical-align:middle;}
         </div>
       </div>
       <div class="kpi-bar" id="dos-kpi"></div>
+      <div class="kpi-bar" id="dos-kpi" style="margin-bottom:10px;"></div>
       <div class="filter-bar">
-        <input type="text" id="dos-srch" placeholder="N° dossier, demandeur, village..." oninput="dosRenderList()">
-        <select id="dos-f-statut" onchange="dosRenderList()">
-          <option value="">Tous statuts</option>
-          <option value="actif">Actifs</option>
-          <option value="cloture">Clôturés</option>
-          <option value="bloque">Bloqués +30j</option>
-        </select>
-        <select id="dos-f-dept" onchange="dosRenderList()">
-          <option value="">Tous les dép.</option>
-          <option>Dép. Guiglo</option><option>Dép. Bloléquin</option>
-          <option>Dép. Toulépleu</option><option>Dép. Taï</option>
-        </select>
-        <select id="dos-f-agent" onchange="dosRenderList()">
-          <option value="">Tous les agents</option>
-        </select>
-      </div>
+  <input type="text" id="dos-srch" placeholder="N° dossier, nom, village..." oninput="dosRenderList()">
+  <select id="dos-f-dept" onchange="dosRenderList()">
+    <option value="">Tous les dép.</option>
+    <option value="GUIGLO">Guiglo</option>
+    <option value="BLOLEQUIN">Bloléquin</option>
+    <option value="TAI">Taï</option>
+    <option value="TOULEPLEU">Toulépleu</option>
+  </select>
+  <select id="dos-f-etape" onchange="dosRenderList()">
+    <option value="">Toutes les étapes</option>
+    <option value="DD">DD — Demande</option>
+    <option value="RDC">RDC</option>
+    <option value="CL">CL</option>
+    <option value="OV">OV</option>
+    <option value="CP">CP</option>
+    <option value="AP">AP</option>
+    <option value="VA">VA</option>
+  </select>
+  <select id="dos-f-agent" onchange="dosRenderList()">
+    <option value="">Tous les agents</option>
+  </select>
+  <select id="dos-f-type" onchange="dosRenderList()">
+    <option value="">CFI + CFC</option>
+    <option value="CFI">CFI</option>
+    <option value="CFC">CFC</option>
+  </select>
+  <select id="dos-f-statut" onchange="dosRenderList()">
+    <option value="">Tous statuts</option>
+    <option value="retard">En retard</option>
+    <option value="ok">Dans les délais</option>
+  </select>
+</div>
       <div class="tw">
         <table>
           <thead id="dos-matrix-head"><tr></tr></thead>
@@ -1160,67 +1200,67 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       <div class="val-sum" id="dos-val-sum"><p>Erreurs :</p><ul id="dos-val-list"></ul></div>
       <div class="fc">
         <form id="dos-form" onsubmit="dosSubmit(event)" novalidate>
-          <input type="hidden" id="dos-edit-id">
+  <input type="hidden" id="dos-edit-id">
 
-          <div class="fs">
-            <div class="fs-title">1 · Identification du dossier</div>
-            <div class="fg">
-              <div class="ff"><label class="fl">N° officiel PRESFOR <span class="req">*</span></label><input class="fi" id="df-ref" placeholder="Ex : CF-CAV-2025-0042"><span class="ferr" id="de-ref">Requis.</span><span class="fhint">Numéro officiel attribué par PRESFOR</span></div>
-              <div class="ff"><label class="fl">Date d'ouverture <span class="req">*</span></label><input class="fi" type="date" id="df-date"><span class="ferr" id="de-date">Requise.</span></div>
-              <div class="ff"><label class="fl">Agent responsable <span class="req">*</span></label><select class="fsel" id="df-agent"><option value="">-- Sélectionner --</option></select><span class="ferr" id="de-agent">Requis.</span></div>
-              <div class="ff"><label class="fl">Département <span class="req">*</span></label><select class="fsel" id="df-dept" onchange="geoUpdateSP('df-dept','df-sp','df-village');dosUpdateGeo()"><option value="">-- Sélectionner --</option><option>Dép. Guiglo</option><option>Dép. Bloléquin</option><option>Dép. Toulépleu</option><option>Dép. Taï</option></select><span class="ferr" id="de-dept">Requis.</span></div>
-            </div>
-          </div>
+  <div class="fs">
+    <div class="fs-title">1 · Identité du demandeur</div>
+    <div class="fg">
+      <div class="ff"><label class="fl">N° Dossier <span class="req">*</span></label><input class="fi" id="df-id" placeholder="Ex : 094-004-000023"><span class="ferr" id="de-id">Requis.</span></div>
+      <div class="ff"><label class="fl">Prénom <span class="req">*</span></label><input class="fi" id="df-prenom" placeholder="Prénom du demandeur"><span class="ferr" id="de-prenom">Requis.</span></div>
+      <div class="ff"><label class="fl">Nom <span class="req">*</span></label><input class="fi" id="df-nom" placeholder="Nom du demandeur"><span class="ferr" id="de-nom">Requis.</span></div>
+    </div>
+  </div>
 
-          <div class="fs">
-            <div class="fs-title">2 · Demandeur</div>
-            <div class="fg">
-              <div class="ff"><label class="fl">Nom et prénom <span class="req">*</span></label><input class="fi" id="df-demandeur" placeholder="Nom complet du demandeur"><span class="ferr" id="de-demandeur">Requis.</span></div>
-              <div class="ff"><label class="fl">Contact téléphonique</label><input class="fi" id="df-tel" placeholder="Ex : 07 XX XX XX XX"></div>
-            </div>
-          </div>
+  <div class="fs">
+    <div class="fs-title">2 · Localisation</div>
+    <div class="fg">
+      <div class="ff"><label class="fl">Région</label><input class="fi" id="df-region" value="CAVALLY" readonly style="background:var(--surface2);color:var(--text2)"></div>
+      <div class="ff"><label class="fl">Département <span class="req">*</span></label>
+        <select class="fsel" id="df-dept" onchange="dosUpdateSP()">
+          <option value="">-- Sélectionner --</option>
+          <option value="GUIGLO">Guiglo</option>
+          <option value="BLOLEQUIN">Bloléquin</option>
+          <option value="TOULEPLEU">Toulépleu</option>
+          <option value="TAI">Taï</option>
+        </select><span class="ferr" id="de-dept">Requis.</span></div>
+      <div class="ff"><label class="fl">Sous-Préfecture <span class="req">*</span></label>
+        <select class="fsel" id="df-sp"><option value="">-- Sélectionner dép. d'abord --</option></select>
+        <span class="ferr" id="de-sp">Requise.</span></div>
+      <div class="ff"><label class="fl">Village <span class="req">*</span></label><input class="fi" id="df-village" placeholder="Nom du village"><span class="ferr" id="de-village">Requis.</span></div>
+      <div class="ff"><label class="fl">Code Parcelle</label><input class="fi" id="df-code" placeholder="Ex : 023009"></div>
+    </div>
+  </div>
 
-          <div class="fs">
-            <div class="fs-title">3 · Parcelle</div>
-            <div class="fg3">
-              <div class="ff"><label class="fl">Village / Localité <span class="req">*</span></label><input class="fi" id="df-village" list="dos-village-dl" placeholder="Village de la parcelle"><datalist id="dos-village-dl"></datalist><span class="ferr" id="de-village">Requis.</span></div>
-              <div class="ff"><label class="fl">Superficie (ha) <span class="req">*</span></label><input class="fi" type="number" id="df-superficie" min="0.01" step="0.01" placeholder="Ex : 2.5"><span class="ferr" id="de-superficie">Requise.</span></div>
-              <div class="ff"><label class="fl">Type de parcelle</label><select class="fsel" id="df-type"><option>Agricole</option><option>Habitation</option><option>Commercial</option><option>Mixte</option></select></div>
-              <div class="ff full"><label class="fl">Observations</label><textarea class="fta" id="df-obs" placeholder="Informations complémentaires sur la parcelle ou le demandeur..."></textarea></div>
-            </div>
-          </div>
+  <div class="fs">
+    <div class="fs-title">3 · Certificat foncier</div>
+    <div class="fg">
+      <div class="ff"><label class="fl">Type de CF <span class="req">*</span></label>
+        <select class="fsel" id="df-type">
+          <option value="">-- Sélectionner --</option>
+          <option value="CFI">CFI — Individuel</option>
+          <option value="CFC">CFC — Communautaire</option>
+        </select><span class="ferr" id="de-type">Requis.</span></div>
+      <div class="ff"><label class="fl">Étape actuelle <span class="req">*</span></label>
+        <select class="fsel" id="df-etape" onchange="dosUpdateDateField()">
+          <option value="">-- Sélectionner --</option>
+          <option value="DD">DD — Demande</option>
+          <option value="RDC">RDC — Recensement droit coutumier</option>
+          <option value="CL">CL — Constat de limite</option>
+          <option value="OV">OV — Ouverture publicité</option>
+          <option value="CP">CP — Clôture publicité</option>
+          <option value="AP">AP — Approbation</option>
+          <option value="VA">VA — Validation</option>
+        </select><span class="ferr" id="de-etape">Requise.</span></div>
+      <div class="ff"><label class="fl" id="df-date-label">Date de l'étape <span class="req">*</span></label>
+        <input class="fi" type="date" id="df-date-etape"><span class="ferr" id="de-date">Requise.</span></div>
+    </div>
+  </div>
 
-          <div class="fs">
-            <div class="fs-title">4 · Activité et étape courante</div>
-            <div class="fg">
-              <div class="ff">
-                <label class="fl">Activité principale <span class="req">*</span></label>
-                <select class="fsel" id="df-activite" onchange="dosUpdateEtapeChips()">
-                  <option value="">-- Sélectionner une activité --</option>
-                  <option value="ISF">ISF — Ingénierie Socio Foncière</option>
-                  <option value="CF">CF — Certificat Foncier</option>
-                  <option value="DTV">DTV — Délimitation Terroir Villageois</option>
-                  <option value="CONTRAT">CONTRAT — Formalisation contractuelle</option>
-                </select>
-                <span class="ferr" id="de-activite">Requis.</span>
-              </div>
-              <div class="ff"><label class="fl">Date de l'étape courante</label><input class="fi" type="date" id="df-etape-date"><span class="fhint">Date à laquelle cette étape a démarré</span></div>
-              <div class="ff full">
-                <label class="fl">Étape courante <span class="req">*</span></label>
-                <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px" id="dos-etape-chips">
-                  <span style="font-size:12px;color:var(--text3);padding:6px 0">Choisissez d'abord une activité principale</span>
-                </div>
-                <input type="hidden" id="df-etape">
-                <span class="ferr" id="de-etape">Requis.</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="fa">
-            <button type="submit" class="btn-p">Enregistrer le dossier</button>
-            <button type="button" class="btn-s" onclick="dosResetForm()">Annuler</button>
-          </div>
-        </form>
+  <div class="form-actions">
+    <button type="submit" class="btn-p" id="dos-submit-btn">Enregistrer</button>
+    <button type="button" class="btn-s" onclick="dosCloseForm()">Annuler</button>
+  </div>
+</form>
       </div>
     </div>
 
@@ -1245,6 +1285,85 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     
     
     
+
+    <!-- ══ PANEL AFOR : LISTE CF ══ -->
+    <div class="panel" id="dos-panel-afor-cf-liste">
+      <div class="page-head">
+        <div><h2>Liste des dossiers CF — Base AFOR</h2><p id="afor-cf-subtitle">Importez la base AFOR pour afficher les dossiers</p></div>
+        <div class="btn-row">
+          <label class="btn-s" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:var(--blue-lt);color:var(--blue-txt);">
+            ↑ Mettre à jour
+            <input type="file" accept=".xlsx,.xls" style="display:none" onchange="aforImportExcel(this)">
+          </label>
+          <button class="btn-s" onclick="aforCFExportCSV()">↓ Export CSV</button>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="afor-cf-srch" placeholder="N° dossier, nom, village..." oninput="aforCFRenderList()">
+        <select id="afor-cf-etape" onchange="aforCFRenderList()">
+          <option value="">Toutes les étapes</option>
+          <option value="DD">DD — Demande</option>
+          <option value="RDC">RDC — Recensement droit coutumier</option>
+          <option value="CL">CL — Constat de limite</option>
+          <option value="OV">OV — Ouverture publicité</option>
+          <option value="CP">CP — Clôture publicité</option>
+          <option value="AP">AP — Approbation</option>
+          <option value="VA">VA — Validation</option>
+        </select>
+        <select id="afor-cf-dept" onchange="aforCFRenderList()">
+          <option value="">Tous les dép.</option>
+          <option value="GUIGLO">Guiglo</option>
+          <option value="BLOLEQUIN">Bloléquin</option>
+          <option value="TAI">Taï</option>
+          <option value="TOULEPLEU">Toulépleu</option>
+        </select>
+        <select id="afor-cf-agent" onchange="aforCFRenderList()"><option value="">Tous les agents CE</option></select>
+        <select id="afor-cf-retard" onchange="aforCFRenderList()">
+          <option value="">Tous statuts</option>
+          <option value="1">En retard</option>
+          <option value="0">Dans les délais</option>
+        </select>
+        <select id="afor-cf-type" onchange="aforCFRenderList()">
+          <option value="">CFI + CFC</option>
+          <option value="CFI">CFI</option>
+          <option value="CFC">CFC</option>
+        </select>
+      </div>
+      <div class="kpi-bar" id="afor-cf-kpi" style="margin-bottom:10px;"></div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th>N° Dossier</th><th>Demandeur</th><th>Village · SP</th>
+            <th>Département</th><th>Agent CE</th><th>Type</th>
+            <th>Étape actuelle</th><th>Depuis</th><th>Statut</th>
+          </tr></thead>
+          <tbody id="afor-cf-tbody"></tbody>
+        </table>
+        <div id="afor-cf-empty" class="empty-state" style="display:none">
+          <p>Aucun dossier. <label style="cursor:pointer;color:var(--accent);text-decoration:underline;">Importez la base AFOR<input type="file" accept=".xlsx,.xls" style="display:none" onchange="aforImportExcel(this)"></label></p>
+        </div>
+        <div id="afor-cf-pagination"></div>
+      </div>
+    </div>
+
+    <!-- ══ PANEL AFOR : PERFORMANCE AGENTS CE ══ -->
+    <div class="panel" id="dos-panel-afor-cf-agents">
+      <div class="page-head"><div><h2>Performance agents CE — Base AFOR</h2><p>Évaluation basée sur les délais réglementaires</p></div></div>
+      <div class="kpi-bar" id="afor-cf-agents-kpi"></div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th>Rang</th><th>Agent CE</th><th>Total</th>
+            <th title="Durée moy. DD→RDC (seuil: 1j)">DD→RDC moy.</th>
+            <th title="Durée moy. RDC→CL (seuil: 3j)">RDC→CL moy.</th>
+            <th title="Durée moy. CL→OV (seuil: 14j)">CL→OV moy.</th>
+            <th>En retard</th><th>Score</th><th>Évaluation</th>
+          </tr></thead>
+          <tbody id="afor-cf-agents-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -3030,126 +3149,117 @@ function dosInit(){
 
 function dosSave(){  scheduleSave();
 }
-function dosRenderAll(){dosRenderKPI();dosRenderList();dosRenderPipeline();dosRenderStats();document.getElementById('dos-nb').textContent=dossiers.length;}
-function dosJours(d){if(!d)return 0;return Math.floor((new Date()-new Date(d))/(1000*60*60*24));}
-function dosIdx(e){return DOS_ETAPES.indexOf(e);}
-function dosPct(e){if(e==='Clôturé')return 100;const i=dosIdx(e);return i<0?0:Math.round((i/(DOS_ETAPES.length-2))*100);}
-function dosRenderKPI(){
-  const tot=dossiers.length;
-  const clo=dossiers.filter(d=>d.etape==='Clôturé').length;
-  const blq=dossiers.filter(d=>d.etape!=='Clôturé'&&dosJours(d.etape_date)>30).length;
-  const sup=dossiers.reduce((s,d)=>s+(parseFloat(d.superficie)||0),0);
-  document.getElementById('dos-kpi').innerHTML=`<div class="kpi blue"><div class="kpi-l">Total dossiers</div><div class="kpi-v">${tot}</div><div class="kpi-s">${tot-clo} actifs</div></div><div class="kpi green"><div class="kpi-l">Clôturés</div><div class="kpi-v">${clo}</div><div class="kpi-s">Certificat demandé</div></div><div class="kpi ${blq>0?'red':''}"><div class="kpi-l">Bloqués +30j</div><div class="kpi-v">${blq}</div><div class="kpi-s">Même étape &gt;30j</div></div><div class="kpi amber"><div class="kpi-l">Superficie tot.</div><div class="kpi-v">${sup.toFixed(1)}</div><div class="kpi-s">hectares</div></div>`;
+function dosRenderAll(){
+  dosRenderKPI();
+  dosRenderList();
 }
+
+function dosRenderKPI(){
+  const tous = [...dossiers, ...dossiersAFOR];
+  const tot = tous.length;
+  const retards = tous.filter(d=>aforCalcRetard(d).retard).length;
+  const va = tous.filter(d=>d.etape==='VA').length;
+  const manuel = dossiers.length;
+  const afor = dossiersAFOR.length;
+  const kpiEl = document.getElementById('dos-kpi');
+  if(!kpiEl) return;
+  kpiEl.innerHTML =
+    `<div class="kpi blue"><div class="kpi-l">Total dossiers</div><div class="kpi-v">${tot.toLocaleString('fr-FR')}</div><div class="kpi-s">${manuel} manuels · ${afor} AFOR</div></div>
+     <div class="kpi ${retards>0?'red':'green'}"><div class="kpi-l">En retard</div><div class="kpi-v">${retards}</div><div class="kpi-s">${tot>0?Math.round(retards/tot*100):0}%</div></div>
+     <div class="kpi green"><div class="kpi-l">Validés (VA)</div><div class="kpi-v">${va}</div><div class="kpi-s">${tot>0?Math.round(va/tot*100):0}%</div></div>
+     <div class="kpi amber"><div class="kpi-l">CFI / CFC</div><div class="kpi-v">${tous.filter(d=>d.type==='CFI').length}</div><div class="kpi-s">${tous.filter(d=>d.type==='CFC').length} CFC</div></div>`;
+}
+
 function dosRenderList(){
-  const q=(document.getElementById('dos-srch').value||'').toLowerCase();
-  const fd=document.getElementById('dos-f-dept').value;
-  const fa=document.getElementById('dos-f-agent').value;
-  const fs=document.getElementById('dos-f-statut')?document.getElementById('dos-f-statut').value:'';
-  let list=dossiers.filter(d=>{
-    const mq=!q||d.ref_officiel.toLowerCase().includes(q)||d.demandeur.toLowerCase().includes(q)||d.village.toLowerCase().includes(q);
-    const ms=!fs||(fs==='actif'&&d.etape!=='Clôturé')||(fs==='cloture'&&d.etape==='Clôturé')||(fs==='bloque'&&d.etape!=='Clôturé'&&dosJours(d.etape_date)>30);
-    return mq&&(!fd||d.dept===fd)&&(!fa||d.agent===fa)&&ms;
-  }).sort((a,b)=>b.date_ouverture.localeCompare(a.date_ouverture));
-  dosListFiltered = list;
+  const q  = (document.getElementById('dos-srch')?.value||'').toLowerCase();
+  const fd = document.getElementById('dos-f-dept')?.value||'';
+  const fe = document.getElementById('dos-f-etape')?.value||'';
+  const fa = document.getElementById('dos-f-agent')?.value||'';
+  const ft = document.getElementById('dos-f-type')?.value||'';
+  const fs = document.getElementById('dos-f-statut')?.value||'';
+
+  // Combiner dossiers manuels + AFOR
+  const tous = [
+    ...dossiers.map(d=>({...d, _src:'manuel'})),
+    ...dossiersAFOR.map(d=>({...d, _src:'afor'}))
+  ];
+
+  const liste = tous.filter(d=>{
+    const nomComplet = (d.prenom||'')+' '+(d.nom||d.nom_demandeur||'');
+    if(q && !((d.id||'').toLowerCase().includes(q)) && !nomComplet.toLowerCase().includes(q) && !((d.village||'').toLowerCase().includes(q))) return false;
+    const dept = (d.dept||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    if(fd && dept!==fd) return false;
+    if(fe && d.etape!==fe) return false;
+    if(fa && (d.agent||d.agent_ce||'')!==fa) return false;
+    if(ft && d.type!==ft) return false;
+    if(fs){
+      const r=aforCalcRetard(d);
+      if(fs==='retard'&&!r.retard) return false;
+      if(fs==='ok'&&r.retard) return false;
+    }
+    return true;
+  });
+
+  dosListFiltered = liste;
   dosPage = 0;
   dosRenderPage();
+
+  // Peupler filtre agents
+  const agSel = document.getElementById('dos-f-agent');
+  if(agSel){
+    const agents=[...new Set(tous.map(d=>d.agent||d.agent_ce||'').filter(Boolean))].sort();
+    agSel.innerHTML='<option value="">Tous les agents</option>'+agents.map(a=>`<option value="${a}">${a}</option>`).join('');
+  }
 }
+
 
 function dosRenderPage(){
-  const list = dosListFiltered;
-  const empty=document.getElementById('dos-empty');
-  const tbody=document.getElementById('dos-tbody');
-  const paginEl = document.getElementById('dos-pagination');
-  if(!list.length){tbody.innerHTML='';empty.style.display='block';dosRenderMatrixHead([]);if(paginEl)paginEl.innerHTML='';return;}
-  empty.style.display='none';
-
-  const activitesPresentes = [...new Set(list.map(d=>d.activite||'CF').filter(Boolean))];
-  let ETAPES_ABBR = [];
-  if(activitesPresentes.length===1){
-    const act = ACTIVITES[activitesPresentes[0]];
-    if(act){
-      ETAPES_ABBR = act.etapes.map(e=>({full:e, abbr:e.length>6?e.substring(0,6)+'.':e, short:e, activite:activitesPresentes[0]}));
-      ETAPES_ABBR.push({full:'Clôturé', abbr:'Clôt.', short:'Clôturé', activite:''});
-    }
-  } else {
-    const seen = new Set();
-    activitesPresentes.forEach(actKey=>{
-      const act = ACTIVITES[actKey];
-      if(act) act.etapes.forEach(e=>{ if(!seen.has(e)){seen.add(e);ETAPES_ABBR.push({full:e,abbr:e.length>6?e.substring(0,6)+'.':e,short:e,activite:actKey});}});
-    });
-    ETAPES_ABBR.push({full:'Clôturé', abbr:'Clôt.', short:'Clôturé', activite:''});
-  }
-
-  dosRenderMatrixHead(ETAPES_ABBR, activitesPresentes);
-
-  const page = list.slice(dosPage*PAGE_SIZE, (dosPage+1)*PAGE_SIZE);
-  tbody.innerHTML=page.map(d=>{
-    const blq=d.etape!=='Clôturé'&&dosJours(d.etape_date)>30;
-    const curIdx=DOS_ETAPES.indexOf(d.etape);
-    // Activité du dossier
-    const dosActivite = d.activite || 'CF';
-    const dosActDef = ACTIVITES[dosActivite] || ACTIVITES['CF'];
-    const dosEtapesAct = dosActivite ? [...dosActDef.etapes, 'Clôturé'] : DOS_ETAPES;
-    const dosActCouleur = dosActDef ? dosActDef.couleur : {bg:'var(--accent-lt)',tx:'var(--accent-txt)',brd:'var(--accent)'};
-
-    // Badge activité
-    const actBadge = `<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:${dosActCouleur.bg};color:${dosActCouleur.tx};border:1px solid ${dosActCouleur.brd||'transparent'}">${dosActivite}</span>`;
-
-    // Construire les cases pour chaque étape de ETAPES_ABBR
-    const cases=ETAPES_ABBR.map((e,i)=>{
-      // Ce dossier a-t-il cette étape dans son activité ?
-      const appartient = dosEtapesAct.includes(e.full);
-      if(!appartient){
-        // Étape hors activité de ce dossier → cellule neutre
-        return`<td style="text-align:center;padding:6px 4px;border-left:1px solid #E8E8E8;background:#FAFAFA;" title="Non applicable"></td>`;
-      }
-      const curIdxAct = dosEtapesAct.indexOf(d.etape);
-      const eIdxAct   = dosEtapesAct.indexOf(e.full);
-      const isDone    = curIdxAct > eIdxAct || d.etape===e.full;
-      const isCurrent = d.etape===e.full;
-      const hEntry    = (d.historique||[]).find(h=>h.etape===e.full);
-      const dateStr   = hEntry?hEntry.date:'';
-      let bg,ic,tt;
-      if(isCurrent){
-        bg=blq?'#FDECEA':'#E4EFE8';
-        ic=blq?'&#9888;':'&#9654;';
-        tt=blq?('En cours - '+dosJours(d.etape_date)+'j BLOQUÉ'):'En cours'+(dateStr?' depuis '+fmtDate(dateStr):'');
-      } else if(isDone&&!isCurrent){
-        bg='#E4EFE8'; ic='&#10003;';
-        tt='Réalisé'+(dateStr?' le '+fmtDate(dateStr):'');
-      } else {
-        bg='#F5F5F5'; ic='&#9711;'; tt='À faire';
-      }
-      const borderLeft=isCurrent?'2px solid '+(blq?'var(--red)':dosActCouleur.brd||'var(--accent)'):'1px solid #E8E8E8';
-      return`<td style="text-align:center;padding:5px 3px;border-left:${borderLeft};background:${bg};" title="${tt}">
-        <div style="font-size:13px;line-height:1;color:${isCurrent?(blq?'var(--red)':dosActCouleur.brd||'var(--accent)'):isDone?'#2A6B42':'#CCCCCC'}">${ic}</div>
-        ${dateStr&&isDone?`<div style="font-size:8px;color:var(--text3);margin-top:1px">${fmtDate(dateStr)}</div>`:''}
-      </td>`;
-    }).join('');
-
-    const rowBg=blq?'rgba(184,48,37,0.04)':'';
-    return`<tr style="border-bottom:1px solid var(--border);background:${rowBg}" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='${rowBg}'">
-      <td style="padding:8px 10px;white-space:nowrap;">
-        <div style="font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:var(--accent)">${d.ref_officiel}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:1px">${d.date_ouverture}</div>
+  const tbody = document.getElementById('dos-tbody');
+  const empty = document.getElementById('dos-empty');
+  const pagin = document.getElementById('dos-pagination');
+  if(!tbody) return;
+  if(!dosListFiltered.length){ tbody.innerHTML=''; if(empty) empty.style.display='block'; if(pagin) pagin.innerHTML=''; return; }
+  if(empty) empty.style.display='none';
+  const page = dosListFiltered.slice(dosPage*PAGE_SIZE,(dosPage+1)*PAGE_SIZE);
+  tbody.innerHTML = page.map(d=>{
+    const r = aforCalcRetard(d);
+    const c = ETAPES_CF_COLORS[d.etape]||{bg:'#F3F4F6',tx:'#374151'};
+    const nom = (d.prenom||'')+' '+(d.nom||d.nom_demandeur||'');
+    const dept = d.dept||'';
+    const sp = d.sp||'';
+    const dateEtape = d['date_'+d.etape]||'—';
+    const statut = r.retard
+      ? `<span class="badge b-red">⚠ ${r.jours}j / ${r.seuil}j</span>`
+      : `<span class="badge b-green">✓ OK</span>`;
+    const src = d._src==='afor'
+      ? '<span style="font-size:9px;padding:1px 4px;border-radius:3px;background:var(--blue-lt);color:var(--blue-txt);">AFOR</span>'
+      : '<span style="font-size:9px;padding:1px 4px;border-radius:3px;background:var(--surface2);color:var(--text3);">M</span>';
+    const actions = d._src==='manuel'
+      ? `<div style="display:flex;gap:4px;">
+          <button class="btn-xs" onclick="dosEdit('${d.id}')">✏</button>
+          <button class="btn-xs btn-xs-red" onclick="dosDel('${d.id}')">✕</button>
+        </div>`
+      : '<span style="font-size:10px;color:var(--text3)">AFOR</span>';
+    return `<tr>
+      <td class="td-mono" style="font-size:11px">${d.id||'—'} ${src}</td>
+      <td style="font-size:12px;font-weight:500">${nom}</td>
+      <td style="font-size:11px">${d.village||'—'}<br><span style="color:var(--text3);font-size:10px">${dept}${sp?' · '+sp:''}</span></td>
+      <td style="font-size:11px;color:var(--text3)">${d.code_parcelle||'—'}</td>
+      <td><span class="badge b-blue" style="font-size:10px">${d.type||'—'}</span></td>
+      <td>
+        <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;background:${c.bg};color:${c.tx}">${d.etape||'—'}</span>
+        <div style="font-size:10px;color:var(--text3)">${ETAPES_CF_LABELS[d.etape]||''}</div>
       </td>
-      <td style="padding:8px 10px;font-size:12px;font-weight:500;white-space:nowrap">${d.demandeur}</td>
-      <td style="padding:8px 10px;font-size:12px">${d.village}<br><span style="font-size:10px;color:var(--text2)">${d.dept.replace('Dép. ','')}</span></td>
-      <td style="padding:8px 10px;text-align:center;font-size:12px;white-space:nowrap">${d.superficie} ha</td>
-      <td style="padding:6px 8px;text-align:center">${actBadge}</td>
-      ${cases}
-      <td style="padding:6px 8px;white-space:nowrap;">
-        <div style="display:flex;gap:4px">
-          <button style="font-size:10px;padding:3px 7px;border:1px solid var(--border-med);border-radius:4px;background:var(--accent);color:#fff;cursor:pointer" onclick="dosAvancer('${d.id}')" title="Passer à l\'étape suivante">&#9654;</button>
-          <button style="font-size:10px;padding:3px 7px;border:1px solid var(--border-med);border-radius:4px;background:var(--surface);cursor:pointer" onclick="dosEdit('${d.id}')">Modifier</button>
-          <button style="font-size:10px;padding:3px 7px;border:1px solid rgba(184,48,37,.2);border-radius:4px;background:var(--red-lt);color:var(--red-txt);cursor:pointer" onclick="dosDel('${d.id}')">Sup.</button>
-        </div>
-      </td>
+      <td style="font-size:11px;color:var(--text2)">${dateEtape}</td>
+      <td>${statut}</td>
+      <td>${actions}</td>
     </tr>`;
   }).join('');
-  if(paginEl) paginEl.innerHTML = renderPagination('dos-pagination', dosPage, list.length, PAGE_SIZE, 'dosGoPage');
+  if(pagin) pagin.innerHTML = renderPagination('dos-pagination', dosPage, dosListFiltered.length, PAGE_SIZE, 'dosGoPage');
 }
+
+function dosGoPage(p){ dosPage=p; dosRenderPage(); }
+
 
 function dosRenderMatrixHead(etapes, activites){
   const head=document.getElementById('dos-matrix-head');
@@ -3206,34 +3316,132 @@ function dosUpdateGeo(){
   geoUpdateSP('df-dept','df-sp','df-village');
 }
 function dosSelEtape(el){document.querySelectorAll('#dos-etape-chips .chip').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');document.getElementById('df-etape').value=el.dataset.v;}
+function dosUpdateSP(){
+  const dept = document.getElementById('df-dept').value;
+  const sp = document.getElementById('df-sp');
+  const SP_MAP = {
+    'GUIGLO':    ['Guiglo','Kaadé','Kouibly','Nidrou','Nizahon','Ouaninou','Taï','Zéaglo','Ziglo'],
+    'BLOLEQUIN': ['Bloléquin','Diboum','Grégbeu','Kragly','Niapidou','Taï'],
+    'TOULEPLEU': ['Toulépleu','Bly','Péhé','Zou'],
+    'TAI':       ['Taï','Grabo','Méagui'],
+  };
+  const opts = SP_MAP[dept] || [];
+  sp.innerHTML = '<option value="">-- Sélectionner --</option>' + opts.map(s=>`<option value="${s}">${s}</option>`).join('');
+}
+
+function dosUpdateDateField(){
+  const etape = document.getElementById('df-etape').value;
+  const lbl = document.getElementById('df-date-label');
+  if(lbl && etape) lbl.innerHTML = `Date de l'étape "${etape}" <span class="req">*</span>`;
+}
+
 function dosValidate(){
   const errs=[];
-  const rq=(id,msg,eid)=>{const v=document.getElementById(id).value;if(!v){document.getElementById(eid)?.classList.add('show');document.getElementById(id)?.classList.add('err');errs.push(msg);}else{document.getElementById(eid)?.classList.remove('show');document.getElementById(id)?.classList.remove('err');}};
-  rq('df-ref','N° officiel requis','de-ref');rq('df-date','Date requise','de-date');rq('df-agent','Agent requis','de-agent');rq('df-dept','Département requis','de-dept');rq('df-demandeur','Demandeur requis','de-demandeur');rq('df-village','Village requis','de-village');rq('df-activite','Activité requise','de-activite');
-  const sup=parseFloat(document.getElementById('df-superficie').value);
-  if(!sup||sup<=0){document.getElementById('de-superficie').classList.add('show');document.getElementById('df-superficie').classList.add('err');errs.push('Superficie requise');}else{document.getElementById('de-superficie').classList.remove('show');document.getElementById('df-superficie').classList.remove('err');}
-  if(!document.getElementById('df-etape').value){document.getElementById('de-etape').classList.add('show');errs.push('Étape requise');}else document.getElementById('de-etape').classList.remove('show');
+  const id = (document.getElementById('df-id')?.value||'').trim();
+  if(!id) errs.push('N° Dossier requis');
+  if(!document.getElementById('df-prenom')?.value.trim()) errs.push('Prénom requis');
+  if(!document.getElementById('df-nom')?.value.trim()) errs.push('Nom requis');
+  if(!document.getElementById('df-dept')?.value) errs.push('Département requis');
+  if(!document.getElementById('df-village')?.value.trim()) errs.push('Village requis');
+  if(!document.getElementById('df-type')?.value) errs.push('Type CF requis');
+  if(!document.getElementById('df-etape')?.value) errs.push('Étape actuelle requise');
+  if(!document.getElementById('df-date-etape')?.value) errs.push('Date de l\'étape requise');
   return errs;
 }
+
 function dosSubmit(e){
   e.preventDefault();
   document.getElementById('dos-suc').classList.remove('show');
-  const errs=dosValidate();
-  if(errs.length){document.getElementById('dos-val-sum').classList.add('show');document.getElementById('dos-val-list').innerHTML=errs.map(x=>`<li>${x}</li>`).join('');return;}
+  const errs = dosValidate();
+  if(errs.length){
+    document.getElementById('dos-val-sum').classList.add('show');
+    document.getElementById('dos-val-list').innerHTML = errs.map(x=>`<li>${x}</li>`).join('');
+    return;
+  }
   document.getElementById('dos-val-sum').classList.remove('show');
-  const etape=document.getElementById('df-etape').value;
-  const etapeDate=document.getElementById('df-etape-date').value||new Date().toISOString().split('T')[0];
-  let historique=[];
-  if(dosEditingId){const old=dossiers.find(d=>d.id===dosEditingId);historique=old?[...(old.historique||[])]:[];if(old&&old.etape!==etape)historique.push({etape,date:etapeDate});}
-  else{historique=[{etape,date:etapeDate}];}
-  const dos={id:dosEditingId||('DOS-CAV-'+Date.now()),ref_officiel:document.getElementById('df-ref').value,date_ouverture:document.getElementById('df-date').value,agent:document.getElementById('df-agent').value,dept:document.getElementById('df-dept').value,village:document.getElementById('df-village').value,demandeur:document.getElementById('df-demandeur').value,tel:document.getElementById('df-tel').value,superficie:parseFloat(document.getElementById('df-superficie').value),type_parcelle:document.getElementById('df-type').value,activite:document.getElementById('df-activite').value,etape,etape_date:etapeDate,obs:document.getElementById('df-obs').value,historique};
-  if(dosEditingId){const i=dossiers.findIndex(d=>d.id===dosEditingId);if(i>=0)dossiers[i]=dos;}else dossiers.unshift(dos);
-  dosSave();dosRenderAll();
-  document.getElementById('dos-suc').textContent=dosEditingId?`Dossier ${dos.ref_officiel} mis à jour.`:`Dossier ${dos.ref_officiel} créé.`;
+
+  const editId = document.getElementById('dos-edit-id').value;
+  const etape  = document.getElementById('df-etape').value;
+  const dateEtape = document.getElementById('df-date-etape').value;
+
+  const dos = {
+    id: (document.getElementById('df-id')?.value||'').trim(),
+    prenom: (document.getElementById('df-prenom')?.value||'').trim(),
+    nom: (document.getElementById('df-nom')?.value||'').trim(),
+    region: 'CAVALLY',
+    dept: document.getElementById('df-dept')?.value||'',
+    sp: document.getElementById('df-sp')?.value||'',
+    village: (document.getElementById('df-village')?.value||'').trim(),
+    code_parcelle: (document.getElementById('df-code')?.value||'').trim(),
+    type: document.getElementById('df-type')?.value||'',
+    etape,
+    source: 'manuel',
+    created_at: new Date().toISOString(),
+    date_DD:'', date_RDC:'', date_CL:'', date_OV:'', date_CP:'', date_AP:'', date_VA:''
+  };
+  dos['date_'+etape] = dateEtape;
+
+  if(editId){
+    const idx = dossiers.findIndex(x=>x.id===editId);
+    if(idx>=0){
+      // Préserver les dates existantes
+      const old = dossiers[idx];
+      ETAPES_CF.forEach(ep=>{ if(old['date_'+ep]) dos['date_'+ep]=old['date_'+ep]; });
+      dos['date_'+etape] = dateEtape;
+      dossiers[idx] = dos;
+    }
+  } else {
+    if(dossiers.find(x=>x.id===dos.id)){
+      showToast('N° dossier déjà existant.');
+      return;
+    }
+    dossiers.unshift(dos);
+  }
+
+  document.getElementById('dos-suc').textContent = '✓ Dossier enregistré !';
   document.getElementById('dos-suc').classList.add('show');
-  showToast(dosEditingId?'Mis à jour !':'Dossier créé !');
-  dosEditingId=null;dosResetForm();setTimeout(()=>dosShowPanel('list'),900);
+  dosResetForm();
+  dosRenderAll();
+  dashRenderAll();
+  scheduleSave();
 }
+
+function dosResetForm(){
+  ['df-id','df-prenom','df-nom','df-village','df-code','df-date-etape'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  ['df-dept','df-sp','df-type','df-etape'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('dos-edit-id').value='';
+  document.getElementById('dos-form-title').textContent='Nouveau dossier foncier';
+  document.getElementById('df-submit-btn')?.setAttribute('textContent','Enregistrer');
+}
+
+
+function dosEdit(id){
+  const d = dossiers.find(x=>x.id===id);
+  if(!d) return;
+  switchModule('dossier');
+  dosShowPanel('new');
+  setTimeout(()=>{
+    document.getElementById('dos-edit-id').value = id;
+    document.getElementById('dos-form-title').textContent = 'Modifier le dossier';
+    document.getElementById('df-id').value = d.id||'';
+    document.getElementById('df-prenom').value = d.prenom||'';
+    document.getElementById('df-nom').value = d.nom||'';
+    document.getElementById('df-dept').value = d.dept||'';
+    dosUpdateSP();
+    setTimeout(()=>{ document.getElementById('df-sp').value = d.sp||''; },50);
+    document.getElementById('df-village').value = d.village||'';
+    document.getElementById('df-code').value = d.code_parcelle||'';
+    document.getElementById('df-type').value = d.type||'';
+    document.getElementById('df-etape').value = d.etape||'';
+    document.getElementById('df-date-etape').value = d['date_'+d.etape]||'';
+    dosUpdateDateField();
+  },100);
+}
+function dosCloseForm(){ dosShowPanel('list'); }
 function dosAvancer(id){
   const d=dossiers.find(x=>x.id===id);if(!d||d.etape==='Clôturé')return;
   const i=dosIdx(d.etape);if(i<0||i>=DOS_ETAPES.length-1)return;
@@ -6198,7 +6406,9 @@ function aforImportExcel(input){
 }
 
 function aforRenderAll(){
-  // Met à jour uniquement les cards du dashboard principal
+  // Met à jour les cards dashboard + badge sidebar
+  const nb=document.getElementById('afor-list-nb');
+  if(nb) nb.textContent=dossiersAFOR.length;
   dashRenderCardSaisies();
   dashRenderCardDossiers();
   dashRenderCardDepts();
@@ -6313,6 +6523,151 @@ function retardExportCSV(){
   a.download = 'dossiers_CF_en_retard.csv';
   a.click();
   showToast('Export CSV téléchargé !');
+}
+
+
+// ═══════════════════════════════════════════
+// MODULE 3 — PANELS AFOR CF
+// ═══════════════════════════════════════════
+
+let aforCFPage = 0;
+let aforCFFiltered = [];
+
+function aforCFRenderList(){
+  const q  = (document.getElementById('afor-cf-srch')?.value||'').toLowerCase();
+  const fe = document.getElementById('afor-cf-etape')?.value||'';
+  const fd = document.getElementById('afor-cf-dept')?.value||'';
+  const fa = document.getElementById('afor-cf-agent')?.value||'';
+  const fr = document.getElementById('afor-cf-retard')?.value||'';
+  const ft = document.getElementById('afor-cf-type')?.value||'';
+
+  aforCFFiltered = dossiersAFOR.filter(d=>{
+    if(q && !d.id.toLowerCase().includes(q) && !(d.prenom+' '+d.nom_demandeur).toLowerCase().includes(q) && !d.village.toLowerCase().includes(q)) return false;
+    if(fe && d.etape!==fe) return false;
+    if(fd && d.dept!==fd) return false;
+    if(fa && d.agent!==fa) return false;
+    if(ft && d.type!==ft) return false;
+    if(fr){ const r=aforCalcRetard(d); if(fr==='1'&&!r.retard) return false; if(fr==='0'&&r.retard) return false; }
+    return true;
+  });
+  aforCFPage = 0;
+  aforCFRenderPage();
+
+  // KPI filtrés
+  const kpi = document.getElementById('afor-cf-kpi');
+  const tot = aforCFFiltered.length;
+  const ret = aforCFFiltered.filter(d=>aforCalcRetard(d).retard).length;
+  const va  = aforCFFiltered.filter(d=>d.etape==='VA').length;
+  const sub = document.getElementById('afor-cf-subtitle');
+  if(sub) sub.textContent = `${tot} dossier(s) · ${ret} en retard · ${va} validés`;
+  if(kpi) kpi.innerHTML =
+    `<div class="kpi blue"><div class="kpi-l">Affichés</div><div class="kpi-v">${tot.toLocaleString('fr-FR')}</div><div class="kpi-s">sur ${dossiersAFOR.length.toLocaleString('fr-FR')} total</div></div>
+     <div class="kpi ${ret>0?'red':'green'}"><div class="kpi-l">En retard</div><div class="kpi-v">${ret}</div><div class="kpi-s">${tot>0?Math.round(ret/tot*100):0}%</div></div>
+     <div class="kpi green"><div class="kpi-l">Validés (VA)</div><div class="kpi-v">${va}</div><div class="kpi-s">${tot>0?Math.round(va/tot*100):0}%</div></div>
+     <div class="kpi amber"><div class="kpi-l">CFI</div><div class="kpi-v">${aforCFFiltered.filter(d=>d.type==='CFI').length}</div><div class="kpi-s">CFI vs CFC</div></div>`;
+}
+
+function aforCFRenderPage(){
+  const tbody  = document.getElementById('afor-cf-tbody');
+  const empty  = document.getElementById('afor-cf-empty');
+  const pagin  = document.getElementById('afor-cf-pagination');
+  if(!tbody) return;
+  if(!aforCFFiltered.length){ tbody.innerHTML=''; empty.style.display='block'; if(pagin)pagin.innerHTML=''; return; }
+  empty.style.display='none';
+  const page = aforCFFiltered.slice(aforCFPage*PAGE_SIZE,(aforCFPage+1)*PAGE_SIZE);
+  tbody.innerHTML = page.map(d=>{
+    const r = aforCalcRetard(d);
+    const c = ETAPES_CF_COLORS[d.etape]||{bg:'#eee',tx:'#333',brd:'#999'};
+    const dateEtape = d['date_'+d.etape];
+    const jours = r.jours!==null ? r.jours+'j' : '—';
+    const statut = r.retard
+      ? `<span class="badge b-red">⚠ ${r.jours}j / ${r.seuil}j max</span>`
+      : `<span class="badge b-green">✓ Dans les délais</span>`;
+    return `<tr>
+      <td class="td-mono" style="font-size:11px">${d.id}</td>
+      <td style="font-size:12px;font-weight:500">${d.prenom} ${d.nom_demandeur}</td>
+      <td><span style="font-size:12px">${d.village}</span><br><span style="font-size:10px;color:var(--text3)">${d.sp}</span></td>
+      <td style="font-size:11px">${d.dept}</td>
+      <td style="font-size:11px">${d.agent}</td>
+      <td><span class="badge b-blue" style="font-size:10px">${d.type}</span></td>
+      <td>
+        <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;background:${c.bg};color:${c.tx}">${d.etape}</span><br>
+        <span style="font-size:10px;color:var(--text3)">${ETAPES_CF_LABELS[d.etape]||''}</span>
+      </td>
+      <td style="text-align:center;font-size:12px;font-weight:600;color:${r.retard?'var(--red-txt)':'var(--text2)'}">${jours}</td>
+      <td>${statut}</td>
+    </tr>`;
+  }).join('');
+  if(pagin) pagin.innerHTML = renderPagination('afor-cf-pagination', aforCFPage, aforCFFiltered.length, PAGE_SIZE, 'aforCFGoPage');
+}
+
+function aforCFGoPage(p){ aforCFPage=p; aforCFRenderPage(); }
+
+function aforCFRenderAgents(){
+  const data = aforGetAgentsData();
+  const total = dossiersAFOR.length;
+  const M = ['🥇','🥈','🥉'];
+  const fmt = v => v!==null ? `${v}j` : '—';
+  const delaiCell = (v, seuil) => {
+    if(v===null) return '<td style="text-align:center;color:var(--text3)">—</td>';
+    const over = v > seuil;
+    return `<td style="text-align:center;font-weight:600;color:${over?'var(--red-txt)':'var(--accent)'}">${v}j${over?' ⚠':''}</td>`;
+  };
+  const kpi = document.getElementById('afor-cf-agents-kpi');
+  if(kpi){
+    const meilleur = data[0];
+    const moinsbon = data[data.length-1];
+    const totalRet = dossiersAFOR.filter(d=>aforCalcRetard(d).retard).length;
+    kpi.innerHTML = `
+      <div class="kpi green"><div class="kpi-l">Meilleur agent</div><div class="kpi-v">${meilleur?.score||0}%</div><div class="kpi-s">${meilleur?.nom.split(' ')[0]||'—'}</div></div>
+      <div class="kpi red"><div class="kpi-l">Total retards CF</div><div class="kpi-v">${totalRet}</div><div class="kpi-s">${Math.round(totalRet/Math.max(total,1)*100)}% du total</div></div>
+      <div class="kpi amber"><div class="kpi-l">Agent à suivre</div><div class="kpi-v">${moinsbon?.score||0}%</div><div class="kpi-s">${moinsbon?.nom.split(' ')[0]||'—'}</div></div>`;
+  }
+  const tbody = document.getElementById('afor-cf-agents-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = data.map((ag,i)=>{
+    const ev = ag.score>=80?{b:'b-green',l:'Excellent'}:ag.score>=60?{b:'b-blue',l:'Bon'}:ag.score>=40?{b:'b-amber',l:'Moyen'}:{b:'b-red',l:'À améliorer'};
+    const bar = `<div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;"><div style="width:${ag.score}%;height:100%;background:${ag.score>=60?'var(--accent)':'var(--red)'};border-radius:3px;"></div></div><span style="font-size:12px;font-weight:700">${ag.score}%</span></div>`;
+    return `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:9px 12px;font-weight:700;color:${i<3?'var(--accent)':'var(--text3)'}">${M[i]||i+1}</td>
+      <td style="padding:9px 12px;font-size:12px;font-weight:500">${ag.nom}</td>
+      <td style="padding:9px 12px;text-align:center"><b>${ag.total}</b><br><span style="font-size:10px;color:var(--text3)">${ag.retards} retards</span></td>
+      ${delaiCell(ag.mDD_RDC,1)}${delaiCell(ag.mRDC_CL,3)}${delaiCell(ag.mCL_OV,14)}
+      <td style="padding:9px 12px;text-align:center;font-weight:600;color:${ag.retards>0?'var(--red-txt)':'var(--accent)'}">${ag.retards}</td>
+      <td style="padding:9px 12px;min-width:120px">${bar}</td>
+      <td style="padding:9px 12px"><span class="badge ${ev.b}">${ev.l}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function aforCFExportCSV(){
+  const data = aforCFFiltered.length ? aforCFFiltered : dossiersAFOR;
+  const rows = [['N° Dossier','Prénom','Nom','Village','SP','Département','Agent CE','Type','Étape','Retard (j)','Seuil (j)','Statut']];
+  data.forEach(d=>{
+    const r = aforCalcRetard(d);
+    rows.push([d.id,d.prenom,d.nom_demandeur,d.village,d.sp,d.dept,d.agent,d.type,d.etape,r.jours||'',r.seuil||'',r.retard?'En retard':'OK']);
+  });
+  const csv = rows.map(r=>r.map(v=>`"${v||''}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='dossiers_CF_AFOR.csv'; a.click();
+  showToast('Export CSV téléchargé !');
+}
+
+// Étendre dosShowPanel pour les panels AFOR CF
+const _origDosShowPanel = typeof dosShowPanel === 'function' ? dosShowPanel : null;
+function dosShowPanel(id, btn){
+  if(_origDosShowPanel) _origDosShowPanel(id, btn);
+  if(id==='afor-cf-liste'){
+    const sel=document.getElementById('afor-cf-agent');
+    if(sel && dossiersAFOR.length){
+      const agents=[...new Set(dossiersAFOR.map(d=>d.agent).filter(Boolean))].sort();
+      sel.innerHTML='<option value="">Tous les agents CE</option>'+agents.map(a=>`<option value="${a}">${a}</option>`).join('');
+    }
+    document.getElementById('afor-list-nb').textContent=dossiersAFOR.length||'0';
+    aforCFRenderList();
+  }
+  if(id==='afor-cf-agents') aforCFRenderAgents();
 }
 
 // ═══════════════════════════════════════════
