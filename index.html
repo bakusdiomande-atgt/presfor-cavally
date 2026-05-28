@@ -1074,7 +1074,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
   <nav class="sidebar" id="sb-dos">
     <div class="sb-sec">
       <div class="sb-label">Dossiers</div>
-      <button class="nav-item active" onclick="dosShowPanel('list',this)">
+      <button class="nav-item active" onclick="dosShowPanel('list',this);setTimeout(()=>dosRenderAll(),50)">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4h12v1.5H2zm0 3h12v1.5H2zm0 3h8v1.5H2z"/></svg>
         Liste des dossiers
         <span class="nav-badge" id="dos-nb">0</span>
@@ -3179,10 +3179,17 @@ function dosRenderList(){
   const fs = document.getElementById('dos-f-statut')?.value||'';
 
   // Combiner dossiers manuels + AFOR
+  const _aforLen = dossiersAFOR ? dossiersAFOR.length : -1;
   const tous = [
     ...dossiers.map(d=>({...d, _src:'manuel'})),
-    ...dossiersAFOR.map(d=>({...d, _src:'afor'}))
+    ...(dossiersAFOR||[]).map(d=>({...d, _src:'afor'}))
   ];
+  // Debug: afficher le compte dans le subtitle
+  const _sub = document.getElementById('dos-panel-list');
+  if(_sub){
+    const _h2 = _sub.querySelector('p');
+    if(_h2) _h2.textContent = `Suivi CF — ${dossiers.length} manuels · ${_aforLen} AFOR · ${tous.length} total`;
+  }
 
   const liste = tous.filter(d=>{
     const nomComplet = (d.prenom||'')+' '+(d.nom||d.nom_demandeur||'');
@@ -3311,6 +3318,9 @@ function dosShowPanel(id,btn){
   else{const m={list:0,form:1,pipeline:2,stats:3};document.querySelectorAll('#sb-dos .nav-item')[m[id]]?.classList.add('active');}
   if(id==='form'&&!dosEditingId)dosResetForm();
   if(id==='pipeline')dosRenderPipeline();
+  if(id==='list')dosRenderAll();
+  if(id==='afor-cf-liste')aforCFRenderList();
+  if(id==='afor-cf-agents')aforCFRenderAgents();
 }
 function dosUpdateGeo(){
   geoUpdateSP('df-dept','df-sp','df-village');
@@ -6400,6 +6410,11 @@ function aforImportExcel(input){
       }
       showToast(`Base AFOR chargée : ${nb} dossiers (${ignore} ignorés)`);
       aforRenderAll();
+      // Forcer la mise à jour du panel liste si Module 3 est actif
+      if(document.getElementById('dos-panel-list') && 
+         document.getElementById('dos-panel-list').style.display !== 'none'){
+        dosRenderAll();
+      }
     }catch(err){showToast('Erreur lecture : '+err.message); console.error(err);}
   };
   reader.readAsArrayBuffer(file);
