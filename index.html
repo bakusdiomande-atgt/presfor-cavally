@@ -4503,7 +4503,7 @@ function zvExportCSV(){
 
 
 // ── Card : Étapes des dossiers CF (pipeline AFOR) ──
-function dashRenderCardCFEtapes(){
+function dashRenderCardCFEtapes(){  const _g=document.getElementById('dash-card-cf-etapes');if(!_g)return;
   const el=document.getElementById('dash-card-cf-etapes');
   if(!el) return;
   const tot=dossiersAFOR.length;
@@ -4542,7 +4542,7 @@ function dashRenderCardCFEtapes(){
 }
 
 // ── Card : Performance agents CE (AFOR) ──
-function dashRenderCardCFAgents(){
+function dashRenderCardCFAgents(){  const _g=document.getElementById('dash-card-cf-agents');if(!_g)return;
   const el=document.getElementById('dash-card-cf-agents');
   if(!el) return;
   if(!dossiersAFOR.length){
@@ -4579,7 +4579,7 @@ function dashRenderCardCFAgents(){
 }
 
 // ── Card : Top retards CF ──
-function dashRenderCardCFRetards(){
+function dashRenderCardCFRetards(){  const _g=document.getElementById('dash-card-cf-retards');if(!_g)return;
   const el=document.getElementById('dash-card-cf-retards');
   if(!el) return;
   if(!dossiersAFOR.length){
@@ -4750,7 +4750,7 @@ function dashRenderCardSaisies(){
 }
 
 // ── Card : État dossiers fonciers ──
-function dashRenderCardDossiers(){
+function dashRenderCardDossiers(){  const _g=document.getElementById('dash-card-dossiers');if(!_g)return;
   const tot=dossiers.length;
   const clos=dossiers.filter(d=>d.etape==='Clôturé').length;
   const blq=dossiers.filter(d=>d.etape!=='Clôturé'&&dosJours(d.etape_date)>30).length;
@@ -4794,7 +4794,7 @@ function dashRenderCardDossiers(){
   </div>`;
 }
 
-function dashRenderCardDepts(){
+function dashRenderCardDepts(){  const _g=document.getElementById('dash-card-depts');if(!_g)return;
   const DEPTS=['Dép. Guiglo','Dép. Bloléquin','Dép. Taï','Dép. Toulépleu'];
   const DEPTS_AFOR=['GUIGLO','BLOLÉQUIN','TAI','TOULEPIEU'];
   const totSaisies=saisies.reduce((s,x)=>s+(x.ndos||0),0)||1;
@@ -4827,7 +4827,7 @@ function dashRenderCardDepts(){
 }
 
 // ── Card : Par activité ──
-function dashRenderCardActivites(){
+function dashRenderCardActivites(){  const _g=document.getElementById('dash-card-activites');if(!_g)return;
   const ACT_C={'ISF':'#8B5CF6','CF':'#22C55E','DTV':'#F97316','CONTRAT':'#3B82F6'};
   // Saisies M2
   const totSaisies=saisies.length||1;
@@ -4869,7 +4869,7 @@ function dashRenderCardActivites(){
 }
 
 // ── Card : Top agents ──
-function dashRenderCardAgents(){
+function dashRenderCardAgents(){  const _g=document.getElementById('dash-card-agents');if(!_g)return;
   // Production M2 (saisies journalières)
   const prodM2=AGENTS.map(a=>({
     nom:a,
@@ -6159,207 +6159,36 @@ function aforImportExcel(input){
       }
       showToast(`Base AFOR chargée : ${nb} dossiers (${ignore} ignorés)`);
       aforRenderAll();
-      dashRenderCardDossiers();
-      dashRenderCardDepts();
-      dashRenderCardActivites();
-      dashRenderCardAgents();
-      dashRenderCardCFEtapes();
-      dashRenderCardCFAgents();
-      dashRenderCardCFRetards();
     }catch(err){showToast('Erreur lecture : '+err.message); console.error(err);}
   };
   reader.readAsArrayBuffer(file);
 }
 
 function aforRenderAll(){
-  aforRenderDashboard();
-  aforRenderKanban();
-  aforRenderListe();
-  aforRenderAgents();
+  // Met à jour uniquement les cards du dashboard principal
+  dashRenderCardDossiers();
+  dashRenderCardDepts();
+  dashRenderCardActivites();
+  dashRenderCardAgents();
+  dashRenderCardCFEtapes();
+  dashRenderCardCFAgents();
+  dashRenderCardCFRetards();
 }
 
 // ── Tableau de bord ──
-function aforRenderDashboard(){
-  const total = dossiersAFOR.length;
-  if(!total){
-    document.getElementById('afor-dash-kpi').innerHTML='<div class="kpi"><div class="kpi-l">Dossiers</div><div class="kpi-v">0</div><div class="kpi-s">Importez la base AFOR</div></div>';
-    return;
-  }
-  const retards = dossiersAFOR.filter(d=>aforCalcRetard(d).retard);
-  const parEtape = {};
-  ETAPES_CF.forEach(e=>parEtape[e]=0);
-  dossiersAFOR.forEach(d=>{ if(parEtape[d.etape]!==undefined) parEtape[d.etape]++; });
-  const pctRetard = Math.round(retards.length/total*100);
-  const cfi = dossiersAFOR.filter(d=>d.type==='CFI').length;
-  const cfc = dossiersAFOR.filter(d=>d.type==='CFC').length;
-  document.getElementById('afor-dash-kpi').innerHTML=`
-    <div class="kpi blue"><div class="kpi-l">Total dossiers CF</div><div class="kpi-v">${total.toLocaleString('fr-FR')}</div><div class="kpi-s">${cfi} CFI · ${cfc} CFC</div></div>
-    <div class="kpi ${retards.length>0?'red':'green'}"><div class="kpi-l">En retard</div><div class="kpi-v">${retards.length}</div><div class="kpi-s">${pctRetard}% du total</div></div>
-    <div class="kpi amber"><div class="kpi-l">Étape principale</div><div class="kpi-v">RDC</div><div class="kpi-s">${parEtape['RDC']} dossiers (${Math.round(parEtape['RDC']/total*100)}%)</div></div>
-    <div class="kpi green"><div class="kpi-l">Validés (VA)</div><div class="kpi-v">${parEtape['VA']}</div><div class="kpi-s">${Math.round(parEtape['VA']/total*100)}% clôturés</div></div>`;
-
-  // Mini pipeline
-  const pip = document.getElementById('afor-pipeline-mini');
-  if(pip){
-    pip.innerHTML='<div style="padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);">Répartition par étape</div>'+
-    ETAPES_CF.map(e=>{
-      const n=parEtape[e]||0;
-      const pct=total>0?Math.round(n/total*100):0;
-      const c=ETAPES_CF_COLORS[e]||{bg:'#eee',tx:'#333',brd:'#999'};
-      const ret=dossiersAFOR.filter(d=>d.etape===e&&aforCalcRetard(d).retard).length;
-      return`<div style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--border);">
-        <span style="width:36px;font-size:10px;font-weight:700;padding:2px 5px;border-radius:4px;background:${c.bg};color:${c.tx};text-align:center">${e}</span>
-        <div style="flex:1"><div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${c.brd};border-radius:4px;"></div></div></div>
-        <span style="font-size:12px;font-weight:600;min-width:36px;text-align:right">${n}</span>
-        ${ret>0?`<span style="font-size:10px;background:var(--red-lt);color:var(--red-txt);padding:1px 5px;border-radius:8px;">⚠${ret}</span>`:''}
-      </div>`;
-    }).join('');
-  }
-
-  // Top retards
-  const retTop = document.getElementById('afor-retards-top');
-  if(retTop){
-    const retardsDossiers = dossiersAFOR
-      .map(d=>({d, r:aforCalcRetard(d)}))
-      .filter(x=>x.r.retard)
-      .sort((a,b)=>b.r.jours-a.r.jours)
-      .slice(0,8);
-    retTop.innerHTML='<div style="padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--red-txt);border-bottom:1px solid var(--border);">⚠ Dossiers les plus en retard</div>'+
-    (retardsDossiers.length===0?'<div style="padding:14px;text-align:center;color:var(--text3);font-size:12px;">✓ Aucun retard</div>':
-    retardsDossiers.map(({d,r})=>`
-      <div style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--border);">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.id}</div>
-          <div style="font-size:10px;color:var(--text3)">${d.agent.split(' ').slice(0,2).join(' ')} · ${d.village}</div>
-        </div>
-        <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:${ETAPES_CF_COLORS[d.etape]?.bg};color:${ETAPES_CF_COLORS[d.etape]?.tx}">${d.etape}</span>
-        <span style="font-size:11px;font-weight:700;color:var(--red-txt)">${r.jours}j</span>
-      </div>`).join(''));
-  }
-
-  // Mini agents
-  const agMini = document.getElementById('afor-agents-mini');
-  if(agMini){
-    const agentsData = aforGetAgentsData().slice(0,8);
-    agMini.innerHTML='<div style="padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);">Classement agents CE</div>'+
-    '<table style="width:100%;border-collapse:collapse;font-size:12px;">'+
-    '<thead><tr style="background:var(--surface2);"><th style="padding:6px 12px;text-align:left">Rang</th><th style="padding:6px 12px;text-align:left">Agent CE</th><th style="padding:6px 12px;text-align:center">Dossiers</th><th style="padding:6px 12px;text-align:center">En retard</th><th style="padding:6px 12px;text-align:center">Score</th><th style="padding:6px 12px">Éval.</th></tr></thead><tbody>'+
-    agentsData.map((ag,i)=>{
-      const eval_c = ag.score>=80?{b:'b-green',l:'Excellent'}:ag.score>=60?{b:'b-blue',l:'Bon'}:ag.score>=40?{b:'b-amber',l:'Moyen'}:{b:'b-red',l:'Insuffisant'};
-      return`<tr style="border-bottom:1px solid var(--border);">
-        <td style="padding:7px 12px;font-weight:700;color:${i<3?'var(--accent)':'var(--text3)'}">${i+1}</td>
-        <td style="padding:7px 12px;font-size:12px">${ag.nom.split(' ').slice(0,3).join(' ')}</td>
-        <td style="padding:7px 12px;text-align:center;font-weight:600">${ag.total}</td>
-        <td style="padding:7px 12px;text-align:center;color:${ag.retards>0?'var(--red-txt)':'var(--accent)'}">${ag.retards}</td>
-        <td style="padding:7px 12px;text-align:center;font-weight:700;color:${ag.score>=60?'var(--accent)':'var(--red-txt)'}">${ag.score}%</td>
-        <td style="padding:7px 12px"><span class="badge ${eval_c.b}">${eval_c.l}</span></td>
-      </tr>`;
-    }).join('')+'</tbody></table>';
-  }
-}
+function aforRenderDashboard(){}
 
 // ── Pipeline Kanban ──
-function aforRenderKanban(){
-  const el = document.getElementById('afor-kanban');
-  if(!el) return;
-  const total = dossiersAFOR.length;
-  el.innerHTML = ETAPES_CF.map(e=>{
-    const list = dossiersAFOR.filter(d=>d.etape===e);
-    const retards = list.filter(d=>aforCalcRetard(d).retard);
-    const c = ETAPES_CF_COLORS[e]||{bg:'#eee',tx:'#333',brd:'#999'};
-    const pct = total>0?Math.round(list.length/total*100):0;
-    const items = list.sort((a,b)=>aforCalcRetard(b).jours-aforCalcRetard(a).jours).slice(0,6);
-    return`<div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;">
-      <div style="background:${c.brd};padding:10px 13px;display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:#fff;">${e}</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.7)">${ETAPES_CF_LABELS[e]}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:#fff">${list.length}</div>
-          <div style="font-size:9px;color:rgba(255,255,255,.7)">${pct}% du total</div>
-        </div>
-      </div>
-      ${retards.length>0?`<div style="background:var(--red-lt);padding:5px 13px;font-size:11px;color:var(--red-txt);font-weight:600;border-bottom:1px solid rgba(184,48,37,.15)">⚠ ${retards.length} en retard</div>`:''}
-      <div style="padding:6px;max-height:260px;overflow-y:auto;">
-        ${!items.length?'<div style="padding:10px;text-align:center;font-size:12px;color:var(--text3)">Aucun dossier</div>':
-        items.map(d=>{
-          const r=aforCalcRetard(d);
-          return`<div style="background:var(--surface3);border:1px solid ${r.retard?'rgba(184,48,37,.3)':'var(--border)'};border-radius:var(--radius-sm);padding:6px 9px;margin-bottom:4px;cursor:pointer;" onclick="aforFiltrerAgent('${d.agent}')">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text2)">${d.id.split('-').slice(-1)[0]}</span>
-              ${r.retard?`<span style="font-size:10px;font-weight:700;color:var(--red-txt)">${r.jours}j ⚠</span>`:'<span style="font-size:10px;color:var(--accent)">✓</span>'}
-            </div>
-            <div style="font-size:11px;font-weight:500;margin-top:1px">${d.prenom} ${d.nom_demandeur}</div>
-            <div style="font-size:10px;color:var(--text3)">${d.village} · ${d.agent.split(' ')[0]}</div>
-          </div>`;
-        }).join('')}
-        ${list.length>6?`<div style="text-align:center;font-size:11px;color:var(--text3);padding:4px">+${list.length-6} autres</div>`:''}
-      </div>
-    </div>`;
-  }).join('');
-}
+function aforRenderKanban(){}
 
 // ── Liste dossiers ──
-function aforFiltrerAgent(agent){
-  const sel = document.getElementById('afor-f-agent');
-  if(sel){ sel.value = agent; }
-  dosShowPanel('afor-liste');
-  aforRenderListe();
-}
+function aforFiltrerAgent(agent){}
 
-function aforRenderListe(){
-  const q=(document.getElementById('afor-srch')?.value||'').toLowerCase();
-  const fe=document.getElementById('afor-f-etape')?.value||'';
-  const fa=document.getElementById('afor-f-agent')?.value||'';
-  const fd=document.getElementById('afor-f-dept')?.value||'';
-  const fr=document.getElementById('afor-f-retard')?.value||'';
-  aforListeFiltered = dossiersAFOR.filter(d=>{
-    const mq=!q||d.id.toLowerCase().includes(q)||d.prenom.toLowerCase().includes(q)||d.nom_demandeur.toLowerCase().includes(q)||d.village.toLowerCase().includes(q);
-    const me=!fe||d.etape===fe;
-    const ma=!fa||d.agent===fa;
-    const md=!fd||d.dept===fd;
-    const r=aforCalcRetard(d);
-    const mr=!fr||(fr==='1'&&r.retard)||(fr==='0'&&!r.retard);
-    return mq&&me&&ma&&md&&mr;
-  });
-  aforListePage=0;
-  aforRenderListePage();
-  const sub=document.getElementById('afor-liste-subtitle');
-  if(sub) sub.textContent=`${aforListeFiltered.length} dossier(s) sur ${dossiersAFOR.length}`;
-}
+function aforRenderListe(){}
 
-function aforGoPage(p){ aforListePage=p; aforRenderListePage(); }
+function aforGoPage(p){}
 
-function aforRenderListePage(){
-  const tbody=document.getElementById('afor-liste-tbody');
-  const empty=document.getElementById('afor-liste-empty');
-  const pagin=document.getElementById('afor-liste-pagination');
-  if(!tbody) return;
-  if(!aforListeFiltered.length){tbody.innerHTML='';empty.style.display='block';if(pagin)pagin.innerHTML='';return;}
-  empty.style.display='none';
-  const page=aforListeFiltered.slice(aforListePage*PAGE_SIZE,(aforListePage+1)*PAGE_SIZE);
-  tbody.innerHTML=page.map(d=>{
-    const r=aforCalcRetard(d);
-    const c=ETAPES_CF_COLORS[d.etape]||{bg:'#eee',tx:'#333'};
-    const dateEtape=d['date_'+d.etape];
-    const dureeStr=r.jours!==null?`${r.jours}j`:'—';
-    const statutHtml=r.retard
-      ?`<span class="badge b-red">⚠ Retard ${r.jours}j / ${r.seuil}j</span>`
-      :`<span class="badge b-green">✓ Dans les délais</span>`;
-    return`<tr>
-      <td class="td-mono">${d.id}</td>
-      <td style="font-size:12px;font-weight:500">${d.prenom} ${d.nom_demandeur}</td>
-      <td><span style="font-size:12px">${d.village}</span><br><span style="font-size:11px;color:var(--text3)">${d.dept}</span></td>
-      <td style="font-size:11px">${d.agent}</td>
-      <td><span class="badge b-blue" style="font-size:10px">${d.type}</span></td>
-      <td><span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;background:${c.bg};color:${c.tx}">${d.etape}</span><br><span style="font-size:10px;color:var(--text3)">${ETAPES_CF_LABELS[d.etape]||''}</span></td>
-      <td style="text-align:center;font-size:12px;font-weight:600;color:${r.retard?'var(--red-txt)':'var(--text2)'}">${dureeStr}</td>
-      <td>${statutHtml}</td>
-    </tr>`;
-  }).join('');
-  if(pagin) pagin.innerHTML=renderPagination('afor-liste-pagination',aforListePage,aforListeFiltered.length,PAGE_SIZE,'aforGoPage');
-}
+function aforRenderListePage(){}
 
 // ── Performance agents ──
 function aforGetAgentsData(){
@@ -6387,40 +6216,7 @@ function aforGetAgentsData(){
   }).sort((a,b)=>b.score-a.score||b.total-a.total);
 }
 
-function aforRenderAgents(){
-  const data=aforGetAgentsData();
-  const total=dossiersAFOR.length;
-  const totalRetards=dossiersAFOR.filter(d=>aforCalcRetard(d).retard).length;
-  const agents=data.length;
-  const meilleur=data[0];
-  const moinsbon=data[data.length-1];
-  document.getElementById('afor-agents-kpi').innerHTML=`
-    <div class="kpi blue"><div class="kpi-l">Agents CE actifs</div><div class="kpi-v">${agents}</div><div class="kpi-s">${total} dossiers</div></div>
-    <div class="kpi green"><div class="kpi-l">Meilleur agent</div><div class="kpi-v">${meilleur?.score||0}%</div><div class="kpi-s">${meilleur?.nom.split(' ')[0]||'—'}</div></div>
-    <div class="kpi red"><div class="kpi-l">Total retards</div><div class="kpi-v">${totalRetards}</div><div class="kpi-s">${Math.round(totalRetards/Math.max(total,1)*100)}% du portefeuille</div></div>
-    <div class="kpi amber"><div class="kpi-l">Agent à suivre</div><div class="kpi-v">${moinsbon?.score||0}%</div><div class="kpi-s">${moinsbon?.nom.split(' ')[0]||'—'}</div></div>`;
-  const fmt=v=>v!==null?`${v}j`:'—';
-  const delai=(v,seuil)=>{
-    if(v===null) return '<td style="text-align:center;color:var(--text3)">—</td>';
-    const over=v>seuil;
-    return`<td style="text-align:center;font-weight:600;color:${over?'var(--red-txt)':'var(--accent)'}">${v}j${over?' ⚠':''}</td>`;
-  };
-  document.getElementById('afor-agents-tbody').innerHTML=data.map((ag,i)=>{
-    const eval_c=ag.score>=80?{b:'b-green',l:'Excellent'}:ag.score>=60?{b:'b-blue',l:'Bon'}:ag.score>=40?{b:'b-amber',l:'Moyen'}:{b:'b-red',l:'À améliorer'};
-    const bar=`<div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;"><div style="width:${ag.score}%;height:100%;background:${ag.score>=60?'var(--accent)':'var(--red)'};border-radius:3px;"></div></div><span style="font-size:12px;font-weight:700;color:${ag.score>=60?'var(--accent)':'var(--red-txt)'}">${ag.score}%</span></div>`;
-    return`<tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:9px 12px;font-weight:700;color:${i<3?'var(--accent)':'var(--text3)'}">${i+1}</td>
-      <td style="padding:9px 12px;font-size:12px;font-weight:500">${ag.nom}</td>
-      <td style="padding:9px 12px;text-align:center"><span style="font-weight:600">${ag.total}</span><br><span style="font-size:10px;color:var(--text3)">${ag.retards} retards</span></td>
-      ${delai(ag.mDD_RDC,1)}
-      ${delai(ag.mRDC_CL,3)}
-      ${delai(ag.mCL_OV,14)}
-      <td style="padding:9px 12px;text-align:center;font-weight:600;color:${ag.retards>0?'var(--red-txt)':'var(--accent)'}">${ag.retards}</td>
-      <td style="padding:9px 12px;min-width:120px">${bar}</td>
-      <td style="padding:9px 12px"><span class="badge ${eval_c.b}">${eval_c.l}</span></td>
-    </tr>`;
-  }).join('');
-}
+function aforRenderAgents(){}
 
 // Étendre dosShowPanel pour les panels AFOR
 const _dosShowPanel = dosShowPanel;
