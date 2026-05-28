@@ -6400,19 +6400,51 @@ function aforImportExcel(input){
         imported.push(dos);
         nb++;
       });
-      dossiersAFOR = imported;
+      // ── Fusion intelligente : comparer avec les données existantes ──
+      const INDEX = {};
+      dossiersAFOR.forEach(d=>{ INDEX[d.id] = d; });
+
+      let nbNouveaux = 0, nbMaj = 0, nbInchanges = 0;
+
+      imported.forEach(nouveau=>{
+        const ancien = INDEX[nouveau.id];
+        if(!ancien){
+          // Nouveau dossier absent de la base locale → ajouter
+          nbNouveaux++;
+        } else {
+          // Dossier existant → comparer l'étape et les dates
+          const etapeAvance = ETAPES_CF.indexOf(nouveau.etape) > ETAPES_CF.indexOf(ancien.etape);
+          const dateMaj = ETAPES_CF.some(e => nouveau['date_'+e] && nouveau['date_'+e] !== ancien['date_'+e]);
+          if(etapeAvance || dateMaj){
+            // Étape avancée ou nouvelles dates : mettre à jour en conservant les données non-CF
+            nouveau._ancienneEtape = ancien.etape;
+            nbMaj++;
+          } else {
+            // Aucun changement : conserver l'ancien enregistrement intégralement
+            imported[imported.indexOf(nouveau)] = ancien;
+            nbInchanges++;
+          }
+        }
+      });
+
+      // Conserver les dossiers locaux NON présents dans le nouveau fichier (import partiel)
+      const importedIds = new Set(imported.map(d=>d.id));
+      const conserves = dossiersAFOR.filter(d=>!importedIds.has(d.id));
+      dossiersAFOR = [...imported, ...conserves];
+
       // Peupler le filtre agents
       const agentsSel = document.getElementById('afor-f-agent');
       if(agentsSel){
-        const agents = [...new Set(imported.map(d=>d.agent).filter(Boolean))].sort();
+        const agents = [...new Set(dossiersAFOR.map(d=>d.agent).filter(Boolean))].sort();
         agentsSel.innerHTML = '<option value="">Tous les agents</option>' +
           agents.map(a=>`<option value="${a}">${a}</option>`).join('');
       }
-      showToast(`Base AFOR chargée : ${nb} dossiers (${ignore} ignorés)`);
+
+      const msg = `Base AFOR actualisée : ${nbNouveaux} nouveaux · ${nbMaj} mis à jour · ${nbInchanges} inchangés · ${conserves.length} conservés`;
+      showToast(msg);
       aforRenderAll();
-      // Forcer la mise à jour du panel liste si Module 3 est actif
-      if(document.getElementById('dos-panel-list') && 
-         document.getElementById('dos-panel-list').style.display !== 'none'){
+      if(document.getElementById('dos-panel-list') &&
+         document.getElementById('dos-panel-list').classList.contains('active')){
         dosRenderAll();
       }
     }catch(err){showToast('Erreur lecture : '+err.message); console.error(err);}
