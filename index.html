@@ -1143,12 +1143,12 @@ tbody td{padding:9px 12px;vertical-align:middle;}
             Importer Excel
             <input type="file" id="dos-import-file" accept=".xlsx,.xls" style="display:none" onchange="dosImportExcel(this)">
           </label>
-          <label class="btn-s" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;" id="btn-gnss-import">
+          <label class="btn-s" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;" id="btn-gnss-import" class="btn-s viewer-hidden">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
             <span id="gnss-btn-label">Opérateurs GNSS</span>
             <input type="file" accept=".xlsx,.xls" style="display:none" onchange="gnssImportExcel(this)">
           </label>
-          <label class="btn-s" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:var(--blue-lt);color:var(--blue-txt);border-color:var(--blue);" title="Importer base AFOR (CF)" id="btn-afor-import">
+          <label class="btn-s" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:var(--blue-lt);color:var(--blue-txt);border-color:var(--blue);" title="Importer base AFOR (CF)" id="btn-afor-import" class="btn-s viewer-hidden">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
             <span id="afor-btn-label">Base AFOR</span>
             <input type="file" id="afor-import-file" accept=".xlsx,.xls" style="display:none" onchange="aforImportExcel(this)">
@@ -1157,7 +1157,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
             Exporter CSV
           </button>
-          <button class="btn-p" onclick="dosShowPanel('form')">+ Nouveau dossier</button>
+          <button class="btn-p viewer-hidden" onclick="dosShowPanel('form')">+ Nouveau dossier</button>
         </div>
       </div>
       <div class="kpi-bar" id="dos-kpi"></div>
@@ -1206,7 +1206,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
         </table>
         <div id="dos-empty" class="empty-state" style="display:none">
           <p>Aucun dossier enregistré.</p>
-          <button class="btn-p" onclick="dosShowPanel('form')">+ Nouveau dossier</button>
+          <button class="btn-p viewer-hidden" onclick="dosShowPanel('form')">+ Nouveau dossier</button>
         </div>
         <div id="dos-pagination"></div>
       </div>
@@ -1887,6 +1887,7 @@ function switchModule(id){
   if(id==='accueil'){try{dashRenderAll();}catch(e){console.error('dash render:',e);}}
   if(id==='zones'){try{zvRenderAll();}catch(e){console.error('zones render:',e);}}
   if(id==='rapport'){try{rptInit();}catch(e){console.error('rapport render:',e);}}
+  setTimeout(()=>{ if(typeof isViewer==='function'&&isViewer()) applyViewerRestrictions(); },200);
 }
 
 
@@ -3329,12 +3330,12 @@ function dosRenderPage(){
       : d._src==='gnss'
       ? '<span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#E0F2F1;color:#00695C;font-weight:700;">GNSS</span>'
       : '<span style="font-size:9px;padding:1px 4px;border-radius:3px;background:var(--surface2);color:var(--text3);">M</span>';
-    const actions = d._src==='manuel'
+    const actions = (d._src==='manuel' && !isViewer())
       ? `<div style="display:flex;gap:4px;">
           <button class="btn-xs" onclick="dosEdit('${d.id}')">✏</button>
           <button class="btn-xs btn-xs-red" onclick="dosDel('${d.id}')">✕</button>
         </div>`
-      : '<span style="font-size:10px;color:var(--text3)">AFOR</span>';
+      : '<span style="font-size:10px;color:var(--text3)">${d._src==="afor"?"AFOR":d._src==="gnss"?"GNSS":""}</span>';
     return `<tr>
       <td class="td-mono" style="font-size:11px">${d.id||'—'} ${src}</td>
       <td style="font-size:12px;font-weight:500">${nom}</td>
@@ -5779,41 +5780,16 @@ function rptExportPDF(){
     body{margin:0;font-family:Arial,sans-serif;font-size:12px;}
     @media print{body{margin:0;}@page{margin:15mm;}}
   
-/* ── Restrictions visuelles rôles CE et GNSS (viewer) ── */
-body.role-viewer #btn-afor-import,
-body.role-viewer #btn-gnss-import,
-body.role-viewer .btn-p,
-body.role-viewer .btn-d,
-body.role-viewer .btn-xs,
-body.role-viewer .btn-xs-red,
-body.role-viewer #tb-admin-btn,
-body.role-viewer [onclick*="dosShowPanel('new'"],
-body.role-viewer [onclick*="dosShowPanel(\'new\'"],
-body.role-viewer [onclick*="agCreateForm"],
-body.role-viewer [onclick*="Réinitialiser"],
-body.role-viewer [onclick*="progNew"],
-body.role-viewer [onclick*="saisieNew"],
-body.role-viewer [onclick*="saisieFormShow"],
-body.role-viewer [onclick*="dosNew"],
-body.role-viewer [onclick*="dosDel"],
-body.role-viewer [onclick*="dosEdit"] { display: none !important; }
-
-/* Garder visibles les boutons d'export et navigation */
-body.role-viewer [onclick*="ExportCSV"],
-body.role-viewer [onclick*="exportCSV"],
-body.role-viewer [onclick*="switchModule"],
-body.role-viewer [onclick*="dosShowPanel('list'"],
-body.role-viewer [onclick*="dosShowPanel('stats'"],
-body.role-viewer [onclick*="dosShowPanel('pipeline'"],
-body.role-viewer [onclick*="dosShowPanel('afor"] { display: flex !important; }
+/* ── Rôles viewer : masquer via CSS (sélecteurs de classe fiables) ── */
+body.role-viewer .viewer-hidden { display: none !important; }
+body.role-viewer .btn-xs        { display: none !important; }
+body.role-viewer .btn-xs-red    { display: none !important; }
+body.role-viewer .btn-d         { display: none !important; }
 
 /* Badge rôle dans la topbar */
 #tb-user-role { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; }
-body.role-ce #tb-user-role  { background: #E0F2F1; color: #00695C; }
-body.role-gnss #tb-user-role { background: #F3E8FF; color: #6D28D9; }
-body.role-viewer .nav-item[onclick*="New"],
-body.role-viewer .nav-item[onclick*="new"],
-body.role-viewer .nav-item[onclick*="Form"] { display: none !important; }
+body.role-ce   #tb-user-role { background:#E0F2F1;color:#00695C; }
+body.role-gnss #tb-user-role { background:#F3E8FF;color:#6D28D9; }
 
 </style>
   </head><body>${el.innerHTML}</body></html>`);
@@ -7310,6 +7286,44 @@ function aforDeduplicate(){
   return avant - dossiersAFOR.length; // nombre de doublons supprimés
 }
 
+
+// ── Appliquer les restrictions viewer après login ──
+function applyViewerRestrictions(){
+  if(!isViewer()) return;
+  // Masquer tous les boutons d'action par leur contenu ou attribut
+  const toHide = [
+    // Boutons par texte/contenu
+    ...document.querySelectorAll('.btn-p'),
+    ...document.querySelectorAll('.btn-d'),
+    ...document.querySelectorAll('.btn-xs'),
+    ...document.querySelectorAll('.btn-xs-red'),
+  ];
+  const KEEP_TEXT = ['exporter','export','csv','télécharger','download','voir'];
+  toHide.forEach(el=>{
+    const txt = (el.textContent||'').toLowerCase().trim();
+    const keep = KEEP_TEXT.some(k=>txt.includes(k));
+    if(!keep) el.style.display='none';
+  });
+  // Masquer les nav-items d'action (Nouveau, Réinitialiser)
+  document.querySelectorAll('.nav-item').forEach(el=>{
+    const txt = (el.textContent||'').toLowerCase().trim();
+    if(txt.includes('nouveau') || txt.includes('réinitialiser') || txt.includes('reinitialis'))
+      el.style.display='none';
+  });
+  // Masquer les labels d'import (Base AFOR, GNSS, Importer Excel)
+  document.querySelectorAll('label.btn-s, label.btn-p').forEach(el=>{
+    const txt = (el.textContent||el.innerText||'').toLowerCase();
+    if(txt.includes('import') || txt.includes('afor') || txt.includes('gnss') || txt.includes('excel'))
+      el.style.display='none';
+  });
+  // Masquer les boutons contenant des icônes d'édition/suppression
+  document.querySelectorAll('button').forEach(el=>{
+    const txt = (el.textContent||'').trim();
+    if(txt==='✏'||txt==='✕'||txt==='Sup.'||txt==='Modifier'||txt==='Supprimer')
+      el.style.display='none';
+  });
+}
+
 // ═══════════════════════════════════════════
 // INIT GLOBAL
 // ═══════════════════════════════════════════
@@ -7518,6 +7532,8 @@ function authApplyUI(){
     if(btn.textContent.trim().startsWith('Réinitialiser'))
       btn.style.display = isAdmin ? '' : 'none';
   });
+  // Appliquer les restrictions viewer (CE/GNSS)
+  setTimeout(applyViewerRestrictions, 100);
 }
 
 function isViewer(){ return currentUser && (currentUser.role==='ce'||currentUser.role==='gnss'); }
@@ -7674,30 +7690,7 @@ async function adminCreateUser(){
   }finally{ btn.textContent='+ Créer le compte'; btn.disabled=false; }
 }
 
-async function adminDeleteUser(id){
-  if(!confirm('Supprimer le compte "'+id+'" ?')) return;
-  try{
-    // Supprimer en mémoire puis serverSave
-    delete users_db[id];
-    adminLoadUsers();
-    serverSave().catch(()=>scheduleSave());
-    showToast('Compte "'+id+'" supprimé.');
-  }catch(e){ showToast('Erreur : '+e.message); }
-}
 
-async function adminResetPwd(){
-  const id = document.getElementById('adm-reset-user').value;
-  const pwd = document.getElementById('adm-reset-pwd').value;
-  if(!id||!pwd){ showToast('Sélectionnez un compte et entrez le nouveau mot de passe.'); return; }
-  if(pwd.length<6){ showToast('Mot de passe : 6 caractères minimum.'); return; }
-  try{
-    const hash = await hashPassword(pwd);
-    if(users_db[id]) users_db[id].password_hash = hash;
-    await serverSave();
-    document.getElementById('adm-reset-pwd').value='';
-    showToast('Mot de passe de "'+id+'" réinitialisé !');
-  }catch(e){ showToast('Erreur : '+e.message); }
-}
 
 async function adminDeleteUser(id){
   if(!confirm('Supprimer le compte "'+id+'" ?')) return;
