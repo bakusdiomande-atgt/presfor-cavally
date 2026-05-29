@@ -6200,6 +6200,7 @@ async function serverLoad(){
     }
     // Merger users_db (local prend priorité pour éviter d'écraser des comptes récents)
     const remoteUsers = usersFromFirebase(d.users_db || {});
+    Object.keys(remoteUsers).forEach(k=>{ if(k.includes('__dot__')) delete remoteUsers[k]; });
     // Si Firebase ne renvoie pas users_db, restaurer depuis localStorage
     if(Object.keys(remoteUsers).length === 0){
       try{
@@ -7387,6 +7388,7 @@ async function authLoadUsersFromFirebase(){
       const data = await r.json();
       if(data && data.users_db && typeof data.users_db === 'object'){
         const decoded = usersFromFirebase(data.users_db);
+        Object.keys(decoded).forEach(k=>{ if(k.includes('__dot__')) delete decoded[k]; });
         // Merger : local prend priorité
         users_db = Object.assign({}, decoded, users_db);
         return true;
@@ -7568,13 +7570,18 @@ function adminLoadUsers(){
   const tbody = document.getElementById('adm-users-tbody');
   const resetSel = document.getElementById('adm-reset-user');
   if(!tbody) return;
-  const list = Object.values(users_db).filter(u=>u&&u.id).sort((a,b)=>a.role==='admin'?-1:1);
+  // Dédupliquer par id (évite doublons clé encodée/décodée Firebase)
+  const _seen = new Set();
+  const list = Object.values(users_db)
+    .filter(u=>u&&u.id&&!_seen.has(u.id)&&_seen.add(u.id))
+    .sort((a,b)=>a.role==='admin'?-1:b.role==='admin'?1:0);
   if(!list.length){
     tbody.innerHTML = '<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">Aucun compte</td></tr>';
     return;
   }
   resetSel.innerHTML = '<option value="">-- Sélectionner --</option>';
-  tbody.innerHTML = list.map(u=>{
+  const _seenR = new Set();
+  tbody.innerHTML = list.filter(u=>!_seenR.has(u.id)&&_seenR.add(u.id)).map(u=>{
     const isMe = u.id === currentUser.id;
     const roleB = u.role==='admin'?'<span class="badge b-amber">Admin</span>':u.role==='ce'?'<span class="badge b-green">CE — Visuel</span>':u.role==='gnss'?'<span class="badge b-green">GNSS — Visuel</span>':'<span class="badge b-blue">Agent</span>';
     const created = u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—';
