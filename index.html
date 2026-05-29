@@ -6370,7 +6370,14 @@ function updateNetworkStatus(){
 // MODULE AFOR — CERTIFICATS FONCIERS
 // ═══════════════════════════════════════════════════════════════
 
-let dossiersAFOR = [];
+// ── Déclaration + restauration synchrone AFOR ──
+let dossiersAFOR = (function(){
+  try{
+    const raw = localStorage.getItem('presfor_afor_data');
+    if(raw){ const p=JSON.parse(raw); if(Array.isArray(p)&&p.length>0){ console.log('AFOR restauré sync:',p.length); return p; } }
+  }catch(e){ console.warn('Restauration AFOR sync:',e); localStorage.removeItem('presfor_afor_data'); }
+  return [];
+})();
 let aforListeFiltered = [];
 let aforListePage = 0;
 
@@ -6872,10 +6879,29 @@ function dosShowPanel(id, btn){
 // MODULE GNSS — Parcelles levées / Superficie
 // ═══════════════════════════════════════════
 
-let gnssData = [];        // Parcelles levées (import GNSS)
-let gnssIndex = {};       // Index par N_DEMCGE (code parcelle)
-let gnssIndexFull = {};   // Index par nom+village+SP+dept
-let gnssIndexNomVil = {}; // Index par nom+village (fallback)
+// ── Déclaration + restauration synchrone GNSS ──
+let gnssData = (function(){
+  try{
+    const raw = localStorage.getItem('presfor_gnss_data');
+    if(raw){ const p=JSON.parse(raw); if(Array.isArray(p)&&p.length>0){ console.log('GNSS restauré sync:',p.length); return p; } }
+  }catch(e){ console.warn('Restauration GNSS sync:',e); localStorage.removeItem('presfor_gnss_data'); }
+  return [];
+})();
+let gnssIndex = {};
+let gnssIndexFull = {};
+let gnssIndexNomVil = {};
+// Reconstruire les index GNSS si des données sont déjà chargées
+if(gnssData.length > 0){
+  gnssData.forEach(function(g){
+    var n = function(s){ if(!s) return ''; return s.toString().trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z0-9]/g,' ').replace(/\s+/g,' ').trim(); };
+    if(g.n_demcge){ var k1=n(g.n_demcge); if(!gnssIndex[k1]) gnssIndex[k1]=[]; gnssIndex[k1].push(g); }
+    var k2=n(g.nom_demand||'')+'|'+n(g.village||'')+'|'+n(g.sp||'')+'|'+n(g.dept||'');
+    if(!gnssIndexFull[k2]) gnssIndexFull[k2]=[]; gnssIndexFull[k2].push(g);
+    var k3=n(g.nom_demand||'')+'|'+n(g.village||'');
+    if(!gnssIndexNomVil[k3]) gnssIndexNomVil[k3]=[]; gnssIndexNomVil[k3].push(g);
+  });
+  console.log('Index GNSS reconstruits:', Object.keys(gnssIndex).length, 'codes,', Object.keys(gnssIndexFull).length, 'noms complets');
+}
 
 // Normaliser une chaîne pour comparaison
 function gnssNorm(s){
@@ -7570,54 +7596,10 @@ serverLoad().then(ok => {
   } else {
     if(getOfflineSnapshot()){ flushOfflineQueue(); }
   }
-  // ══ Restauration persistance locale (AFOR + GNSS) ══
-  function _restoreFromStorage(key, label, onSuccess){
-    try{
-      const raw = localStorage.getItem(key);
-      if(!raw) return;
-      const parsed = JSON.parse(raw);
-      if(Array.isArray(parsed) && parsed.length > 0){
-        onSuccess(parsed);
-        console.log(`${label} restauré: ${parsed.length} entrées`);
-      }
-    } catch(e){
-      console.warn(`Restauration ${label} échouée:`, e.message);
-      localStorage.removeItem(key); // supprimer les données corrompues
-    }
-  }
-
-  // Restaurer AFOR
-  _restoreFromStorage('presfor_afor_data', 'AFOR', function(parsed){
-    dossiersAFOR = parsed;
-    aforRenderAll();
-  });
-
-  // Restaurer GNSS
-  _restoreFromStorage('presfor_gnss_data', 'GNSS', function(parsed){
-    gnssData = parsed;
-    // Reconstruire les 3 index
-    gnssIndex = {}; gnssIndexFull = {}; gnssIndexNomVil = {};
-    gnssData.forEach(function(g){
-      if(g.n_demcge){
-        var k1 = gnssNorm(g.n_demcge);
-        if(!gnssIndex[k1]) gnssIndex[k1] = [];
-        gnssIndex[k1].push(g);
-      }
-      var nom = gnssNorm(g.nom_demand||'');
-      var vil = gnssNorm(g.village||'');
-      var sp  = gnssNorm(g.sp||'');
-      var dep = gnssNorm(g.dept||'');
-      var k2 = nom+'|'+vil+'|'+sp+'|'+dep;
-      if(!gnssIndexFull[k2]) gnssIndexFull[k2] = [];
-      gnssIndexFull[k2].push(g);
-      var k3 = nom+'|'+vil;
-      if(!gnssIndexNomVil[k3]) gnssIndexNomVil[k3] = [];
-      gnssIndexNomVil[k3].push(g);
-    });
-    gnssUpdateBtnLabel();
-    dashRenderCardGNSS();
-  });
-
+  // Les données AFOR et GNSS sont déjà restaurées synchronement au chargement
+  // Ici on met juste à jour l'UI (boutons, cards dashboard)
+  if(dossiersAFOR.length > 0) aforRenderAll();
+  if(gnssData.length > 0){ gnssUpdateBtnLabel(); dashRenderCardGNSS(); }
   authInit();
 });
 
