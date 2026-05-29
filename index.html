@@ -1131,9 +1131,9 @@ tbody td{padding:9px 12px;vertical-align:middle;}
             Importer Excel
             <input type="file" id="dos-import-file" accept=".xlsx,.xls" style="display:none" onchange="dosImportExcel(this)">
           </label>
-          <label class="btn-s" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:var(--blue-lt);color:var(--blue-txt);border-color:var(--blue);" title="Importer base AFOR (CF)">
+          <label class="btn-s" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:var(--blue-lt);color:var(--blue-txt);border-color:var(--blue);" title="Importer base AFOR (CF)" id="btn-afor-import">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
-            Base AFOR
+            <span id="afor-btn-label">Base AFOR</span>
             <input type="file" id="afor-import-file" accept=".xlsx,.xls" style="display:none" onchange="aforImportExcel(this)">
           </label>
           <button class="btn-s" onclick="dosExportCSV()" style="display:inline-flex;align-items:center;gap:5px;">
@@ -6370,6 +6370,27 @@ const AFOR_AGENT_MAP = {
   'YEBOUA ADJIA EMMANUELA':         'Yeboua Adjia Emmanuela',
 };
 function aforAgentNom(raw){ return AFOR_AGENT_MAP[raw] || raw; }
+
+// ── Mettre à jour le label du bouton AFOR ──
+function aforUpdateBtnLabel(){
+  const lbl = document.getElementById('afor-btn-label');
+  if(!lbl) return;
+  const ts = localStorage.getItem('presfor_afor_ts');
+  if(dossiersAFOR && dossiersAFOR.length > 0 && ts){
+    const d = new Date(ts);
+    const jj = d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});
+    const hh = d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    lbl.textContent = `AFOR · ${dossiersAFOR.length.toLocaleString('fr-FR')} · ${jj} ${hh}`;
+    lbl.parentElement.style.background = 'var(--accent-lt)';
+    lbl.parentElement.style.color = 'var(--accent-txt)';
+    lbl.parentElement.style.borderColor = 'var(--accent)';
+  } else {
+    lbl.textContent = 'Base AFOR';
+    lbl.parentElement.style.background = 'var(--blue-lt)';
+    lbl.parentElement.style.color = 'var(--blue-txt)';
+    lbl.parentElement.style.borderColor = 'var(--blue)';
+  }
+}
 // ── Import depuis fichier AFOR Excel ──
 function aforImportExcel(input){
   const file = input.files[0];
@@ -6466,6 +6487,11 @@ function aforImportExcel(input){
       }
 
       const msg = `Base AFOR actualisée : ${nbNouveaux} nouveaux · ${nbMaj} mis à jour · ${nbInchanges} inchangés · ${conserves.length} conservés`;
+      // ── Persister dans localStorage ──
+      try{
+        localStorage.setItem('presfor_afor_data', JSON.stringify(dossiersAFOR));
+        localStorage.setItem('presfor_afor_ts', new Date().toISOString());
+      }catch(e){ console.warn('localStorage AFOR:', e.message); }
       showToast(msg);
       aforRenderAll();
       if(document.getElementById('dos-panel-list') &&
@@ -6478,6 +6504,7 @@ function aforImportExcel(input){
 }
 
 function aforRenderAll(){
+  aforUpdateBtnLabel();
   // Met à jour les cards dashboard + badge sidebar
   const nb=document.getElementById('afor-list-nb');
   if(nb) nb.textContent=dossiersAFOR.length;
@@ -7194,6 +7221,20 @@ serverLoad().then(ok => {
   } else {
     if(getOfflineSnapshot()){ flushOfflineQueue(); }
   }
+  // Restaurer la base AFOR depuis localStorage (survie aux reconnexions)
+  try{
+    const afor_saved = localStorage.getItem('presfor_afor_data');
+    const afor_ts    = localStorage.getItem('presfor_afor_ts');
+    if(afor_saved){
+      const parsed = JSON.parse(afor_saved);
+      if(Array.isArray(parsed) && parsed.length > 0){
+        dossiersAFOR = parsed;
+        const d = afor_ts ? new Date(afor_ts).toLocaleDateString('fr-FR') : '?';
+        console.log(`Base AFOR restaurée: ${dossiersAFOR.length} dossiers (import du ${d})`);
+        aforRenderAll();
+      }
+    }
+  }catch(e){ console.warn('Restauration AFOR:', e.message); }
   authInit();
 });
 
