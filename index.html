@@ -296,7 +296,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     <!-- Formulaire création -->
     <div style="background:var(--surface3);border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;">
       <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent2);margin-bottom:12px;">Nouveau compte</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
         <div class="ff">
           <label class="fl">Identifiant <span class="req">*</span></label>
           <input class="fi" id="adm-id" placeholder="Ex : nguetta" style="font-size:12px;">
@@ -305,6 +305,15 @@ tbody td{padding:9px 12px;vertical-align:middle;}
           <label class="fl">Nom complet <span class="req">*</span></label>
           <select class="fsel" id="adm-nom" style="font-size:12px;">
             <option value="">-- Sélectionner un agent --</option>
+          </select>
+        </div>
+        <div class="ff">
+          <label class="fl">Rôle <span class="req">*</span></label>
+          <select class="fsel" id="adm-role" style="font-size:12px;">
+            <option value="agent">Agent PRESFOR</option>
+            <option value="ce">Commissaire Enquêteur (CE) — Visuel</option>
+            <option value="gnss">Opérateur GNSS — Visuel</option>
+            <option value="admin">Administrateur</option>
           </select>
         </div>
         <div class="ff">
@@ -2049,6 +2058,7 @@ function progValidate(){
 
 function progSubmit(e){
   e.preventDefault();
+  if(isViewer()){ showToast('Accès refusé — rôle visuel uniquement.'); return; }
   document.getElementById('prog-suc').classList.remove('show');
   const errs=progValidate();
   if(errs.length){document.getElementById('prog-val-sum').classList.add('show');document.getElementById('prog-val-list').innerHTML=errs.map(x=>`<li>${x}</li>`).join('');return;}
@@ -2426,6 +2436,7 @@ function saisieValidate(){
 
 function saisieSubmit(e){
   e.preventDefault();
+  if(isViewer()){ showToast('Accès refusé — rôle visuel uniquement.'); return; }
   document.getElementById('saisie-suc').classList.remove('show');
   const errs=saisieValidate();
   if(errs.length){document.getElementById('saisie-val-sum').classList.add('show');document.getElementById('saisie-val-list').innerHTML=errs.map(x=>`<li>${x}</li>`).join('');return;}
@@ -3441,6 +3452,7 @@ function dosValidate(){
 
 function dosSubmit(e){
   e.preventDefault();
+  if(isViewer()){ showToast('Accès refusé — rôle visuel uniquement.'); return; }
   document.getElementById('dos-suc').classList.remove('show');
   const errs = dosValidate();
   if(errs.length){
@@ -5766,7 +5778,44 @@ function rptExportPDF(){
   <style>
     body{margin:0;font-family:Arial,sans-serif;font-size:12px;}
     @media print{body{margin:0;}@page{margin:15mm;}}
-  </style>
+  
+/* ── Restrictions visuelles rôles CE et GNSS (viewer) ── */
+body.role-viewer #btn-afor-import,
+body.role-viewer #btn-gnss-import,
+body.role-viewer .btn-p,
+body.role-viewer .btn-d,
+body.role-viewer .btn-xs,
+body.role-viewer .btn-xs-red,
+body.role-viewer #tb-admin-btn,
+body.role-viewer [onclick*="dosShowPanel('new'"],
+body.role-viewer [onclick*="dosShowPanel(\'new\'"],
+body.role-viewer [onclick*="agCreateForm"],
+body.role-viewer [onclick*="Réinitialiser"],
+body.role-viewer [onclick*="progNew"],
+body.role-viewer [onclick*="saisieNew"],
+body.role-viewer [onclick*="saisieFormShow"],
+body.role-viewer [onclick*="dosNew"],
+body.role-viewer [onclick*="dosDel"],
+body.role-viewer [onclick*="dosEdit"] { display: none !important; }
+
+/* Garder visibles les boutons d'export et navigation */
+body.role-viewer [onclick*="ExportCSV"],
+body.role-viewer [onclick*="exportCSV"],
+body.role-viewer [onclick*="switchModule"],
+body.role-viewer [onclick*="dosShowPanel('list'"],
+body.role-viewer [onclick*="dosShowPanel('stats'"],
+body.role-viewer [onclick*="dosShowPanel('pipeline'"],
+body.role-viewer [onclick*="dosShowPanel('afor"] { display: flex !important; }
+
+/* Badge rôle dans la topbar */
+#tb-user-role { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; }
+body.role-ce #tb-user-role  { background: #E0F2F1; color: #00695C; }
+body.role-gnss #tb-user-role { background: #F3E8FF; color: #6D28D9; }
+body.role-viewer .nav-item[onclick*="New"],
+body.role-viewer .nav-item[onclick*="new"],
+body.role-viewer .nav-item[onclick*="Form"] { display: none !important; }
+
+</style>
   </head><body>${el.innerHTML}</body></html>`);
   w.document.close();
   setTimeout(()=>w.print(),500);
@@ -7441,12 +7490,22 @@ function authLogout(){
 }
 
 function authApplyUI(){
-  const isAdmin = currentUser && currentUser.role === 'admin';
+  const role = currentUser?.role || '';
+  const isAdmin  = role === 'admin';
+  const isViewer = role === 'ce' || role === 'gnss';
+  const isAgent  = role === 'agent';
   const ui = document.getElementById('tb-user-info');
+
+  // Appliquer la classe de rôle sur le body
+  document.body.classList.remove('role-admin','role-agent','role-ce','role-gnss','role-viewer');
+  if(role) document.body.classList.add('role-'+role);
+  if(isViewer) document.body.classList.add('role-viewer');
+
   if(currentUser){
     ui.style.display = 'flex';
     document.getElementById('tb-user-name').textContent = currentUser.nom.split('—')[0].trim().split(' ').slice(0,2).join(' ');
-    document.getElementById('tb-user-role').textContent = isAdmin ? 'Admin' : 'Agent';
+    const roleLabel = isAdmin?'Admin':role==='ce'?'CE':role==='gnss'?'GNSS':'Agent';
+    document.getElementById('tb-user-role').textContent = roleLabel;
     document.getElementById('tb-logout-btn').style.display = 'block';
     document.getElementById('tb-admin-btn').style.display = isAdmin ? 'block' : 'none';
   } else {
@@ -7454,17 +7513,19 @@ function authApplyUI(){
     document.getElementById('tb-logout-btn').style.display = 'none';
     document.getElementById('tb-admin-btn').style.display = 'none';
   }
-  // Masquer boutons Réinitialiser pour agents
+  // Masquer Réinitialiser pour non-admin
   document.querySelectorAll('.nav-item').forEach(btn=>{
-    if(btn.textContent.trim().startsWith('Réinitialiser')){
+    if(btn.textContent.trim().startsWith('Réinitialiser'))
       btn.style.display = isAdmin ? '' : 'none';
-    }
   });
 }
 
+function isViewer(){ return currentUser && (currentUser.role==='ce'||currentUser.role==='gnss'); }
+
 function canDelete(){ return currentUser && currentUser.role === 'admin'; }
+function canEdit(){   return currentUser && !isViewer(); }
 function canModifyProg(prog){
-  if(!currentUser) return false;
+  if(!currentUser || isViewer()) return false;
   if(currentUser.role === 'admin') return true;
   if(!prog.created_at) return false;
   return (new Date() - new Date(prog.created_at)) / 3600000 <= 24;
@@ -7499,7 +7560,7 @@ function adminLoadUsers(){
   resetSel.innerHTML = '<option value="">-- Sélectionner --</option>';
   tbody.innerHTML = list.map(u=>{
     const isMe = u.id === currentUser.id;
-    const roleB = u.role==='admin' ? '<span class="badge b-green">Admin</span>' : '<span class="badge b-blue">Agent</span>';
+    const roleB = u.role==='admin'?'<span class="badge b-amber">Admin</span>':u.role==='ce'?'<span class="badge b-green">CE — Visuel</span>':u.role==='gnss'?'<span class="badge b-green">GNSS — Visuel</span>':'<span class="badge b-blue">Agent</span>';
     const created = u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—';
     const last = u.last_login ? new Date(u.last_login).toLocaleDateString('fr-FR') : 'Jamais';
     resetSel.innerHTML += `<option value="${u.id}">${u.id} — ${(u.nom||'').split('—')[0].trim()}</option>`;
@@ -7587,7 +7648,7 @@ async function adminCreateUser(){
   msg.textContent='Traitement...'; msg.style.color='var(--text2)'; msg.style.display='block';
   try{
     const hash = await hashPassword(pwd);
-    const role = (id==='coordinateur'||nom.toLowerCase().includes('coordinateur')) ? 'admin' : 'agent';
+    const role = document.getElementById('adm-role')?.value || 'agent';
     const userData = {id, nom, role, password_hash:hash, created_at:new Date().toISOString(), last_login:null};
     // 1. Mémoire en premier → affichage immédiat garanti
     users_db[id] = userData;
