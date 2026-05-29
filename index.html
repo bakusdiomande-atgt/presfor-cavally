@@ -4856,6 +4856,7 @@ function dashRenderCardCFAgents(){  const _g=document.getElementById('dash-card-
       <td style="padding:6px 6px 6px 0;font-size:11px;">${M[i]||`<span style="color:#9CA3AF">${i+1}.</span>`} ${ag.nom.split(' ').slice(0,2).join(' ')}</td>
       <td style="padding:6px;text-align:right;font-weight:700;font-size:11px;">${ag.total}</td>
       <td style="padding:6px;text-align:right;font-size:10px;color:#DC2626;">${ag.retards}</td>
+      <td style="padding:6px;text-align:right;font-size:10px;font-weight:600;color:#00695C;">${(()=>{const ha=dossiersAFOR.filter(x=>x.agent===ag.nom).reduce((s,x)=>{const g=gnssForDossier(x);return s+(g?g.superficie:0);},0);return ha>0?(ha>=1000?(ha/1000).toFixed(1)+'k ha':ha.toFixed(0)+' ha'):'—';})()}</td>
       <td style="padding:6px 0;min-width:80px;">
         <div style="display:flex;align-items:center;gap:4px;">
           <div style="flex:1;height:5px;background:#F3F4F6;border-radius:3px;overflow:hidden;"><div style="width:${ag.score}%;height:100%;background:${ev.c};border-radius:3px;"></div></div>
@@ -5115,7 +5116,8 @@ function dashRenderCardDepts(){  const _g=document.getElementById('dash-card-dep
   const rows = DEPTS.map(d=>{
     const s = saisies.filter(x=>x.dept===d.saisie).reduce((s,x)=>s+(x.ndos||0),0);
     const a = dossiersAFOR.filter(x=>x.dept===d.afor).length;
-    const r = dossiersAFOR.filter(x=>x.dept===d.afor&&aforCalcRetard(x).retard).length;
+    const r  = dossiersAFOR.filter(x=>x.dept===d.afor&&aforCalcRetard(x).retard).length;
+    const ha = (gnssData||[]).filter(g=>gnssNorm(g.dept)===d.afor).reduce((s,g)=>s+g.superficie,0);
     const total = s + a;
     const pcts = Math.round(s/totSaisies*100);
     const pcta = Math.round(a/totAfor*100);
@@ -5124,7 +5126,8 @@ function dashRenderCardDepts(){  const _g=document.getElementById('dash-card-dep
       <td style="padding:8px 6px;text-align:right;font-weight:700;font-size:12px;">${s}</td>
       <td style="padding:8px 6px;text-align:right;font-weight:700;font-size:12px;color:#0369A1;">${a}</td>
       <td style="padding:8px 6px;text-align:right;font-weight:700;font-size:13px;color:#111827;">${total}</td>
-      <td style="padding:8px 0;text-align:right;font-size:11px;font-weight:600;color:${r>0?'#DC2626':'#16A34A'};">${r>0?'⚠'+r:'✓'}</td>
+      <td style="padding:8px 6px;text-align:right;font-size:11px;font-weight:600;color:${r>0?'#DC2626':'#16A34A'};">${r>0?'⚠'+r:'✓'}</td>
+      <td style="padding:8px 0;text-align:right;font-size:11px;font-weight:600;color:${ha>0?'#00695C':'#9CA3AF'};">${ha>0?ha.toFixed(0)+' ha':'—'}</td>
     </tr>`;
   }).join('');
   _g.innerHTML = cardHdr('Par département',"switchModule('zones')",'Zones')+
@@ -5134,7 +5137,8 @@ function dashRenderCardDepts(){  const _g=document.getElementById('dash-card-dep
       <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#8B5CF6;">Saisies</th>
       <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#0369A1;">CF</th>
       <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#111827;">Total</th>
-      <th style="text-align:right;padding:8px 0 6px 6px;font-size:10px;font-weight:600;color:#DC2626;">Retards</th>
+      <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#DC2626;">Retards</th>
+      <th style="text-align:right;padding:8px 0 6px 6px;font-size:10px;font-weight:600;color:#00695C;">Ha levés</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`;
@@ -5203,12 +5207,20 @@ function dashRenderCardAgents(){  const _g=document.getElementById('dash-card-ag
     const scoreHtml = d.score!==null
       ? `<td style="padding:7px 0;font-size:11px;font-weight:700;color:${d.score>=60?'#16A34A':'#DC2626'};">${d.score}%</td>`
       : `<td style="padding:7px 0;font-size:11px;color:#D1D5DB;">—</td>`;
+    // Ha levés : parcelles GNSS liées aux dossiers CF de l'agent
+    const haAgent = (gnssData||[]).length>0
+      ? dossiersAFOR.filter(x=>x.agent===d.nom).reduce((s,x)=>{ const g=gnssForDossier(x); return s+(g?g.superficie:0); },0)
+      : 0;
+    const haHtml = haAgent>0
+      ? `<td style="padding:7px 0;text-align:right;font-size:11px;font-weight:700;color:#00695C;">${haAgent>=1000?(haAgent/1000).toFixed(1)+'k':haAgent.toFixed(0)} ha</td>`
+      : `<td style="padding:7px 0;text-align:right;font-size:11px;color:#D1D5DB;">—</td>`;
     return `<tr style="border-bottom:1px solid #F9FAFB;">
       <td style="padding:7px 6px 7px 0;font-size:12px;">${M[i]||`<span style="color:#9CA3AF;font-size:11px;">${i+1}.</span>`} ${d.nom.split(' ').slice(0,2).join(' ')}</td>
       <td style="padding:7px 6px;text-align:right;font-weight:600;font-size:12px;color:#8B5CF6;">${d.m2||'—'}</td>
       <td style="padding:7px 6px;text-align:right;font-weight:600;font-size:12px;color:#0369A1;">${d.cf||'—'}</td>
       <td style="padding:7px 6px;text-align:right;font-weight:700;font-size:13px;color:#111827;">${total}</td>
       ${scoreHtml}
+      ${haHtml}
     </tr>`;
   }).join('');
   _g.innerHTML = cardHdr('Top agents — production',null,'')+
@@ -5218,7 +5230,8 @@ function dashRenderCardAgents(){  const _g=document.getElementById('dash-card-ag
       <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#8B5CF6;">Saisies</th>
       <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#0369A1;">CF</th>
       <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#111827;">Total</th>
-      <th style="text-align:right;padding:8px 0 6px 6px;font-size:10px;font-weight:600;color:#16A34A;">Score CF</th>
+      <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#16A34A;">Score CF</th>
+      <th style="text-align:right;padding:8px 0 6px 6px;font-size:10px;font-weight:600;color:#00695C;">Ha levés</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`;
