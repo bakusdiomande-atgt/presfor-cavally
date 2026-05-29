@@ -4805,6 +4805,8 @@ function dashRenderCardCFEtapes(){  const _g=document.getElementById('dash-card-
   const el=document.getElementById('dash-card-cf-etapes');
   if(!el) return;
   const tot=dossiersAFOR.length;
+  const haTotCF = (gnssData&&gnssData.length)
+    ? dossiersAFOR.reduce((s,d)=>{const g=gnssForDossier(d);return s+(g?g.superficie:0);},0) : 0;
   if(!tot){
     el.innerHTML=cardHdr('Étapes des dossiers CF (Base AFOR)',null,'')+
       `<div style="padding:20px;text-align:center;color:#9CA3AF;font-size:13px;">Importez la base AFOR dans le Module 3 pour afficher les données</div>`;
@@ -4818,6 +4820,9 @@ function dashRenderCardCFEtapes(){  const _g=document.getElementById('dash-card-
   const maxN=Math.max(...parEtape.map(x=>x.n),1);
   el.innerHTML=cardHdr('Étapes des dossiers CF — Pipeline AFOR',null,'')+
     `<div style="padding:14px 20px 10px;">
+      ${haTotCF>0?`<div style="font-size:11px;font-weight:600;color:#00695C;margin-bottom:8px;padding:5px 10px;background:#E0F2F1;border-radius:6px;display:inline-block;">
+        🌿 Superficie totale levée : ${haTotCF>=1000?(haTotCF/1000).toFixed(1)+'k':haTotCF.toFixed(0)} ha sur ${dossiersAFOR.length} dossiers
+      </div>`:''}
       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;align-items:end;min-height:120px;">
         ${parEtape.map(x=>{
           const h=Math.max(Math.round(x.n/maxN*100),4);
@@ -4829,6 +4834,7 @@ function dashRenderCardCFEtapes(){  const _g=document.getElementById('dash-card-
             <div style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:${x.c.bg};color:${x.c.tx}">${x.e}</div>
             <div style="font-size:9px;color:#6B7280;text-align:center;line-height:1.2;">${x.label}</div>
             <div style="font-size:10px;color:#9CA3AF;">${pct}%</div>
+            ${x.ha>0?`<div style="font-size:9px;font-weight:700;color:#00695C;text-align:center;">${x.ha>=1000?(x.ha/1000).toFixed(1)+'k':x.ha.toFixed(0)} ha</div>`:''}
           </div>`;
         }).join('')}
       </div>
@@ -5078,26 +5084,39 @@ function dashRenderCardDossiers(){  const _g=document.getElementById('dash-card-
   const aforVA = dossiersAFOR.filter(d=>d.etape==='VA').length;
   const aforRetards = dossiersAFOR.filter(d=>aforCalcRetard(d).retard).length;
   const pctAvance = aforTot>0?Math.round((dossiersAFOR.filter(d=>['OV','CP','AP','VA'].includes(d.etape)).length)/aforTot*100):0;
-  const parEtape = ETAPES_CF.map(e=>({e, n:dossiersAFOR.filter(d=>d.etape===e).length, r:dossiersAFOR.filter(d=>d.etape===e&&aforCalcRetard(d).retard).length, c:ETAPES_CF_COLORS[e]||{brd:'#999',bg:'#eee',tx:'#333'}}));
+  // Superficie totale levée
+  const haTotal = (gnssData&&gnssData.length)
+    ? dossiersAFOR.reduce((s,d)=>{const g=gnssForDossier(d);return s+(g?g.superficie:0);},0)
+    : 0;
+  const parEtape = ETAPES_CF.map(e=>{
+    const doss = dossiersAFOR.filter(d=>d.etape===e);
+    const ha = (gnssData&&gnssData.length)
+      ? doss.reduce((s,d)=>{const g=gnssForDossier(d);return s+(g?g.superficie:0);},0) : 0;
+    return {e, n:doss.length, r:doss.filter(d=>aforCalcRetard(d).retard).length,
+            ha, c:ETAPES_CF_COLORS[e]||{brd:'#999',bg:'#eee',tx:'#333'}};
+  });
   const maxN = Math.max(...parEtape.map(x=>x.n),1);
   _g.innerHTML = cardHdr('Étapes des dossiers fonciers',"switchModule('dossier')",'Voir M3')+
   `<div style="padding:12px 16px 14px;">
-    <div style="display:flex;gap:16px;margin-bottom:14px;">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
       <div><div style="font-size:22px;font-weight:700;color:#111827;">${aforTot.toLocaleString('fr-FR')}</div><div style="font-size:11px;color:#6B7280;">dossiers CF</div></div>
-      <div style="border-left:1px solid #F3F4F6;padding-left:16px;"><div style="font-size:22px;font-weight:700;color:#16A34A;">${aforVA}</div><div style="font-size:11px;color:#6B7280;">validés</div></div>
-      <div style="border-left:1px solid #F3F4F6;padding-left:16px;"><div style="font-size:22px;font-weight:700;color:${aforRetards>0?'#DC2626':'#16A34A'};">${aforRetards}</div><div style="font-size:11px;color:#6B7280;">en retard</div></div>
-      <div style="border-left:1px solid #F3F4F6;padding-left:16px;"><div style="font-size:22px;font-weight:700;color:#0369A1;">${pctAvance}%</div><div style="font-size:11px;color:#6B7280;">avancés (≥OV)</div></div>
+      <div style="border-left:1px solid #F3F4F6;padding-left:12px;"><div style="font-size:22px;font-weight:700;color:#16A34A;">${aforVA}</div><div style="font-size:11px;color:#6B7280;">validés</div></div>
+      <div style="border-left:1px solid #F3F4F6;padding-left:12px;"><div style="font-size:22px;font-weight:700;color:${aforRetards>0?'#DC2626':'#16A34A'};">${aforRetards}</div><div style="font-size:11px;color:#6B7280;">en retard</div></div>
+      <div style="border-left:1px solid #F3F4F6;padding-left:12px;"><div style="font-size:22px;font-weight:700;color:#0369A1;">${pctAvance}%</div><div style="font-size:11px;color:#6B7280;">avancés (≥OV)</div></div>
+      ${haTotal>0?`<div style="border-left:1px solid #F3F4F6;padding-left:12px;"><div style="font-size:22px;font-weight:700;color:#00695C;">${haTotal>=1000?(haTotal/1000).toFixed(1)+'k':haTotal.toFixed(0)}</div><div style="font-size:11px;color:#6B7280;">ha levés</div></div>`:''}
     </div>
     <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;min-height:90px;">
       ${parEtape.map(x=>{
         const h = Math.max(Math.round(x.n/maxN*80),3);
         const pct = aforTot>0?Math.round(x.n/aforTot*100):0;
+        const haStr = x.ha>0?(x.ha>=1000?(x.ha/1000).toFixed(1)+'k':x.ha.toFixed(0)):'';
         return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
           ${x.r>0?`<div style="font-size:9px;font-weight:700;color:#DC2626;">⚠${x.r}</div>`:`<div style="height:14px;"></div>`}
           <div style="font-size:11px;font-weight:700;color:${x.c.tx}">${x.n}</div>
           <div style="width:100%;height:${h}px;background:${x.c.brd};border-radius:3px 3px 0 0;"></div>
           <div style="font-size:10px;font-weight:700;padding:2px 4px;border-radius:3px;background:${x.c.bg};color:${x.c.tx}">${x.e}</div>
           <div style="font-size:9px;color:#9CA3AF;">${pct}%</div>
+          ${haStr?`<div style="font-size:9px;font-weight:700;color:#00695C;">${haStr} ha</div>`:''}
         </div>`;
       }).join('')}
     </div>
@@ -5148,21 +5167,26 @@ function dashRenderCardActivites(){  const _g=document.getElementById('dash-card
   const totM2 = saisies.reduce((s,x)=>s+(x.ndos||0),0);
   const aforTot = dossiersAFOR.length;
   const grand = totM2 + aforTot || 1;
+  const haGnssTotal = (gnssData&&gnssData.length) ? gnssData.reduce((s,g)=>s+g.superficie,0) : 0;
+  const haGnssCFI = (gnssData&&gnssData.length) ? dossiersAFOR.filter(d=>d.type==='CFI').reduce((s,d)=>{const g=gnssForDossier(d);return s+(g?g.superficie:0);},0) : 0;
+  const haGnssCFC = (gnssData&&gnssData.length) ? dossiersAFOR.filter(d=>d.type==='CFC').reduce((s,d)=>{const g=gnssForDossier(d);return s+(g?g.superficie:0);},0) : 0;
   const acts = [
-    {label:'ISF',     val:saisies.filter(s=>s.activite==='ISF').reduce((s,x)=>s+(x.ndos||0),0),    c:'#8B5CF6'},
-    {label:'DTV',     val:saisies.filter(s=>s.activite==='DTV').reduce((s,x)=>s+(x.ndos||0),0),    c:'#F97316'},
-    {label:'Contrat', val:saisies.filter(s=>s.activite==='CONTRAT').reduce((s,x)=>s+(x.ndos||0),0),c:'#3B82F6'},
-    {label:'CF — CFI',val:dossiersAFOR.filter(d=>d.type==='CFI').length, c:'#22C55E'},
-    {label:'CF — CFC',val:dossiersAFOR.filter(d=>d.type==='CFC').length, c:'#16A34A'},
+    {label:'ISF',     val:saisies.filter(s=>s.activite==='ISF').reduce((s,x)=>s+(x.ndos||0),0),    c:'#8B5CF6', ha:0},
+    {label:'DTV',     val:saisies.filter(s=>s.activite==='DTV').reduce((s,x)=>s+(x.ndos||0),0),    c:'#F97316', ha:0},
+    {label:'Contrat', val:saisies.filter(s=>s.activite==='CONTRAT').reduce((s,x)=>s+(x.ndos||0),0),c:'#3B82F6', ha:0},
+    {label:'CF — CFI',val:dossiersAFOR.filter(d=>d.type==='CFI').length, c:'#22C55E', ha:haGnssCFI},
+    {label:'CF — CFC',val:dossiersAFOR.filter(d=>d.type==='CFC').length, c:'#16A34A', ha:haGnssCFC},
   ];
   const rows = acts.map(a=>{
     const pct = Math.round(a.val/grand*100);
+    const haStr = a.ha>0?(a.ha>=1000?(a.ha/1000).toFixed(1)+'k ha':a.ha.toFixed(0)+' ha'):'—';
     return `<tr style="border-bottom:1px solid #F9FAFB;">
       <td style="padding:7px 6px 7px 0;font-size:12px;color:#374151;display:flex;align-items:center;gap:6px;">
         <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${a.c};flex-shrink:0;"></span>${a.label}
       </td>
       <td style="padding:7px 6px;text-align:right;font-weight:700;font-size:12px;">${a.val}</td>
       <td style="padding:7px 6px;text-align:right;font-size:11px;color:#6B7280;">${pct}%</td>
+      <td style="padding:7px 6px;text-align:right;font-size:11px;font-weight:600;color:${a.ha>0?'#00695C':'#D1D5DB'};">${haStr}</td>
       <td style="padding:7px 0 7px 8px;min-width:80px;"><div style="height:6px;background:#F3F4F6;border-radius:3px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${a.c};border-radius:3px;"></div></div></td>
     </tr>`;
   }).join('');
