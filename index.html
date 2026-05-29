@@ -1185,6 +1185,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     <option value="retard">En retard</option>
     <option value="ok">Dans les délais</option>
     <option value="leve">Levé GNSS</option>
+    <option value="sans_leve">CF sans levé GNSS</option>
     <option value="bornee">Borné</option>
     <option value="sans_dossier">Levé sans dossier CF</option>
   </select>
@@ -3246,6 +3247,7 @@ function dosRenderList(){
       if(fs==='retard'&&!r.retard) return false;
       if(fs==='ok'&&r.retard) return false;
       if(fs==='leve'&&!gnssI) return false;
+      if(fs==='sans_leve'&&(gnssI||d._src==='gnss'||d._src!=='afor')) return false;
       if(fs==='bornee'&&!(typeof gnssIsBorne==='function'&&gnssIsBorne(d))) return false;
       if(fs==='sans_dossier'&&d._src!=='gnss') return false;
     }
@@ -3282,7 +3284,7 @@ function dosRenderPage(){
     const dateEtape = d['date_'+d.etape]||'—';
     // Données GNSS
     const gnssInfo = d._src==='gnss' ? {leve:true, superficie:d._gnss?.superficie||0, nb_parcelles:1} : (typeof gnssForDossier==='function' ? gnssForDossier(d) : null);
-    const leve   = (gnssInfo || d._src==='gnss') ? '✓' : '—';
+    const leve   = (gnssInfo || d._src==='gnss') ? '✓' : (d._src==='afor' ? '<span style="font-size:10px;color:#DC2626;font-weight:600;">Non levé</span>' : '—');
     const bornee = d._src==='gnss' ? '—' : (typeof gnssIsBorne==='function' && gnssIsBorne(d)) ? '✓' : '—';
     const superf = gnssInfo ? gnssInfo.superficie.toFixed(2)+' ha' : '—';
     const statut = r.retard
