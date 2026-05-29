@@ -5,7 +5,9 @@
   <th>Code Parcelle</th>
   <th>Type</th>
   <th>Étape actuelle</th>
-  <th>Date étape</th>
+  <th>Levé</th>
+  <th>Borné</th>
+  <th>Superficie</th>
   <th>Statut</th>
   <th>Actions</th>
 </tr></thead><!DOCTYPE html>
@@ -499,6 +501,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
         <div id="dash-card-cf-etapes"  style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #E5E7EB;overflow:hidden;grid-column:1/-1;"></div>
         <div id="dash-card-cf-agents"  style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #E5E7EB;overflow:hidden;"></div>
         <div id="dash-card-cf-retards" style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #E5E7EB;overflow:hidden;"></div>
+        <div id="dash-card-gnss"      style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #B2DFDB;overflow:hidden;"></div>
       </div>
     </div>
 
@@ -1131,6 +1134,11 @@ tbody td{padding:9px 12px;vertical-align:middle;}
             Importer Excel
             <input type="file" id="dos-import-file" accept=".xlsx,.xls" style="display:none" onchange="dosImportExcel(this)">
           </label>
+          <label class="btn-s" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;" id="btn-gnss-import">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
+            <span id="gnss-btn-label">Opérateurs GNSS</span>
+            <input type="file" accept=".xlsx,.xls" style="display:none" onchange="gnssImportExcel(this)">
+          </label>
           <label class="btn-s" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:var(--blue-lt);color:var(--blue-txt);border-color:var(--blue);" title="Importer base AFOR (CF)" id="btn-afor-import">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
             <span id="afor-btn-label">Base AFOR</span>
@@ -1176,6 +1184,9 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     <option value="">Tous statuts</option>
     <option value="retard">En retard</option>
     <option value="ok">Dans les délais</option>
+    <option value="leve">Levé GNSS</option>
+    <option value="bornee">Borné</option>
+    <option value="sans_dossier">Levé sans dossier CF</option>
   </select>
 </div>
       <div class="tw">
@@ -3178,11 +3189,41 @@ function dosRenderList(){
   const ft = document.getElementById('dos-f-type')?.value||'';
   const fs = document.getElementById('dos-f-statut')?.value||'';
 
-  // Combiner dossiers manuels + AFOR
+  // ══ Combinaison dossiers + parcelles GNSS ══
+  // PASSE 1 : identifier les entrées GNSS matchées par un dossier AFOR ou manuel
+  const gnssMatchedSet = new Set(); // indices dans gnssData déjà liés à un dossier
+  const tousAfor = [...dossiers, ...(dossiersAFOR||[])];
+  tousAfor.forEach(d=>{
+    const info = typeof gnssForDossier==='function' ? gnssForDossier(d) : null;
+    if(info && info.entries) info.entries.forEach(e=>{
+      const idx = gnssData.indexOf(e);
+      if(idx>=0) gnssMatchedSet.add(idx);
+    });
+  });
+
+  // PASSE 2 : parcelles GNSS non liées à aucun dossier → lignes autonomes
+  const gnssSansAfor = (gnssData||[])
+    .map((g, idx)=>({ g, idx }))
+    .filter(({idx})=>!gnssMatchedSet.has(idx))
+    .map(({g, idx})=>({
+      id: g.n_demcge || ('GNSS-'+idx),
+      prenom: '',
+      nom: g.nom_demand||'',
+      nom_demandeur: g.nom_demand||'',
+      village: g.village||'',
+      sp: g.sp||'',
+      dept: g.dept||'',
+      code_parcelle: g.n_demcge||'',
+      type: '—', etape: '—',
+      _src: 'gnss',
+      _gnss: g
+    }));
+
   const _aforLen = dossiersAFOR ? dossiersAFOR.length : -1;
   const tous = [
     ...dossiers.map(d=>({...d, _src:'manuel'})),
-    ...(dossiersAFOR||[]).map(d=>({...d, _src:'afor'}))
+    ...(dossiersAFOR||[]).map(d=>({...d, _src:'afor'})),
+    ...gnssSansAfor
   ];
   // Debug: afficher le compte dans le subtitle
   const _sub = document.getElementById('dos-panel-list');
@@ -3201,8 +3242,12 @@ function dosRenderList(){
     if(ft && d.type!==ft) return false;
     if(fs){
       const r=aforCalcRetard(d);
+      const gnssI = typeof gnssForDossier==='function' ? gnssForDossier(d) : null;
       if(fs==='retard'&&!r.retard) return false;
       if(fs==='ok'&&r.retard) return false;
+      if(fs==='leve'&&!gnssI) return false;
+      if(fs==='bornee'&&!(typeof gnssIsBorne==='function'&&gnssIsBorne(d))) return false;
+      if(fs==='sans_dossier'&&d._src!=='gnss') return false;
     }
     return true;
   });
@@ -3231,15 +3276,22 @@ function dosRenderPage(){
   tbody.innerHTML = page.map(d=>{
     const r = aforCalcRetard(d);
     const c = ETAPES_CF_COLORS[d.etape]||{bg:'#F3F4F6',tx:'#374151'};
-    const nom = (d.prenom||'')+' '+(d.nom||d.nom_demandeur||'');
+    const nom = d._src==='gnss' ? (d.nom_demandeur||d.nom||'—') : (d.prenom||'')+' '+(d.nom||d.nom_demandeur||'');
     const dept = d.dept||'';
     const sp = d.sp||'';
     const dateEtape = d['date_'+d.etape]||'—';
+    // Données GNSS
+    const gnssInfo = d._src==='gnss' ? {leve:true, superficie:d._gnss?.superficie||0, nb_parcelles:1} : (typeof gnssForDossier==='function' ? gnssForDossier(d) : null);
+    const leve   = (gnssInfo || d._src==='gnss') ? '✓' : '—';
+    const bornee = d._src==='gnss' ? '—' : (typeof gnssIsBorne==='function' && gnssIsBorne(d)) ? '✓' : '—';
+    const superf = gnssInfo ? gnssInfo.superficie.toFixed(2)+' ha' : '—';
     const statut = r.retard
       ? `<span class="badge b-red">⚠ ${r.jours}j / ${r.seuil}j</span>`
       : `<span class="badge b-green">✓ OK</span>`;
     const src = d._src==='afor'
       ? '<span style="font-size:9px;padding:1px 4px;border-radius:3px;background:var(--blue-lt);color:var(--blue-txt);">AFOR</span>'
+      : d._src==='gnss'
+      ? '<span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#E0F2F1;color:#00695C;font-weight:700;">GNSS</span>'
       : '<span style="font-size:9px;padding:1px 4px;border-radius:3px;background:var(--surface2);color:var(--text3);">M</span>';
     const actions = d._src==='manuel'
       ? `<div style="display:flex;gap:4px;">
@@ -3258,6 +3310,9 @@ function dosRenderPage(){
         <div style="font-size:10px;color:var(--text3)">${ETAPES_CF_LABELS[d.etape]||''}</div>
       </td>
       <td style="font-size:11px;color:var(--text2)">${dateEtape}</td>
+      <td style="text-align:center;font-size:14px;font-weight:700;color:${leve==='✓'?'var(--accent)':'var(--text3)'}">${leve}</td>
+      <td style="text-align:center;font-size:14px;font-weight:700;color:${bornee==='✓'?'var(--accent)':'var(--text3)'}">${bornee}</td>
+      <td style="text-align:right;font-size:11px;font-weight:600;color:${gnssInfo?'#00695C':'var(--text3)'}">${superf}</td>
       <td>${statut}</td>
       <td>${actions}</td>
     </tr>`;
@@ -4882,6 +4937,7 @@ function dashRenderAll(){
   dashRenderCardDepts(); dashRenderCardActivites();
   dashRenderCardAgents(); dashRenderCardProgrammes();
   dashRenderCardCFEtapes(); dashRenderCardCFAgents(); dashRenderCardCFRetards();
+  dashRenderCardGNSS();
 }
 
 // ── Pie chart SVG ──
@@ -6769,6 +6825,252 @@ function dosShowPanel(id, btn){
   if(id==='afor-cf-agents') aforCFRenderAgents();
 }
 
+
+// ═══════════════════════════════════════════
+// MODULE GNSS — Parcelles levées / Superficie
+// ═══════════════════════════════════════════
+
+let gnssData = [];        // Parcelles levées (import GNSS)
+let gnssIndex = {};       // Index par N_DEMCGE (code parcelle)
+let gnssIndexFull = {};   // Index par nom+village+SP+dept
+let gnssIndexNomVil = {}; // Index par nom+village (fallback)
+
+// Normaliser une chaîne pour comparaison
+function gnssNorm(s){
+  if(!s) return '';
+  return s.toString().trim().toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^A-Z0-9]/g,' ').replace(/\s+/g,' ').trim();
+}
+
+// Clé de jointure principale : N_DEMCGE (code parcelle)
+function gnssKeyCode(code){ return gnssNorm(code); }
+
+// Clé secondaire : NOM_DEMAND + village + SP + département
+function gnssKeyFullName(nom, village, sp, dept){
+  return gnssNorm(nom)+'|'+gnssNorm(village)+'|'+gnssNorm(sp)+'|'+gnssNorm(dept);
+}
+
+// Clé minimale : NOM_DEMAND + village (fallback)
+function gnssKeyNomVillage(nom, village){
+  return gnssNorm(nom)+'|'+gnssNorm(village);
+}
+
+// ── Import fichier GNSS Excel ──
+function gnssImportExcel(input){
+  const file = input.files[0];
+  if(!file){ return; }
+  input.value='';
+  if(typeof XLSX === 'undefined'){ showToast('Bibliothèque Excel non chargée.'); return; }
+  showToast('Lecture du fichier GNSS...');
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false});
+      if(!rows.length){ showToast('Fichier vide.'); return; }
+
+      gnssData = [];
+      gnssIndex = {};           // index par code parcelle (N_DEMCGE)
+      gnssIndexFull = {};       // index par nom+village+sp+dept
+      gnssIndexNomVil = {};     // index par nom+village (fallback)
+      let nb=0, ignore=0;
+
+      rows.forEach(row=>{
+        const nom     = (row['NOM_DEMAND']||'').trim();
+        const village = (row['NOM_VILLAG']||'').trim();
+        const dept    = gnssNorm(row['NOM_DEPART']||'');
+        const sp      = (row['NOM_SSPREF']||'').trim();
+        const superf  = parseFloat(row['SUPERF'])||0;
+        const code    = (row['N_DEMCGE']||'').trim();
+        const num     = (row['NUM_DEMAND']||'').trim();
+
+        if(!nom || superf <= 0){ ignore++; return; }
+
+        const entry = {
+          nom_demand: nom, village, dept, sp,
+          superficie: superf, n_demcge: code, num_demand: num,
+          _matched: false  // sera marqué true si lié à un dossier AFOR
+        };
+        gnssData.push(entry);
+
+        // Index 1 : par N_DEMCGE (code parcelle)
+        if(code){
+          const k1 = gnssKeyCode(code);
+          if(!gnssIndex[k1]) gnssIndex[k1] = [];
+          gnssIndex[k1].push(entry);
+        }
+        // Index 2 : par nom+village+sp+dept
+        const k2 = gnssKeyFullName(nom, village, sp, dept);
+        if(!gnssIndexFull[k2]) gnssIndexFull[k2] = [];
+        gnssIndexFull[k2].push(entry);
+        // Index 3 : nom+village (fallback)
+        const k3 = gnssKeyNomVillage(nom, village);
+        if(!gnssIndexNomVil[k3]) gnssIndexNomVil[k3] = [];
+        gnssIndexNomVil[k3].push(entry);
+        nb++;
+      });
+
+      // Sauvegarder dans localStorage
+      try{
+        localStorage.setItem('presfor_gnss_data', JSON.stringify(gnssData));
+        localStorage.setItem('presfor_gnss_ts', new Date().toISOString());
+      }catch(ex){ console.warn('localStorage GNSS:', ex.message); }
+
+      gnssUpdateBtnLabel();
+      gnssRenderAll();
+      showToast(`GNSS chargé : ${nb} parcelles levées · ${gnssGetTotalHa().toFixed(1)} ha`);
+    }catch(err){ showToast('Erreur lecture : '+err.message); console.error(err); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── Trouver les données GNSS pour un dossier AFOR (jointure multi-critères) ──
+function gnssForDossier(dos){
+  if(!gnssData.length) return null;
+  const nom = gnssNorm((dos.prenom||'')+' '+(dos.nom||dos.nom_demandeur||''));
+  const village = gnssNorm(dos.village||'');
+  const sp      = gnssNorm(dos.sp||'');
+  const dept    = gnssNorm(dos.dept||'');
+  const code    = gnssNorm(dos.code_parcelle||'');
+  let entries = null;
+
+  // Critère 1 : N_DEMCGE = Code Parcelle (le plus précis)
+  if(code && gnssIndex[code] && gnssIndex[code].length){
+    entries = gnssIndex[code];
+  }
+  // Critère 2 : NOM_DEMAND + village + SP + département
+  if(!entries){
+    const k2 = nom+'|'+village+'|'+sp+'|'+dept;
+    if(gnssIndexFull[k2] && gnssIndexFull[k2].length)
+      entries = gnssIndexFull[k2];
+  }
+  // Critère 3 : NOM_DEMAND + village (fallback)
+  if(!entries && nom && village){
+    const k3 = nom+'|'+village;
+    if(gnssIndexNomVil[k3] && gnssIndexNomVil[k3].length)
+      entries = gnssIndexNomVil[k3];
+  }
+  if(!entries || !entries.length) return null;
+
+  // Marquer les entrées comme matchées
+  entries.forEach(e=>{ e._matched = true; });
+  return {
+    leve: true,
+    superficie: entries.reduce((s,e)=>s+e.superficie, 0),
+    nb_parcelles: entries.length,
+    entries,
+  };
+}
+
+// ── Déterminer si un dossier est "borné" ──
+// Borné = levé GNSS + étape CL atteinte dans AFOR
+function gnssIsBorne(dos){
+  const etapesAvancees = ['CL','OV','CP','AP','VA'];
+  return gnssForDossier(dos) !== null && etapesAvancees.includes(dos.etape);
+}
+
+// ── Total superficie levée ──
+function gnssGetTotalHa(){
+  return gnssData.reduce((s,e)=>s+e.superficie, 0);
+}
+
+// ── Stats pour le dashboard ──
+function gnssGetStats(){
+  const totalLeve = dossiersAFOR.filter(d=>gnssForDossier(d)!==null).length;
+  const totalBorne = dossiersAFOR.filter(d=>gnssIsBorne(d)).length;
+  const totalHa = dossiersAFOR.reduce((s,d)=>{
+    const g=gnssForDossier(d); return s+(g?g.superficie:0);
+  }, 0);
+  const totalHaGnss = gnssGetTotalHa();
+  return { totalLeve, totalBorne, totalHa, totalHaGnss, totalParcelles: gnssData.length };
+}
+
+// ── Rafraîchir tout après import GNSS ──
+function gnssRenderAll(){
+  gnssUpdateBtnLabel();
+  dashRenderCardGNSS();
+  // Rafraîchir la liste dossiers si visible
+  if(document.getElementById('dos-panel-list')?.classList.contains('active')){
+    dosRenderAll();
+  }
+}
+
+// ── Label bouton GNSS ──
+function gnssUpdateBtnLabel(){
+  const lbl = document.getElementById('gnss-btn-label');
+  if(!lbl) return;
+  const ts = localStorage.getItem('presfor_gnss_ts');
+  if(gnssData.length > 0 && ts){
+    const d = new Date(ts);
+    const jj = d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});
+    const hh = d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    lbl.textContent = `GNSS · ${gnssData.length.toLocaleString('fr-FR')} · ${jj} ${hh}`;
+    lbl.parentElement.style.background='var(--teal-lt,#E0F2F1)';
+    lbl.parentElement.style.color='var(--teal,#00695C)';
+    lbl.parentElement.style.borderColor='var(--teal,#00695C)';
+  } else {
+    lbl.textContent = 'Opérateurs GNSS';
+    lbl.parentElement.style.background='';
+    lbl.parentElement.style.color='';
+    lbl.parentElement.style.borderColor='';
+  }
+}
+
+// ── Card GNSS dans le dashboard ──
+function dashRenderCardGNSS(){
+  const el = document.getElementById('dash-card-gnss');
+  if(!el) return;
+  if(!gnssData.length){
+    el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #F3F4F6;">
+      <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;">Parcelles levées · Opérateurs GNSS</span>
+      <label style="cursor:pointer;background:#E0F2F1;border:1px solid #00695C;color:#00695C;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;">
+        ↑ Importer GNSS<input type="file" accept=".xlsx,.xls" style="display:none" onchange="gnssImportExcel(this)">
+      </label>
+    </div>
+    <div style="padding:20px;text-align:center;color:#9CA3AF;font-size:12px;">Importez le fichier des opérateurs GNSS pour afficher les données</div>`;
+    return;
+  }
+  const st = gnssGetStats();
+  const pctLeve  = dossiersAFOR.length>0 ? Math.round(st.totalLeve/dossiersAFOR.length*100) : 0;
+  const pctBorne = dossiersAFOR.length>0 ? Math.round(st.totalBorne/dossiersAFOR.length*100) : 0;
+  // Par département
+  const depts = ['BLOLEQUIN','GUIGLO','TAI','TOULEPLEU'];
+  const deptsLabels = {'BLOLEQUIN':'Bloléquin','GUIGLO':'Guiglo','TAI':'Taï','TOULEPLEU':'Toulépleu'};
+  const byDept = depts.map(d=>{
+    const parcelles = gnssData.filter(g=>gnssNorm(g.dept)===d).length;
+    const ha = gnssData.filter(g=>gnssNorm(g.dept)===d).reduce((s,g)=>s+g.superficie,0);
+    return {d: deptsLabels[d]||d, parcelles, ha};
+  });
+  el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #F3F4F6;">
+    <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:#00695C;">Parcelles levées · Opérateurs GNSS</span>
+    <label style="cursor:pointer;background:#E0F2F1;border:1px solid #00695C;color:#00695C;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;">
+      ↑ Mettre à jour<input type="file" accept=".xlsx,.xls" style="display:none" onchange="gnssImportExcel(this)">
+    </label>
+  </div>
+  <div style="padding:12px 16px 10px;">
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;">
+      <div style="text-align:center;"><div style="font-size:20px;font-weight:700;color:#00695C">${st.totalParcelles.toLocaleString('fr-FR')}</div><div style="font-size:10px;color:#6B7280">Parcelles levées</div></div>
+      <div style="border-left:1px solid #F3F4F6;padding-left:16px;text-align:center;"><div style="font-size:20px;font-weight:700;color:#00695C">${st.totalHaGnss.toFixed(0)} ha</div><div style="font-size:10px;color:#6B7280">Superficie totale</div></div>
+      <div style="border-left:1px solid #F3F4F6;padding-left:16px;text-align:center;"><div style="font-size:20px;font-weight:700;color:#0369A1">${st.totalLeve}</div><div style="font-size:10px;color:#6B7280">CF levés (${pctLeve}%)</div></div>
+      <div style="border-left:1px solid #F3F4F6;padding-left:16px;text-align:center;"><div style="font-size:20px;font-weight:700;color:#16A34A">${st.totalBorne}</div><div style="font-size:10px;color:#6B7280">CF bornés (${pctBorne}%)</div></div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr style="border-bottom:1px solid #F3F4F6;">
+        <th style="text-align:left;padding:5px 0;font-size:10px;font-weight:600;color:#6B7280">Département</th>
+        <th style="text-align:right;padding:5px 6px;font-size:10px;font-weight:600;color:#00695C">Parcelles</th>
+        <th style="text-align:right;padding:5px 0;font-size:10px;font-weight:600;color:#00695C">Ha levés</th>
+      </tr></thead>
+      <tbody>${byDept.map(r=>`<tr style="border-bottom:1px solid #F9FAFB;">
+        <td style="padding:5px 0;font-size:12px">${r.d}</td>
+        <td style="padding:5px 6px;text-align:right;font-weight:600">${r.parcelles}</td>
+        <td style="padding:5px 0;text-align:right;font-weight:600;color:#00695C">${r.ha.toFixed(1)}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div>`;
+}
+
 // ═══════════════════════════════════════════
 // INIT GLOBAL
 // ═══════════════════════════════════════════
@@ -7235,6 +7537,25 @@ serverLoad().then(ok => {
       }
     }
   }catch(e){ console.warn('Restauration AFOR:', e.message); }
+  // Restaurer GNSS depuis localStorage
+  try{
+    const gnss_saved = localStorage.getItem('presfor_gnss_data');
+    if(gnss_saved){
+      const parsed = JSON.parse(gnss_saved);
+      if(Array.isArray(parsed) && parsed.length > 0){
+        gnssData = parsed;
+        gnssIndex = {}; gnssIndexFull = {}; gnssIndexNomVil = {};
+        gnssData.forEach(g=>{
+          if(g.n_demcge){ const k=gnssKeyCode(g.n_demcge); if(!gnssIndex[k]) gnssIndex[k]=[]; gnssIndex[k].push(g); }
+          const k2=gnssKeyFullName(g.nom_demand,g.village||'',g.sp||'',g.dept||''); if(!gnssIndexFull[k2]) gnssIndexFull[k2]=[]; gnssIndexFull[k2].push(g);
+          const k3=gnssKeyNomVillage(g.nom_demand,g.village||''); if(!gnssIndexNomVil[k3]) gnssIndexNomVil[k3]=[]; gnssIndexNomVil[k3].push(g);
+        });
+        console.log('GNSS restauré:', gnssData.length, 'parcelles');
+        gnssUpdateBtnLabel();
+        dashRenderCardGNSS();
+      }
+    }
+  }catch(ex){ console.warn('Restauration GNSS:', ex.message); }
   authInit();
 });
 
