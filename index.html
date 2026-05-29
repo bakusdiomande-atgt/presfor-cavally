@@ -6582,9 +6582,14 @@ function aforImportExcel(input){
       const msg = `Base AFOR actualisée : ${nbNouveaux} nouveaux · ${nbMaj} mis à jour · ${nbInchanges} inchangés · ${conserves.length} conservés`;
       // ── Persister dans localStorage ──
       try{
-        localStorage.setItem('presfor_afor_data', JSON.stringify(dossiersAFOR));
+        const aforJson = JSON.stringify(dossiersAFOR);
+        localStorage.setItem('presfor_afor_data', aforJson);
         localStorage.setItem('presfor_afor_ts', new Date().toISOString());
-      }catch(e){ console.warn('localStorage AFOR:', e.message); }
+        console.log('AFOR sauvegardé:', dossiersAFOR.length, 'dossiers,', Math.round(aforJson.length/1024), 'ko');
+      }catch(e){
+        console.warn('localStorage AFOR plein ou erreur:', e.message);
+        showToast('⚠ Impossible de sauvegarder AFOR localement: '+e.message);
+      }
       showToast(msg);
       aforRenderAll();
       if(document.getElementById('dos-panel-list') &&
@@ -6949,11 +6954,16 @@ function gnssImportExcel(input){
         nb++;
       });
 
-      // Sauvegarder dans localStorage
+      // ── Sauvegarder dans localStorage ──
       try{
-        localStorage.setItem('presfor_gnss_data', JSON.stringify(gnssData));
+        const gnssJson = JSON.stringify(gnssData);
+        localStorage.setItem('presfor_gnss_data', gnssJson);
         localStorage.setItem('presfor_gnss_ts', new Date().toISOString());
-      }catch(ex){ console.warn('localStorage GNSS:', ex.message); }
+        console.log('GNSS sauvegardé:', gnssData.length, 'parcelles,', Math.round(gnssJson.length/1024), 'ko');
+      }catch(ex){
+        console.warn('localStorage GNSS plein ou erreur:', ex.message);
+        showToast('⚠ Impossible de sauvegarder GNSS localement: '+ex.message);
+      }
 
       gnssUpdateBtnLabel();
       gnssRenderAll();
@@ -7560,39 +7570,54 @@ serverLoad().then(ok => {
   } else {
     if(getOfflineSnapshot()){ flushOfflineQueue(); }
   }
-  // Restaurer la base AFOR depuis localStorage (survie aux reconnexions)
-  try{
-    const afor_saved = localStorage.getItem('presfor_afor_data');
-    const afor_ts    = localStorage.getItem('presfor_afor_ts');
-    if(afor_saved){
-      const parsed = JSON.parse(afor_saved);
+  // ══ Restauration persistance locale (AFOR + GNSS) ══
+  function _restoreFromStorage(key, label, onSuccess){
+    try{
+      const raw = localStorage.getItem(key);
+      if(!raw) return;
+      const parsed = JSON.parse(raw);
       if(Array.isArray(parsed) && parsed.length > 0){
-        dossiersAFOR = parsed;
-        const d = afor_ts ? new Date(afor_ts).toLocaleDateString('fr-FR') : '?';
-        console.log(`Base AFOR restaurée: ${dossiersAFOR.length} dossiers (import du ${d})`);
-        aforRenderAll();
+        onSuccess(parsed);
+        console.log(`${label} restauré: ${parsed.length} entrées`);
       }
+    } catch(e){
+      console.warn(`Restauration ${label} échouée:`, e.message);
+      localStorage.removeItem(key); // supprimer les données corrompues
     }
-  }catch(e){ console.warn('Restauration AFOR:', e.message); }
-  // Restaurer GNSS depuis localStorage
-  try{
-    const gnss_saved = localStorage.getItem('presfor_gnss_data');
-    if(gnss_saved){
-      const parsed = JSON.parse(gnss_saved);
-      if(Array.isArray(parsed) && parsed.length > 0){
-        gnssData = parsed;
-        gnssIndex = {}; gnssIndexFull = {}; gnssIndexNomVil = {};
-        gnssData.forEach(g=>{
-          if(g.n_demcge){ const k=gnssKeyCode(g.n_demcge); if(!gnssIndex[k]) gnssIndex[k]=[]; gnssIndex[k].push(g); }
-          const k2=gnssKeyFullName(g.nom_demand,g.village||'',g.sp||'',g.dept||''); if(!gnssIndexFull[k2]) gnssIndexFull[k2]=[]; gnssIndexFull[k2].push(g);
-          const k3=gnssKeyNomVillage(g.nom_demand,g.village||''); if(!gnssIndexNomVil[k3]) gnssIndexNomVil[k3]=[]; gnssIndexNomVil[k3].push(g);
-        });
-        console.log('GNSS restauré:', gnssData.length, 'parcelles');
-        gnssUpdateBtnLabel();
-        dashRenderCardGNSS();
+  }
+
+  // Restaurer AFOR
+  _restoreFromStorage('presfor_afor_data', 'AFOR', function(parsed){
+    dossiersAFOR = parsed;
+    aforRenderAll();
+  });
+
+  // Restaurer GNSS
+  _restoreFromStorage('presfor_gnss_data', 'GNSS', function(parsed){
+    gnssData = parsed;
+    // Reconstruire les 3 index
+    gnssIndex = {}; gnssIndexFull = {}; gnssIndexNomVil = {};
+    gnssData.forEach(function(g){
+      if(g.n_demcge){
+        var k1 = gnssNorm(g.n_demcge);
+        if(!gnssIndex[k1]) gnssIndex[k1] = [];
+        gnssIndex[k1].push(g);
       }
-    }
-  }catch(ex){ console.warn('Restauration GNSS:', ex.message); }
+      var nom = gnssNorm(g.nom_demand||'');
+      var vil = gnssNorm(g.village||'');
+      var sp  = gnssNorm(g.sp||'');
+      var dep = gnssNorm(g.dept||'');
+      var k2 = nom+'|'+vil+'|'+sp+'|'+dep;
+      if(!gnssIndexFull[k2]) gnssIndexFull[k2] = [];
+      gnssIndexFull[k2].push(g);
+      var k3 = nom+'|'+vil;
+      if(!gnssIndexNomVil[k3]) gnssIndexNomVil[k3] = [];
+      gnssIndexNomVil[k3].push(g);
+    });
+    gnssUpdateBtnLabel();
+    dashRenderCardGNSS();
+  });
+
   authInit();
 });
 
