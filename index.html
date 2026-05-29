@@ -3233,7 +3233,26 @@ function dosRenderList(){
     if(_h2) _h2.textContent = `Suivi CF — ${dossiers.length} manuels · ${_aforLen} AFOR · ${tous.length} total`;
   }
 
-  const liste = tous.filter(d=>{
+  // ── Déduplication de la liste combinée ──
+  const _dedupKey = d => {
+    const n = s => (s||'').toString().trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,' ').replace(/\s+/g,' ').trim();
+    const nom = n((d.prenom||'')+' '+(d.nom||d.nom_demandeur||''));
+    return nom+'|'+n(d.village||'')+'|'+n(d.sp||'')+'|'+(d.type||'')+'|'+(d._src||'');
+  };
+  const _etapeRk = {DD:0,RDC:1,CL:2,OV:3,CP:4,AP:5,VA:6};
+  const _seen = {};
+  const tousDedupliques = tous.filter(d=>{
+    if(d._src==='gnss') return true; // parcelles GNSS sans dossier : pas de dédup
+    const key = _dedupKey(d);
+    const ex = _seen[key];
+    if(!ex){ _seen[key]=d; return true; }
+    const rkNew = _etapeRk[d.etape]||0;
+    const rkEx  = _etapeRk[ex.etape]||0;
+    if(rkNew > rkEx){ _seen[key]=d; return false; } // remplacer l'ancien par le nouveau
+    return false; // garder l'existant, ignorer le doublon
+  });
+
+  const liste = tousDedupliques.filter(d=>{
     const nomComplet = (d.prenom||'')+' '+(d.nom||d.nom_demandeur||'');
     if(q && !((d.id||'').toLowerCase().includes(q)) && !nomComplet.toLowerCase().includes(q) && !((d.village||'').toLowerCase().includes(q))) return false;
     const dept = (d.dept||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -6631,7 +6650,35 @@ function aforImportExcel(input){
           agents.map(a=>`<option value="${a}">${a}</option>`).join('');
       }
 
-      const msg = `Base AFOR actualisée : ${nbNouveaux} nouveaux · ${nbMaj} mis à jour · ${nbInchanges} inchangés · ${conserves.length} conservés`;
+      // ══ DÉDUPLICATION : éliminer les doublons dans dossiersAFOR ══
+      // Clé : prénom+nom+village+SP+type (même personne, même parcelle, même CF)
+      const normD = s => (s||'').toString().trim().toUpperCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .replace(/[^A-Z0-9]/g,' ').replace(/\s+/g,' ').trim();
+      const etapeRank = {DD:0,RDC:1,CL:2,OV:3,CP:4,AP:5,VA:6};
+      const dedupMap = {};
+      let nbDoublons = 0;
+      dossiersAFOR.forEach(d=>{
+        const key = normD(d.prenom)+'|'+normD(d.nom||d.nom_demandeur)+'|'+normD(d.village)+'|'+normD(d.sp)+'|'+(d.type||'');
+        const existing = dedupMap[key];
+        if(!existing){
+          dedupMap[key] = d;
+        } else {
+          nbDoublons++;
+          const rankNew = etapeRank[d.etape]||0;
+          const rankEx  = etapeRank[existing.etape]||0;
+          if(rankNew > rankEx){
+            dedupMap[key] = d; // garder l'étape la plus avancée
+          } else if(rankNew === rankEx){
+            // Même étape : garder le N° dossier le plus récent (plus grand)
+            if((d.id||'') > (existing.id||'')) dedupMap[key] = d;
+          }
+          // sinon garder l'existant
+        }
+      });
+      dossiersAFOR = Object.values(dedupMap);
+
+      const msg = `Base AFOR actualisée : ${nbNouveaux} nouveaux · ${nbMaj} mis à jour · ${nbInchanges} inchangés · ${conserves.length} conservés · ${nbDoublons} doublons supprimés`;
       // ── Persister dans localStorage ──
       try{
         const aforJson = JSON.stringify(dossiersAFOR);
