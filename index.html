@@ -3544,7 +3544,50 @@ function dosResetForm(){
   document.getElementById('dos-val-sum').classList.remove('show');
   document.getElementById('dos-suc').classList.remove('show');
 }
-function dosExportCSV(){const h='ref_officiel,date_ouverture,agent,dept,village,demandeur,superficie,type_parcelle,etape,etape_date,obs';const l=dossiers.map(d=>[d.ref_officiel,d.date_ouverture,d.agent,d.dept,d.village,d.demandeur,d.superficie,d.type_parcelle,d.etape,d.etape_date||'',d.obs||''].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','));const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent([h,...l].join('\n'));a.download='presfor_dossiers.csv';a.click();showToast('Export CSV !');}
+function dosExportCSV(){
+  // Exporter la liste filtrée active (dossiers manuels + AFOR + GNSS sans dossier)
+  const data = dosListFiltered && dosListFiltered.length ? dosListFiltered : [
+    ...dossiers.map(d=>({...d,_src:'manuel'})),
+    ...(dossiersAFOR||[]).map(d=>({...d,_src:'afor'}))
+  ];
+  if(!data.length){ showToast('Aucune donnée à exporter.'); return; }
+
+  const entete = ['Source','N° Dossier','Prénom','Nom','Région','Département',
+    'Sous-Préfecture','Village','Code Parcelle','Agent CE','Type CF',
+    'Étape','Date étape','Levé GNSS','Borné','Superficie (ha)','Statut retard','Jours retard'];
+
+  const rows = data.map(d=>{
+    const nom      = d._src==='gnss' ? (d.nom_demandeur||d.nom||'') : ((d.prenom||'')+' '+(d.nom||d.nom_demandeur||'')).trim();
+    const prenom   = d._src==='gnss' ? '' : (d.prenom||'');
+    const nomFam   = d._src==='gnss' ? (d.nom_demandeur||d.nom||'') : (d.nom||d.nom_demandeur||'');
+    const dateEtape= d['date_'+d.etape]||'';
+    const gnssInfo = d._src==='gnss'
+      ? {leve:true, superficie:d._gnss?.superficie||0}
+      : (typeof gnssForDossier==='function' ? gnssForDossier(d) : null);
+    const leve     = gnssInfo ? 'Oui' : (d._src==='afor'?'Non':'');
+    const bornee   = (typeof gnssIsBorne==='function' && gnssIsBorne(d)) ? 'Oui' : (d._src==='afor'?'Non':'');
+    const superf   = gnssInfo ? gnssInfo.superficie.toFixed(2) : '';
+    const retard   = typeof aforCalcRetard==='function' ? aforCalcRetard(d) : {retard:false,jours:''};
+    const statut   = d._src==='gnss' ? 'Levé sans dossier' : (retard.retard ? 'En retard' : 'OK');
+    return [
+      d._src==='afor'?'AFOR':d._src==='gnss'?'GNSS':'Manuel',
+      d.id||'', prenom, nomFam,
+      d.region||'CAVALLY', d.dept||'', d.sp||'', d.village||'',
+      d.code_parcelle||'', d.agent||'', d.type||'',
+      d.etape||'', dateEtape, leve, bornee, superf,
+      statut, retard.jours||''
+    ];
+  });
+
+  const csv = [entete, ...rows]
+    .map(r=>r.map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(','))
+    .join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
+  a.download = 'presfor_dossiers_CF_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  showToast('Export CSV : ' + data.length + ' lignes');
+}
 function progImportExcel(input){
   const file=input.files[0];
   if(!file)return;
@@ -6847,11 +6890,16 @@ function aforCFRenderAgents(){
 }
 
 function aforCFExportCSV(){
-  const data = aforCFFiltered.length ? aforCFFiltered : dossiersAFOR;
-  const rows = [['N° Dossier','Prénom','Nom','Village','SP','Département','Agent CE','Type','Étape','Retard (j)','Seuil (j)','Statut']];
+  const data = (aforCFFiltered && aforCFFiltered.length) ? aforCFFiltered : (dossiersAFOR||[]);
+  if(!data.length){ showToast('Aucune donnée AFOR à exporter.'); return; }
+  const rows = [['N° Dossier','Prénom','Nom','Village','SP','Département','Agent CE','Type','Étape','Levé','Borné','Superficie (ha)','Retard (j)','Seuil (j)','Statut']];
   data.forEach(d=>{
     const r = aforCalcRetard(d);
-    rows.push([d.id,d.prenom,d.nom_demandeur,d.village,d.sp,d.dept,d.agent,d.type,d.etape,r.jours||'',r.seuil||'',r.retard?'En retard':'OK']);
+    const g = typeof gnssForDossier==='function' ? gnssForDossier(d) : null;
+    rows.push([d.id,d.prenom||'',d.nom_demandeur||'',d.village,d.sp,d.dept,d.agent,d.type,d.etape,
+      g?'Oui':'Non', (typeof gnssIsBorne==='function'&&gnssIsBorne(d))?'Oui':'Non',
+      g?g.superficie.toFixed(2):'',
+      r.jours||'',r.seuil||'',r.retard?'En retard':'OK']);
   });
   const csv = rows.map(r=>r.map(v=>`"${v||''}"`).join(',')).join('\n');
   const a=document.createElement('a');
