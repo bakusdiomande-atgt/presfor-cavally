@@ -302,10 +302,18 @@ tbody td{padding:9px 12px;vertical-align:middle;}
           <input class="fi" id="adm-id" placeholder="Ex : nguetta" style="font-size:12px;">
         </div>
         <div class="ff">
-          <label class="fl">Nom complet <span class="req">*</span></label>
+          <label class="fl">Nom complet <span class="req">*</span>
+            <span style="margin-left:8px;">
+              <label style="font-size:10px;font-weight:500;cursor:pointer;">
+                <input type="checkbox" id="adm-externe" onchange="adminToggleExterne()" style="margin-right:3px;">
+                Utilisateur externe
+              </label>
+            </span>
+          </label>
           <select class="fsel" id="adm-nom" style="font-size:12px;">
             <option value="">-- Sélectionner un agent --</option>
           </select>
+          <input class="fi" id="adm-nom-libre" placeholder="Nom et prénom" style="font-size:12px;display:none;">
         </div>
         <div class="ff">
           <label class="fl">Rôle <span class="req">*</span></label>
@@ -7744,15 +7752,29 @@ async function saveUsersToDB(){
     throw e;
   }
 }
+async function adminToggleExterne(){
+  const ext = document.getElementById('adm-externe').checked;
+  document.getElementById('adm-nom').style.display     = ext ? 'none' : '';
+  document.getElementById('adm-nom-libre').style.display = ext ? '' : 'none';
+  // Mettre à jour le rôle par défaut pour les externes
+  const roleSelect = document.getElementById('adm-role');
+  if(roleSelect && ext){
+    roleSelect.value = 'ce'; // Rôle visuel par défaut pour les externes
+  }
+}
+
 async function adminCreateUser(){
   const id = (document.getElementById('adm-id').value||'').trim().toLowerCase();
-  const nom = document.getElementById('adm-nom').value;
+  const ext = document.getElementById('adm-externe')?.checked;
+  const nom = ext
+    ? (document.getElementById('adm-nom-libre')?.value||'').trim()
+    : document.getElementById('adm-nom').value;
   const pwd = document.getElementById('adm-pwd').value;
   const msg = document.getElementById('adm-msg');
   const btn = document.getElementById('adm-create-btn');
   msg.style.display='none';
   if(!id){ showToast('Identifiant requis.'); return; }
-  if(!nom){ showToast('Sélectionnez un nom.'); return; }
+  if(!nom){ showToast(ext ? 'Saisissez le nom complet.' : 'Sélectionnez un nom.'); return; }
   if(!pwd||pwd.length<6){ showToast('Mot de passe : 6 caractères minimum.'); return; }
   if(users_db[id]){ showToast('Identifiant "'+id+'" déjà utilisé.'); return; }
   btn.textContent='Création...'; btn.disabled=true;
