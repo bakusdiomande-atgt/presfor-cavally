@@ -7365,7 +7365,7 @@ async function hashPassword(pwd){
 // ── Écrire un utilisateur directement dans Firebase via PATCH ──
 async function authWriteUser(id, userData){
   const patch = {};
-  patch['users_db/' + id] = userData;
+  patch['users_db/' + fbKey(id)] = userData; // fbKey encode les points
   const r = await fetch(FIREBASE_URL + '/presfor.json', {
     method: 'PATCH',
     headers: {'Content-Type': 'application/json'},
@@ -7585,7 +7585,9 @@ function adminLoadUsers(){
     const isMe = u.id === currentUser.id;
     const roleB = u.role==='admin'?'<span class="badge b-amber">Admin</span>':u.role==='ce'?'<span class="badge b-green">CE — Visuel</span>':u.role==='gnss'?'<span class="badge b-green">GNSS — Visuel</span>':'<span class="badge b-blue">Agent</span>';
     const created = u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—';
-    const last = u.last_login ? new Date(u.last_login).toLocaleDateString('fr-FR') : 'Jamais';
+    const last = u.last_login
+      ? new Date(u.last_login).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
+      : 'Jamais';
     resetSel.innerHTML += `<option value="${u.id}">${u.id} — ${(u.nom||'').split('—')[0].trim()}</option>`;
     return `<tr style="border-bottom:1px solid var(--border);">
       <td style="padding:8px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent)">${u.id}</td>
@@ -7702,7 +7704,7 @@ async function adminCreateUser(){
 async function adminDeleteUser(id){
   if(!confirm('Supprimer le compte "'+id+'" ?')) return;
   try{
-    const patch = {}; patch['users_db/'+id] = null;
+    const patch = {}; patch['users_db/'+fbKey(id)] = null;
     await fetch(FIREBASE_URL+'/presfor.json', {
       method:'PATCH', headers:{'Content-Type':'application/json'},
       body:JSON.stringify(patch), signal:AbortSignal.timeout(10000)
@@ -7720,7 +7722,7 @@ async function adminResetPwd(){
   if(pwd.length<6){ showToast('Mot de passe : 6 caractères minimum.'); return; }
   try{
     const hash = await hashPassword(pwd);
-    const patch = {}; patch['users_db/'+id+'/password_hash'] = hash;
+    const patch = {}; patch['users_db/'+fbKey(id)+'/password_hash'] = hash;
     const r = await fetch(FIREBASE_URL+'/presfor.json', {
       method:'PATCH', headers:{'Content-Type':'application/json'},
       body:JSON.stringify(patch), signal:AbortSignal.timeout(10000)
