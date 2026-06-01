@@ -6703,16 +6703,15 @@ function aforImportExcel(input){
       const nbDoublons = aforDeduplicate();
 
       const msg = `Base AFOR actualisée : ${nbNouveaux} nouveaux · ${nbMaj} mis à jour · ${nbInchanges} inchangés · ${conserves.length} conservés · ${nbDoublons} doublons supprimés`;
-      // ── Persister dans localStorage ──
+      // ── Persister localement ET dans Firebase ──
       try{
         const aforJson = JSON.stringify(dossiersAFOR);
         localStorage.setItem('presfor_afor_data', aforJson);
         localStorage.setItem('presfor_afor_ts', new Date().toISOString());
-        console.log('AFOR sauvegardé:', dossiersAFOR.length, 'dossiers,', Math.round(aforJson.length/1024), 'ko');
-      }catch(e){
-        console.warn('localStorage AFOR plein ou erreur:', e.message);
-        showToast('⚠ Impossible de sauvegarder AFOR localement: '+e.message);
-      }
+        console.log('AFOR sauvegardé local:', dossiersAFOR.length, 'dossiers,', Math.round(aforJson.length/1024), 'ko');
+      }catch(e){ console.warn('localStorage AFOR:', e.message); }
+      // Sauvegarde Firebase en arrière-plan (partagé avec tous les comptes)
+      aforSaveToFirebase().catch(e=>console.warn('AFOR Firebase save:', e.message));
       showToast(msg);
       aforRenderAll();
       if(document.getElementById('dos-panel-list') &&
@@ -7327,6 +7326,48 @@ function applyViewerRestrictions(){
   });
 }
 
+
+// ── Persistance Firebase pour dossiersAFOR (partagé tous comptes) ──
+async function aforSaveToFirebase(){
+  const ts = new Date().toISOString();
+  const payload = { data: dossiersAFOR, ts, count: dossiersAFOR.length };
+  const r = await fetch(FIREBASE_URL + '/presfor/afor_cf.json', {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(30000)
+  });
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  console.log('AFOR sauvegardé Firebase:', dossiersAFOR.length, 'dossiers');
+  showToast('Base AFOR synchronisée ✓ (' + dossiersAFOR.length.toLocaleString('fr-FR') + ' dossiers)');
+}
+
+async function aforLoadFromFirebase(){
+  try{
+    const r = await fetch(FIREBASE_URL + '/presfor/afor_cf.json', {
+      signal: AbortSignal.timeout(15000)
+    });
+    if(!r.ok) return false;
+    const d = await r.json();
+    if(!d || !Array.isArray(d.data) || !d.data.length) return false;
+    // Comparer avec données locales : prendre les plus récentes
+    const localTs  = localStorage.getItem('presfor_afor_ts') || '1970-01-01';
+    const remoteTs = d.ts || '1970-01-01';
+    if(remoteTs > localTs || dossiersAFOR.length === 0){
+      dossiersAFOR = d.data;
+      const nb = aforDeduplicate();
+      // Sauvegarder localement
+      try{
+        localStorage.setItem('presfor_afor_data', JSON.stringify(dossiersAFOR));
+        localStorage.setItem('presfor_afor_ts', d.ts);
+      }catch(e){}
+      console.log('AFOR chargé Firebase:', dossiersAFOR.length, 'dossiers ('+nb+' doublons supprimés)');
+      return true;
+    }
+    return false;
+  }catch(e){ console.warn('aforLoadFromFirebase:', e.message); return false; }
+}
+
 // ═══════════════════════════════════════════
 // INIT GLOBAL
 // ═══════════════════════════════════════════
@@ -7780,7 +7821,14 @@ serverLoad().then(ok => {
   }
   // Les données AFOR et GNSS sont déjà restaurées synchronement au chargement
   // Ici on met juste à jour l'UI (boutons, cards dashboard)
-  if(dossiersAFOR.length > 0) aforRenderAll();
+  // Charger AFOR depuis Firebase si pas en localStorage (autres comptes/appareils)
+  if(dossiersAFOR.length === 0){
+    aforLoadFromFirebase().then(loaded=>{
+      if(loaded){ aforRenderAll(); dosRenderAll(); }
+    });
+  } else {
+    aforRenderAll();
+  }
   if(gnssData.length > 0){ gnssUpdateBtnLabel(); dashRenderCardGNSS(); }
   authInit();
 });
