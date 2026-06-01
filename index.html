@@ -1882,7 +1882,7 @@ function switchModule(id){
   // Rafraîchir le module activé
   if(id==='saisie'){try{saisieRenderAll();}catch(e){console.error('saisie render:',e);}}
   if(id==='prog'){try{progRenderAll();}catch(e){console.error('prog render:',e);}}
-  if(id==='dossier'){try{dosRenderAll();}catch(e){console.error('dos render:',e);}}
+  if(id==='dossier'){try{dosShowPanel('list');dosRenderAll();}catch(e){console.error('dos render:',e);}}
   if(id==='agents'){try{agRenderAll();}catch(e){console.error('agents render:',e);}}
   if(id==='accueil'){try{dashRenderAll();}catch(e){console.error('dash render:',e);}}
   if(id==='zones'){try{zvRenderAll();}catch(e){console.error('zones render:',e);}}
@@ -7308,13 +7308,15 @@ function applyViewerRestrictions(){
   // Masquer les nav-items d'action (Nouveau, Réinitialiser)
   document.querySelectorAll('.nav-item').forEach(el=>{
     const txt = (el.textContent||'').toLowerCase().trim();
-    if(txt.includes('nouveau') || txt.includes('réinitialiser') || txt.includes('reinitialis'))
+    // Cacher uniquement les actions de création/suppression, PAS la navigation
+    if(txt.startsWith('nouveau') || txt.startsWith('réinitialiser') || txt.startsWith('reinitialis') || el.classList.contains('viewer-hidden'))
       el.style.display='none';
   });
   // Masquer les labels d'import (Base AFOR, GNSS, Importer Excel)
   document.querySelectorAll('label.btn-s, label.btn-p').forEach(el=>{
-    const txt = (el.textContent||el.innerText||'').toLowerCase();
-    if(txt.includes('import') || txt.includes('afor') || txt.includes('gnss') || txt.includes('excel'))
+    const txt = (el.textContent||el.innerText||'').toLowerCase().trim();
+    // Cacher uniquement les boutons d'import (upload), garder les exports
+    if(txt.includes('importer') || txt.includes('↑') || txt.includes('afor') || txt.includes('gnss'))
       el.style.display='none';
   });
   // Masquer les boutons contenant des icônes d'édition/suppression
