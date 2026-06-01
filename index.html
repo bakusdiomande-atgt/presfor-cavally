@@ -3331,7 +3331,7 @@ function dosRenderPage(){
     const bornee = d._src==='gnss' ? '—' : (typeof gnssIsBorne==='function' && gnssIsBorne(d)) ? '✓' : '—';
     const superf = gnssInfo ? gnssInfo.superficie.toFixed(2)+' ha' : '—';
     const statut = r.retard
-      ? `<span class="badge b-red">⚠ ${r.jours}j / ${r.seuil}j</span>`
+      ? `<span class="badge b-red">⚠ ${r.jours}j de retard</span>`
       : `<span class="badge b-green">✓ OK</span>`;
     const src = d._src==='afor'
       ? '<span style="font-size:9px;padding:1px 4px;border-radius:3px;background:var(--blue-lt);color:var(--blue-txt);">AFOR</span>'
@@ -3343,7 +3343,7 @@ function dosRenderPage(){
           <button class="btn-xs" onclick="dosEdit('${d.id}')">✏</button>
           <button class="btn-xs btn-xs-red" onclick="dosDel('${d.id}')">✕</button>
         </div>`
-      : '<span style="font-size:10px;color:var(--text3)">${d._src==="afor"?"AFOR":d._src==="gnss"?"GNSS":""}</span>';
+      : `<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:var(--surface2);color:var(--text3)">${d._src==='afor'?'AFOR':d._src==='gnss'?'GNSS':''}</span>`;
     return `<tr>
       <td class="td-mono" style="font-size:11px">${d.id||'—'} ${src}</td>
       <td style="font-size:12px;font-weight:500">${nom}</td>
