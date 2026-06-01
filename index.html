@@ -7100,16 +7100,14 @@ function gnssImportExcel(input){
         nb++;
       });
 
-      // ── Sauvegarder dans localStorage ──
+      // ── Sauvegarder localement ET Firebase ──
       try{
         const gnssJson = JSON.stringify(gnssData);
         localStorage.setItem('presfor_gnss_data', gnssJson);
         localStorage.setItem('presfor_gnss_ts', new Date().toISOString());
-        console.log('GNSS sauvegardé:', gnssData.length, 'parcelles,', Math.round(gnssJson.length/1024), 'ko');
-      }catch(ex){
-        console.warn('localStorage GNSS plein ou erreur:', ex.message);
-        showToast('⚠ Impossible de sauvegarder GNSS localement: '+ex.message);
-      }
+        console.log('GNSS sauvegardé local:', gnssData.length, 'parcelles,', Math.round(gnssJson.length/1024), 'ko');
+      }catch(ex){ console.warn('localStorage GNSS:', ex.message); }
+      gnssSaveToFirebase().catch(e=>console.warn('GNSS Firebase save:', e.message));
 
       gnssUpdateBtnLabel();
       gnssRenderAll();
@@ -7366,6 +7364,51 @@ async function aforLoadFromFirebase(){
     }
     return false;
   }catch(e){ console.warn('aforLoadFromFirebase:', e.message); return false; }
+}
+
+
+// ── Persistance Firebase pour gnssData (partagé tous comptes) ──
+async function gnssSaveToFirebase(){
+  const ts = new Date().toISOString();
+  const payload = { data: gnssData, ts, count: gnssData.length };
+  const r = await fetch(FIREBASE_URL + '/presfor/gnss_data.json', {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(30000)
+  });
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  console.log('GNSS sauvegardé Firebase:', gnssData.length, 'parcelles');
+  showToast('GNSS synchronisé ✓ (' + gnssData.length.toLocaleString('fr-FR') + ' parcelles)');
+}
+
+async function gnssLoadFromFirebase(){
+  try{
+    const r = await fetch(FIREBASE_URL + '/presfor/gnss_data.json', {
+      signal: AbortSignal.timeout(15000)
+    });
+    if(!r.ok) return false;
+    const d = await r.json();
+    if(!d || !Array.isArray(d.data) || !d.data.length) return false;
+    const localTs  = localStorage.getItem('presfor_gnss_ts') || '1970-01-01';
+    const remoteTs = d.ts || '1970-01-01';
+    if(remoteTs > localTs || gnssData.length === 0){
+      gnssData = d.data;
+      // Reconstruire les index
+      gnssIndex = {}; gnssIndexFull = {}; gnssIndexNomVil = {};
+      gnssData.forEach(g=>{
+        if(g.n_demcge){ const k=gnssNorm(g.n_demcge); if(!gnssIndex[k]) gnssIndex[k]=[]; gnssIndex[k].push(g); }
+        const k2=gnssNorm(g.nom_demand||'')+'|'+gnssNorm(g.village||'')+'|'+gnssNorm(g.sp||'')+'|'+gnssNorm(g.dept||'');
+        if(!gnssIndexFull[k2]) gnssIndexFull[k2]=[]; gnssIndexFull[k2].push(g);
+        const k3=gnssNorm(g.nom_demand||'')+'|'+gnssNorm(g.village||'');
+        if(!gnssIndexNomVil[k3]) gnssIndexNomVil[k3]=[]; gnssIndexNomVil[k3].push(g);
+      });
+      try{ localStorage.setItem('presfor_gnss_data', JSON.stringify(gnssData)); localStorage.setItem('presfor_gnss_ts', d.ts); }catch(e){}
+      console.log('GNSS chargé Firebase:', gnssData.length, 'parcelles');
+      return true;
+    }
+    return false;
+  }catch(e){ console.warn('gnssLoadFromFirebase:', e.message); return false; }
 }
 
 // ═══════════════════════════════════════════
@@ -7829,7 +7872,13 @@ serverLoad().then(ok => {
   } else {
     aforRenderAll();
   }
-  if(gnssData.length > 0){ gnssUpdateBtnLabel(); dashRenderCardGNSS(); }
+  if(gnssData.length === 0){
+    gnssLoadFromFirebase().then(loaded=>{
+      if(loaded){ gnssUpdateBtnLabel(); dashRenderCardGNSS(); dosRenderAll(); }
+    });
+  } else {
+    gnssUpdateBtnLabel(); dashRenderCardGNSS();
+  }
   authInit();
 });
 
