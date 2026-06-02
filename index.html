@@ -1484,8 +1484,8 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       <div class="tw"><table>
         <thead><tr>
           <th>Rang</th><th>Agent</th><th>Fonction</th>
-          <th>Programmes</th><th>Saisies</th><th>Dossiers traités</th>
-          <th>Dossiers CF</th><th>Jours terrain</th><th>Moy./jour</th><th>Performance</th>
+          <th>Programmes</th><th>Saisies</th><th>Dossiers / Parcelles levées</th>
+          <th>Fiches CF / Superficie ha</th><th>Jours terrain</th><th>Moy./jour</th><th>Performance</th>
         </tr></thead>
         <tbody id="ag-perf-tbody"></tbody>
       </table></div>
@@ -4055,6 +4055,41 @@ const AGENTS_FULL = [
   {nom:'Koffi Nathanael',                tel:'0708727114',  fonction:'ASF'},
 ];
 
+// ── Stats GNSS par opérateur — basées sur la colonne NOM_OPERATEUR du fichier Excel ──
+// Matching souple : insensible à la casse, aux accents, aux espaces multiples
+function gnssNormName(s){
+  if(!s) return '';
+  return s.toString().trim().toUpperCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^A-Z0-9]/g,' ').replace(/\s+/g,' ').trim();
+}
+
+function gnssStatsForAgent(nomAgent){
+  if(!gnssData || !gnssData.length) return {parcelles:0, superficie:0, hasColumn:false};
+  // Vérifier si la colonne opérateur existe dans les données
+  const hasColumn = gnssData.some(g => g.operateur && g.operateur.trim());
+  if(!hasColumn) return {parcelles:0, superficie:0, hasColumn:false};
+  // Normaliser le nom de l'agent pour la comparaison
+  const nomNorm = gnssNormName(nomAgent);
+  // Matcher : le champ operateur peut contenir le nom complet ou partiel
+  const parcelles = gnssData.filter(g => {
+    if(!g.operateur) return false;
+    const opNorm = gnssNormName(g.operateur);
+    // Correspondance exacte OU l'un contient l'autre (pour gérer "KONAN ALEX" vs "Konan Alex")
+    return opNorm === nomNorm
+      || opNorm.includes(nomNorm.split(' ')[0]) && nomNorm.split(' ').every(part => opNorm.includes(part))
+      || nomNorm.includes(opNorm.split(' ')[0]) && opNorm.split(' ').every(part => nomNorm.includes(part));
+  });
+  const superficie = parcelles.reduce((s,g)=>s+(g.superficie||0), 0);
+  return {
+    parcelles: parcelles.length,
+    superficie: Math.round(superficie*100)/100,
+    hasColumn: true,
+    villages: [...new Set(parcelles.map(g=>g.village).filter(Boolean))],
+    depts: [...new Set(parcelles.map(g=>g.dept).filter(Boolean))],
+  };
+}
+
 // ── Activités et sous-activités par fonction ──
 const ACTIVITES_PAR_FONCTION = {
   'Commissaire enquêteur': {
@@ -4220,6 +4255,23 @@ function agRenderList(){
     const absent = absences.some(ab=>ab.agent===a.nom&&ab.debut<=today&&ab.fin>=today);
     const init = a.nom.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
 
+    // PATCH v3.8 — Carte adaptée selon la fonction de l'agent
+    const isGNSS = a.fonction === 'Opérateur GNSS';
+    const gnssStats = isGNSS ? gnssStatsForAgent(a.nom) : null;
+    const statsRow = isGNSS
+      ? `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;border-top:1px solid var(--border);padding-top:10px;">
+          <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--accent)">${nbProgs}</div><div style="font-size:9px;color:var(--text3)">Programmes</div></div>
+          <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue)">${nbSaisies}</div><div style="font-size:9px;color:var(--text3)">Saisies</div></div>
+          <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:${gnssStats.parcelles>0?'14':'15'}px;font-weight:700;color:${gnssStats.parcelles>0?'#00695C':'var(--text3)'}">${gnssStats.parcelles||0}</div><div style="font-size:9px;color:var(--text3)">Parcelles levées</div></div>
+          <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:${gnssStats.superficie>0?'12':'15'}px;font-weight:700;color:${gnssStats.superficie>0?'#00695C':'var(--text3)'}">${gnssStats.superficie>0?gnssStats.superficie.toFixed(1)+' ha':'0'}</div><div style="font-size:9px;color:var(--text3)">Superficie</div></div>
+        </div>
+        ${gnssData.length===0?'<div style="margin-top:6px;font-size:10px;color:var(--amber-txt);text-align:center;padding:4px;background:var(--amber-lt);border-radius:4px;">⚠ Importez le fichier GNSS</div>':!gnssStats.hasColumn?'<div style="margin-top:6px;font-size:10px;color:var(--amber-txt);text-align:center;padding:4px;background:var(--amber-lt);border-radius:4px;">⚠ Ajoutez colonne NOM_OPERATEUR dans le fichier GNSS</div>':''}`
+      : `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;border-top:1px solid var(--border);padding-top:10px;">
+          <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--accent)">${nbProgs}</div><div style="font-size:9px;color:var(--text3)">Programmes</div></div>
+          <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue)">${nbSaisies}</div><div style="font-size:9px;color:var(--text3)">Saisies</div></div>
+          <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--amber)">${nbDos}</div><div style="font-size:9px;color:var(--text3)">Dossiers</div></div>
+          <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--teal)">${nbFichesCF}</div><div style="font-size:9px;color:var(--text3)">Fiches CF</div></div>
+        </div>`;
     return `<div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;border-top:3px solid ${c.brd};cursor:pointer;transition:box-shadow .15s;" onclick="agOpenFiche('${a.nom.replace(/'/g,"\\'")}')">
       <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
         <div style="width:42px;height:42px;border-radius:50%;background:${c.bg};border:2px solid ${c.brd};display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:${c.tx};flex-shrink:0;">${init}</div>
@@ -4233,12 +4285,7 @@ function agRenderList(){
         <div style="margin-bottom:3px;">&#128222; ${a.tel}</div>
         <div>${(a.depts||[]).map(d=>`<span style="font-size:10px;background:var(--surface2);padding:1px 6px;border-radius:8px;margin-right:3px;">${d.replace('Dép. ','')}</span>`).join('')}</div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;border-top:1px solid var(--border);padding-top:10px;">
-        <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--accent)">${nbProgs}</div><div style="font-size:9px;color:var(--text3)">Programmes</div></div>
-        <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue)">${nbSaisies}</div><div style="font-size:9px;color:var(--text3)">Saisies</div></div>
-        <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--amber)">${nbDos}</div><div style="font-size:9px;color:var(--text3)">Dossiers</div></div>
-        <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--teal)">${nbFichesCF}</div><div style="font-size:9px;color:var(--text3)">Fiches CF</div></div>
-      </div>
+      ${statsRow}
     </div>`;
   }).join('');
 }
@@ -4412,28 +4459,41 @@ function agRenderPerf(){
 
   document.getElementById('ag-perf-tbody').innerHTML = data.map((d,i)=>{
     const c = agFonctionColor(d.a.fonction);
-    const pct = maxDos>0?Math.round(d.totalDos/maxDos*100):0;
+    const isGNSS = d.a.fonction === 'Opérateur GNSS';
+    const gnssStats = isGNSS ? gnssStatsForAgent(d.a.nom) : null;
+    // Pour les GNSS, le score de perf est basé sur les parcelles levées
+    const perfVal = isGNSS ? (gnssStats.parcelles) : d.totalDos;
+    const maxVal  = isGNSS
+      ? Math.max(...data.filter(x=>x.a.fonction==='Opérateur GNSS').map(x=>gnssStatsForAgent(x.a.nom).parcelles), 1)
+      : maxDos;
+    const pct = maxVal>0?Math.round(perfVal/maxVal*100):0;
     const perf = pct>=80?{label:'Excellent',bg:'var(--accent-lt)',tx:'var(--accent-txt)'}:
                  pct>=50?{label:'Bon',bg:'var(--blue-lt)',tx:'var(--blue-txt)'}:
                  pct>=20?{label:'Moyen',bg:'var(--amber-lt)',tx:'var(--amber-txt)'}:
                          {label:'Faible',bg:'var(--surface2)',tx:'var(--text2)'};
+    const dosCell = isGNSS
+      ? `<td style="padding:9px 12px;text-align:center;font-weight:700;color:#00695C;">${gnssStats.parcelles} <span style="font-size:10px;font-weight:400;color:var(--text3)">parc.</span></td>`
+      : `<td style="padding:9px 12px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;min-width:60px;">
+              <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:3px;"></div>
+            </div>
+            <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--accent);min-width:24px;">${d.totalDos}</span>
+          </div>
+        </td>`;
+    const supCell = isGNSS
+      ? `<td style="padding:9px 12px;text-align:center;font-weight:700;color:#00695C;">${gnssStats.superficie>0?gnssStats.superficie.toFixed(1)+' ha':'—'}</td>`
+      : `<td style="padding:9px 12px;text-align:center;">${d.dosCF}</td>`;
     return`<tr style="border-bottom:1px solid var(--border);">
       <td style="padding:9px 12px;text-align:center;font-family:'Syne',sans-serif;font-weight:700;color:${i<3?'var(--accent)':'var(--text3)'};">${i+1}</td>
       <td style="padding:9px 12px;font-weight:600;font-size:13px;">${d.a.nom}</td>
       <td style="padding:9px 12px;"><span style="font-size:10px;padding:2px 7px;border-radius:8px;background:${c.bg};color:${c.tx};border:1px solid ${c.brd}">${d.a.fonction}</span></td>
       <td style="padding:9px 12px;text-align:center;">${d.nbProgs}</td>
       <td style="padding:9px 12px;text-align:center;">${d.nbSaisies}</td>
-      <td style="padding:9px 12px;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;min-width:60px;">
-            <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:3px;"></div>
-          </div>
-          <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--accent);min-width:24px;">${d.totalDos}</span>
-        </div>
-      </td>
-      <td style="padding:9px 12px;text-align:center;">${d.dosCF}</td>
+      ${dosCell}
+      ${supCell}
       <td style="padding:9px 12px;text-align:center;">${d.jours}</td>
-      <td style="padding:9px 12px;text-align:center;">${d.moy}</td>
+      <td style="padding:9px 12px;text-align:center;">${isGNSS&&gnssStats.parcelles>0?'—':d.moy}</td>
       <td style="padding:9px 12px;"><span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:${perf.bg};color:${perf.tx}">${perf.label}</span></td>
     </tr>`;
   }).join('');
@@ -7080,21 +7140,34 @@ function gnssImportExcel(input){
       gnssIndexNomVil = {};     // index par nom+village (fallback)
       let nb=0, ignore=0;
 
+      // Détecter si la colonne NOM_OPERATEUR existe dans ce fichier
+      const hasOperateur = rows.some(r => r['NOM_OPERATEUR'] && String(r['NOM_OPERATEUR']).trim());
+      if(!hasOperateur){
+        console.warn('GNSS : colonne NOM_OPERATEUR absente — les stats par opérateur ne seront pas disponibles');
+      }
+
       rows.forEach(row=>{
-        const nom     = (row['NOM_DEMAND']||'').trim();
-        const village = (row['NOM_VILLAG']||'').trim();
-        const dept    = gnssNorm(row['NOM_DEPART']||'');
-        const sp      = (row['NOM_SSPREF']||'').trim();
-        const superf  = parseFloat(row['SUPERF'])||0;
-        const code    = (row['N_DEMCGE']||'').trim();
-        const num     = (row['NUM_DEMAND']||'').trim();
+        const nom       = (row['NOM_DEMAND']||'').trim();
+        const village   = (row['NOM_VILLAG']||'').trim();
+        const dept      = gnssNorm(row['NOM_DEPART']||'');
+        const sp        = (row['NOM_SSPREF']||'').trim();
+        const superf    = parseFloat(row['SUPERF'])||0;
+        const code      = (row['N_DEMCGE']||'').trim();
+        const num       = (row['NUM_DEMAND']||'').trim();
+        // Colonne opérateur : NOM_OPERATEUR (à ajouter dans le fichier Excel)
+        // Variantes acceptées : NOM_OPERATEUR, OPERATEUR, NOM_OPER, NOM OPERATEUR
+        const operateur = (
+          row['NOM_OPERATEUR'] || row['OPERATEUR'] || row['NOM_OPER'] ||
+          row['NOM OPERATEUR'] || row['Nom Opérateur'] || row['nom_operateur'] || ''
+        ).trim();
 
         if(!nom || superf <= 0){ ignore++; return; }
 
         const entry = {
           nom_demand: nom, village, dept, sp,
           superficie: superf, n_demcge: code, num_demand: num,
-          _matched: false  // sera marqué true si lié à un dossier AFOR
+          operateur,   // nom de l'opérateur GNSS qui a fait le levé
+          _matched: false
         };
         gnssData.push(entry);
 
@@ -7126,7 +7199,11 @@ function gnssImportExcel(input){
 
       gnssUpdateBtnLabel();
       gnssRenderAll();
-      showToast(`GNSS chargé : ${nb} parcelles levées · ${gnssGetTotalHa().toFixed(1)} ha`);
+      const nbAvecOp = gnssData.filter(g=>g.operateur).length;
+      const opMsg = hasOperateur
+        ? ` · ${nbAvecOp} avec opérateur`
+        : ' · ⚠ Ajoutez colonne NOM_OPERATEUR pour les stats individuelles';
+      showToast(`GNSS chargé : ${nb} parcelles · ${gnssGetTotalHa().toFixed(1)} ha${opMsg}`);
     }catch(err){ showToast('Erreur lecture : '+err.message); console.error(err); }
   };
   reader.readAsArrayBuffer(file);
