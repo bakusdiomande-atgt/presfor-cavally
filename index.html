@@ -4637,46 +4637,82 @@ function zvShowPanel(id, btn){
 
 // ── Stats globales ──
 function zvGetVilleStats(village, dept){
-  const mesProgs  = programmes.filter(p=>p.villages&&p.villages.includes(village));
-  const mesSaisies= saisies.filter(s=>s.village===village);
-  const mesDos    = dossiers.filter(d=>d.village===village&&d.dept===dept);
-  const agents    = [...new Set([...mesProgs.map(p=>p.agent),...mesSaisies.map(s=>s.agent)])];
-  return { nbProgs:mesProgs.length, nbSaisies:mesSaisies.length, nbDos:mesDos.length, agents };
+  const mesProgs   = programmes.filter(p=>p.villages&&p.villages.includes(village));
+  const mesSaisies = saisies.filter(s=>s.village===village);
+  // Dossiers manuels + AFOR (normalisé : dept stocké en majuscules dans AFOR)
+  const deptNorm   = (dept||'').replace('Dép. ','').toUpperCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z]/g,'');
+  const mesDos     = [
+    ...dossiers.filter(d=>d.village===village&&d.dept===dept),
+    ...(dossiersAFOR||[]).filter(d=>{
+      const dv = (d.village||'').trim().toLowerCase();
+      const ddn = (d.dept||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z]/g,'');
+      return dv===village.trim().toLowerCase() && ddn===deptNorm;
+    }),
+  ];
+  const agents = [...new Set([...mesProgs.map(p=>p.agent),...mesSaisies.map(s=>s.agent)])];
+  // Superficie totale levée dans ce village (données GNSS)
+  const superfGnss = (gnssData||[])
+    .filter(g=>(g.village||'').trim().toLowerCase()===village.trim().toLowerCase())
+    .reduce((s,g)=>s+(g.superficie||0),0);
+  return {
+    nbProgs:   mesProgs.length,
+    nbSaisies: mesSaisies.length,
+    nbDos:     mesDos.length,
+    nbAfor:    (dossiersAFOR||[]).filter(d=>{
+      const ddn=(d.dept||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z]/g,'');
+      return (d.village||'').trim().toLowerCase()===village.trim().toLowerCase()&&ddn===deptNorm;
+    }).length,
+    superfGnss: Math.round(superfGnss*10)/10,
+    agents,
+  };
 }
 
 function zvGetDeptStats(dept){
   const c = ZV_GEO[dept];
   if(!c) return {};
   const allVillages = Object.values(c.sp).flat();
-  let totalProgs=0, totalSaisies=0, totalDos=0, couverts=0, partiels=0;
+  let totalProgs=0, totalSaisies=0, totalDos=0, couverts=0, partiels=0, totalSuperfGnss=0;
   allVillages.forEach(v=>{
-    const s=zvGetVilleStats(v,dept);
-    totalProgs+=s.nbProgs; totalSaisies+=s.nbSaisies; totalDos+=s.nbDos;
-    if(s.nbDos>0) couverts++;
+    const s = zvGetVilleStats(v, dept);
+    totalProgs      += s.nbProgs;
+    totalSaisies    += s.nbSaisies;
+    totalDos        += s.nbDos;
+    totalSuperfGnss += s.superfGnss||0;
+    // Un village est "couvert" si au moins 1 dossier CF (manuel ou AFOR)
+    if(s.nbDos > 0)       couverts++;
     else if(s.nbSaisies>0) partiels++;
   });
-  return {allVillages, totalProgs, totalSaisies, totalDos, couverts, partiels,
-          nonTraites: allVillages.length-couverts-partiels,
-          pct: allVillages.length>0?Math.round((couverts/allVillages.length)*100):0};
+  return {
+    allVillages, totalProgs, totalSaisies, totalDos, couverts, partiels,
+    totalSuperfGnss: Math.round(totalSuperfGnss*10)/10,
+    nonTraites: allVillages.length - couverts - partiels,
+    pct: allVillages.length>0 ? Math.round((couverts/allVillages.length)*100) : 0,
+  };
 }
 
 // ── KPI ──
 function zvRenderKPI(){
-  const depts = Object.keys(ZV_GEO);
-  const allV = depts.flatMap(d=>Object.values(ZV_GEO[d].sp).flat());
-  const totalV = allV.length;
-  const totalDos = dossiers.length;
+  const depts   = Object.keys(ZV_GEO);
+  const allV    = depts.flatMap(d=>Object.values(ZV_GEO[d].sp).flat());
+  const totalV  = allV.length;
+  const totalSP = depts.reduce((s,d)=>s+Object.keys(ZV_GEO[d].sp).length, 0);
+  // Total dossiers = manuels + AFOR
+  const totalDos = dossiers.length + (dossiersAFOR||[]).length;
+  // Superficie levée totale (GNSS)
+  const totalHaGnss = (gnssData||[]).reduce((s,g)=>s+(g.superficie||0),0);
+  // Villages couverts = au moins 1 dossier CF dans le village (manuels ou AFOR)
   const couverts = allV.filter(v=>{
-    const dept=depts.find(d=>Object.values(ZV_GEO[d].sp).flat().includes(v));
-    return dossiers.some(d=>d.village===v&&d.dept===dept);
+    const dept = depts.find(d=>Object.values(ZV_GEO[d].sp).flat().includes(v));
+    const stats = zvGetVilleStats(v, dept);
+    return stats.nbDos > 0;
   }).length;
-  const pct = totalV>0?Math.round(couverts/totalV*100):0;
-  const totalSP = depts.reduce((s,d)=>s+Object.keys(ZV_GEO[d].sp).length,0);
+  const pct = totalV>0 ? Math.round(couverts/totalV*100) : 0;
   document.getElementById('zv-kpi').innerHTML=`
     <div class="kpi blue"><div class="kpi-l">Départements</div><div class="kpi-v">4</div><div class="kpi-s">Région du Cavally</div></div>
     <div class="kpi"><div class="kpi-l">Sous-préfectures</div><div class="kpi-v">${totalSP}</div><div class="kpi-s">${totalV} villages recensés</div></div>
     <div class="kpi green"><div class="kpi-l">Villages couverts</div><div class="kpi-v">${couverts}</div><div class="kpi-s">Taux : ${pct}%</div></div>
-    <div class="kpi amber"><div class="kpi-l">Dossiers CF ouverts</div><div class="kpi-v">${totalDos}</div><div class="kpi-s">Sur la zone entière</div></div>`;
+    <div class="kpi amber"><div class="kpi-l">Dossiers CF</div><div class="kpi-v">${totalDos.toLocaleString('fr-FR')}</div><div class="kpi-s">${totalHaGnss>0?totalHaGnss.toFixed(0)+' ha levés':'Zone entière'}</div></div>`;
 }
 
 // ── Vue d'ensemble : cartes départements ──
@@ -4750,7 +4786,15 @@ function zvRenderDept(){
 
   // Tableau par sous-préfecture
   html2 += Object.entries(info.sp).map(([sp, villages])=>{
-    const spDos = villages.reduce((sum,v)=>sum+dossiers.filter(d=>d.village===v&&d.dept===dept).length,0);
+    const deptNormSP = (dept||'').replace('Dép. ','').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z]/g,'');
+    const spDos = villages.reduce((sum,v)=>{
+      const manuel = dossiers.filter(d=>d.village===v&&d.dept===dept).length;
+      const afor   = (dossiersAFOR||[]).filter(d=>{
+        const ddn=(d.dept||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z]/g,'');
+        return (d.village||'').trim().toLowerCase()===v.trim().toLowerCase()&&ddn===deptNormSP;
+      }).length;
+      return sum + manuel + afor;
+    }, 0);
     const spSaisies = villages.reduce((sum,v)=>sum+saisies.filter(s=>s.village===v).length,0);
     return `<div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden;">
       <div style="background:${info.couleur.bg};padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid ${info.couleur.brd};">
@@ -4822,13 +4866,17 @@ function zvRenderVillages(){
     const dinfo=info2[r.dept];
     const sc=r.statut==='couvert'?'b-green':r.statut==='partiel'?'b-amber':'b-gray';
     const sl=r.statut==='couvert'?'Couvert':r.statut==='partiel'?'Partiel':'Non traité';
+    const aforLbl = r.vs.nbAfor>0
+      ? `<span style="font-size:9px;background:var(--blue-lt);color:var(--blue-txt);padding:1px 4px;border-radius:3px;margin-left:3px;">${r.vs.nbAfor} AFOR</span>` : '';
+    const gnssLbl = r.vs.superfGnss>0
+      ? `<span style="font-size:9px;background:#E0F2F1;color:#00695C;padding:1px 4px;border-radius:3px;margin-left:3px;">${r.vs.superfGnss} ha</span>` : '';
     return`<tr style="border-bottom:1px solid var(--border);">
       <td style="padding:8px 12px;font-weight:500">${r.village}</td>
       <td style="padding:8px 12px;"><span style="font-size:10px;padding:2px 7px;border-radius:8px;background:${dinfo?dinfo.couleur.bg:'var(--surface2)'};color:${dinfo?dinfo.couleur.tx:'var(--text2)'}">${r.dept.replace('Dép. ','')}</span></td>
       <td style="padding:8px 12px;font-size:11px;color:var(--text2)">${r.sp}</td>
       <td style="padding:8px 12px;text-align:center">${r.vs.nbProgs}</td>
       <td style="padding:8px 12px;text-align:center">${r.vs.nbSaisies}</td>
-      <td style="padding:8px 12px;text-align:center;font-weight:600;color:var(--accent)">${r.vs.nbDos}</td>
+      <td style="padding:8px 12px;text-align:center;font-weight:600;color:var(--accent)">${r.vs.nbDos}${aforLbl}${gnssLbl}</td>
       <td style="padding:8px 12px;font-size:11px;color:var(--text2)">${r.vs.agents.slice(0,2).join(', ')||'—'}</td>
       <td style="padding:8px 12px;"><span class="badge ${sc}">${sl}</span></td>
     </tr>`;
