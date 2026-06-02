@@ -4055,38 +4055,57 @@ const AGENTS_FULL = [
   {nom:'Koffi Nathanael',                tel:'0708727114',  fonction:'ASF'},
 ];
 
-// ── Stats GNSS par opérateur — basées sur la colonne NOM_OPERATEUR du fichier Excel ──
-// Matching souple : insensible à la casse, aux accents, aux espaces multiples
+// ── Stats GNSS par opérateur — colonne NOM_AGENT du fichier Excel ──
+// Matching robuste : insensible casse/accents/fautes de frappe/mots parasites
+
 function gnssNormName(s){
   if(!s) return '';
   return s.toString().trim().toUpperCase()
     .normalize('NFD').replace(/[̀-ͯ]/g,'')
-    .replace(/[^A-Z0-9]/g,' ').replace(/\s+/g,' ').trim();
+    .replace(/[^A-Z]/g,' ').replace(/\s+/g,' ').trim();
 }
+
+// Table de mots-clés distinctifs par agent (basée sur l'analyse du fichier réel)
+const GNSS_AGENT_KEYS = {
+  'Konan Alex':                    ['KONAN','ALEX'],          // KONAN KOUAKOU JEAN YVES ALEX
+  'Kone Boike':                    ['KONE','BOIKE'],           // KONE BOIKE / KONÉ BOIKE
+  'Fofana Ahoua':                  ['FOFANA','AHOUA'],
+  'Kouadio Ezeckiel':              ['KOUADIO','EZECHIEL'],     // sans accent dans fichier
+  'Yao Atouman Jean Charles':      ['YAO','CHARLES'],          // YAO JEAN CHARLES ou YAO ATOUMAN JEAN CHARLES
+  'Dje Christian Dominique Konan': ['DJE','CHRISTIAN'],
+  'Fakayode Abdul':                ['FAKAYODE'],
+  'Kouassi Kouame Gislain':        ['KOUASSI','GISLAIN'],
+  'Chigbeu Akoue Florent':         ['CHIGBEU','FLORENT'],
+};
 
 function gnssStatsForAgent(nomAgent){
   if(!gnssData || !gnssData.length) return {parcelles:0, superficie:0, hasColumn:false};
-  // Vérifier si la colonne opérateur existe dans les données
   const hasColumn = gnssData.some(g => g.operateur && g.operateur.trim());
   if(!hasColumn) return {parcelles:0, superficie:0, hasColumn:false};
-  // Normaliser le nom de l'agent pour la comparaison
+
+  // Récupérer les mots-clés pour cet agent
+  const keys = GNSS_AGENT_KEYS[nomAgent] || [];
+  // Fallback : utiliser les 2 premiers mots du nom normalisé
   const nomNorm = gnssNormName(nomAgent);
-  // Matcher : le champ operateur peut contenir le nom complet ou partiel
+  const fallbackKeys = nomNorm.split(' ').filter(w=>w.length>2).slice(0,2);
+  const matchKeys = keys.length ? keys : fallbackKeys;
+
+  if(!matchKeys.length) return {parcelles:0, superficie:0, hasColumn:false};
+
   const parcelles = gnssData.filter(g => {
     if(!g.operateur) return false;
     const opNorm = gnssNormName(g.operateur);
-    // Correspondance exacte OU l'un contient l'autre (pour gérer "KONAN ALEX" vs "Konan Alex")
-    return opNorm === nomNorm
-      || opNorm.includes(nomNorm.split(' ')[0]) && nomNorm.split(' ').every(part => opNorm.includes(part))
-      || nomNorm.includes(opNorm.split(' ')[0]) && opNorm.split(' ').every(part => nomNorm.includes(part));
+    // La valeur doit contenir TOUS les mots-clés de l'agent
+    return matchKeys.every(k => opNorm.includes(k));
   });
+
   const superficie = parcelles.reduce((s,g)=>s+(g.superficie||0), 0);
   return {
     parcelles: parcelles.length,
-    superficie: Math.round(superficie*100)/100,
+    superficie: Math.round(superficie*10)/10,
     hasColumn: true,
     villages: [...new Set(parcelles.map(g=>g.village).filter(Boolean))],
-    depts: [...new Set(parcelles.map(g=>g.dept).filter(Boolean))],
+    depts:    [...new Set(parcelles.map(g=>g.dept).filter(Boolean))],
   };
 }
 
@@ -7188,11 +7207,29 @@ function gnssImportExcel(input){
       gnssIndexNomVil = {};     // index par nom+village (fallback)
       let nb=0, ignore=0;
 
-      // Détecter si la colonne NOM_OPERATEUR existe dans ce fichier
-      const hasOperateur = rows.some(r => r['NOM_OPERATEUR'] && String(r['NOM_OPERATEUR']).trim());
-      if(!hasOperateur){
-        console.warn('GNSS : colonne NOM_OPERATEUR absente — les stats par opérateur ne seront pas disponibles');
+      // ── Détecter automatiquement la colonne opérateur ──
+      // Afficher toutes les colonnes disponibles dans la console pour diagnostic
+      if(rows.length > 0){
+        const allCols = Object.keys(rows[0]);
+        console.log('GNSS colonnes disponibles:', allCols);
       }
+
+      // Chercher la colonne opérateur de façon flexible (insensible casse/accents/espaces)
+      const normCol = s => (s||'').toString().toUpperCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g,'')
+        .replace(/[\s_\-\.]/g,'').trim();
+
+      // Mots-clés identifiant la colonne opérateur
+      // NOM_AGENT est le vrai nom dans le fichier GNSS Cavally
+      const OP_KEYWORDS = ['NOM_AGENT','AGENT','OPERATEUR','OPER','TOPOGRAPHE','TOPO','GNSS','PRENEUR','NOM_OP'];
+      
+      // Trouver la clé réelle dans le fichier
+      const opKey = rows.length > 0
+        ? Object.keys(rows[0]).find(k => OP_KEYWORDS.some(kw => normCol(k).includes(kw)))
+        : null;
+
+      const hasOperateur = !!opKey && rows.some(r => r[opKey] && String(r[opKey]).trim());
+      console.log('GNSS colonne opérateur détectée:', opKey || 'AUCUNE', '| hasOperateur:', hasOperateur);
 
       rows.forEach(row=>{
         const nom       = (row['NOM_DEMAND']||'').trim();
@@ -7202,12 +7239,10 @@ function gnssImportExcel(input){
         const superf    = parseFloat(row['SUPERF'])||0;
         const code      = (row['N_DEMCGE']||'').trim();
         const num       = (row['NUM_DEMAND']||'').trim();
-        // Colonne opérateur : NOM_OPERATEUR (à ajouter dans le fichier Excel)
-        // Variantes acceptées : NOM_OPERATEUR, OPERATEUR, NOM_OPER, NOM OPERATEUR
+        // Lire la colonne NOM_AGENT (nom réel dans le fichier GNSS Cavally)
         const operateur = (
-          row['NOM_OPERATEUR'] || row['OPERATEUR'] || row['NOM_OPER'] ||
-          row['NOM OPERATEUR'] || row['Nom Opérateur'] || row['nom_operateur'] || ''
-        ).trim();
+          row['NOM_AGENT'] || (opKey ? row[opKey] : '') || ''
+        ).toString().trim();
 
         if(!nom || superf <= 0){ ignore++; return; }
 
