@@ -4485,33 +4485,45 @@ function agOpenFiche(nom){
 // ── Performance comparative ──
 function agRenderPerf(){
   const data = AGENTS_FULL.map(a=>{
-    const mesProgs = programmes.filter(p=>p.agent===a.nom);
-    const mesSaisies = saisies.filter(s=>s.agent===a.nom);
+    const mesProgs    = programmes.filter(p=>p.agent===a.nom);
+    const mesSaisies  = saisies.filter(s=>s.agent===a.nom);
     const mesDossiers = dossiers.filter(d=>d.agent===a.nom);
-    const totalDos = mesSaisies.reduce((s,x)=>s+(x.ndos||0),0);
-    const jours = new Set(mesSaisies.map(s=>s.date)).size;
-    const moy = jours>0?Math.round(totalDos/jours):0;
-    const dosCF = mesDossiers.filter(d=>d.activite==='CF').length;
-    return {a, nbProgs:mesProgs.length, nbSaisies:mesSaisies.length, totalDos, jours, moy, dosCF};
-  }).sort((x,y)=>y.totalDos-x.totalDos);
+    // Fiches CF AFOR attribuées à cet agent (CE)
+    const mesFichesCF = (dossiersAFOR||[]).filter(d=>d.agent===a.nom);
+    const totalDos    = mesSaisies.reduce((s,x)=>s+(x.ndos||0),0);
+    const jours       = new Set(mesSaisies.map(s=>s.date)).size;
+    const moy         = jours>0?Math.round(totalDos/jours):0;
+    // dosCF = dossiers manuels CF + fiches AFOR
+    const dosCF       = mesDossiers.filter(d=>d.activite==='CF').length + mesFichesCF.length;
+    return {a, nbProgs:mesProgs.length, nbSaisies:mesSaisies.length, totalDos, jours, moy, dosCF, nbFichesCF:mesFichesCF.length};
+  }).sort((x,y)=>{
+    // Tri : GNSS par parcelles, CE/autres par fiches CF AFOR (+ dossiers saisis)
+    const isGNSSx = x.a.fonction==='Opérateur GNSS';
+    const isGNSSy = y.a.fonction==='Opérateur GNSS';
+    const vx = isGNSSx ? gnssStatsForAgent(x.a.nom).parcelles : (x.dosCF||x.totalDos);
+    const vy = isGNSSy ? gnssStatsForAgent(y.a.nom).parcelles : (y.dosCF||y.totalDos);
+    return vy - vx;
+  });
 
-  const maxDos = data[0]?.totalDos||1;
+  // maxDos basé sur fiches CF pour les CE (mesure plus représentative)
+  const maxDos = Math.max(...data.filter(d=>d.a.fonction!=='Opérateur GNSS').map(d=>d.dosCF||d.totalDos), 1);
   const totalAll = data.reduce((s,d)=>s+d.totalDos,0);
-  const actifs = data.filter(d=>d.nbSaisies>0).length;
-  const meilleur = data[0];
+  const actifs = data.filter(d=>d.nbSaisies>0||d.dosCF>0).length;
+  const meilleurCE = data.filter(d=>d.a.fonction==='Commissaire enquêteur').sort((a,b)=>b.dosCF-a.dosCF)[0];
 
+  const totalFichesCF = data.reduce((s,d)=>s+d.nbFichesCF,0);
   document.getElementById('ag-perf-kpi').innerHTML=`
-    <div class="kpi green"><div class="kpi-l">Production totale</div><div class="kpi-v">${totalAll}</div><div class="kpi-s">Tous agents</div></div>
-    <div class="kpi blue"><div class="kpi-l">Agents actifs</div><div class="kpi-v">${actifs}</div><div class="kpi-s">Avec saisies</div></div>
-    <div class="kpi amber"><div class="kpi-l">Meilleure perf.</div><div class="kpi-v">${meilleur?.totalDos||0}</div><div class="kpi-s">${meilleur?.a.nom.split(' ')[0]||'—'}</div></div>
-    <div class="kpi"><div class="kpi-l">Moy. par agent</div><div class="kpi-v">${actifs>0?Math.round(totalAll/actifs):0}</div><div class="kpi-s">Dossiers saisis</div></div>`;
+    <div class="kpi green"><div class="kpi-l">Dossiers saisis M2</div><div class="kpi-v">${totalAll}</div><div class="kpi-s">Tous agents</div></div>
+    <div class="kpi blue"><div class="kpi-l">Fiches CF AFOR</div><div class="kpi-v">${totalFichesCF.toLocaleString('fr-FR')}</div><div class="kpi-s">Base AFOR</div></div>
+    <div class="kpi amber"><div class="kpi-l">Meilleur CE</div><div class="kpi-v">${meilleurCE?.dosCF||0}</div><div class="kpi-s">${meilleurCE?.a.nom.split(' ')[0]||'—'}</div></div>
+    <div class="kpi"><div class="kpi-l">Agents actifs</div><div class="kpi-v">${actifs}</div><div class="kpi-s">Avec données</div></div>`;
 
   document.getElementById('ag-perf-tbody').innerHTML = data.map((d,i)=>{
     const c = agFonctionColor(d.a.fonction);
     const isGNSS = d.a.fonction === 'Opérateur GNSS';
     const gnssStats = isGNSS ? gnssStatsForAgent(d.a.nom) : null;
-    // Pour les GNSS, le score de perf est basé sur les parcelles levées
-    const perfVal = isGNSS ? (gnssStats.parcelles) : d.totalDos;
+    // Score de performance : GNSS sur parcelles, CE sur fiches AFOR
+    const perfVal = isGNSS ? gnssStats.parcelles : d.dosCF;
     const maxVal  = isGNSS
       ? Math.max(...data.filter(x=>x.a.fonction==='Opérateur GNSS').map(x=>gnssStatsForAgent(x.a.nom).parcelles), 1)
       : maxDos;
@@ -4520,19 +4532,27 @@ function agRenderPerf(){
                  pct>=50?{label:'Bon',bg:'var(--blue-lt)',tx:'var(--blue-txt)'}:
                  pct>=20?{label:'Moyen',bg:'var(--amber-lt)',tx:'var(--amber-txt)'}:
                          {label:'Faible',bg:'var(--surface2)',tx:'var(--text2)'};
+    // Pour les CE : la vraie production = fiches AFOR (dosCF) + dossiers saisis M2
+    const affichageVal  = isGNSS ? gnssStats.parcelles : d.dosCF;
+    const affichageMax  = isGNSS
+      ? Math.max(...data.filter(x=>x.a.fonction==='Opérateur GNSS').map(x=>gnssStatsForAgent(x.a.nom).parcelles), 1)
+      : maxDos;
+    const pctBar = affichageMax>0 ? Math.round(affichageVal/affichageMax*100) : 0;
+
     const dosCell = isGNSS
       ? `<td style="padding:9px 12px;text-align:center;font-weight:700;color:#00695C;">${gnssStats.parcelles} <span style="font-size:10px;font-weight:400;color:var(--text3)">parc.</span></td>`
       : `<td style="padding:9px 12px;">
           <div style="display:flex;align-items:center;gap:8px;">
             <div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;min-width:60px;">
-              <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:3px;"></div>
+              <div style="width:${pctBar}%;height:100%;background:var(--accent);border-radius:3px;"></div>
             </div>
-            <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--accent);min-width:24px;">${d.totalDos}</span>
+            <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--accent);min-width:24px;">${d.dosCF}</span>
+            ${d.nbFichesCF>0?`<span style="font-size:9px;background:var(--blue-lt);color:var(--blue-txt);padding:1px 5px;border-radius:8px;">${d.nbFichesCF} AFOR</span>`:''}
           </div>
         </td>`;
     const supCell = isGNSS
       ? `<td style="padding:9px 12px;text-align:center;font-weight:700;color:#00695C;">${gnssStats.superficie>0?gnssStats.superficie.toFixed(1)+' ha':'—'}</td>`
-      : `<td style="padding:9px 12px;text-align:center;">${d.dosCF}</td>`;
+      : `<td style="padding:9px 12px;text-align:center;color:var(--text2);font-size:12px;">${d.totalDos>0?d.totalDos+' saisis':'—'}</td>`;
     return`<tr style="border-bottom:1px solid var(--border);">
       <td style="padding:9px 12px;text-align:center;font-family:'Syne',sans-serif;font-weight:700;color:${i<3?'var(--accent)':'var(--text3)'};">${i+1}</td>
       <td style="padding:9px 12px;font-weight:600;font-size:13px;">${d.a.nom}</td>
