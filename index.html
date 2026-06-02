@@ -260,7 +260,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       <div>
         <div class="auth-logo-title">PRESFOR · Cavally</div>
         <div class="auth-logo-sub">Plateforme de suivi foncier — Groupement CAG</div>
-      <div style="font-size:10px;color:#2A6B42;font-weight:700;margin-top:4px;">v3.7 — 26/05/2026</div>
+      <div style="font-size:10px;color:#2A6B42;font-weight:700;margin-top:4px;">v3.8 — 02/06/2026</div>
       </div>
     </div>
     <div class="auth-field">
@@ -3186,17 +3186,23 @@ function dosRenderAll(){
   dosRenderList();
 }
 
-function dosRenderKPI(){
-  const tous = [...dossiers, ...dossiersAFOR];
+function dosRenderKPI(filtered){
+  // PATCH v3.8 — KPI réactifs aux filtres actifs (Module 3 Dossiers fonciers)
+  const tous = filtered ? filtered : [...dossiers, ...dossiersAFOR];
   const tot = tous.length;
   const retards = tous.filter(d=>aforCalcRetard(d).retard).length;
   const va = tous.filter(d=>d.etape==='VA').length;
-  const manuel = dossiers.length;
-  const afor = dossiersAFOR.length;
+  const manuel = filtered ? filtered.filter(d=>!d._src||d._src==='manuel').length : dossiers.length;
+  const afor   = filtered ? filtered.filter(d=>d._src==='afor').length            : dossiersAFOR.length;
   const kpiEl = document.getElementById('dos-kpi');
   if(!kpiEl) return;
+  const grandTotal = dossiers.length + dossiersAFOR.length;
+  const isFiltered = !!filtered && (tot < grandTotal);
+  const filterLabel = isFiltered
+    ? ' <span style="font-size:9px;background:var(--accent);color:#fff;padding:1px 5px;border-radius:8px;vertical-align:middle;margin-left:4px;">filtré</span>'
+    : '';
   kpiEl.innerHTML =
-    `<div class="kpi blue"><div class="kpi-l">Total dossiers</div><div class="kpi-v">${tot.toLocaleString('fr-FR')}</div><div class="kpi-s">${manuel} manuels · ${afor} AFOR</div></div>
+    `<div class="kpi blue"><div class="kpi-l">Total dossiers</div><div class="kpi-v">${tot.toLocaleString('fr-FR')}${filterLabel}</div><div class="kpi-s">${manuel} manuels · ${afor} AFOR</div></div>
      <div class="kpi ${retards>0?'red':'green'}"><div class="kpi-l">En retard</div><div class="kpi-v">${retards}</div><div class="kpi-s">${tot>0?Math.round(retards/tot*100):0}%</div></div>
      <div class="kpi green"><div class="kpi-l">Validés (VA)</div><div class="kpi-v">${va}</div><div class="kpi-s">${tot>0?Math.round(va/tot*100):0}%</div></div>
      <div class="kpi amber"><div class="kpi-l">CFI / CFC</div><div class="kpi-v">${tous.filter(d=>d.type==='CFI').length}</div><div class="kpi-s">${tous.filter(d=>d.type==='CFC').length} CFC</div></div>`;
@@ -3299,6 +3305,7 @@ function dosRenderList(){
 
   dosListFiltered = liste;
   dosPage = 0;
+  dosRenderKPI(liste); // PATCH v3.8 — KPI réactifs aux filtres
   dosRenderPage();
 
   // Peupler filtre agents
