@@ -6374,7 +6374,7 @@ async function serverLoad(){
     const d = await r.json();
 
     if(!d || d.reset){
-      // Firebase vide ou réinitialisé — tenter restauration depuis backup localStorage
+      // Firebase vide — tenter restauration depuis backup localStorage
       try {
         const bkProg = localStorage.getItem('presfor_backup_programmes');
         const bkSais = localStorage.getItem('presfor_backup_saisies');
@@ -6385,17 +6385,8 @@ async function serverLoad(){
           const restoredSais  = JSON.parse(bkSais);
           const restoredDos   = bkDos ? JSON.parse(bkDos) : [];
           if(restoredProgs.length > 0 || restoredSais.length > 0){
-            const conf = confirm(
-              '⚠ Firebase semble vide mais un backup local existe.
-
-' +
-              restoredProgs.length + ' programmes · ' + restoredSais.length + ' saisies · ' + restoredDos.length + ' dossiers
-' +
-              'Sauvegardé le : ' + (bkTs ? new Date(bkTs).toLocaleString('fr-FR') : 'inconnu') + '
-
-' +
-              'Restaurer ces données ?'
-            );
+            const msg = '⚠ Firebase vide mais backup local existe : ' + restoredProgs.length + ' programmes, ' + restoredSais.length + ' saisies. Restaurer ?';
+            const conf = confirm(msg);
             if(conf){
               programmes = restoredProgs;
               saisies    = restoredSais;
@@ -6406,25 +6397,22 @@ async function serverLoad(){
               fbInitialized = true; serverAvailable = true;
               updateSyncIndicator('ok');
               progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
-              // Resauvegarder immédiatement sur Firebase
               setTimeout(serverSave, 1000);
-              showToast('✓ ' + programmes.length + ' programmes et ' + saisies.length + ' saisies restaurés !');
+              showToast('✓ ' + programmes.length + ' programmes et ' + saisies.length + ' saisies restaures !');
               return true;
             }
           }
         }
       } catch(e) { console.warn('Restauration backup:', e.message); }
-
       programmes=[]; saisies=[]; dossiers=[]; absences=[];
       progCounter=0; saisieCounter=0; dosCounter=0;
       lastKnownTs = d ? d.updated_at : null;
       fbInitialized = true; serverAvailable = true;
       updateSyncIndicator('ok');
       progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
-      console.log('Firebase vide — application réinitialisée');
+      console.log('Firebase vide — application reinitialisee');
       return true;
     }
-
     programmes = Array.isArray(d.programmes) ? d.programmes : [];
     saisies    = Array.isArray(d.saisies)    ? d.saisies    : [];
     dossiers   = Array.isArray(d.dossiers)   ? d.dossiers   : [];
@@ -8064,28 +8052,13 @@ function adminRestoreBackup(){
     const bkDos  = localStorage.getItem('presfor_backup_dossiers');
     const bkTs   = localStorage.getItem('presfor_backup_ts');
     if(!bkProg && !bkSais){
-      alert('Aucun backup local trouvé.
-Le backup est créé automatiquement après chaque synchronisation réussie.');
+      alert('Aucun backup local trouvé. Le backup est créé automatiquement après chaque synchronisation réussie.');
       return;
     }
     const restoredProgs = bkProg ? JSON.parse(bkProg) : [];
     const restoredSais  = bkSais ? JSON.parse(bkSais) : [];
     const restoredDos   = bkDos  ? JSON.parse(bkDos)  : [];
-    const conf = confirm(
-      '⚠ RESTAURATION DU BACKUP LOCAL
-
-' +
-      restoredProgs.length + ' programmes
-' +
-      restoredSais.length  + ' saisies
-' +
-      restoredDos.length   + ' dossiers manuels
-' +
-      'Sauvegardé le : ' + (bkTs ? new Date(bkTs).toLocaleString('fr-FR') : 'inconnu') + '
-
-' +
-      'Ces données remplaceront Firebase. Continuer ?'
-    );
+    const conf = confirm(       '⚠ RESTAURATION DU BACKUP LOCAL  ' +       restoredProgs.length + ' programmes ' +       restoredSais.length  + ' saisies ' +       restoredDos.length   + ' dossiers manuels ' +       'Sauvegardé le : ' + (bkTs ? new Date(bkTs).toLocaleString('fr-FR') : 'inconnu') + '. Remplacer Firebase?');
     if(!conf) return;
     programmes = restoredProgs;
     saisies    = restoredSais;
