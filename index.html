@@ -6413,10 +6413,37 @@ async function serverLoad(){
       console.log('Firebase vide — application reinitialisee');
       return true;
     }
-    programmes = Array.isArray(d.programmes) ? d.programmes : [];
-    saisies    = Array.isArray(d.saisies)    ? d.saisies    : [];
-    dossiers   = Array.isArray(d.dossiers)   ? d.dossiers   : [];
-    absences   = Array.isArray(d.absences)   ? d.absences   : [];
+    const remoteProg = Array.isArray(d.programmes) ? d.programmes : [];
+    const remoteSais = Array.isArray(d.saisies)    ? d.saisies    : [];
+    const remoteDos  = Array.isArray(d.dossiers)   ? d.dossiers   : [];
+    const remoteAbs  = Array.isArray(d.absences)   ? d.absences   : [];
+
+    // Protection anti-régression : si Firebase a moins de données que le backup local,
+    // fusionner plutôt qu'écraser
+    let bkProg = [], bkSais = [];
+    try {
+      const bp = localStorage.getItem('presfor_backup_programmes');
+      const bs = localStorage.getItem('presfor_backup_saisies');
+      if(bp) bkProg = JSON.parse(bp);
+      if(bs) bkSais = JSON.parse(bs);
+    } catch(e) {}
+
+    if(bkProg.length > remoteProg.length){
+      console.warn('PROTECTION : Firebase a ' + remoteProg.length + ' programmes mais backup local en a ' + bkProg.length + ' — fusion');
+      programmes = mergeById(remoteProg, bkProg);
+    } else {
+      programmes = remoteProg;
+    }
+
+    if(bkSais.length > remoteSais.length * 0.8 && bkSais.length > remoteSais.length){
+      console.warn('PROTECTION : Firebase a ' + remoteSais.length + ' saisies mais backup local en a ' + bkSais.length + ' — fusion');
+      saisies = mergeById(remoteSais, bkSais);
+    } else {
+      saisies = remoteSais;
+    }
+
+    dossiers = remoteDos;
+    absences = remoteAbs;
     if(d.users_db && typeof d.users_db === 'object'){
       users_db = Object.assign({}, d.users_db, users_db);
     }
@@ -6657,8 +6684,14 @@ async function serverSave(){
 // ── Sauvegarde différée après chaque modification ──
 function scheduleSave(){
   if(!fbInitialized) return;
+  // Sauvegarde locale IMMÉDIATE à chaque modification (backup de sécurité)
+  try {
+    localStorage.setItem('presfor_backup_programmes', JSON.stringify(programmes));
+    localStorage.setItem('presfor_backup_saisies',    JSON.stringify(saisies));
+    localStorage.setItem('presfor_backup_dossiers',   JSON.stringify(dossiers));
+    localStorage.setItem('presfor_backup_ts',         new Date().toISOString());
+  } catch(e) {}
   if(!isOnline){
-    // Hors-ligne : stocker dans localStorage
     saveToOfflineQueue();
     return;
   }
