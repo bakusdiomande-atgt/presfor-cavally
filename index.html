@@ -289,6 +289,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <button onclick="adminRefreshUsers()" style="background:var(--accent-lt);border:none;color:var(--accent-txt);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;">↻ Actualiser</button>
+        <button onclick="adminRestoreBackup()" style="background:var(--amber-lt);border:1px solid var(--amber);color:var(--amber-txt);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;" title="Restaurer depuis le backup local">⚠ Restaurer backup</button>
         <button onclick="adminClosePanel()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);">×</button>
       </div>
     </div>
@@ -6373,6 +6374,47 @@ async function serverLoad(){
     const d = await r.json();
 
     if(!d || d.reset){
+      // Firebase vide ou réinitialisé — tenter restauration depuis backup localStorage
+      try {
+        const bkProg = localStorage.getItem('presfor_backup_programmes');
+        const bkSais = localStorage.getItem('presfor_backup_saisies');
+        const bkDos  = localStorage.getItem('presfor_backup_dossiers');
+        const bkTs   = localStorage.getItem('presfor_backup_ts');
+        if(bkProg && bkSais){
+          const restoredProgs = JSON.parse(bkProg);
+          const restoredSais  = JSON.parse(bkSais);
+          const restoredDos   = bkDos ? JSON.parse(bkDos) : [];
+          if(restoredProgs.length > 0 || restoredSais.length > 0){
+            const conf = confirm(
+              '⚠ Firebase semble vide mais un backup local existe.
+
+' +
+              restoredProgs.length + ' programmes · ' + restoredSais.length + ' saisies · ' + restoredDos.length + ' dossiers
+' +
+              'Sauvegardé le : ' + (bkTs ? new Date(bkTs).toLocaleString('fr-FR') : 'inconnu') + '
+
+' +
+              'Restaurer ces données ?'
+            );
+            if(conf){
+              programmes = restoredProgs;
+              saisies    = restoredSais;
+              dossiers   = restoredDos;
+              progCounter = programmes.length;
+              saisieCounter = saisies.length;
+              dosCounter = dossiers.length;
+              fbInitialized = true; serverAvailable = true;
+              updateSyncIndicator('ok');
+              progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
+              // Resauvegarder immédiatement sur Firebase
+              setTimeout(serverSave, 1000);
+              showToast('✓ ' + programmes.length + ' programmes et ' + saisies.length + ' saisies restaurés !');
+              return true;
+            }
+          }
+        }
+      } catch(e) { console.warn('Restauration backup:', e.message); }
+
       programmes=[]; saisies=[]; dossiers=[]; absences=[];
       progCounter=0; saisieCounter=0; dosCounter=0;
       lastKnownTs = d ? d.updated_at : null;
@@ -6603,6 +6645,13 @@ async function serverSave(){
       lastKnownTs = ts;
       serverAvailable = true;
       updateSyncIndicator('ok');
+      // Sauvegarde localStorage — backup local en cas de perte Firebase
+      try {
+        localStorage.setItem('presfor_backup_programmes', JSON.stringify(programmes));
+        localStorage.setItem('presfor_backup_saisies',    JSON.stringify(saisies));
+        localStorage.setItem('presfor_backup_dossiers',   JSON.stringify(dossiers));
+        localStorage.setItem('presfor_backup_ts',         ts);
+      } catch(e) { console.warn('Backup localStorage:', e.message); }
       // Rafraîchir l'UI si on a mergé des données tierces
       if(needsUIRefresh){
         progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
@@ -8005,6 +8054,52 @@ function adminLoadUsers(){
       <td style="padding:8px 12px;">${isMe ? '<span style="font-size:11px;color:var(--text3)">Vous</span>' : `<button class="btn-d" onclick="adminDeleteUser('${u.id}')">Sup.</button>`}</td>
     </tr>`;
   }).join('');
+}
+
+// ── Restauration manuelle depuis backup localStorage ──
+function adminRestoreBackup(){
+  try {
+    const bkProg = localStorage.getItem('presfor_backup_programmes');
+    const bkSais = localStorage.getItem('presfor_backup_saisies');
+    const bkDos  = localStorage.getItem('presfor_backup_dossiers');
+    const bkTs   = localStorage.getItem('presfor_backup_ts');
+    if(!bkProg && !bkSais){
+      alert('Aucun backup local trouvé.
+Le backup est créé automatiquement après chaque synchronisation réussie.');
+      return;
+    }
+    const restoredProgs = bkProg ? JSON.parse(bkProg) : [];
+    const restoredSais  = bkSais ? JSON.parse(bkSais) : [];
+    const restoredDos   = bkDos  ? JSON.parse(bkDos)  : [];
+    const conf = confirm(
+      '⚠ RESTAURATION DU BACKUP LOCAL
+
+' +
+      restoredProgs.length + ' programmes
+' +
+      restoredSais.length  + ' saisies
+' +
+      restoredDos.length   + ' dossiers manuels
+' +
+      'Sauvegardé le : ' + (bkTs ? new Date(bkTs).toLocaleString('fr-FR') : 'inconnu') + '
+
+' +
+      'Ces données remplaceront Firebase. Continuer ?'
+    );
+    if(!conf) return;
+    programmes = restoredProgs;
+    saisies    = restoredSais;
+    dossiers   = restoredDos;
+    progCounter   = programmes.length;
+    saisieCounter = saisies.length;
+    dosCounter    = dossiers.length;
+    serverSave();
+    progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
+    adminClosePanel();
+    showToast('✓ Backup restauré : ' + programmes.length + ' programmes · ' + saisies.length + ' saisies');
+  } catch(e) {
+    alert('Erreur restauration : ' + e.message);
+  }
 }
 
 async function adminRefreshUsers(){
