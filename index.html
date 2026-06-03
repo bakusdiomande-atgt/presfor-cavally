@@ -6412,6 +6412,35 @@ async function serverLoad(){
     updateSyncIndicator('ok');
     progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
     console.log('Firebase chargé:', saisies.length, 'saisies,', programmes.length, 'programmes');
+
+    // Synchroniser AFOR si Firebase a une version plus récente
+    const localAforTs = localStorage.getItem('presfor_afor_ts') || '1970-01-01';
+    const remoteAforTs = d.afor_ts || '1970-01-01';
+    if(remoteAforTs > localAforTs || dossiersAFOR.length === 0){
+      aforLoadFromFirebase().then(loaded => {
+        if(loaded){
+          aforRenderAll();
+          dosRenderAll();
+          dashRenderAll();
+          console.log('AFOR rechargé depuis Firebase:', dossiersAFOR.length, 'dossiers');
+        }
+      });
+    }
+
+    // Synchroniser GNSS si Firebase a une version plus récente
+    const localGnssTs = localStorage.getItem('presfor_gnss_ts') || '1970-01-01';
+    const remoteGnssTs = d.gnss_ts || '1970-01-01';
+    if(remoteGnssTs > localGnssTs || gnssData.length === 0){
+      gnssLoadFromFirebase().then(loaded => {
+        if(loaded){
+          gnssUpdateBtnLabel();
+          dashRenderCardGNSS();
+          dosRenderAll();
+          console.log('GNSS rechargé depuis Firebase:', gnssData.length, 'parcelles');
+        }
+      });
+    }
+
     return true;
   } catch(e) {
     console.log('Firebase erreur:', e.message);
@@ -6597,14 +6626,49 @@ function scheduleSave(){
 async function syncPoll(){
   if(!isOnline || isSaving) return;
   try {
-    const r = await fetch(FIREBASE_URL + '/presfor/updated_at.json', {
+    // Lire le nœud racine pour détecter changements programmes/saisies ET afor/gnss
+    const r = await fetch(FIREBASE_URL + '/presfor.json?shallow=true', {
       signal: AbortSignal.timeout(8000)
     });
     if(!r.ok) return;
-    const ts = await r.json();
+    // Fallback : lire juste updated_at
+    const rTs = await fetch(FIREBASE_URL + '/presfor/updated_at.json', {
+      signal: AbortSignal.timeout(8000)
+    });
+    if(!rTs.ok) return;
+    const ts = await rTs.json();
+
     if(ts && ts !== lastKnownTs){
       console.log('Mise à jour Firebase détectée, rechargement...');
-      await serverLoad();
+      await serverLoad(); // serverLoad gère maintenant AFOR + GNSS
+    } else {
+      // Vérifier séparément AFOR et GNSS (imports par d'autres utilisateurs)
+      const localAforTs = localStorage.getItem('presfor_afor_ts') || '1970-01-01';
+      const localGnssTs = localStorage.getItem('presfor_gnss_ts') || '1970-01-01';
+
+      // Vérifier afor_ts
+      try {
+        const rAfor = await fetch(FIREBASE_URL + '/presfor/afor_cf/ts.json', { signal: AbortSignal.timeout(5000) });
+        if(rAfor.ok){
+          const aforTs = await rAfor.json();
+          if(aforTs && aforTs > localAforTs){
+            const loaded = await aforLoadFromFirebase();
+            if(loaded){ aforRenderAll(); dosRenderAll(); dashRenderAll(); }
+          }
+        }
+      } catch(e){}
+
+      // Vérifier gnss_ts
+      try {
+        const rGnss = await fetch(FIREBASE_URL + '/presfor/gnss_data/ts.json', { signal: AbortSignal.timeout(5000) });
+        if(rGnss.ok){
+          const gnssTs = await rGnss.json();
+          if(gnssTs && gnssTs > localGnssTs){
+            const loaded = await gnssLoadFromFirebase();
+            if(loaded){ gnssUpdateBtnLabel(); dashRenderCardGNSS(); dosRenderAll(); }
+          }
+        }
+      } catch(e){}
     }
   } catch(e) {}
 }
@@ -7554,6 +7618,8 @@ function applyViewerRestrictions(){
 async function aforSaveToFirebase(){
   const ts = new Date().toISOString();
   const payload = { data: dossiersAFOR, ts, count: dossiersAFOR.length };
+
+  // 1. Sauvegarder les données AFOR dans leur nœud dédié
   const r = await fetch(FIREBASE_URL + '/presfor/afor_cf.json', {
     method: 'PUT',
     headers: {'Content-Type':'application/json'},
@@ -7561,6 +7627,19 @@ async function aforSaveToFirebase(){
     signal: AbortSignal.timeout(30000)
   });
   if(!r.ok) throw new Error('HTTP ' + r.status);
+
+  // 2. Mettre à jour updated_at dans /presfor.json pour que syncPoll
+  //    des autres utilisateurs détecte le changement et recharge l'AFOR
+  try {
+    await fetch(FIREBASE_URL + '/presfor.json', {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ updated_at: ts, afor_ts: ts, afor_count: dossiersAFOR.length }),
+      signal: AbortSignal.timeout(10000)
+    });
+    lastKnownTs = ts; // éviter que notre propre syncPoll recharge inutilement
+  } catch(e) { console.warn('AFOR PATCH updated_at:', e.message); }
+
   console.log('AFOR sauvegardé Firebase:', dossiersAFOR.length, 'dossiers');
   showToast('Base AFOR synchronisée ✓ (' + dossiersAFOR.length.toLocaleString('fr-FR') + ' dossiers)');
 }
@@ -7596,6 +7675,7 @@ async function aforLoadFromFirebase(){
 async function gnssSaveToFirebase(){
   const ts = new Date().toISOString();
   const payload = { data: gnssData, ts, count: gnssData.length };
+
   const r = await fetch(FIREBASE_URL + '/presfor/gnss_data.json', {
     method: 'PUT',
     headers: {'Content-Type':'application/json'},
@@ -7603,6 +7683,18 @@ async function gnssSaveToFirebase(){
     signal: AbortSignal.timeout(30000)
   });
   if(!r.ok) throw new Error('HTTP ' + r.status);
+
+  // Mettre à jour updated_at pour que les autres utilisateurs reçoivent le GNSS
+  try {
+    await fetch(FIREBASE_URL + '/presfor.json', {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ updated_at: ts, gnss_ts: ts, gnss_count: gnssData.length }),
+      signal: AbortSignal.timeout(10000)
+    });
+    lastKnownTs = ts;
+  } catch(e) { console.warn('GNSS PATCH updated_at:', e.message); }
+
   console.log('GNSS sauvegardé Firebase:', gnssData.length, 'parcelles');
   showToast('GNSS synchronisé ✓ (' + gnssData.length.toLocaleString('fr-FR') + ' parcelles)');
 }
