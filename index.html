@@ -6815,6 +6815,17 @@ const FIREBASE_API_KEY = 'AIzaSyDt_APyGTXNFnA3k8shKwricp5iLodfdMQ';
 let fbAuthToken = null;
 let fbTokenExpiry = 0;
 
+// Restaurer le token depuis localStorage au démarrage (évite une requête auth inutile)
+try {
+  const savedToken = localStorage.getItem('presfor_fb_token');
+  const savedExpiry = parseInt(localStorage.getItem('presfor_fb_token_exp') || '0');
+  if(savedToken && Date.now() < savedExpiry - 60000) {
+    fbAuthToken = savedToken;
+    fbTokenExpiry = savedExpiry;
+    console.log('Token Firebase restauré depuis localStorage');
+  }
+} catch(e) {}
+
 // ── Initialisation Firebase Auth anonyme ──
 // Permet de satisfaire les règles auth != null sans exposer les données
 const _firebaseConfig = {
@@ -7221,6 +7232,8 @@ function scheduleSave(){
 // ── Polling toutes les 10 secondes ──
 async function syncPoll(){
   if(!isOnline || isSaving) return;
+  // S'assurer d'avoir un token valide avant toute requête
+  await fbGetToken();
   try {
     // Lire le nœud racine pour détecter changements programmes/saisies ET afor/gnss
     const r = await fetch(FIREBASE_URL + '/presfor.json?shallow=true', {
@@ -8809,6 +8822,15 @@ saisieInit();
 dosInit();
 agInit();
 zvInit();
+
+// Obtenir le token Firebase Auth anonyme AVANT tout appel Firebase
+fbGetToken().then(token => {
+  if(token){
+    console.log('Firebase Auth anonyme OK — token pret');
+  } else {
+    console.warn('Firebase Auth : token non disponible, mode ouvert');
+  }
+});
 
 serverLoad().then(ok => {
   if(!ok){
