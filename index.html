@@ -250,6 +250,9 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 .admin-card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:28px 32px;width:100%;max-width:700px;max-height:88vh;overflow-y:auto;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<!-- Firebase App + Auth pour sécuriser l'accès à Realtime Database -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 </head>
 <body>
 
@@ -6808,6 +6811,66 @@ setInterval(notifCheck, 60 * 60 * 1000);
 // ═══════════════════════════════════════════
 
 const FIREBASE_URL = 'https://presfor-cavally-default-rtdb.europe-west1.firebasedatabase.app';
+const FIREBASE_API_KEY = 'AIzaSyDt_APyGTXNFnA3k8shKwricp5iLodfdMQ';
+let fbAuthToken = null;
+let fbTokenExpiry = 0;
+
+// ── Initialisation Firebase Auth anonyme ──
+// Permet de satisfaire les règles auth != null sans exposer les données
+const _firebaseConfig = {
+  apiKey: FIREBASE_API_KEY,
+  authDomain: 'presfor-cavally.firebaseapp.com',
+  databaseURL: FIREBASE_URL,
+  projectId: 'presfor-cavally',
+  storageBucket: 'presfor-cavally.appspot.com',
+};
+
+async function fbGetToken(){
+  // Si token valide et pas expiré (marge 5 min)
+  if(fbAuthToken && Date.now() < fbTokenExpiry - 300000) return fbAuthToken;
+  try {
+    // Connexion anonyme via Firebase Auth REST API
+    const r = await fetch(
+      'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=' + FIREBASE_API_KEY,
+      { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({returnSecureToken:true}), signal: AbortSignal.timeout(10000) }
+    );
+    if(r.ok){
+      const d = await r.json();
+      fbAuthToken = d.idToken;
+      fbTokenExpiry = Date.now() + parseInt(d.expiresIn||3600)*1000;
+      // Persister le token pour éviter de recréer un anonyme à chaque page
+      try{ localStorage.setItem('presfor_fb_token', fbAuthToken);
+           localStorage.setItem('presfor_fb_token_exp', fbTokenExpiry); }catch(e){}
+      console.log('Firebase Auth anonyme OK');
+      return fbAuthToken;
+    }
+  } catch(e){ console.warn('fbGetToken:', e.message); }
+  // Fallback : token depuis localStorage
+  try{
+    const t = localStorage.getItem('presfor_fb_token');
+    const exp = parseInt(localStorage.getItem('presfor_fb_token_exp')||'0');
+    if(t && Date.now() < exp - 60000){ fbAuthToken=t; fbTokenExpiry=exp; return t; }
+  }catch(e){}
+  return null;
+}
+
+// Override fetch global pour injecter ?auth=token sur toutes les requêtes Firebase
+const _originalFetch = window.fetch.bind(window);
+window.fetch = async function(url, options){
+  if(typeof url === 'string' && url.includes('firebasedatabase.app') && !url.includes('?auth=')){
+    const token = fbAuthToken || localStorage.getItem('presfor_fb_token');
+    if(token){
+      const sep = url.includes('?') ? '&' : '?';
+      url = url + sep + 'auth=' + token;
+    }
+  }
+  return _originalFetch(url, options);
+};
+
+// Rafraîchissement automatique du token toutes les 55 minutes
+setInterval(()=>{ fbGetToken(); }, 55*60*1000);
+
 let isSaving = false;
 let saveQueue = false;
 let lastKnownTs = null;
@@ -6820,6 +6883,8 @@ let serverAvailable = false;
 // ── Charger depuis Firebase ──
 async function serverLoad(){
   updateSyncIndicator('pending');
+  // S'assurer d'avoir un token auth avant de charger
+  await fbGetToken();
   try {
     const r = await fetch(FIREBASE_URL + '/presfor.json', {
       signal: AbortSignal.timeout(20000)
