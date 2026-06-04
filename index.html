@@ -964,6 +964,21 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       </div>
     </div>
 
+    <!-- Détail saisie -->
+    <div class="panel" id="saisie-panel-detail">
+      <div class="page-head">
+        <div>
+          <h2 id="saisie-detail-title">Détail de la saisie</h2>
+          <p id="saisie-detail-subtitle"></p>
+        </div>
+        <div class="btn-row">
+          <button class="btn-s" onclick="saisieShowPanel('list')">← Retour à la liste</button>
+          <button class="btn-s" id="saisie-detail-edit-btn" onclick="">✏ Modifier</button>
+        </div>
+      </div>
+      <div id="saisie-detail-content"></div>
+    </div>
+
     <!-- Corrélation -->
     <div class="panel" id="saisie-panel-corr">
       <div class="page-head"><div><h2>Corrélation Programme / Exécution</h2><p>Comparaison automatique objectifs planifiés vs production réelle</p></div></div>
@@ -2019,11 +2034,19 @@ function progRenderPage(){
 
 function progShowPanel(id,btn){
   document.querySelectorAll('#module-prog .panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById('prog-panel-'+id).classList.add('active');
+  const panel = document.getElementById('prog-panel-'+id);
+  if(!panel){ console.error('Panel introuvable: prog-panel-'+id); return; }
+  panel.classList.add('active');
   document.querySelectorAll('#sb-prog .nav-item').forEach(n=>n.classList.remove('active'));
-  if(btn)btn.classList.add('active');
-  else{const btns=document.querySelectorAll('#sb-prog .nav-item');const map={list:0,form:1,schema:2,rules:3,guide:4};btns[map[id]]?.classList.add('active');}
-  if(id==='form'&&!progEditingId)progResetForm();
+  if(btn) btn.classList.add('active');
+  else {
+    const btns = document.querySelectorAll('#sb-prog .nav-item');
+    const map = {list:0, form:1, schema:2, rules:3, guide:4};
+    // 'detail' n'a pas de nav-item — activer 'list' par défaut
+    const idx = map[id] !== undefined ? map[id] : 0;
+    btns[idx]?.classList.add('active');
+  }
+  if(id==='form' && !progEditingId) progResetForm();
 }
 
 function progAddVillage(e){
@@ -2503,7 +2526,10 @@ function saisieRenderPage(){
       <td>${ecartHtml}</td>
       <td><div style="display:flex;gap:5px;align-items:center">
         ${saisieIsLocked(s)?'<span title="Saisie verrouillée (+7j)" style="color:var(--amber);font-size:13px;">🔒</span>':''}
-        <button class="btn-s" style="font-size:11px;padding:4px 8px" onclick="saisieEdit('${s.id}')">Modifier</button><button class="btn-d" onclick="saisieDelete('${s.id}')">Sup.</button></div></td>
+        <button class="btn-s" style="font-size:11px;padding:4px 8px;background:var(--accent-lt);color:var(--accent-txt);border-color:var(--accent)" onclick="event.stopPropagation();saisieShowDetail('${s.id}')">🔍 Détail</button>
+        <button class="btn-s" style="font-size:11px;padding:4px 8px" onclick="event.stopPropagation();saisieEdit('${s.id}')">Modifier</button>
+        <button class="btn-d" onclick="event.stopPropagation();saisieDelete('${s.id}')">Sup.</button>
+      </div></td>
     </tr>`;
   }).join('');
   if(paginEl) paginEl.innerHTML = renderPagination('saisie-pagination', saisiePage, list.length, PAGE_SIZE, 'saisieGoPage');
@@ -2581,11 +2607,17 @@ function saisieRenderPerf(){
 
 function saisieShowPanel(id,btn){
   document.querySelectorAll('#module-saisie .panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById('saisie-panel-'+id).classList.add('active');
+  const panel = document.getElementById('saisie-panel-'+id);
+  if(!panel){ console.error('Panel introuvable: saisie-panel-'+id); return; }
+  panel.classList.add('active');
   document.querySelectorAll('#module-saisie .nav-item').forEach(n=>n.classList.remove('active'));
-  if(btn)btn.classList.add('active');
-  else{const btns=document.querySelectorAll('#module-saisie .nav-item');const map={list:0,form:1,corr:2,perf:3};btns[map[id]]?.classList.add('active');}
-  if(id==='form'&&!saisieEditingId)saisieResetForm();
+  if(btn) btn.classList.add('active');
+  else {
+    const btns = document.querySelectorAll('#module-saisie .nav-item');
+    const map = {list:0, form:1, corr:2, perf:3};
+    btns[map[id] !== undefined ? map[id] : 0]?.classList.add('active');
+  }
+  if(id==='form' && !saisieEditingId) saisieResetForm();
 }
 
 function saisieLoadProgs(){
@@ -2921,6 +2953,189 @@ function srSubmit(){
   document.getElementById('sr-etape').value = '';
   document.querySelectorAll('#sr-chips .chip').forEach(c=>c.classList.remove('selected'));
   showToast('Saisie rapide enregistrée !');
+}
+
+function saisieShowDetail(id){
+  const s = saisies.find(x=>x.id===id);
+  if(!s){ showToast('Saisie introuvable.'); return; }
+
+  // Programme lié
+  const progLie = s.prog_ref ? programmes.find(p=>p.id===s.prog_ref) : null;
+
+  // Dossier lié
+  const dosLie = s.dossier_ref ? (dossiers.find(d=>d.id===s.dossier_ref) || (dossiersAFOR||[]).find(d=>d.id===s.dossier_ref)) : null;
+
+  // Cumul de production de l'agent ce jour-là
+  const memeJour = saisies.filter(x=>x.agent===s.agent && x.date===s.date);
+  const totalJour = memeJour.reduce((a,x)=>a+(x.ndos||0),0);
+  const totalHaJour = memeJour.reduce((a,x)=>a+(x.superficie||0),0);
+
+  // Couleur étape
+  const etapeColors = {
+    'Enquête terrain':'b-blue','Bornage':'b-teal',
+    'Constitution du dossier':'b-amber','PV de constat de limite':'b-amber',
+    'Recensement droit coutumier':'b-amber','Demande certificat foncier':'b-red',
+    'Enregistrement':'b-green','Clôturé':'b-green'
+  };
+  const etapeBadge = `<span class="badge ${etapeColors[s.etape]||'b-gray'}">${s.etape||'—'}</span>`;
+
+  // Statut verrou
+  const locked = saisieIsLocked(s);
+  const lockedBadge = locked
+    ? '<span style="background:var(--amber-lt);color:var(--amber-txt);padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;">🔒 Verrouillée (+7j)</span>'
+    : '<span style="background:var(--accent-lt);color:var(--accent-txt);padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;">✓ Modifiable</span>';
+
+  // Météo icône
+  const meteoIcon = {'Ensoleillé':'☀️','Nuageux':'☁️','Pluie légère':'🌦️','Forte pluie':'🌧️'}[s.meteo||'']||'🌤️';
+
+  // Incident badge
+  const incidentHtml = s.incident && s.incident !== ''
+    ? `<span style="background:var(--red-lt);color:var(--red-txt);padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">⚠ ${s.incident}</span>`
+    : '<span style="color:var(--text3);font-size:12px;">Aucun incident</span>';
+
+  // Dossiers détail
+  const dosItems = Array.isArray(s.dossiers) && s.dossiers.length
+    ? s.dossiers.map(d=>`<div style="background:var(--surface2);border-radius:6px;padding:6px 10px;font-size:12px;font-family:'DM Mono',monospace;">${d.id||'—'}</div>`).join('')
+    : '<span style="color:var(--text3);font-size:12px;">Aucun détail par dossier</span>';
+
+  // Autres saisies du même agent ce jour
+  const autresSaisies = memeJour.filter(x=>x.id!==id);
+  const autresRows = autresSaisies.length
+    ? autresSaisies.map(x=>`<tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:7px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent)">${x.id}</td>
+        <td style="padding:7px 12px;font-size:12px;">${x.village||'—'}</td>
+        <td style="padding:7px 12px;"><span class="badge ${etapeColors[x.etape]||'b-gray'}" style="font-size:10px;">${x.etape}</span></td>
+        <td style="padding:7px 12px;text-align:center;font-weight:700;color:var(--accent);">${x.ndos}</td>
+        <td style="padding:7px 12px;text-align:center;font-size:11px;color:var(--teal);">${x.superficie?x.superficie+' ha':'—'}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="5" style="padding:14px;text-align:center;color:var(--text3);">Seule saisie de la journée</td></tr>`;
+
+  // Mettre à jour l'entête
+  document.getElementById('saisie-detail-title').textContent = s.id;
+  document.getElementById('saisie-detail-subtitle').textContent = s.agent + ' · ' + fmtDate(s.date) + ' · ' + (s.village||'');
+  document.getElementById('saisie-detail-edit-btn').onclick = ()=>saisieEdit(id);
+
+  document.getElementById('saisie-detail-content').innerHTML = `
+    <!-- KPI -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;">
+      <div class="kpi blue">
+        <div class="kpi-l">Dossiers traités</div>
+        <div class="kpi-v">${s.ndos}</div>
+        <div class="kpi-s">Cette saisie</div>
+      </div>
+      <div class="kpi green">
+        <div class="kpi-l">Total ce jour</div>
+        <div class="kpi-v">${totalJour}</div>
+        <div class="kpi-s">${memeJour.length} saisie(s)</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Superficie</div>
+        <div class="kpi-v" style="font-size:16px;">${s.superficie?s.superficie+' ha':'—'}</div>
+        <div class="kpi-s">Cette saisie</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Durée terrain</div>
+        <div class="kpi-v" style="font-size:16px;">${s.duree||'—'}</div>
+        <div class="kpi-s">${s.hdep||'—'} → ${s.hret||'—'}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Km parcourus</div>
+        <div class="kpi-v" style="font-size:16px;">${s.km||0}</div>
+        <div class="kpi-s">kilomètres</div>
+      </div>
+    </div>
+
+    <!-- Deux colonnes -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
+
+      <!-- Colonne gauche : informations -->
+      <div class="tw" style="padding:16px 18px;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent2);margin-bottom:12px;">Informations de la saisie</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${[
+            ['Référence', `<span style="font-family:'DM Mono',monospace;font-weight:600;">${s.id}</span>`],
+            ['Agent', `<strong>${s.agent}</strong>`],
+            ['Date', fmtDate(s.date)],
+            ['Département', s.dept||'—'],
+            ['Sous-préfecture', s.sp||'—'],
+            ['Village', `<strong>${s.village||'—'}</strong>`],
+            ['Étape réalisée', etapeBadge],
+            ['Météo', `${meteoIcon} ${s.meteo||'—'}`],
+            ['Incident', incidentHtml],
+            ['Statut', lockedBadge],
+          ].map(([label, val])=>`
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
+              <span style="color:var(--text2);">${label}</span>
+              <span style="text-align:right;max-width:60%;">${val}</span>
+            </div>`).join('')}
+          ${s.obs?`<div style="margin-top:6px;padding:8px 10px;background:var(--surface2);border-radius:6px;font-size:12px;color:var(--text2);">📝 ${s.obs}</div>`:''}
+        </div>
+      </div>
+
+      <!-- Colonne droite : liens et dossiers -->
+      <div style="display:flex;flex-direction:column;gap:14px;">
+
+        <!-- Programme lié -->
+        <div class="tw" style="padding:14px 18px;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent2);margin-bottom:10px;">Programme lié</div>
+          ${progLie ? `
+            <div style="background:var(--accent-lt);border-radius:8px;padding:10px 14px;">
+              <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--accent-txt);margin-bottom:4px;">${progLie.id}</div>
+              <div style="font-size:13px;font-weight:600;">${progLie.agent}</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:2px;">${progLie.dept||''} · ${progLie.op||''}</div>
+              <div style="margin-top:8px;">
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:3px;">
+                  <span>Objectif</span><span>${progLie.objectif||progLie.objectif_dos||0}</span>
+                </div>
+                <div style="height:6px;background:rgba(0,0,0,0.1);border-radius:3px;overflow:hidden;">
+                  <div style="width:${Math.min(100,Math.round((progLie.realise||0)/Math.max(progLie.objectif||progLie.objectif_dos||1,1)*100))}%;height:100%;background:var(--accent);border-radius:3px;"></div>
+                </div>
+              </div>
+              <button class="btn-s" style="margin-top:8px;font-size:11px;padding:3px 9px;" onclick="progShowDetail('${progLie.id}')">Voir le programme</button>
+            </div>` : `<span style="color:var(--text3);font-size:12px;">Aucun programme lié</span>`}
+        </div>
+
+        <!-- Dossier lié -->
+        ${dosLie ? `
+        <div class="tw" style="padding:14px 18px;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent2);margin-bottom:10px;">Dossier CF lié</div>
+          <div style="background:var(--blue-lt);border-radius:8px;padding:10px 14px;">
+            <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--blue-txt);margin-bottom:4px;">${dosLie.id}</div>
+            <div style="font-size:13px;font-weight:600;">${(dosLie.prenom||'')+' '+(dosLie.nom||dosLie.nom_demandeur||'')}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px;">${dosLie.village||''} · ${dosLie.type||''}</div>
+            <div style="margin-top:6px;"><span class="badge b-blue" style="font-size:10px;">${dosLie.etape||'—'}</span></div>
+          </div>
+        </div>` : ''}
+
+        <!-- Détail dossiers -->
+        <div class="tw" style="padding:14px 18px;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent2);margin-bottom:10px;">Détail par dossier (${Array.isArray(s.dossiers)?s.dossiers.length:0})</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">${dosItems}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Autres saisies du même jour -->
+    <div class="tw">
+      <div style="padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);">
+          Autres saisies de ${s.agent.split(' ')[0]} le ${fmtDate(s.date)} (${autresSaisies.length})
+        </span>
+        <span style="font-size:11px;color:var(--accent);font-weight:600;">Total jour : ${totalJour} dossiers · ${totalHaJour.toFixed(1)} ha</span>
+      </div>
+      <table style="font-size:12px;">
+        <thead><tr>
+          <th>Référence</th><th>Village</th><th>Étape</th>
+          <th style="text-align:center;">Dossiers</th>
+          <th style="text-align:center;">Superficie</th>
+        </tr></thead>
+        <tbody>${autresRows}</tbody>
+      </table>
+    </div>
+  `;
+
+  saisieShowPanel('detail');
+  window.scrollTo(0,0);
 }
 
 function saisieResetForm(){
