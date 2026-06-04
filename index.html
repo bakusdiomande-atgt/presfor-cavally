@@ -749,6 +749,21 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       </div>
     </div>
 
+    <!-- Détail programme -->
+    <div class="panel" id="prog-panel-detail">
+      <div class="page-head">
+        <div>
+          <h2 id="prog-detail-title">Détail du programme</h2>
+          <p id="prog-detail-subtitle"></p>
+        </div>
+        <div class="btn-row">
+          <button class="btn-s" onclick="progShowPanel('list')">← Retour à la liste</button>
+          <button class="btn-s" id="prog-detail-edit-btn" onclick="" style="display:none">✏ Modifier</button>
+        </div>
+      </div>
+      <div id="prog-detail-content"></div>
+    </div>
+
     <!-- Guide -->
     <div class="panel" id="prog-panel-guide">
       <div class="page-head"><div><h2>Guide terrain</h2><p>Procédure pour superviseurs et chefs d'équipe</p></div></div>
@@ -1992,7 +2007,11 @@ function progRenderPage(){
       <td style="text-align:center;font-size:12px;color:var(--text2)">${p.objectif_dos?p.objectif_dos+' dos.':'—'}</td>
       <td style="min-width:100px"><div class="prog"><div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${fc}"></div></div><span class="prog-pct" style="color:${fc}">${pct}%</span></div><span style="font-size:10px;color:var(--text3)">${p.realise||0} réal.</span></td>
       <td>${sb(p.statut)}</td>
-      <td><div style="display:flex;gap:5px"><button class="btn-s" style="font-size:11px;padding:4px 8px" onclick="progEdit('${p.id}')">Modifier</button><button class="btn-d" onclick="progDelete('${p.id}')">Sup.</button></div></td>
+      <td><div style="display:flex;gap:5px">
+        <button class="btn-s" style="font-size:11px;padding:4px 8px;background:var(--accent-lt);color:var(--accent-txt);border-color:var(--accent)" onclick="event.stopPropagation();progShowDetail('${p.id}')">🔍 Détail</button>
+        <button class="btn-s" style="font-size:11px;padding:4px 8px" onclick="event.stopPropagation();progEdit('${p.id}')">Modifier</button>
+        <button class="btn-d" onclick="event.stopPropagation();progDelete('${p.id}')">Sup.</button>
+      </div></td>
     </tr>`;
   }).join('');
   if(paginEl) paginEl.innerHTML = renderPagination('prog-pagination', progPage, list.length, PAGE_SIZE, 'progGoPage');
@@ -2151,6 +2170,226 @@ function progResetForm(){
   progCounter--;progGenRef();
   setTimeout(progUpdateObjUnite, 50);
 }
+function progShowDetail(id){
+  const p = programmes.find(x=>x.id===id);
+  if(!p){ showToast('Programme introuvable.'); return; }
+
+  // Saisies liées à ce programme
+  const mesSaisies = saisies.filter(s=>s.prog_ref===id);
+  const totalRealise = mesSaisies.reduce((s,x)=>s+(x.ndos||0),0);
+  const totalHa = mesSaisies.reduce((s,x)=>s+(x.superficie||0),0);
+  const joursT = [...new Set(mesSaisies.map(s=>s.date))].sort();
+  const dernierJour = joursT[joursT.length-1];
+
+  // Objectif de référence
+  const objRef = p.objectif>0 ? p.objectif : (p.objectif_dos>0 ? p.objectif_dos : 0);
+  const pct = objRef>0 ? Math.min(100,Math.round(totalRealise/objRef*100)) : 0;
+  const colPct = pct>=90?'var(--accent)':pct>=60?'var(--amber)':'var(--red)';
+
+  // Statut badge
+  const statutBadge = {
+    'En cours':'<span class="badge b-green">En cours</span>',
+    'Planifié':'<span class="badge b-blue">Planifié</span>',
+    'Terminé':'<span class="badge b-gray">Terminé</span>',
+    'En retard':'<span class="badge b-red">En retard</span>',
+  }[p.statut]||'';
+
+  // Villages
+  const villageTags = (Array.isArray(p.villages)?p.villages:[]).map(v=>
+    `<span style="display:inline-block;background:var(--accent-lt);color:var(--accent-txt);padding:2px 9px;border-radius:20px;font-size:12px;margin:2px;">${v}</span>`
+  ).join('');
+
+  // Sous-étapes
+  const sousetapes = Array.isArray(p.sousetapes) ? p.sousetapes : [];
+  const actDef = ACTIVITES[p.op] || null;
+  const sousetapesHtml = sousetapes.length
+    ? sousetapes.map(e=>`<span style="display:inline-flex;align-items:center;gap:4px;background:${actDef?actDef.couleur.bg:'var(--surface2)'};color:${actDef?actDef.couleur.tx:'var(--text2)'};border:1px solid ${actDef?actDef.couleur.brd:'var(--border)'};padding:3px 10px;border-radius:20px;font-size:11px;margin:2px;">✓ ${e}</span>`).join('')
+    : '<span style="color:var(--text3);font-size:12px;">—</span>';
+
+  // Tableau des saisies liées
+  const saisiesRows = mesSaisies.length===0
+    ? `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3);">Aucune saisie liée à ce programme</td></tr>`
+    : [...mesSaisies].sort((a,b)=>b.date.localeCompare(a.date)).map(s=>{
+        const etapeBadge = `<span class="badge b-blue" style="font-size:10px;">${s.etape}</span>`;
+        return `<tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;font-size:12px;color:var(--text2);white-space:nowrap;">${fmtDate(s.date)}</td>
+          <td style="padding:8px 12px;font-weight:500;font-size:12px;">${s.agent}</td>
+          <td style="padding:8px 12px;">${s.village||'—'}</td>
+          <td style="padding:8px 12px;">${etapeBadge}</td>
+          <td style="padding:8px 12px;text-align:center;font-family:'Syne',sans-serif;font-weight:700;color:var(--accent);font-size:15px;">${s.ndos}</td>
+          <td style="padding:8px 12px;text-align:center;font-size:12px;color:var(--teal);">${s.superficie?s.superficie+' ha':'—'}</td>
+          <td style="padding:8px 12px;font-size:11px;color:var(--text2);">${s.incident&&s.incident!==''?'⚠ '+s.incident:''}</td>
+        </tr>`;
+      }).join('');
+
+  // Production par village
+  const parVillage = {};
+  mesSaisies.forEach(s=>{
+    if(!parVillage[s.village]) parVillage[s.village]={dos:0,ha:0};
+    parVillage[s.village].dos+=s.ndos||0;
+    parVillage[s.village].ha+=(s.superficie||0);
+  });
+  const villageRows = Object.entries(parVillage).sort((a,b)=>b[1].dos-a[1].dos).map(([v,d])=>{
+    const pctV = objRef>0 ? Math.min(100,Math.round(d.dos/objRef*100)) : 0;
+    return `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:8px 12px;font-weight:500;">${v}</td>
+      <td style="padding:8px 12px;text-align:center;font-weight:700;color:var(--accent);">${d.dos}</td>
+      <td style="padding:8px 12px;text-align:center;color:var(--teal);">${d.ha.toFixed(1)} ha</td>
+    </tr>`;
+  }).join('');
+
+  // Construire le contenu
+  document.getElementById('prog-detail-title').textContent = p.id;
+  document.getElementById('prog-detail-subtitle').textContent = p.agent + ' · ' + (p.dept||'') + ' · ' + (p.op||'');
+  const editBtn = document.getElementById('prog-detail-edit-btn');
+  editBtn.style.display = 'inline-flex';
+  editBtn.onclick = ()=>progEdit(id);
+
+  document.getElementById('prog-detail-content').innerHTML = `
+    <!-- KPI rapides -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;">
+      <div class="kpi ${pct>=90?'green':pct>=60?'amber':'red'}">
+        <div class="kpi-l">Progression</div>
+        <div class="kpi-v">${pct}%</div>
+        <div class="kpi-s">${totalRealise} / ${objRef||'—'}</div>
+      </div>
+      <div class="kpi blue">
+        <div class="kpi-l">Jours terrain</div>
+        <div class="kpi-v">${joursT.length}</div>
+        <div class="kpi-s">${dernierJour?'Dernier : '+fmtDate(dernierJour):'Aucune saisie'}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Superficie traitée</div>
+        <div class="kpi-v">${totalHa.toFixed(1)}</div>
+        <div class="kpi-s">hectares</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Saisies liées</div>
+        <div class="kpi-v">${mesSaisies.length}</div>
+        <div class="kpi-s">déclarations</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Statut</div>
+        <div class="kpi-v" style="font-size:14px;margin-top:4px;">${statutBadge}</div>
+        <div class="kpi-s">&nbsp;</div>
+      </div>
+    </div>
+
+    <!-- Infos programme -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
+      <div class="tw" style="padding:16px 18px;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent2);margin-bottom:12px;">Identification</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
+            <span style="color:var(--text2);">Référence</span>
+            <span style="font-family:'DM Mono',monospace;font-weight:600;">${p.id}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
+            <span style="color:var(--text2);">Agent responsable</span>
+            <span style="font-weight:600;">${p.agent||'—'}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
+            <span style="color:var(--text2);">Activité</span>
+            <span style="font-weight:600;">${p.op||'—'}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
+            <span style="color:var(--text2);">Département</span>
+            <span style="font-weight:600;">${p.dept||'—'}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
+            <span style="color:var(--text2);">Sous-préfecture</span>
+            <span style="font-weight:600;">${p.sp||'—'}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
+            <span style="color:var(--text2);">Période</span>
+            <span style="font-weight:600;">${p.periode_type||'—'}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
+            <span style="color:var(--text2);">Du</span>
+            <span>${fmtDate(p.date_debut)} → ${fmtDate(p.date_fin)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
+            <span style="color:var(--text2);">Objectif Ha</span>
+            <span style="font-weight:600;">${p.objectif?p.objectif+' ha':'—'}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
+            <span style="color:var(--text2);">Objectif Dossiers</span>
+            <span style="font-weight:600;">${p.objectif_dos?p.objectif_dos+' dos.':'—'}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;">
+            <span style="color:var(--text2);">Budget</span>
+            <span style="font-weight:600;">${p.budget?p.budget.toLocaleString('fr-FR')+' FCFA':'—'}</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <!-- Villages cibles -->
+        <div class="tw" style="padding:16px 18px;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent2);margin-bottom:10px;">Villages cibles</div>
+          <div>${villageTags||'<span style="color:var(--text3);font-size:12px;">—</span>'}</div>
+        </div>
+
+        <!-- Sous-étapes -->
+        <div class="tw" style="padding:16px 18px;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent2);margin-bottom:10px;">Sous-étapes planifiées</div>
+          <div>${sousetapesHtml}</div>
+        </div>
+
+        <!-- Barre de progression détaillée -->
+        <div class="tw" style="padding:16px 18px;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent2);margin-bottom:10px;">Progression</div>
+          <div style="height:14px;background:var(--surface2);border-radius:7px;overflow:hidden;margin-bottom:8px;">
+            <div style="width:${pct}%;height:100%;background:${colPct};border-radius:7px;transition:width .4s;"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;">
+            <span style="color:var(--text2);">${totalRealise} réalisés</span>
+            <span style="font-weight:700;color:${colPct};">${pct}%</span>
+            <span style="color:var(--text2);">${objRef} objectif</span>
+          </div>
+          ${p.obs?`<div style="margin-top:10px;padding:8px 10px;background:var(--surface2);border-radius:6px;font-size:12px;color:var(--text2);">📝 ${p.obs}</div>`:''}
+        </div>
+      </div>
+    </div>
+
+    <!-- Production par village -->
+    ${Object.keys(parVillage).length>0?`
+    <div class="tw" style="margin-bottom:20px;">
+      <div style="padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);">
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);">Production par village</span>
+      </div>
+      <table style="font-size:13px;">
+        <thead><tr>
+          <th>Village</th>
+          <th style="text-align:center;">Dossiers réalisés</th>
+          <th style="text-align:center;">Superficie (ha)</th>
+        </tr></thead>
+        <tbody>${villageRows}</tbody>
+      </table>
+    </div>`:''}
+
+    <!-- Journal des saisies -->
+    <div class="tw">
+      <div style="padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);">Journal des saisies liées (${mesSaisies.length})</span>
+        ${mesSaisies.length>0?`<button class="btn-s" style="font-size:10px;padding:3px 9px;" onclick="switchModule('saisie')">Voir tout M2</button>`:''}
+      </div>
+      <table style="font-size:12px;">
+        <thead><tr>
+          <th>Date</th><th>Agent</th><th>Village</th><th>Étape</th>
+          <th style="text-align:center;">Dossiers</th>
+          <th style="text-align:center;">Superficie</th>
+          <th>Incident</th>
+        </tr></thead>
+        <tbody>${saisiesRows}</tbody>
+      </table>
+    </div>
+  `;
+
+  progShowPanel('detail');
+  window.scrollTo(0,0);
+}
+
 function progClearAll(){
   if(!confirm('ATTENTION — Réinitialisation complète\n\nCette action va effacer TOUTES les données (programmes, saisies, dossiers) sur TOUS les appareils connectés.\n\nConfirmer ?'))return;
   if(!confirm('Dernière confirmation — Voulez-vous vraiment tout effacer ?'))return;
