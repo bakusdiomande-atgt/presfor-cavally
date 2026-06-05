@@ -451,6 +451,9 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     <button class="tb-mod" onclick="switchModule('dossier')" id="tab-dossier"><span class="mod-num">M3</span>Dossiers fonciers</button>
     <button class="tb-mod" onclick="switchModule('agents')" id="tab-agents"><span class="mod-num">M4</span>Agents &amp; équipes</button>
     <button class="tb-mod" onclick="switchModule('zones')" id="tab-zones"><span class="mod-num">M5</span>Zones &amp; villages</button>
+    <button class="tb-mod" onclick="switchModule('pub')" id="tab-pub">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="margin-right:4px"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2zm13 2.383-4.708 2.825L15 11.105V5.383zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741zM1 11.105l4.708-2.897L1 5.383v5.722z"/></svg>
+      Publicité</button>
     <button class="tb-mod" onclick="switchModule('rapport')" id="tab-rapport">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="margin-right:4px"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H4zm0 1h8a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/><path d="M4.5 6a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7zm0 2.5a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7zm0 2.5a.5.5 0 0 1 0-1h4a.5.5 0 0 1 0 1h-4z"/></svg>
       Rapports
@@ -1659,7 +1662,156 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       <div id="zv-couv-content"></div>
     </div>
 
-  </main>
+  
+  <!-- MODULE PUBLICITÉ FONCIÈRE (M6) -->
+  <div id="module-pub" class="module" style="display:none;flex:1;min-width:0;overflow:hidden;">
+    <nav class="sidebar" id="sb-pub">
+      <div class="sb-sec">
+        <div class="sb-label">PUBLICITÉ</div>
+        <button class="nav-item active" onclick="pubShowPanel('list',this)">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 4.5h10a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2zm0 1a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1H3z"/><path d="M1 2a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1H1V2zm0 11h14v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1z"/></svg>
+          Dossiers en pub
+        </button>
+        <button class="nav-item" onclick="pubShowPanel('alertes',this)">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901z"/></svg>
+          Alertes
+        </button>
+        <button class="nav-item" onclick="pubShowPanel('stats',this)">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 11H2v3h2v-3zm5-4H7v7h2V7zm5-5h-2v12h2V2zm-2-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1h-2zM6 7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7zm-5 4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-3z"/></svg>
+          Statistiques
+        </button>
+      </div>
+      <div class="sb-sec">
+        <div class="sb-label">ACTIONS</div>
+        <button class="nav-item" onclick="pubShowPanel('opposition',this)">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/></svg>
+          Saisir opposition
+        </button>
+      </div>
+      <div style="margin-top:auto;padding:10px 8px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px;">
+        <label class="btn-s" style="cursor:pointer;display:flex;align-items:center;gap:5px;font-size:11px;background:#FFF3E0;color:#E65100;border-color:#E65100;justify-content:center;padding:5px 8px;">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
+          Contrôle qualité
+          <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="pubImportCQ(this)">
+        </label>
+        <button class="btn-s" onclick="pubExportCSV()" style="font-size:11px;padding:5px 8px;">↓ Exporter CSV</button>
+      </div>
+    </nav>
+
+    <main style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:0;">
+
+      <!-- Panel liste -->
+      <div class="panel active" id="pub-panel-list">
+        <div class="page-head">
+          <div>
+            <h2>Publicité Foncière — Cavally</h2>
+            <p id="pub-subtitle">Dossiers en phase de publicité (OV → CP)</p>
+          </div>
+          <div class="btn-row">
+            <button class="btn-s" onclick="pubRefresh()">↻ Actualiser</button>
+          </div>
+        </div>
+        <div id="pub-kpi" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px;"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
+          <input id="pub-f-text" type="text" placeholder="N° dossier, nom, village..." style="padding:7px 11px;border:1px solid var(--border);border-radius:6px;font-size:12px;min-width:180px;" oninput="pubRenderList()">
+          <select id="pub-f-dept" onchange="pubPopulateSP();pubRenderList();" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
+            <option value="">Tous dép.</option>
+            <option>GUIGLO</option><option>BLOLEQUIN</option><option>TAI</option><option>TOULEPLEU</option>
+          </select>
+          <select id="pub-f-sp" onchange="pubRenderList()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
+            <option value="">Toutes SP</option>
+          </select>
+          <select id="pub-f-statut" onchange="pubRenderList()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
+            <option value="">Tous statuts</option>
+            <option value="en_cours">En cours</option>
+            <option value="alerte">Alerte J-5</option>
+            <option value="en_retard">En retard</option>
+            <option value="cloture">Clôturés (CP)</option>
+            <option value="opposition">Avec opposition</option>
+          </select>
+          <select id="pub-f-cq" onchange="pubRenderList()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
+            <option value="">Tout contrôle qualité</option>
+            <option value="N1">N1 validé</option>
+            <option value="N2">N2 validé</option>
+            <option value="N3">N3 validé</option>
+            <option value="non_cq">Non contrôlé</option>
+          </select>
+          <span id="pub-count" style="font-size:12px;color:var(--text2);margin-left:auto;font-weight:600;"></span>
+        </div>
+        <div class="tw">
+          <table style="font-size:12px;">
+            <thead><tr>
+              <th>N° Dossier</th>
+              <th>Demandeur</th>
+              <th>Village / SP</th>
+              <th>Dépt.</th>
+              <th style="text-align:center">Date OV</th>
+              <th style="text-align:center">Clôture prévue</th>
+              <th style="text-align:center">Clôture réelle</th>
+              <th style="text-align:center">Retard</th>
+              <th style="text-align:center">CQ AFOR</th>
+              <th style="text-align:center">Opposition</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr></thead>
+            <tbody id="pub-tbody"></tbody>
+          </table>
+        </div>
+        <div id="pub-pagination" style="display:flex;justify-content:center;gap:6px;margin-top:12px;flex-wrap:wrap;"></div>
+      </div>
+
+      <!-- Panel alertes -->
+      <div class="panel" id="pub-panel-alertes">
+        <div class="page-head"><div><h2>Alertes Publicité</h2><p>Dossiers nécessitant une attention immédiate</p></div></div>
+        <div id="pub-alertes-content"></div>
+      </div>
+
+      <!-- Panel statistiques -->
+      <div class="panel" id="pub-panel-stats">
+        <div class="page-head"><div><h2>Statistiques Publicité</h2><p>Vue d'ensemble par département</p></div></div>
+        <div id="pub-stats-content"></div>
+      </div>
+
+      <!-- Panel opposition -->
+      <div class="panel" id="pub-panel-opposition">
+        <div class="page-head">
+          <div><h2>Enregistrer une opposition</h2><p>Opposition déposée pendant la publicité</p></div>
+          <button class="btn-s" onclick="pubShowPanel('list')">← Retour</button>
+        </div>
+        <div class="tw" style="max-width:580px;padding:20px;">
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div><label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">N° Dossier *</label>
+            <input id="pub-opp-id" type="text" placeholder="Ex: 094-005-000123" style="width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;"></div>
+            <div><label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">Date de l'opposition *</label>
+            <input id="pub-opp-date" type="date" style="width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;"></div>
+            <div><label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">Opposant</label>
+            <input id="pub-opp-opposant" type="text" placeholder="Nom de l'opposant" style="width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;"></div>
+            <div><label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">Motif</label>
+            <textarea id="pub-opp-motif" rows="3" placeholder="Motif de l'opposition..." style="width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:6px;font-size:13px;resize:vertical;box-sizing:border-box;"></textarea></div>
+            <div><label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;">Statut CVGFR</label>
+            <select id="pub-opp-cvgfr" style="width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;">
+              <option value="">En attente</option>
+              <option value="examinee">Examinée</option>
+              <option value="rejetee">Rejetée</option>
+              <option value="acceptee">Acceptée</option>
+            </select></div>
+            <button class="btn-p" onclick="pubSaveOpposition()" style="padding:10px;font-size:13px;">Enregistrer l'opposition</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel détail -->
+      <div class="panel" id="pub-panel-detail">
+        <div class="page-head">
+          <div><h2 id="pub-detail-title">Détail publicité</h2><p id="pub-detail-subtitle"></p></div>
+          <button class="btn-s" onclick="pubShowPanel('list')">← Retour</button>
+        </div>
+        <div id="pub-detail-content"></div>
+      </div>
+
+    </main>
+  </div>
+</main>
 </div>
 
 </div><!-- fin .app -->
@@ -1932,6 +2084,7 @@ function switchModule(id){
   if(id==='accueil'){try{dashRenderAll();}catch(e){console.error('dash render:',e);}}
   if(id==='zones'){try{zvRenderAll();}catch(e){console.error('zones render:',e);}}
   if(id==='rapport'){try{rptInit();}catch(e){console.error('rapport render:',e);}}
+  if(id==='pub'){try{pubInit();}catch(e){console.error('pub render:',e);}}
   setTimeout(()=>{ if(typeof isViewer==='function'&&isViewer()) applyViewerRestrictions(); },200);
 }
 
@@ -6208,6 +6361,577 @@ function dashRenderAlertes(){
   if(badge){badge.style.display='block';badge.textContent=alertes.length+' alerte'+(alertes.length>1?'s':'');}
   if(wrap)wrap.style.display='block';
   if(list)list.innerHTML=alertes.map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;color:#991B1B;">⚠ ${a.msg} <button onclick="${a.action}" style="font-size:10px;padding:2px 9px;border:1px solid #DC2626;background:transparent;color:#DC2626;border-radius:4px;cursor:pointer;margin-left:8px;flex-shrink:0">Voir</button></div>`).join('');
+}
+
+
+// ═══════════════════════════════════════════
+// MODULE PUBLICITÉ FONCIÈRE
+// ═══════════════════════════════════════════
+
+let pubPage = 0;
+const PUB_PAGE_SIZE = 50;
+let pubListFiltered = [];
+let pubOppositions = {}; // {id_dossier: {date, opposant, motif, cvgfr}}
+let pubCQ = {};          // {id_dossier: {n1, n2, n3, date_cq}}
+
+// Charger depuis localStorage
+try {
+  const savedOpp = localStorage.getItem('presfor_pub_oppositions');
+  if(savedOpp) pubOppositions = JSON.parse(savedOpp);
+  const savedCQ = localStorage.getItem('presfor_pub_cq');
+  if(savedCQ) pubCQ = JSON.parse(savedCQ);
+} catch(e) {}
+
+function pubSave(){
+  try {
+    localStorage.setItem('presfor_pub_oppositions', JSON.stringify(pubOppositions));
+    localStorage.setItem('presfor_pub_cq', JSON.stringify(pubCQ));
+  } catch(e) {}
+  // Sauvegarder sur Firebase
+  fetch(FIREBASE_URL + '/presfor/pub_data.json', {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ oppositions: pubOppositions, cq: pubCQ, ts: new Date().toISOString() }),
+    signal: AbortSignal.timeout(15000)
+  }).catch(e => console.warn('pubSave Firebase:', e.message));
+}
+
+async function pubLoadFromFirebase(){
+  try {
+    const r = await fetch(FIREBASE_URL + '/presfor/pub_data.json', { signal: AbortSignal.timeout(10000) });
+    if(!r.ok) return;
+    const d = await r.json();
+    if(d && d.oppositions) pubOppositions = Object.assign({}, d.oppositions, pubOppositions);
+    if(d && d.cq) pubCQ = Object.assign({}, d.cq, pubCQ);
+    try {
+      localStorage.setItem('presfor_pub_oppositions', JSON.stringify(pubOppositions));
+      localStorage.setItem('presfor_pub_cq', JSON.stringify(pubCQ));
+    } catch(e) {}
+  } catch(e) { console.warn('pubLoadFromFirebase:', e.message); }
+}
+
+// Calculer les infos publicité d'un dossier AFOR
+function pubCalcDossier(d){
+  const dateOV    = d.date_OV || d.date_ov || d['date_OV'] || null;
+  const dateCP    = d.date_CP || d.date_cp || null;
+  const today     = new Date(); today.setHours(0,0,0,0);
+  const toDate    = s => { if(!s) return null; const dt=new Date(s); return isNaN(dt)?null:dt; };
+  const diffDays  = (a,b) => Math.round((b-a)/(1000*60*60*24));
+
+  const dtOV = toDate(dateOV);
+  const dtCP = toDate(dateCP);
+
+  // Clôture prévue = OV + 30 jours réglementaires
+  let dtCloturePrevue = null;
+  if(dtOV){ dtCloturePrevue = new Date(dtOV); dtCloturePrevue.setDate(dtOV.getDate() + 30); }
+
+  // Retard
+  let retardJours = 0;
+  let statut = 'inconnu';
+
+  if(dtCP){
+    // Publicité clôturée
+    statut = 'cloture';
+    if(dtCloturePrevue && dtCP > dtCloturePrevue){
+      retardJours = diffDays(dtCloturePrevue, dtCP);
+    }
+  } else if(dtOV){
+    const joursDepuisOV = diffDays(dtOV, today);
+    const joursRestants = dtCloturePrevue ? diffDays(today, dtCloturePrevue) : null;
+    if(dtCloturePrevue && today > dtCloturePrevue){
+      statut = 'en_retard';
+      retardJours = diffDays(dtCloturePrevue, today);
+    } else if(joursRestants !== null && joursRestants <= 5){
+      statut = 'alerte';
+    } else {
+      statut = 'en_cours';
+    }
+  }
+
+  // Opposition
+  const opp = pubOppositions[d.id] || null;
+  // Contrôle qualité
+  const cq = pubCQ[d.id] || null;
+
+  return {
+    id: d.id,
+    nom: (d.prenom || '') + ' ' + (d.nom || d.nom_demandeur || ''),
+    village: d.village || '',
+    sp: d.sp || '',
+    dept: (d.dept || '').replace('Dép. ','').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z]/g,''),
+    type: d.type || '',
+    etape: d.etape || '',
+    dateOV, dateCP,
+    dtOV, dtCP, dtCloturePrevue,
+    statut, retardJours,
+    opposition: opp,
+    cq,
+    agent: d.agent || '',
+  };
+}
+
+// Obtenir tous les dossiers en phase OV ou ayant eu OV
+function pubGetDossiers(){
+  return (dossiersAFOR || [])
+    .filter(d => {
+      const etape = d.etape || '';
+      const hasOV = d.date_OV || d.date_ov;
+      // Dossiers à l'étape OV, CP, AP, VA ou ayant une date OV
+      return hasOV || ['OV','CP','AP','VA'].includes(etape);
+    })
+    .map(d => pubCalcDossier(d));
+}
+
+function pubShowPanel(id, btn){
+  document.querySelectorAll('#module-pub .panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('pub-panel-' + id);
+  if(!panel){ console.error('Panel pub introuvable: pub-panel-' + id); return; }
+  panel.classList.add('active');
+  document.querySelectorAll('#sb-pub .nav-item').forEach(n => n.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(id === 'alertes') pubRenderAlertes();
+  if(id === 'stats')   pubRenderStats();
+}
+
+function pubInit(){
+  pubLoadFromFirebase().then(() => {
+    pubRenderKPI();
+    pubRenderList();
+  });
+  pubRenderKPI();
+  pubRenderList();
+}
+
+function pubRefresh(){
+  pubLoadFromFirebase().then(() => {
+    pubRenderKPI();
+    pubRenderList();
+    showToast('Données publicité actualisées');
+  });
+}
+
+function pubPopulateSP(){
+  const dept = (document.getElementById('pub-f-dept')?.value || '').toUpperCase();
+  const sel = document.getElementById('pub-f-sp');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">Toutes SP</option>';
+  if(!dept){ return; }
+  const sps = new Set();
+  (dossiersAFOR || []).forEach(d => {
+    const dDept = (d.dept || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z]/g,'');
+    if(dDept === dept && d.sp) sps.add(d.sp);
+  });
+  [...sps].sort().forEach(sp => {
+    const o = document.createElement('option');
+    o.value = sp; o.textContent = sp;
+    sel.appendChild(o);
+  });
+}
+
+function pubRenderKPI(){
+  const all = pubGetDossiers();
+  const enCours   = all.filter(d => d.statut === 'en_cours').length;
+  const alertes   = all.filter(d => d.statut === 'alerte').length;
+  const retards   = all.filter(d => d.statut === 'en_retard').length;
+  const clotures  = all.filter(d => d.statut === 'cloture').length;
+  const oppositions = all.filter(d => d.opposition).length;
+
+  const kpiEl = document.getElementById('pub-kpi');
+  if(!kpiEl) return;
+  kpiEl.innerHTML = `
+    <div class="kpi blue"><div class="kpi-l">Total en publicité</div><div class="kpi-v">${all.length}</div><div class="kpi-s">${enCours} en cours · ${clotures} clôturés</div></div>
+    <div class="kpi green"><div class="kpi-l">En cours</div><div class="kpi-v">${enCours}</div><div class="kpi-s">Publicité ouverte</div></div>
+    <div class="kpi amber"><div class="kpi-l">Alerte J-5</div><div class="kpi-v">${alertes}</div><div class="kpi-s">Clôture imminente</div></div>
+    <div class="kpi red"><div class="kpi-l">En retard</div><div class="kpi-v">${retards}</div><div class="kpi-s">Délai dépassé</div></div>
+    <div class="kpi ${oppositions>0?'amber':''}"><div class="kpi-l">Oppositions</div><div class="kpi-v">${oppositions}</div><div class="kpi-s">Déposées</div></div>`;
+}
+
+function pubRenderList(){
+  const text   = (document.getElementById('pub-f-text')?.value || '').toLowerCase();
+  const dept   = (document.getElementById('pub-f-dept')?.value || '').toUpperCase();
+  const sp     = document.getElementById('pub-f-sp')?.value || '';
+  const statut = document.getElementById('pub-f-statut')?.value || '';
+  const cqF    = document.getElementById('pub-f-cq')?.value || '';
+
+  let liste = pubGetDossiers();
+
+  if(text) liste = liste.filter(d =>
+    d.id.toLowerCase().includes(text) ||
+    d.nom.toLowerCase().includes(text) ||
+    d.village.toLowerCase().includes(text)
+  );
+  if(dept) liste = liste.filter(d => d.dept === dept);
+  if(sp)   liste = liste.filter(d => d.sp === sp);
+  if(statut) liste = liste.filter(d => d.statut === statut);
+  if(cqF === 'non_cq') liste = liste.filter(d => !d.cq);
+  else if(cqF) liste = liste.filter(d => d.cq && d.cq[cqF.toLowerCase()]);
+
+  // Tri : retards d'abord, puis alertes, puis en cours
+  const ordre = {en_retard:0, alerte:1, en_cours:2, cloture:3, inconnu:4};
+  liste.sort((a,b) => (ordre[a.statut]||5) - (ordre[b.statut]||5) || b.retardJours - a.retardJours);
+
+  pubListFiltered = liste;
+  pubPage = 0;
+
+  const count = document.getElementById('pub-count');
+  if(count) count.textContent = liste.length + ' dossier(s)';
+
+  pubRenderPage();
+}
+
+function pubRenderPage(){
+  const tbody = document.getElementById('pub-tbody');
+  if(!tbody) return;
+  const start = pubPage * PUB_PAGE_SIZE;
+  const page  = pubListFiltered.slice(start, start + PUB_PAGE_SIZE);
+
+  const fmtD = d => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
+  const statutBadge = {
+    en_cours: '<span class="badge b-green">En cours</span>',
+    alerte:   '<span class="badge b-amber" style="animation:pulse 1.5s infinite;">⚡ Alerte J-5</span>',
+    en_retard:'<span class="badge b-red">En retard</span>',
+    cloture:  '<span class="badge b-gray">Clôturé</span>',
+    inconnu:  '<span class="badge">Inconnu</span>',
+  };
+
+  tbody.innerHTML = page.length === 0
+    ? '<tr><td colspan="12" style="text-align:center;padding:30px;color:var(--text3);">Aucun dossier en phase de publicité trouvé</td></tr>'
+    : page.map(d => {
+        const retardCell = d.retardJours > 0
+          ? `<span style="color:var(--red);font-weight:700;">+${d.retardJours}j</span>`
+          : '<span style="color:var(--text3);">—</span>';
+        const cqCell = d.cq
+          ? `<span style="font-size:10px;background:#E8F5E9;color:#2E7D32;padding:2px 6px;border-radius:8px;font-weight:600;">${Object.keys(d.cq).filter(k=>['n1','n2','n3'].includes(k)&&d.cq[k]).map(k=>k.toUpperCase()).join(' ')}</span>`
+          : '<span style="font-size:10px;color:var(--text3);">—</span>';
+        const oppCell = d.opposition
+          ? '<span style="font-size:10px;background:#FFEBEE;color:#C62828;padding:2px 6px;border-radius:8px;font-weight:600;">⚠ Oui</span>'
+          : '<span style="font-size:10px;color:var(--text3);">Non</span>';
+        return `<tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);font-weight:600;">${d.id}</td>
+          <td style="padding:8px 10px;font-size:12px;font-weight:500;">${d.nom.trim()||'—'}</td>
+          <td style="padding:8px 10px;font-size:11px;color:var(--text2);">${d.village||'—'}<br><span style="font-size:10px;">${d.sp||''}</span></td>
+          <td style="padding:8px 10px;"><span style="font-size:10px;padding:2px 7px;border-radius:8px;background:var(--accent-lt);color:var(--accent-txt);">${d.dept||'—'}</span></td>
+          <td style="padding:8px 10px;text-align:center;font-size:11px;">${fmtD(d.dateOV)}</td>
+          <td style="padding:8px 10px;text-align:center;font-size:11px;${d.statut==='alerte'?'color:var(--amber);font-weight:600;':''}">${d.dtCloturePrevue?fmtD(d.dtCloturePrevue):'—'}</td>
+          <td style="padding:8px 10px;text-align:center;font-size:11px;">${fmtD(d.dateCP)}</td>
+          <td style="padding:8px 10px;text-align:center;">${retardCell}</td>
+          <td style="padding:8px 10px;text-align:center;">${cqCell}</td>
+          <td style="padding:8px 10px;text-align:center;">${oppCell}</td>
+          <td style="padding:8px 10px;">${statutBadge[d.statut]||''}</td>
+          <td style="padding:8px 10px;">
+            <button class="btn-s" style="font-size:10px;padding:3px 8px;background:var(--accent-lt);color:var(--accent-txt);border-color:var(--accent)" onclick="pubShowDetail('${d.id}')">🔍</button>
+          </td>
+        </tr>`;
+      }).join('');
+
+  // Pagination
+  const totalPages = Math.ceil(pubListFiltered.length / PUB_PAGE_SIZE);
+  const pag = document.getElementById('pub-pagination');
+  if(pag){
+    pag.innerHTML = '';
+    for(let i=0; i<totalPages; i++){
+      const btn = document.createElement('button');
+      btn.className = 'btn-s';
+      btn.textContent = i+1;
+      if(i === pubPage) btn.style.background = 'var(--accent)';
+      btn.onclick = () => { pubPage = i; pubRenderPage(); };
+      pag.appendChild(btn);
+    }
+  }
+}
+
+function pubShowDetail(id){
+  const dos = (dossiersAFOR || []).find(d => d.id === id);
+  if(!dos){ showToast('Dossier introuvable.'); return; }
+  const info = pubCalcDossier(dos);
+  const fmtD = d => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
+  const diffDays = (a,b) => Math.round((b-a)/(1000*60*60*24));
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // Jours restants
+  let joursRestantsHtml = '';
+  if(info.dtCloturePrevue && !info.dtCP){
+    const jr = diffDays(today, info.dtCloturePrevue);
+    joursRestantsHtml = jr >= 0
+      ? `<span style="color:${jr<=5?'var(--amber)':'var(--accent)'};font-weight:700;">${jr} jour(s) restant(s)</span>`
+      : `<span style="color:var(--red);font-weight:700;">Dépassé de ${-jr} jour(s)</span>`;
+  }
+
+  document.getElementById('pub-detail-title').textContent = id;
+  document.getElementById('pub-detail-subtitle').textContent = info.nom.trim() + ' · ' + info.village + ' · ' + info.dept;
+
+  const cq = info.cq || {};
+  const opp = info.opposition || {};
+
+  document.getElementById('pub-detail-content').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;">
+      <div class="kpi blue"><div class="kpi-l">Date ouverture OV</div><div class="kpi-v" style="font-size:16px;">${fmtD(info.dateOV)}</div><div class="kpi-s">Publication ouverte</div></div>
+      <div class="kpi"><div class="kpi-l">Clôture prévue</div><div class="kpi-v" style="font-size:16px;">${info.dtCloturePrevue?fmtD(info.dtCloturePrevue):'—'}</div><div class="kpi-s">OV + 30 jours</div></div>
+      <div class="kpi ${info.dtCP?'green':''}"><div class="kpi-l">Clôture réelle</div><div class="kpi-v" style="font-size:16px;">${fmtD(info.dateCP)}</div><div class="kpi-s">${joursRestantsHtml||'&nbsp;'}</div></div>
+      <div class="kpi ${info.retardJours>0?'red':'green'}"><div class="kpi-l">Retard</div><div class="kpi-v">${info.retardJours > 0 ? info.retardJours + 'j' : '—'}</div><div class="kpi-s">${info.retardJours>0?'Jours de retard':'Dans les délais'}</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+      <div class="tw" style="padding:16px 18px;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent2);margin-bottom:12px;">Informations dossier</div>
+        ${[
+          ['N° Dossier', `<span style="font-family:'DM Mono',monospace;font-weight:600;">${id}</span>`],
+          ['Demandeur', info.nom.trim()||'—'],
+          ['Type', info.type||'—'],
+          ['Étape actuelle', `<span class="badge b-blue" style="font-size:10px;">${info.etape||'—'}</span>`],
+          ['Village', info.village||'—'],
+          ['Sous-préfecture', info.sp||'—'],
+          ['Département', info.dept||'—'],
+          ['Agent CE', info.agent||'—'],
+        ].map(([l,v])=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;border-bottom:1px solid var(--border);padding:5px 0;">
+            <span style="color:var(--text2);">${l}</span>
+            <span>${v}</span>
+          </div>`).join('')}
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="tw" style="padding:16px 18px;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#E65100;margin-bottom:10px;">Contrôle Qualité AFOR</div>
+          ${Object.keys(cq).length ? `
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+              ${['n1','n2','n3'].map(n => cq[n] ? `<div style="text-align:center;background:#E8F5E9;border-radius:8px;padding:8px 14px;"><div style="font-size:14px;font-weight:700;color:#2E7D32;">${n.toUpperCase()}</div><div style="font-size:10px;color:#388E3C;">Validé</div></div>` : `<div style="text-align:center;background:var(--surface2);border-radius:8px;padding:8px 14px;"><div style="font-size:14px;font-weight:700;color:var(--text3);">${n.toUpperCase()}</div><div style="font-size:10px;color:var(--text3);">—</div></div>`).join('')}
+            </div>
+            ${cq.date_cq ? `<div style="font-size:11px;color:var(--text2);">Date CQ : ${fmtD(cq.date_cq)}</div>` : ''}
+            ${cq.observations ? `<div style="font-size:11px;color:var(--text2);margin-top:6px;">📝 ${cq.observations}</div>` : ''}
+          ` : '<span style="color:var(--text3);font-size:12px;">Aucun contrôle qualité enregistré</span>'}
+        </div>
+
+        <div class="tw" style="padding:16px 18px;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#C62828;margin-bottom:10px;">Opposition</div>
+          ${opp.date ? `
+            <div style="background:#FFEBEE;border-radius:8px;padding:10px 14px;">
+              <div style="font-size:12px;font-weight:600;color:#C62828;">⚠ Opposition enregistrée</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:6px;">Date : ${fmtD(opp.date)}</div>
+              ${opp.opposant ? `<div style="font-size:11px;color:var(--text2);">Opposant : ${opp.opposant}</div>` : ''}
+              ${opp.motif ? `<div style="font-size:11px;color:var(--text2);margin-top:4px;">Motif : ${opp.motif}</div>` : ''}
+              ${opp.cvgfr ? `<div style="font-size:11px;margin-top:6px;"><span style="background:var(--accent-lt);color:var(--accent-txt);padding:2px 8px;border-radius:8px;">CVGFR : ${opp.cvgfr}</span></div>` : ''}
+            </div>
+          ` : `
+            <div style="color:var(--text3);font-size:12px;">Aucune opposition enregistrée</div>
+            <button class="btn-s" style="margin-top:8px;font-size:11px;" onclick="document.getElementById('pub-opp-id').value='${id}';pubShowPanel('opposition');">+ Saisir une opposition</button>
+          `}
+        </div>
+      </div>
+    </div>
+
+    <div class="tw" style="padding:14px 18px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent2);margin-bottom:10px;">Historique des étapes</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${['DD','RDC','CL','OV','CP','AP','VA'].map(etape => {
+          const dateKey = 'date_' + etape;
+          const dateVal = dos[dateKey];
+          const done = ETAPES_CF.indexOf(dos.etape) >= ETAPES_CF.indexOf(etape);
+          const c = ETAPES_CF_COLORS[etape] || {bg:'var(--surface2)',tx:'var(--text3)'};
+          return `<div style="text-align:center;background:${done?c.bg:'var(--surface2)'};border-radius:8px;padding:8px 12px;min-width:60px;opacity:${done?1:0.4};">
+            <div style="font-size:12px;font-weight:700;color:${done?c.tx:'var(--text3)'};">${etape}</div>
+            <div style="font-size:10px;color:${done?c.tx:'var(--text3)'};">${dateVal?new Date(dateVal).toLocaleDateString('fr-FR'):'—'}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
+
+  pubShowPanel('detail');
+  window.scrollTo(0,0);
+}
+
+function pubRenderAlertes(){
+  const all = pubGetDossiers();
+  const retards = all.filter(d => d.statut === 'en_retard').sort((a,b) => b.retardJours - a.retardJours);
+  const alertes = all.filter(d => d.statut === 'alerte');
+  const oppositions = all.filter(d => d.opposition);
+
+  const fmtD = d => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
+
+  const el = document.getElementById('pub-alertes-content');
+  if(!el) return;
+
+  const section = (titre, couleur, items, rowFn) => items.length === 0 ? '' : `
+    <div style="margin-bottom:20px;">
+      <h3 style="font-size:13px;font-weight:700;color:${couleur};margin-bottom:10px;">${titre} (${items.length})</h3>
+      <div class="tw">
+        <table style="font-size:12px;">
+          <thead><tr><th>N° Dossier</th><th>Demandeur</th><th>Village</th><th>Date OV</th><th>Clôture prévue</th><th>Retard / Délai</th><th></th></tr></thead>
+          <tbody>${items.map(rowFn).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+
+  const row = d => `<tr style="border-bottom:1px solid var(--border);">
+    <td style="padding:8px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);">${d.id}</td>
+    <td style="padding:8px 10px;">${d.nom.trim()||'—'}</td>
+    <td style="padding:8px 10px;">${d.village||'—'}</td>
+    <td style="padding:8px 10px;text-align:center;">${fmtD(d.dateOV)}</td>
+    <td style="padding:8px 10px;text-align:center;">${d.dtCloturePrevue?fmtD(d.dtCloturePrevue):'—'}</td>
+    <td style="padding:8px 10px;text-align:center;font-weight:700;color:var(--red);">${d.retardJours > 0 ? '+'+d.retardJours+'j' : d.statut==='alerte'?'Alerte J-5':''}</td>
+    <td style="padding:8px 10px;"><button class="btn-s" style="font-size:10px;padding:3px 8px;" onclick="pubShowDetail('${d.id}')">Détail</button></td>
+  </tr>`;
+
+  el.innerHTML =
+    (retards.length === 0 && alertes.length === 0 && oppositions.length === 0)
+      ? '<div style="text-align:center;padding:40px;color:var(--text3);">✓ Aucune alerte active</div>'
+      : section('En retard', 'var(--red)', retards, row) +
+        section('Alerte J-5 (clôture imminente)', 'var(--amber)', alertes, row) +
+        section('Avec opposition', '#C62828', oppositions, row);
+}
+
+function pubRenderStats(){
+  const all = pubGetDossiers();
+  const el = document.getElementById('pub-stats-content');
+  if(!el) return;
+
+  const depts = ['GUIGLO','BLOLEQUIN','TAI','TOULEPLEU'];
+  const statRow = dept => {
+    const d = all.filter(x => x.dept.includes(dept.substring(0,4)));
+    const enCours  = d.filter(x => x.statut === 'en_cours').length;
+    const alertes  = d.filter(x => x.statut === 'alerte').length;
+    const retards  = d.filter(x => x.statut === 'en_retard').length;
+    const clotures = d.filter(x => x.statut === 'cloture').length;
+    const opps     = d.filter(x => x.opposition).length;
+    return `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:9px 12px;font-weight:600;">${dept}</td>
+      <td style="padding:9px 12px;text-align:center;font-weight:700;">${d.length}</td>
+      <td style="padding:9px 12px;text-align:center;color:#2E7D32;">${enCours}</td>
+      <td style="padding:9px 12px;text-align:center;color:var(--amber);font-weight:700;">${alertes}</td>
+      <td style="padding:9px 12px;text-align:center;color:var(--red);font-weight:700;">${retards}</td>
+      <td style="padding:9px 12px;text-align:center;color:var(--text2);">${clotures}</td>
+      <td style="padding:9px 12px;text-align:center;color:#C62828;">${opps}</td>
+    </tr>`;
+  };
+
+  el.innerHTML = `
+    <div class="tw" style="margin-bottom:20px;">
+      <table style="font-size:13px;">
+        <thead><tr>
+          <th>Département</th><th style="text-align:center">Total</th>
+          <th style="text-align:center">En cours</th><th style="text-align:center">Alerte J-5</th>
+          <th style="text-align:center">En retard</th><th style="text-align:center">Clôturés</th>
+          <th style="text-align:center">Oppositions</th>
+        </tr></thead>
+        <tbody>
+          ${depts.map(statRow).join('')}
+          <tr style="border-top:2px solid var(--border);font-weight:700;background:var(--surface2);">
+            <td style="padding:9px 12px;">TOTAL</td>
+            <td style="padding:9px 12px;text-align:center;">${all.length}</td>
+            <td style="padding:9px 12px;text-align:center;color:#2E7D32;">${all.filter(d=>d.statut==='en_cours').length}</td>
+            <td style="padding:9px 12px;text-align:center;color:var(--amber);">${all.filter(d=>d.statut==='alerte').length}</td>
+            <td style="padding:9px 12px;text-align:center;color:var(--red);">${all.filter(d=>d.statut==='en_retard').length}</td>
+            <td style="padding:9px 12px;text-align:center;">${all.filter(d=>d.statut==='cloture').length}</td>
+            <td style="padding:9px 12px;text-align:center;color:#C62828;">${all.filter(d=>d.opposition).length}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function pubSaveOpposition(){
+  const id       = (document.getElementById('pub-opp-id')?.value || '').trim();
+  const date     = document.getElementById('pub-opp-date')?.value || '';
+  const opposant = document.getElementById('pub-opp-opposant')?.value || '';
+  const motif    = document.getElementById('pub-opp-motif')?.value || '';
+  const cvgfr    = document.getElementById('pub-opp-cvgfr')?.value || '';
+
+  if(!id || !date){ showToast('N° dossier et date requis.'); return; }
+
+  const dos = (dossiersAFOR || []).find(d => d.id === id);
+  if(!dos){ showToast('Dossier ' + id + ' introuvable dans la base AFOR.'); return; }
+
+  pubOppositions[id] = { date, opposant, motif, cvgfr, created_at: new Date().toISOString() };
+  pubSave();
+  pubRenderKPI();
+  pubRenderList();
+  showToast('Opposition enregistrée pour le dossier ' + id);
+  pubShowPanel('list');
+}
+
+// Import fichier contrôle qualité AFOR
+function pubImportCQ(input){
+  const file = input.files[0];
+  if(!file) return;
+  input.value = '';
+  if(typeof XLSX === 'undefined'){ showToast('Bibliothèque Excel non chargée.'); return; }
+  showToast('Lecture du fichier contrôle qualité...');
+
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:null});
+      let nbMaj = 0;
+
+      // Colonnes attendues : N° Dossier, N1, N2, N3, Date CQ, Observations
+      // Adaptation flexible selon le vrai fichier
+      rows.forEach(row => {
+        const keys = Object.keys(row);
+        const getVal = (patterns) => {
+          for(const k of keys){
+            const kn = k.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[\s_]/g,'');
+            if(patterns.some(p => kn.includes(p.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[\s_]/g,'')))){
+              return String(row[k] || '').trim();
+            }
+          }
+          return '';
+        };
+
+        const id = getVal(['dossier','numdossier','numero','id']);
+        if(!id) return;
+
+        const n1 = ['oui','yes','1','true'].includes(getVal(['n1']).toLowerCase());
+        const n2 = ['oui','yes','1','true'].includes(getVal(['n2']).toLowerCase());
+        const n3 = ['oui','yes','1','true'].includes(getVal(['n3']).toLowerCase());
+        const dateCQ = getVal(['datecq','datecontrole','date']);
+        const obs = getVal(['observation','commentaire','note']);
+
+        pubCQ[id] = { n1, n2, n3, date_cq: dateCQ || null, observations: obs || null };
+        nbMaj++;
+      });
+
+      pubSave();
+      pubRenderKPI();
+      pubRenderList();
+      showToast(nbMaj + ' contrôles qualité importés');
+    }catch(err){
+      showToast('Erreur import CQ : ' + err.message);
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function pubExportCSV(){
+  const liste = pubListFiltered.length ? pubListFiltered : pubGetDossiers();
+  const fmtD = function(d){ return d ? new Date(d).toLocaleDateString('fr-FR') : ''; };
+  const esc  = function(v){ return '"' + String(v||'').replace(/"/g, '""') + '"'; };
+  const header = ['N° Dossier','Demandeur','Village','SP','Département','Type','Étape',
+    'Date OV','Clôture prévue','Clôture réelle','Retard (j)','CQ N1','CQ N2','CQ N3','Opposition','Statut'];
+  const lines = [header.map(esc).join(',')];
+  liste.forEach(function(d){
+    lines.push([
+      d.id, d.nom.trim(), d.village, d.sp, d.dept, d.type, d.etape,
+      fmtD(d.dateOV),
+      d.dtCloturePrevue ? fmtD(d.dtCloturePrevue) : '',
+      fmtD(d.dateCP),
+      d.retardJours || 0,
+      d.cq && d.cq.n1 ? 'Oui' : '',
+      d.cq && d.cq.n2 ? 'Oui' : '',
+      d.cq && d.cq.n3 ? 'Oui' : '',
+      d.opposition ? 'Oui' : '',
+      d.statut
+    ].map(esc).join(','));
+  });
+  const csv = lines.join('\n');
+  const blob = new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'publicite_fonciere_cavally_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
 }
 
 
