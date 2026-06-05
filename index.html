@@ -1193,6 +1193,11 @@ tbody td{padding:9px 12px;vertical-align:middle;}
             <span id="afor-btn-label">Base AFOR</span>
             <input type="file" id="afor-import-file" accept=".xlsx,.xls" style="display:none" onchange="aforImportExcel(this)">
           </label>
+          <label class="btn-s" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:#E0F2F1;color:#00695C;border-color:#00695C;" title="Mettre à jour les dossiers depuis un fichier de mise à jour" id="btn-maj-import" class="viewer-hidden">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
+            Mise à jour dossiers
+            <input type="file" accept=".xlsx,.xls" style="display:none" onchange="dosMAJImportExcel(this)">
+          </label>
           <button class="btn-s" onclick="dosExportCSV()" style="display:inline-flex;align-items:center;gap:5px;">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
             Exporter CSV
@@ -4451,6 +4456,159 @@ function dosImportExcel(input){
   };
   reader.readAsArrayBuffer(file);
 }
+// ── Import fichier de mise à jour dossiers (levé GNSS, superficie, étape, etc.) ──
+function dosMAJImportExcel(input){
+  const file = input.files[0];
+  if(!file) return;
+  input.value = '';
+  if(typeof XLSX === 'undefined'){ showToast('Bibliothèque Excel non chargée.'); return; }
+  showToast('Lecture du fichier de mise à jour...');
+
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false});
+      if(!rows.length){ showToast('Fichier vide.'); return; }
+
+      const fmtD = v => {
+        if(!v) return null;
+        if(v instanceof Date) return isNaN(v)?null:v.toISOString().split('T')[0];
+        const s = String(v).trim();
+        if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0,10);
+        const p = s.split(/[\/\-\.]/);
+        if(p.length===3){
+          if(p[2].length===4) return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');
+          if(p[0].length===4) return p[0]+'-'+p[1].padStart(2,'0')+'-'+p[2].padStart(2,'0');
+        }
+        return null;
+      };
+
+      const get = (row, keys) => {
+        for(const k of Object.keys(row)){
+          const kn = k.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[\s_\-]/g,'');
+          if(keys.some(key => kn.includes(key.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[\s_\-]/g,'')))){
+            return String(row[k]||'').trim();
+          }
+        }
+        return '';
+      };
+
+      // Résultats de l'import
+      let nbMaj=0, nbIgnores=0, nbIntrouvables=0;
+      const details = [];
+
+      rows.forEach(row => {
+        const numDossier = get(row, ['N°Dossier','NumeroDossier','num_dossier','Dossier','id']);
+        if(!numDossier){ nbIgnores++; return; }
+
+        // Chercher dans dossiersAFOR
+        const idx = dossiersAFOR.findIndex(d =>
+          d.id === numDossier ||
+          (d.id||'').trim() === numDossier.trim()
+        );
+
+        if(idx < 0){
+          nbIntrouvables++;
+          details.push({id: numDossier, status:'introuvable'});
+          return;
+        }
+
+        const dos = dossiersAFOR[idx];
+        let modif = false;
+
+        // Mise à jour étape
+        const etape = get(row, ['Etape','Étape','etape_actuelle']);
+        const etapeNorm = aforNormEtape(etape);
+        if(etapeNorm && etapeNorm !== dos.etape){
+          const oldIdx = ETAPES_CF.indexOf(dos.etape);
+          const newIdx = ETAPES_CF.indexOf(etapeNorm);
+          if(newIdx > oldIdx){ // Seulement avancer, jamais reculer
+            dos.etape = etapeNorm;
+            const dateEtape = fmtD(get(row, ['Dateetape','Date_etape','DateEtape','date etape']));
+            if(dateEtape) dos['date_'+etapeNorm] = dateEtape;
+            modif = true;
+          }
+        }
+
+        // Mise à jour superficie
+        const superf = parseFloat(get(row, ['Superficie','Surface','ha','SUPERF','Superficie(ha)']));
+        if(!isNaN(superf) && superf > 0 && superf !== dos.superficie_gnss){
+          dos.superficie_gnss = superf;
+          modif = true;
+        }
+
+        // Mise à jour code parcelle
+        const code = get(row, ['code_parcelle','CodeParcelle','N_DEMCGE','code parcelle']);
+        if(code && code !== dos.code_parcelle){
+          dos.code_parcelle = code;
+          modif = true;
+        }
+
+        // Mise à jour opérateur GNSS
+        const operateur = get(row, ['operateur_gnss','OperateurGNSS','Operateur','NOM_AGENT','operateur']);
+        if(operateur && operateur !== dos.operateur_gnss){
+          dos.operateur_gnss = operateur;
+          modif = true;
+        }
+
+        // Mise à jour levé et borné
+        const leve = get(row, ['LeveGNSS','Leve','levé','Levé']);
+        if(leve && ['oui','yes','1','true'].includes(leve.toLowerCase())){
+          dos.leve_gnss = true;
+          modif = true;
+        }
+        const borne = get(row, ['Borné','Borne','borné','bornage']);
+        if(borne && ['oui','yes','1','true'].includes(borne.toLowerCase())){
+          dos.borne = true;
+          modif = true;
+        }
+
+        // Mise à jour agent CE
+        const agentCE = get(row, ['AgentCE','Agent CE','agent_ce','CE','AgentCE']);
+        if(agentCE && agentCE !== dos.agent){
+          dos.agent = agentCE;
+          modif = true;
+        }
+
+        if(modif){
+          dossiersAFOR[idx] = dos;
+          nbMaj++;
+          details.push({id: numDossier, status:'mis à jour'});
+        } else {
+          nbIgnores++;
+        }
+      });
+
+      // Dédupliquer et sauvegarder
+      aforDeduplicate();
+      try{
+        localStorage.setItem('presfor_afor_data', JSON.stringify(dossiersAFOR));
+        localStorage.setItem('presfor_afor_ts', new Date().toISOString());
+      }catch(ex){}
+
+      // Sauvegarder sur Firebase
+      aforSaveToFirebase().catch(ex => console.warn('MAJ Firebase:', ex.message));
+
+      // Rafraîchir l'UI
+      aforRenderAll();
+      dosRenderAll();
+      dashRenderAll();
+
+      // Message de résultat
+      const msg = nbMaj + ' dossier(s) mis à jour · ' + nbIntrouvables + ' introuvable(s) · ' + nbIgnores + ' ignoré(s)';
+      showToast(msg);
+      console.log('MAJ dossiers:', msg, details.slice(0,5));
+
+    }catch(err){
+      showToast('Erreur lecture : ' + err.message);
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
 function dosImportConfirm(){
   const valides=dosImportData.filter(d=>d.errs.length===0);
   if(!valides.length){showToast('Aucun dossier valide.');return;}
