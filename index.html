@@ -6985,22 +6985,16 @@ function pubImportCQ(input){
           date_import:  new Date().toISOString().split('T')[0],
         };
 
-        // Mettre à jour les dates OV/CP dans dossiersAFOR si trouvé
+        // Mettre à jour dossiersAFOR — toujours écraser avec les données du fichier
         const idx = (dossiersAFOR||[]).findIndex(d => d.id === id);
         if(idx >= 0){
           let modif = false;
-          if(dateOV && !dossiersAFOR[idx].date_OV){
-            dossiersAFOR[idx].date_OV = dateOV; modif = true;
-          }
-          if(dateCP && !dossiersAFOR[idx].date_CP){
-            dossiersAFOR[idx].date_CP = dateCP; modif = true;
-          }
-          if(dateAnn && !dossiersAFOR[idx].date_annonce_pub){
-            dossiersAFOR[idx].date_annonce_pub = dateAnn; modif = true;
-          }
-          if(etape) dossiersAFOR[idx].etape_afor = etape;
-          if(modif) nbMaj++;
-          else nbIgnores++;
+          if(dateOV){ dossiersAFOR[idx].date_OV = dateOV; modif = true; }
+          if(dateCP){ dossiersAFOR[idx].date_CP = dateCP; modif = true; }
+          if(dateAnn){ dossiersAFOR[idx].date_annonce_pub = dateAnn; modif = true; }
+          if(etape){ dossiersAFOR[idx].etape_afor = etape; modif = true; }
+          if(statut){ dossiersAFOR[idx].statut_afor = statut; modif = true; }
+          if(modif) nbMaj++; else nbIgnores++;
         } else {
           nbNouveaux++;
         }
