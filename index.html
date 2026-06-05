@@ -1736,6 +1736,10 @@ tbody td{padding:9px 12px;vertical-align:middle;}
             <option value="N3">N3 validé</option>
             <option value="non_cq">Non contrôlé</option>
           </select>
+          <select id="pub-f-scope" onchange="pubRenderList()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--accent-lt);color:var(--accent-txt);font-weight:600;">
+            <option value="pub">En publicité (OV)</option>
+            <option value="tous">Tous les dossiers</option>
+          </select>
           <span id="pub-count" style="font-size:12px;color:var(--text2);margin-left:auto;font-weight:600;"></span>
         </div>
         <div class="tw">
@@ -6470,12 +6474,14 @@ function pubCalcDossier(d){
 }
 
 // Obtenir tous les dossiers en phase OV ou ayant eu OV
-function pubGetDossiers(){
+function pubGetDossiers(tousLesDossiers){
+  // Par défaut : dossiers en phase OV ou ayant une date OV
+  // Si tousLesDossiers=true : tous les dossiers AFOR
   return (dossiersAFOR || [])
     .filter(d => {
+      if(tousLesDossiers) return true;
       const etape = d.etape || '';
-      const hasOV = d.date_OV || d.date_ov;
-      // Dossiers à l'étape OV, CP, AP, VA ou ayant une date OV
+      const hasOV = d.date_OV || d.date_ov || d['Date OV'] || d['date ov'];
       return hasOV || ['OV','CP','AP','VA'].includes(etape);
     })
     .map(d => pubCalcDossier(d));
@@ -6528,7 +6534,7 @@ function pubPopulateSP(){
 }
 
 function pubRenderKPI(){
-  const all = pubGetDossiers();
+  const all = pubGetDossiers(false); // KPI = seulement dossiers en pub
   const enCours   = all.filter(d => d.statut === 'en_cours').length;
   const alertes   = all.filter(d => d.statut === 'alerte').length;
   const retards   = all.filter(d => d.statut === 'en_retard').length;
@@ -6552,7 +6558,8 @@ function pubRenderList(){
   const statut = document.getElementById('pub-f-statut')?.value || '';
   const cqF    = document.getElementById('pub-f-cq')?.value || '';
 
-  let liste = pubGetDossiers();
+  const voirTous = document.getElementById('pub-f-scope')?.value === 'tous';
+  let liste = pubGetDossiers(voirTous);
 
   if(text) liste = liste.filter(d =>
     d.id.toLowerCase().includes(text) ||
