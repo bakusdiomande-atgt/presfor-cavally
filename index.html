@@ -6482,20 +6482,47 @@ function pubCalcDossier(d){
   } else if(cqSup && cqSup.superf_cq1 && cqSup.superf_cq1 !== 'N/A'){
     superf = parseFloat(cqSup.superf_cq1) || 0;
   } else {
+    // Fonction de normalisation des noms (insensible casse/accents)
+    const normNom = s => {
+      if(!s) return '';
+      return s.toString().toUpperCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g,'')
+        .replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+    };
+
     // Chercher dans gnssData via code_parcelle (N_DEMCGE) — lien le plus fiable
     const codeParcelle = (d.code_parcelle || '').trim();
     let gnssEntry = null;
     if(codeParcelle){
-      gnssEntry = (gnssData||[]).find(g =>
-        (g.n_demcge||'').trim() === codeParcelle
-      );
+      gnssEntry = (gnssData||[]).find(g => (g.n_demcge||'').trim() === codeParcelle);
     }
-    // Fallback : par num_demand si pas trouvé par code parcelle
+
+    // Fallback 1 : par num_demand
     if(!gnssEntry){
-      gnssEntry = (gnssData||[]).find(g =>
-        (g.num_demand||'').trim() === (d.id||'').trim()
-      );
+      gnssEntry = (gnssData||[]).find(g => (g.num_demand||'').trim() === (d.id||'').trim());
     }
+
+    // Fallback 2 : par nom du demandeur (NOM_DEMAND dans GNSS)
+    // Construire les variantes du nom AFOR
+    if(!gnssEntry){
+      const prenom = normNom(d.prenom || '');
+      const nom    = normNom(d.nom || d.nom_demandeur || '');
+      if(prenom || nom){
+        const v1 = (nom + ' ' + prenom).trim();   // NOM PRENOM
+        const v2 = (prenom + ' ' + nom).trim();   // PRENOM NOM
+        // Calculer la superficie totale pour ce demandeur (peut avoir plusieurs parcelles)
+        const parcelles = (gnssData||[]).filter(g => {
+          const gNom = normNom(g.nom_demand || '');
+          return gNom === v1 || gNom === v2;
+        });
+        if(parcelles.length > 0){
+          // Sommer les superficies si plusieurs parcelles pour ce demandeur
+          const totalSuperf = parcelles.reduce((s,p) => s + (p.superficie||0), 0);
+          gnssEntry = {superficie: totalSuperf};
+        }
+      }
+    }
+
     if(gnssEntry && gnssEntry.superficie > 0){
       superf = gnssEntry.superficie;
     } else {
