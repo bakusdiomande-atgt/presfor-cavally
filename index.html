@@ -6491,13 +6491,11 @@ function pubCalcDossier(d){
   // Contrôle qualité
   const cq = pubCQ[d.id] || null;
 
-  // Superficie : priorité superf_final (CQ) > GNSS (par num_demand) > superficie dossier
+  // Superficie : priorité pubCQ.superf (fichier AFOR importé) > GNSS > dossier
   const cqSup = pubCQ[d.id];
   let superf = 0;
-  if(cqSup && cqSup.superf_final && cqSup.superf_final !== 'N/A'){
-    superf = parseFloat(cqSup.superf_final) || 0;
-  } else if(cqSup && cqSup.superf_cq1 && cqSup.superf_cq1 !== 'N/A'){
-    superf = parseFloat(cqSup.superf_cq1) || 0;
+  if(cqSup && cqSup.superf){
+    superf = parseFloat(cqSup.superf) || 0;
   } else {
     // Fonction de normalisation des noms (insensible casse/accents)
     const normNom = s => {
@@ -7048,7 +7046,7 @@ function pubImportCQ(input){
 
         // Contrôle qualité
         const niveau  = getCol(row, ['Niveau Global','niveau']);
-        const superfCL   = getCol(row, ['Superficie de Constat','superfCL']);
+        const superfCL   = getCol(row, ['Superficie de Constat de limite','Superficie de Constat','superfCL']);
         const superfCQ1  = getCol(row, ['Superficie au controle 1','superfCQ1']);
         const superfCQ2  = getCol(row, ['Superficie au controle 2','superfCQ2']);
         const superfFinal= getCol(row, ['Superficie au controle finale','superfFinal']);
@@ -7060,6 +7058,12 @@ function pubImportCQ(input){
         const isRejete = statut.toUpperCase().includes('REJETE') || statut.toUpperCase().includes('REJETÉ');
         const hasMotif = (motifQC1 && motifQC1 !== 'N/A') || (motifQC2 && motifQC2 !== 'N/A') || (motifFinal && motifFinal !== 'N/A');
 
+        // Superficie : priorité final > cq1 > cq2 > constat limite
+        const superfVal = (superfFinal && superfFinal !== 'N/A') ? superfFinal :
+                          (superfCQ1   && superfCQ1   !== 'N/A') ? superfCQ1   :
+                          (superfCQ2   && superfCQ2   !== 'N/A') ? superfCQ2   :
+                          (superfCL    && superfCL    !== 'N/A') ? superfCL    : null;
+
         pubCQ[id] = {
           niveau:       niveau || null,
           statut_cq:    statut || null,
@@ -7067,10 +7071,11 @@ function pubImportCQ(input){
           motif_qc1:    (motifQC1 && motifQC1 !== 'N/A') ? motifQC1 : null,
           motif_qc2:    (motifQC2 && motifQC2 !== 'N/A') ? motifQC2 : null,
           motif_final:  (motifFinal && motifFinal !== 'N/A') ? motifFinal : null,
-          superf_cl:    superfCL !== 'N/A' ? superfCL : null,
-          superf_cq1:   superfCQ1 !== 'N/A' ? superfCQ1 : null,
-          superf_cq2:   superfCQ2 !== 'N/A' ? superfCQ2 : null,
-          superf_final: superfFinal !== 'N/A' ? superfFinal : null,
+          superf_cl:    (superfCL    && superfCL    !== 'N/A') ? superfCL    : null,
+          superf_cq1:   (superfCQ1   && superfCQ1   !== 'N/A') ? superfCQ1   : null,
+          superf_cq2:   (superfCQ2   && superfCQ2   !== 'N/A') ? superfCQ2   : null,
+          superf_final: (superfFinal && superfFinal !== 'N/A') ? superfFinal : null,
+          superf:       superfVal,  // superficie consolidée prête à l'emploi
           date_import:  new Date().toISOString().split('T')[0],
         };
 
