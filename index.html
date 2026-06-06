@@ -4050,16 +4050,33 @@ function dosRenderStats(){
   document.getElementById('dos-stats-agents').innerHTML=Object.entries(pa).sort((a,b)=>b[1].nb-a[1].nb).map(([a,v])=>`<tr><td style="font-size:12px">${a}</td><td style="text-align:center;font-weight:600">${v.nb}</td><td style="text-align:center;color:var(--text2)">${v.sup.toFixed(1)}</td></tr>`).join('');
 }
 function dosShowPanel(id,btn){
+  // Fonction unique — toutes extensions fusionnées
+  const panel = document.getElementById('dos-panel-'+id);
+  if(!panel){ console.warn('dosShowPanel: panel introuvable dos-panel-'+id); return; }
   document.querySelectorAll('#module-dossier .panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById('dos-panel-'+id).classList.add('active');
+  panel.classList.add('active');
   document.querySelectorAll('#sb-dos .nav-item').forEach(n=>n.classList.remove('active'));
-  if(btn)btn.classList.add('active');
-  else{const m={list:0,form:1,pipeline:2,stats:3};document.querySelectorAll('#sb-dos .nav-item')[m[id]]?.classList.add('active');}
-  if(id==='form'&&!dosEditingId)dosResetForm();
-  if(id==='pipeline')dosRenderPipeline();
-  if(id==='list')dosRenderAll();
-  if(id==='afor-cf-liste')aforCFRenderList();
-  if(id==='afor-cf-agents')aforCFRenderAgents();
+  if(btn) btn.classList.add('active');
+  else{ const m={list:0,form:1,pipeline:2,stats:3}; document.querySelectorAll('#sb-dos .nav-item')[m[id]]?.classList.add('active'); }
+  if(id==='form' && !dosEditingId) dosResetForm();
+  if(id==='pipeline')  dosRenderPipeline();
+  if(id==='list')      dosRenderAll();
+  // Panels AFOR
+  if(id==='afor-dash')     aforRenderDashboard();
+  if(id==='afor-pipeline') aforRenderKanban();
+  if(id==='afor-liste')    aforRenderListe();
+  if(id==='afor-agents')   aforRenderAgents();
+  // Panels AFOR CF
+  if(id==='afor-cf-liste'){
+    const sel = document.getElementById('afor-cf-agent');
+    if(sel && dossiersAFOR.length){
+      const agents = [...new Set(dossiersAFOR.map(d=>d.agent).filter(Boolean))].sort();
+      sel.innerHTML = '<option value="">Tous les agents CE</option>' + agents.map(a=>`<option value="${a}">${a}</option>`).join('');
+    }
+    document.getElementById('afor-list-nb').textContent = dossiersAFOR.length||'0';
+    aforCFRenderList();
+  }
+  if(id==='afor-cf-agents') aforCFRenderAgents();
 }
 function dosUpdateGeo(){
   geoUpdateSP('df-dept','df-sp','df-village');
@@ -8735,15 +8752,7 @@ function aforGetAgentsData(){
 
 function aforRenderAgents(){}
 
-// Étendre dosShowPanel pour les panels AFOR
-const _dosShowPanel = dosShowPanel;
-function dosShowPanel(id, btn){
-  _dosShowPanel(id, btn);
-  if(id==='afor-dash') aforRenderDashboard();
-  if(id==='afor-pipeline') aforRenderKanban();
-  if(id==='afor-liste') aforRenderListe();
-  if(id==='afor-agents') aforRenderAgents();
-}
+// dosShowPanel étendu — voir fonction principale ci-dessus
 
 
 
@@ -8932,22 +8941,7 @@ function aforCFExportCSV(){
   showToast('Export CSV téléchargé !');
 }
 
-// Étendre dosShowPanel pour les panels AFOR CF
-const _origDosShowPanel = typeof dosShowPanel === 'function' ? dosShowPanel : null;
-function dosShowPanel(id, btn){
-  if(_origDosShowPanel) _origDosShowPanel(id, btn);
-  if(id==='afor-cf-liste'){
-    const sel=document.getElementById('afor-cf-agent');
-    if(sel && dossiersAFOR.length){
-      const agents=[...new Set(dossiersAFOR.map(d=>d.agent).filter(Boolean))].sort();
-      sel.innerHTML='<option value="">Tous les agents CE</option>'+agents.map(a=>`<option value="${a}">${a}</option>`).join('');
-    }
-    document.getElementById('afor-list-nb').textContent=dossiersAFOR.length||'0';
-    aforCFRenderList();
-  }
-  if(id==='afor-cf-agents') aforCFRenderAgents();
-}
-
+// dosShowPanel CF étendu — voir fonction principale ci-dessus
 
 // ═══════════════════════════════════════════
 // MODULE GNSS — Parcelles levées / Superficie
