@@ -6482,11 +6482,20 @@ function pubCalcDossier(d){
   } else if(cqSup && cqSup.superf_cq1 && cqSup.superf_cq1 !== 'N/A'){
     superf = parseFloat(cqSup.superf_cq1) || 0;
   } else {
-    // Chercher dans gnssData par numéro de dossier
-    const gnssEntry = (gnssData||[]).find(g =>
-      (g.num_demand||'').trim() === (d.id||'').trim() ||
-      (g.n_demcge||'').trim()   === (d.id||'').trim()
-    );
+    // Chercher dans gnssData via code_parcelle (N_DEMCGE) — lien le plus fiable
+    const codeParcelle = (d.code_parcelle || '').trim();
+    let gnssEntry = null;
+    if(codeParcelle){
+      gnssEntry = (gnssData||[]).find(g =>
+        (g.n_demcge||'').trim() === codeParcelle
+      );
+    }
+    // Fallback : par num_demand si pas trouvé par code parcelle
+    if(!gnssEntry){
+      gnssEntry = (gnssData||[]).find(g =>
+        (g.num_demand||'').trim() === (d.id||'').trim()
+      );
+    }
     if(gnssEntry && gnssEntry.superficie > 0){
       superf = gnssEntry.superficie;
     } else {
@@ -8439,6 +8448,7 @@ const AFOR_COLS = {
   num:'Numéro de Dossier', prenom:'Prénom', nom:'Nom',
   dept:'Département', sp:'Sous-Préfecture', village:'Village',
   agent:'Nom CE', type:'Type de Certificat', etape:'Étape Actuelle',
+  code_parcelle:'Code Parcelle',
   date_DD:'Date de Création', date_RDC:'Date de RDC',
   date_CL:'Date de Constat de limite',
   date_OV:'Date Ouverture de Publicité',
@@ -8561,7 +8571,8 @@ function aforImportExcel(input){
           dept: (row[AFOR_COLS.dept]||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''),
           sp: (row[AFOR_COLS.sp]||'').trim(),
           village: (row[AFOR_COLS.village]||'').trim(),
-          agent: aforAgentNom((row[AFOR_COLS.agent]||'').trim()),
+          agent: aforAgent,
+          code_parcelle: (row[AFOR_COLS.code_parcelle]||'').trim(),
           type: (row[AFOR_COLS.type]||'').trim(),
           etape,
           date_DD:  fmtD(row[AFOR_COLS.date_DD]),
