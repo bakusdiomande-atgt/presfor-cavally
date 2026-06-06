@@ -6645,6 +6645,30 @@ function pubPopulateSP(){
   });
 }
 
+function pubRenderKPIFiltered(liste){
+  // KPI réactifs aux filtres actifs
+  if(!liste || liste.length === pubGetDossiers(false).length){
+    pubRenderKPI(); return; // pas de filtre actif → KPI globaux
+  }
+  const enCours    = liste.filter(d => d.statut === 'en_cours').length;
+  const alertes    = liste.filter(d => d.statut === 'alerte').length;
+  const retards    = liste.filter(d => d.statut === 'en_retard').length;
+  const clotures   = liste.filter(d => d.statut === 'cloture').length;
+  const oppositions= liste.filter(d => d.opposition).length;
+  const rejetes    = liste.filter(d => d.cq && d.cq.rejete).length;
+  const totalHa    = liste.reduce((s,d) => s+(d.superficie||0), 0);
+
+  const kpiEl = document.getElementById('pub-kpi');
+  if(!kpiEl) return;
+  const filterLabel = ' <span style="font-size:9px;background:var(--accent);color:#fff;padding:1px 5px;border-radius:8px;vertical-align:middle;margin-left:4px;">filtré</span>';
+  kpiEl.innerHTML = `
+    <div class="kpi blue"><div class="kpi-l">En publicité${filterLabel}</div><div class="kpi-v">${liste.length}</div><div class="kpi-s">${enCours} en cours · ${clotures} clôturés</div></div>
+    <div class="kpi green"><div class="kpi-l">Superficie${filterLabel}</div><div class="kpi-v" style="font-size:16px;">${totalHa.toFixed(1)}</div><div class="kpi-s">hectares</div></div>
+    <div class="kpi amber"><div class="kpi-l">Alerte J-5</div><div class="kpi-v">${alertes}</div><div class="kpi-s">Clôture imminente</div></div>
+    <div class="kpi red"><div class="kpi-l">En retard</div><div class="kpi-v">${retards}</div><div class="kpi-s">Délai dépassé</div></div>
+    <div class="kpi ${rejetes>0?'red':''}"><div class="kpi-l">Rejets CQ</div><div class="kpi-v">${rejetes}</div><div class="kpi-s">${oppositions} opposition(s)</div></div>`;
+}
+
 function pubRenderKPI(){
   const all = pubGetDossiers(false); // KPI = seulement dossiers en pub
   const enCours   = all.filter(d => d.statut === 'en_cours').length;
@@ -6699,6 +6723,9 @@ function pubRenderList(){
 
   pubListFiltered = liste;
   pubPage = 0;
+
+  // Mettre à jour les KPI avec la liste filtrée
+  pubRenderKPIFiltered(liste);
 
   const count = document.getElementById('pub-count');
   const totalHaFilt = liste.reduce((s,d) => s+(d.superficie||0), 0);
