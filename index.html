@@ -8571,7 +8571,7 @@ function aforImportExcel(input){
           dept: (row[AFOR_COLS.dept]||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''),
           sp: (row[AFOR_COLS.sp]||'').trim(),
           village: (row[AFOR_COLS.village]||'').trim(),
-          agent: aforAgent,
+          agent: (row[AFOR_COLS.agent]||'').trim(),
           code_parcelle: (row[AFOR_COLS.code_parcelle]||'').trim(),
           type: (row[AFOR_COLS.type]||'').trim(),
           etape,
