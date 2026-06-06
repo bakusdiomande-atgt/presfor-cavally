@@ -1769,6 +1769,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
               <th style="text-align:center">Clôture prévue</th>
               <th style="text-align:center">Clôture réelle</th>
               <th style="text-align:center">Retard</th>
+              <th style="text-align:center">Superficie</th>
               <th style="text-align:center">CQ AFOR</th>
               <th style="text-align:center">Opposition</th>
               <th>Statut</th>
@@ -6473,6 +6474,14 @@ function pubCalcDossier(d){
   // Contrôle qualité
   const cq = pubCQ[d.id] || null;
 
+  // Superficie : priorité superf_final (CQ) > superficie_gnss > superficie
+  const cqSup = pubCQ[d.id];
+  const superf = parseFloat(
+    (cqSup && cqSup.superf_final) ? cqSup.superf_final :
+    (cqSup && cqSup.superf_cq1)   ? cqSup.superf_cq1   :
+    d.superficie_gnss || d.superficie || 0
+  ) || 0;
+
   return {
     id: d.id,
     nom: (d.prenom || '') + ' ' + (d.nom || d.nom_demandeur || ''),
@@ -6481,12 +6490,14 @@ function pubCalcDossier(d){
     dept: (d.dept || '').replace('Dép. ','').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z]/g,''),
     type: d.type || '',
     etape: d.etape || '',
+    etapeAfor: d.etape_afor || '',
     dateOV, dateCP,
     dtOV, dtCP, dtCloturePrevue,
     statut, retardJours,
     opposition: opp,
     cq,
     agent: d.agent || '',
+    superficie: superf,
   };
 }
 
@@ -6564,14 +6575,17 @@ function pubRenderKPI(){
   const clotures  = all.filter(d => d.statut === 'cloture').length;
   const oppositions = all.filter(d => d.opposition).length;
 
+  const totalHa = all.reduce((s,d) => s + (d.superficie||0), 0);
+  const rejetes = all.filter(d => d.cq && d.cq.rejete).length;
+
   const kpiEl = document.getElementById('pub-kpi');
   if(!kpiEl) return;
   kpiEl.innerHTML = `
     <div class="kpi blue"><div class="kpi-l">Total en publicité</div><div class="kpi-v">${all.length}</div><div class="kpi-s">${enCours} en cours · ${clotures} clôturés</div></div>
-    <div class="kpi green"><div class="kpi-l">En cours</div><div class="kpi-v">${enCours}</div><div class="kpi-s">Publicité ouverte</div></div>
+    <div class="kpi green"><div class="kpi-l">Superficie totale</div><div class="kpi-v" style="font-size:16px;">${totalHa.toFixed(1)}</div><div class="kpi-s">hectares</div></div>
     <div class="kpi amber"><div class="kpi-l">Alerte J-5</div><div class="kpi-v">${alertes}</div><div class="kpi-s">Clôture imminente</div></div>
     <div class="kpi red"><div class="kpi-l">En retard</div><div class="kpi-v">${retards}</div><div class="kpi-s">Délai dépassé</div></div>
-    <div class="kpi ${oppositions>0?'amber':''}"><div class="kpi-l">Oppositions</div><div class="kpi-v">${oppositions}</div><div class="kpi-s">Déposées</div></div>`;
+    <div class="kpi ${rejetes>0?'red':''}"><div class="kpi-l">Rejets CQ</div><div class="kpi-v">${rejetes}</div><div class="kpi-s">${oppositions} opposition(s)</div></div>`;
 }
 
 function pubRenderList(){
@@ -6609,7 +6623,8 @@ function pubRenderList(){
   pubPage = 0;
 
   const count = document.getElementById('pub-count');
-  if(count) count.textContent = liste.length + ' dossier(s)';
+  const totalHaFilt = liste.reduce((s,d) => s+(d.superficie||0), 0);
+  if(count) count.textContent = liste.length + ' dossier(s) · ' + totalHaFilt.toFixed(1) + ' ha';
 
   pubRenderPage();
 }
@@ -6661,6 +6676,7 @@ function pubRenderPage(){
           <td style="padding:8px 10px;text-align:center;font-size:11px;${d.statut==='alerte'?'color:var(--amber);font-weight:600;':''}">${d.dtCloturePrevue?fmtD(d.dtCloturePrevue):'—'}</td>
           <td style="padding:8px 10px;text-align:center;font-size:11px;">${fmtD(d.dateCP)}</td>
           <td style="padding:8px 10px;text-align:center;">${retardCell}</td>
+          <td style="padding:8px 10px;text-align:center;font-size:11px;color:var(--teal);font-weight:600;">${d.superficie>0?d.superficie.toFixed(2)+' ha':'—'}</td>
           <td style="padding:8px 10px;text-align:center;">${cqCell}</td>
           <td style="padding:8px 10px;text-align:center;">${oppCell}</td>
           <td style="padding:8px 10px;">${statutBadge[d.statut]||''}</td>
@@ -7123,19 +7139,21 @@ function pubExportCSV(){
   const fmtD = function(d){ return d ? new Date(d).toLocaleDateString('fr-FR') : ''; };
   const esc  = function(v){ return '"' + String(v||'').replace(/"/g, '""') + '"'; };
   const header = ['N° Dossier','Demandeur','Village','SP','Département','Type','Étape',
-    'Date OV','Clôture prévue','Clôture réelle','Retard (j)','CQ N1','CQ N2','CQ N3','Opposition','Statut'];
+    'Date OV','Clôture prévue','Clôture réelle','Retard (j)','Superficie (ha)','CQ Niveau','CQ Statut','Rejeté','Opposition','Statut pub'];
   const lines = [header.map(esc).join(',')];
   liste.forEach(function(d){
+    const cq = pubCQ[d.id] || {};
     lines.push([
       d.id, d.nom.trim(), d.village, d.sp, d.dept, d.type, d.etape,
       fmtD(d.dateOV),
       d.dtCloturePrevue ? fmtD(d.dtCloturePrevue) : '',
       fmtD(d.dateCP),
       d.retardJours || 0,
-      d.cq && d.cq.n1 ? 'Oui' : '',
-      d.cq && d.cq.n2 ? 'Oui' : '',
-      d.cq && d.cq.n3 ? 'Oui' : '',
-      d.opposition ? 'Oui' : '',
+      d.superficie > 0 ? d.superficie.toFixed(2) : '',
+      (cq.niveau||'').replace('NIVEAU_','N'),
+      cq.statut_cq || '',
+      cq.rejete ? 'Oui' : 'Non',
+      d.opposition ? 'Oui' : 'Non',
       d.statut
     ].map(esc).join(','));
   });
