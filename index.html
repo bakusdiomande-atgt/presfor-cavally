@@ -6474,13 +6474,25 @@ function pubCalcDossier(d){
   // Contrôle qualité
   const cq = pubCQ[d.id] || null;
 
-  // Superficie : priorité superf_final (CQ) > superficie_gnss > superficie
+  // Superficie : priorité superf_final (CQ) > GNSS (par num_demand) > superficie dossier
   const cqSup = pubCQ[d.id];
-  const superf = parseFloat(
-    (cqSup && cqSup.superf_final) ? cqSup.superf_final :
-    (cqSup && cqSup.superf_cq1)   ? cqSup.superf_cq1   :
-    d.superficie_gnss || d.superficie || 0
-  ) || 0;
+  let superf = 0;
+  if(cqSup && cqSup.superf_final && cqSup.superf_final !== 'N/A'){
+    superf = parseFloat(cqSup.superf_final) || 0;
+  } else if(cqSup && cqSup.superf_cq1 && cqSup.superf_cq1 !== 'N/A'){
+    superf = parseFloat(cqSup.superf_cq1) || 0;
+  } else {
+    // Chercher dans gnssData par numéro de dossier
+    const gnssEntry = (gnssData||[]).find(g =>
+      (g.num_demand||'').trim() === (d.id||'').trim() ||
+      (g.n_demcge||'').trim()   === (d.id||'').trim()
+    );
+    if(gnssEntry && gnssEntry.superficie > 0){
+      superf = gnssEntry.superficie;
+    } else {
+      superf = parseFloat(d.superficie_gnss || d.superficie || 0) || 0;
+    }
+  }
 
   return {
     id: d.id,
@@ -6654,14 +6666,22 @@ function pubRenderPage(){
         let cqCell = '<span style="font-size:10px;color:var(--text3);">—</span>';
         if(cqInfo){
           const niveau = (cqInfo.niveau||'').replace('NIVEAU_','N');
-          const isRej = cqInfo.rejete;
+          const correction = cqInfo.correction || null;
+          const isCorrige = correction && correction.statut === 'VALIDE';
+          const isRej = cqInfo.rejete && !isCorrige;
           const hasMotif = cqInfo.motif_qc1 || cqInfo.motif_qc2 || cqInfo.motif_final;
-          if(isRej && hasMotif){
+
+          if(isCorrige){
+            // Rejet corrigé et validé
+            cqCell = `<span onclick="pubShowRejetDetail('${d.id}')" style="cursor:pointer;font-size:10px;background:#E3F2FD;color:#1565C0;padding:2px 8px;border-radius:8px;font-weight:600;text-decoration:underline dotted;" title="Correction validée — cliquer pour détails">✓ Corrigé ${niveau}</span>`;
+          } else if(isRej && hasMotif){
+            // Rejet non corrigé avec motifs
             cqCell = `<span onclick="pubShowRejetDetail('${d.id}')" style="cursor:pointer;font-size:10px;background:#FFEBEE;color:#C62828;padding:2px 8px;border-radius:8px;font-weight:600;text-decoration:underline dotted;" title="Cliquer pour voir les motifs de rejet">⚠ Rejeté ${niveau}</span>`;
           } else if(isRej){
-            cqCell = `<span style="font-size:10px;background:#FFEBEE;color:#C62828;padding:2px 8px;border-radius:8px;font-weight:600;">Rejeté ${niveau}</span>`;
+            cqCell = `<span onclick="pubShowRejetDetail('${d.id}')" style="cursor:pointer;font-size:10px;background:#FFEBEE;color:#C62828;padding:2px 8px;border-radius:8px;font-weight:600;">Rejeté ${niveau}</span>`;
           } else if(niveau){
-            cqCell = `<span style="font-size:10px;background:#E8F5E9;color:#2E7D32;padding:2px 8px;border-radius:8px;font-weight:600;">✓ ${niveau}</span>`;
+            // Pas de rejet — afficher OK
+            cqCell = `<span style="font-size:10px;background:#E8F5E9;color:#2E7D32;padding:2px 8px;border-radius:8px;font-weight:600;">✓ OK ${niveau}</span>`;
           }
         }
         const oppCell = d.opposition
