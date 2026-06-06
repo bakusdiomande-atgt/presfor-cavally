@@ -6491,58 +6491,73 @@ function pubCalcDossier(d){
   // Contrôle qualité
   const cq = pubCQ[d.id] || null;
 
-  // Superficie : priorité pubCQ.superf (fichier AFOR importé) > GNSS > dossier
+  // ── Réconciliation superficie AFOR vs GNSS ──
+  // Règle : si similitude < 10% → prendre GNSS, sinon prendre AFOR
   const cqSup = pubCQ[d.id];
+
+  const normN = s => {
+    if(!s) return '';
+    return s.toString().toUpperCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g,'')
+      .replace(/[^A-Z0-9 ]/g,' ').replace(/  +/g,' ').trim();
+  };
+
+  // 1. Superficie AFOR depuis le fichier importé (constat limite ou CQ)
+  const aforSuperf = cqSup && cqSup.superf ? parseFloat(cqSup.superf)||0 : 0;
+
+  // 2. Superficie GNSS — matching multi-critères
+  let gnssParcelles = [];
+  const code = (d.code_parcelle || '').trim();
+  const deptN = normN(d.dept || '');
+  const villN = normN(d.village || '');
+  const spN   = normN(d.sp || '');
+
+  // Priorité 1 : code parcelle exact
+  if(code){
+    gnssParcelles = (gnssData||[]).filter(g => (g.n_demcge||'').trim() === code);
+  }
+  // Priorité 2 : N° dossier (num_demand)
+  if(!gnssParcelles.length){
+    gnssParcelles = (gnssData||[]).filter(g => (g.num_demand||'').trim() === (d.id||'').trim());
+  }
+  // Priorité 3 : nom demandeur + localisation
+  if(!gnssParcelles.length){
+    const prN  = normN(d.prenom || '');
+    const nomN = normN(d.nom || d.nom_demandeur || '');
+    const v1 = (nomN + ' ' + prN).trim();
+    const v2 = (prN + ' ' + nomN).trim();
+    gnssParcelles = (gnssData||[]).filter(g => {
+      const gn = normN(g.nom_demand || '');
+      if(gn !== v1 && gn !== v2) return false;
+      // Confirmer par localisation si possible
+      const gd = normN(g.dept || '');
+      const gv = normN(g.village || '');
+      if(deptN && gd && gd !== deptN) return false;
+      if(villN && gv && gv !== villN) return false;
+      return true;
+    });
+    // Si pas de match avec localisation, essayer sans
+    if(!gnssParcelles.length){
+      gnssParcelles = (gnssData||[]).filter(g => {
+        const gn = normN(g.nom_demand || '');
+        return gn === v1 || gn === v2;
+      });
+    }
+  }
+
+  const gnssTotal = gnssParcelles.reduce((s,g) => s+(g.superficie||0), 0);
+
+  // 3. Réconciliation : similitude < 10% → GNSS, sinon AFOR
   let superf = 0;
-  if(cqSup && cqSup.superf){
-    superf = parseFloat(cqSup.superf) || 0;
+  if(gnssTotal > 0 && aforSuperf > 0){
+    const diff = Math.abs(gnssTotal - aforSuperf) / aforSuperf;
+    superf = diff <= 0.10 ? gnssTotal : aforSuperf;
+  } else if(gnssTotal > 0){
+    superf = gnssTotal;   // GNSS seul
+  } else if(aforSuperf > 0){
+    superf = aforSuperf;  // AFOR seul
   } else {
-    // Fonction de normalisation des noms (insensible casse/accents)
-    const normNom = s => {
-      if(!s) return '';
-      return s.toString().toUpperCase()
-        .normalize('NFD').replace(/[̀-ͯ]/g,'')
-        .replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
-    };
-
-    // Chercher dans gnssData via code_parcelle (N_DEMCGE) — lien le plus fiable
-    const codeParcelle = (d.code_parcelle || '').trim();
-    let gnssEntry = null;
-    if(codeParcelle){
-      gnssEntry = (gnssData||[]).find(g => (g.n_demcge||'').trim() === codeParcelle);
-    }
-
-    // Fallback 1 : par num_demand
-    if(!gnssEntry){
-      gnssEntry = (gnssData||[]).find(g => (g.num_demand||'').trim() === (d.id||'').trim());
-    }
-
-    // Fallback 2 : par nom du demandeur (NOM_DEMAND dans GNSS)
-    // Construire les variantes du nom AFOR
-    if(!gnssEntry){
-      const prenom = normNom(d.prenom || '');
-      const nom    = normNom(d.nom || d.nom_demandeur || '');
-      if(prenom || nom){
-        const v1 = (nom + ' ' + prenom).trim();   // NOM PRENOM
-        const v2 = (prenom + ' ' + nom).trim();   // PRENOM NOM
-        // Calculer la superficie totale pour ce demandeur (peut avoir plusieurs parcelles)
-        const parcelles = (gnssData||[]).filter(g => {
-          const gNom = normNom(g.nom_demand || '');
-          return gNom === v1 || gNom === v2;
-        });
-        if(parcelles.length > 0){
-          // Sommer les superficies si plusieurs parcelles pour ce demandeur
-          const totalSuperf = parcelles.reduce((s,p) => s + (p.superficie||0), 0);
-          gnssEntry = {superficie: totalSuperf};
-        }
-      }
-    }
-
-    if(gnssEntry && gnssEntry.superficie > 0){
-      superf = gnssEntry.superficie;
-    } else {
-      superf = parseFloat(d.superficie_gnss || d.superficie || 0) || 0;
-    }
+    superf = parseFloat(d.superficie_gnss || d.superficie || 0) || 0;
   }
 
   return {
