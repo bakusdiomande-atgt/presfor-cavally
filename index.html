@@ -1237,6 +1237,12 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     <option value="CFI">CFI</option>
     <option value="CFC">CFC</option>
   </select>
+  <select id="dos-f-src" onchange="dosRenderList()" style="background:var(--accent-lt);color:var(--accent-txt);border:1px solid var(--accent);font-weight:600;padding:6px 10px;border-radius:6px;font-size:12px;">
+    <option value="">Tous (AFOR + Manuel)</option>
+    <option value="afor">Base AFOR</option>
+    <option value="manuel">Saisies manuelles</option>
+    <option value="gnss_orphelin">⚠ GNSS sans dossier AFOR</option>
+  </select>
   <select id="dos-f-statut" onchange="dosRenderList()">
     <option value="">Tous statuts</option>
     <option value="retard">En retard</option>
@@ -3818,43 +3824,95 @@ function dosRenderAll(){
   dosRenderList();
 }
 
-// Calculer la superficie d'un dossier depuis GNSS (par code_parcelle ou nom)
-function dosGetSuperficie(d){
-  if(!gnssData || !gnssData.length) return 0;
+// Index GNSS pré-calculé : id_dossier → superficie
+// Reconstruit à chaque import GNSS ou AFOR
+let _gnssSuperfIndex = null;
+let _gnssOrphelins   = []; // Parcelles GNSS sans dossier AFOR correspondant
+
+function gnssRebuildSuperfIndex(){
+  if(!gnssData || !gnssData.length || !dossiersAFOR || !dossiersAFOR.length){
+    _gnssSuperfIndex = {}; return;
+  }
   const normN = s => {
     if(!s) return '';
     return s.toString().toUpperCase()
       .normalize('NFD').replace(/[̀-ͯ]/g,'')
       .replace(/[^A-Z0-9 ]/g,' ').replace(/  +/g,' ').trim();
   };
-  // 1. Par code parcelle
-  const code = (d.code_parcelle || '').trim();
-  if(code){
-    const g = gnssData.find(x => (x.n_demcge||'').trim() === code);
-    if(g && g.superficie > 0) return g.superficie;
-  }
-  // 2. Par nom demandeur
-  const prN  = normN(d.prenom || '');
-  const nomN = normN(d.nom || d.nom_demandeur || '');
-  if(prN || nomN){
-    const v1 = (nomN + ' ' + prN).trim();
-    const v2 = (prN + ' ' + nomN).trim();
-    const deptN = normN(d.dept || '');
-    const villN = normN(d.village || '');
-    const parcelles = gnssData.filter(g => {
-      const gn = normN(g.nom_demand || '');
-      if(gn !== v1 && gn !== v2) return false;
-      if(deptN && normN(g.dept||'') && normN(g.dept||'') !== deptN) return false;
-      if(villN && normN(g.village||'') && normN(g.village||'') !== villN) return false;
+
+  // Copie des entrées GNSS avec flag 'used'
+  const entries = gnssData.map(g => ({
+    code:   (g.n_demcge||'').trim(),
+    nom:    normN(g.nom_demand||''),
+    dept:   normN(g.dept||''),
+    vill:   normN(g.village||''),
+    superf: g.superficie || 0,
+    used:   false,
+  }));
+
+  const idx = {};
+
+  // Passe 1 : matching par code_parcelle (1 entrée GNSS = 1 dossier)
+  dossiersAFOR.forEach(d => {
+    const code = (d.code_parcelle || '').trim();
+    if(!code) return;
+    const g = entries.find(e => !e.used && e.code === code);
+    if(g){ g.used = true; idx[d.id] = (idx[d.id]||0) + g.superf; }
+  });
+
+  // Passe 2 : matching par nom + localisation pour les dossiers sans code
+  dossiersAFOR.forEach(d => {
+    if(idx[d.id]) return; // déjà trouvé
+    const prN  = normN(d.prenom||'');
+    const nomN = normN(d.nom||d.nom_demandeur||'');
+    if(!prN && !nomN) return;
+    const v1 = (nomN+' '+prN).trim();
+    const v2 = (prN+' '+nomN).trim();
+    const dept = normN(d.dept||'');
+    const vill = normN(d.village||'');
+    const g = entries.find(e => {
+      if(e.used) return false;
+      if(e.nom !== v1 && e.nom !== v2) return false;
+      if(dept && e.dept && e.dept !== dept) return false;
+      if(vill && e.vill && e.vill !== vill) return false;
       return true;
     });
-    if(parcelles.length > 0) return parcelles.reduce((s,g)=>s+(g.superficie||0),0);
-  }
-  return 0;
+    if(g){ g.used = true; idx[d.id] = (idx[d.id]||0) + g.superf; }
+  });
+
+  _gnssSuperfIndex = idx;
+
+  // Stocker les parcelles GNSS non attribuées (sans dossier AFOR)
+  _gnssOrphelins = entries.filter(e => !e.used).map(e => ({
+    id:         'GNSS-' + e.code,
+    _src:       'gnss_orphelin',
+    nom_demandeur: e.nom || '—',
+    code_parcelle: e.code,
+    dept:       e.dept,
+    village:    e.vill,
+    superficie: e.superf,
+    etape:      'Levé GNSS',
+    type:       'GNSS',
+  }));
+
+  console.log('Index GNSS superficie construit:', Object.keys(idx).length, 'dossiers,',
+    Object.values(idx).reduce((s,v)=>s+v,0).toFixed(1), 'ha |',
+    _gnssOrphelins.length, 'orphelins,',
+    _gnssOrphelins.reduce((s,g)=>s+(g.superficie||0),0).toFixed(1), 'ha');
+}
+
+function dosGetSuperficie(d){
+  if(!_gnssSuperfIndex) return 0;
+  return _gnssSuperfIndex[d.id] || 0;
 }
 
 function dosRenderKPI(filtered){
-  const tous = filtered ? filtered : [...dossiers, ...dossiersAFOR];
+  // Inclure les orphelins GNSS si le filtre le demande
+  const inclureOrphelins = document.getElementById('dos-f-src')?.value === 'gnss_orphelin';
+  const baseList = inclureOrphelins
+    ? _gnssOrphelins
+    : [...dossiers, ...dossiersAFOR];
+  const tous = filtered ? filtered : baseList;
   const tot  = tous.length;
   const retards = tous.filter(d=>aforCalcRetard(d).retard).length;
   const va      = tous.filter(d=>d.etape==='VA').length;
@@ -3885,7 +3943,23 @@ function dosRenderList(){
   const fe = document.getElementById('dos-f-etape')?.value||'';
   const fa = document.getElementById('dos-f-agent')?.value||'';
   const ft = document.getElementById('dos-f-type')?.value||'';
-  const fs = document.getElementById('dos-f-statut')?.value||'';
+  const fs    = document.getElementById('dos-f-statut')?.value||'';
+  const fSrc  = document.getElementById('dos-f-src')?.value||'';
+
+  // Si filtre orphelins : afficher uniquement les parcelles GNSS sans dossier AFOR
+  if(fSrc === 'gnss_orphelin'){
+    let orphList = [..._gnssOrphelins];
+    if(q) orphList = orphList.filter(d =>
+      (d.nom_demandeur||'').toLowerCase().includes(q) ||
+      (d.code_parcelle||'').toLowerCase().includes(q) ||
+      (d.village||'').toLowerCase().includes(q));
+    if(fd) orphList = orphList.filter(d => (d.dept||'').includes(fd));
+    dosListFiltered = orphList;
+    dosPage = 0;
+    dosRenderKPI(orphList);
+    dosRenderPage();
+    return;
+  }
 
   // ══ Combinaison dossiers + parcelles GNSS ══
   // PASSE 1 : identifier les entrées GNSS matchées par un dossier AFOR ou manuel
@@ -8791,6 +8865,7 @@ function aforImportExcel(input){
 }
 
 function aforRenderAll(){
+  gnssRebuildSuperfIndex(); // Reconstruire l'index superficie après import AFOR
   aforUpdateBtnLabel();
   // Met à jour les cards dashboard + badge sidebar
   const nb=document.getElementById('afor-list-nb');
@@ -9257,6 +9332,7 @@ function gnssGetStats(){
 
 // ── Rafraîchir tout après import GNSS ──
 function gnssRenderAll(){
+  gnssRebuildSuperfIndex(); // Reconstruire l'index superficie après import GNSS
   gnssUpdateBtnLabel();
   dashRenderCardGNSS();
   // Rafraîchir la liste dossiers si visible
