@@ -6587,14 +6587,17 @@ function pubGetDossiers(tousLesDossiers){
       const etape     = (d.etape || '').toUpperCase();
       const etapeAfor = (d.etape_afor || '').toUpperCase();
       const hasOV     = d.date_OV || d.date_ov;
-      // Inclure aussi si le fichier AFOR importé indique une étape pub
       const cq        = pubCQ[d.id];
-      const etapesCQ  = cq ? (cq.statut_cq || '').toUpperCase() : '';
-      const pubEtapes = ['OV','CP','AP','VA','OP','CE'];
+      // Un dossier est en pub si :
+      // 1. Il a une date OV dans dossiersAFOR
+      // 2. Son étape actuelle est OV/CP/AP/VA
+      // 3. Il a une fiche CQ importée (statut quelconque = il était en pub)
+      const hasCQ     = !!cq;
+      const pubEtapes = ['OV','CP','AP','VA','OP'];
       return hasOV
         || pubEtapes.some(e => etape.includes(e))
         || pubEtapes.some(e => etapeAfor.includes(e))
-        || pubEtapes.some(e => etapesCQ.includes(e));
+        || hasCQ;  // présence dans pubCQ = dossier en pub
     })
     .map(d => pubCalcDossier(d));
 }
@@ -6611,12 +6614,14 @@ function pubShowPanel(id, btn){
 }
 
 function pubInit(){
+  // Afficher d'abord ce qu'on a en localStorage
+  pubRenderKPI();
+  pubRenderList();
+  // Puis recharger depuis Firebase et re-rendre
   pubLoadFromFirebase().then(() => {
     pubRenderKPI();
     pubRenderList();
   });
-  pubRenderKPI();
-  pubRenderList();
 }
 
 function pubRefresh(){
@@ -8162,6 +8167,9 @@ async function serverLoad(){
     updateSyncIndicator('ok');
     progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
     console.log('Firebase chargé:', saisies.length, 'saisies,', programmes.length, 'programmes');
+
+    // Charger pubCQ et pubOppositions depuis Firebase au démarrage
+    pubLoadFromFirebase().catch(()=>{});
 
     // Charger AFOR depuis Firebase (toujours — pour tous les utilisateurs)
     aforLoadFromFirebase().then(loaded => {
