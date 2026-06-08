@@ -3907,37 +3907,43 @@ function dosGetSuperficie(d){
 }
 
 function dosRenderKPI(filtered){
-  // Inclure les orphelins GNSS si le filtre le demande
-  const inclureOrphelins = document.getElementById('dos-f-src')?.value === 'gnss_orphelin';
-  const baseList = inclureOrphelins
-    ? _gnssOrphelins
-    : [...dossiers, ...dossiersAFOR];
+  const fSrcVal = document.getElementById('dos-f-src')?.value || '';
+  const inclureOrphelins = fSrcVal === 'gnss_orphelin';
+
+  // Liste de base selon le contexte
+  const baseList = inclureOrphelins ? _gnssOrphelins : [...dossiers, ...dossiersAFOR];
   const tous = filtered ? filtered : baseList;
   const tot  = tous.length;
+
   const retards = tous.filter(d=>aforCalcRetard(d).retard).length;
   const va      = tous.filter(d=>d.etape==='VA').length;
   const manuel  = filtered ? filtered.filter(d=>!d._src||d._src==='manuel').length : dossiers.length;
   const afor    = filtered ? filtered.filter(d=>d._src==='afor').length            : dossiersAFOR.length;
 
-  // Superficie totale :
-  // - Par dossier : via l'index pré-calculé (sans doublons)
-  // - Sans filtre : ajouter aussi les orphelins GNSS (parcelles sans dossier AFOR)
-  // Superficie : index pré-calculé pour dossiers AFOR/manuels
-  //              + _gnss.superficie pour les parcelles GNSS sans dossier
-  const totalHa = tous.reduce((s,d) => {
-    if(d._src === 'gnss' && d._gnss) return s + (d._gnss.superficie||0);
-    if(d._src === 'gnss_orphelin') return s + (d.superficie||0);
-    return s + (_gnssSuperfIndex?.[d.id]||0);
-  }, 0);
+  // Superficie :
+  // Sans filtre → total brut gnssData (toutes parcelles levées)
+  // Avec filtre → somme des dossiers filtrés via index + gnss directs
+  let totalHa = 0;
+  if(!filtered && !inclureOrphelins){
+    // Vue globale : total complet depuis gnssData
+    totalHa = (gnssData||[]).reduce((s,g) => s+(g.superficie||0), 0);
+  } else {
+    totalHa = tous.reduce((s,d) => {
+      if(d._src === 'gnss' && d._gnss) return s + (d._gnss.superficie||0);
+      if(d._src === 'gnss_orphelin')   return s + (d.superficie||0);
+      return s + (_gnssSuperfIndex?.[d.id]||0);
+    }, 0);
+  }
 
   const kpiEl = document.getElementById('dos-kpi');
   if(!kpiEl) return;
-  // grandTotal inclut aussi les GNSS sans dossier pour éviter faux badge filtré
-  const grandTotal = dossiers.length + dossiersAFOR.length + (_gnssOrphelins?.length||0);
-  const isFiltered = !!filtered && (tot < grandTotal);
+
+  // Badge "filtré" uniquement si un filtre est réellement actif
+  const isFiltered = !!filtered;
   const filterLabel = isFiltered
     ? ' <span style="font-size:9px;background:var(--accent);color:#fff;padding:1px 5px;border-radius:8px;vertical-align:middle;margin-left:4px;">filtré</span>'
     : '';
+
   kpiEl.innerHTML =
     `<div class="kpi blue"><div class="kpi-l">Total dossiers</div><div class="kpi-v">${tot.toLocaleString('fr-FR')}${filterLabel}</div><div class="kpi-s">${manuel} manuels · ${afor} AFOR</div></div>
      <div class="kpi ${retards>0?'red':'green'}"><div class="kpi-l">En retard</div><div class="kpi-v">${retards}</div><div class="kpi-s">${tot>0?Math.round(retards/tot*100):0}%</div></div>
