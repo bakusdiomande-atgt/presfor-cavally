@@ -4059,7 +4059,9 @@ function dosRenderList(){
 
   dosListFiltered = liste;
   dosPage = 0;
-  dosRenderKPI(liste); // PATCH v3.8 — KPI réactifs aux filtres
+  // Passer null si aucun filtre actif pour éviter le badge "filtré"
+  const hasFilter = !!(q || fd || fe || fa || (ft && ft !== '') || fs || (fSrc && fSrc !== ''));
+  dosRenderKPI(hasFilter ? liste : null);
   dosRenderPage();
 
   // Peupler filtre agents
