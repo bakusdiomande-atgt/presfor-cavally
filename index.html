@@ -3818,14 +3818,52 @@ function dosRenderAll(){
   dosRenderList();
 }
 
+// Calculer la superficie d'un dossier depuis GNSS (par code_parcelle ou nom)
+function dosGetSuperficie(d){
+  if(!gnssData || !gnssData.length) return 0;
+  const normN = s => {
+    if(!s) return '';
+    return s.toString().toUpperCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g,'')
+      .replace(/[^A-Z0-9 ]/g,' ').replace(/  +/g,' ').trim();
+  };
+  // 1. Par code parcelle
+  const code = (d.code_parcelle || '').trim();
+  if(code){
+    const g = gnssData.find(x => (x.n_demcge||'').trim() === code);
+    if(g && g.superficie > 0) return g.superficie;
+  }
+  // 2. Par nom demandeur
+  const prN  = normN(d.prenom || '');
+  const nomN = normN(d.nom || d.nom_demandeur || '');
+  if(prN || nomN){
+    const v1 = (nomN + ' ' + prN).trim();
+    const v2 = (prN + ' ' + nomN).trim();
+    const deptN = normN(d.dept || '');
+    const villN = normN(d.village || '');
+    const parcelles = gnssData.filter(g => {
+      const gn = normN(g.nom_demand || '');
+      if(gn !== v1 && gn !== v2) return false;
+      if(deptN && normN(g.dept||'') && normN(g.dept||'') !== deptN) return false;
+      if(villN && normN(g.village||'') && normN(g.village||'') !== villN) return false;
+      return true;
+    });
+    if(parcelles.length > 0) return parcelles.reduce((s,g)=>s+(g.superficie||0),0);
+  }
+  return 0;
+}
+
 function dosRenderKPI(filtered){
-  // PATCH v3.8 — KPI réactifs aux filtres actifs (Module 3 Dossiers fonciers)
   const tous = filtered ? filtered : [...dossiers, ...dossiersAFOR];
-  const tot = tous.length;
+  const tot  = tous.length;
   const retards = tous.filter(d=>aforCalcRetard(d).retard).length;
-  const va = tous.filter(d=>d.etape==='VA').length;
-  const manuel = filtered ? filtered.filter(d=>!d._src||d._src==='manuel').length : dossiers.length;
-  const afor   = filtered ? filtered.filter(d=>d._src==='afor').length            : dossiersAFOR.length;
+  const va      = tous.filter(d=>d.etape==='VA').length;
+  const manuel  = filtered ? filtered.filter(d=>!d._src||d._src==='manuel').length : dossiers.length;
+  const afor    = filtered ? filtered.filter(d=>d._src==='afor').length            : dossiersAFOR.length;
+
+  // Superficie totale depuis GNSS
+  const totalHa = tous.reduce((s,d) => s + dosGetSuperficie(d), 0);
+
   const kpiEl = document.getElementById('dos-kpi');
   if(!kpiEl) return;
   const grandTotal = dossiers.length + dossiersAFOR.length;
@@ -3837,7 +3875,8 @@ function dosRenderKPI(filtered){
     `<div class="kpi blue"><div class="kpi-l">Total dossiers</div><div class="kpi-v">${tot.toLocaleString('fr-FR')}${filterLabel}</div><div class="kpi-s">${manuel} manuels · ${afor} AFOR</div></div>
      <div class="kpi ${retards>0?'red':'green'}"><div class="kpi-l">En retard</div><div class="kpi-v">${retards}</div><div class="kpi-s">${tot>0?Math.round(retards/tot*100):0}%</div></div>
      <div class="kpi green"><div class="kpi-l">Validés (VA)</div><div class="kpi-v">${va}</div><div class="kpi-s">${tot>0?Math.round(va/tot*100):0}%</div></div>
-     <div class="kpi amber"><div class="kpi-l">CFI / CFC</div><div class="kpi-v">${tous.filter(d=>d.type==='CFI').length}</div><div class="kpi-s">${tous.filter(d=>d.type==='CFC').length} CFC</div></div>`;
+     <div class="kpi amber"><div class="kpi-l">CFI / CFC</div><div class="kpi-v">${tous.filter(d=>d.type==='CFI').length}</div><div class="kpi-s">${tous.filter(d=>d.type==='CFC').length} CFC</div></div>
+     <div class="kpi teal"><div class="kpi-l">Superficie totale${filterLabel}</div><div class="kpi-v" style="font-size:16px;">${totalHa.toFixed(1)}</div><div class="kpi-s">hectares levés GNSS</div></div>`;
 }
 
 function dosRenderList(){
