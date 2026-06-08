@@ -3919,8 +3919,20 @@ function dosRenderKPI(filtered){
   const manuel  = filtered ? filtered.filter(d=>!d._src||d._src==='manuel').length : dossiers.length;
   const afor    = filtered ? filtered.filter(d=>d._src==='afor').length            : dossiersAFOR.length;
 
-  // Superficie totale depuis GNSS
-  const totalHa = tous.reduce((s,d) => s + dosGetSuperficie(d), 0);
+  // Superficie totale : somme directe depuis gnssData (plus précis)
+  // Si filtré : utiliser l'index pour les dossiers filtrés
+  let totalHa = 0;
+  const isFiltered2 = !!filtered && (tous.length < (dossiers.length + dossiersAFOR.length));
+  if(!isFiltered2){
+    // Pas de filtre : total brut GNSS
+    totalHa = (gnssData||[]).reduce((s,g) => s+(g.superficie||0), 0);
+  } else {
+    // Filtré : sommer via l'index pour les dossiers filtrés
+    totalHa = tous.reduce((s,d) => s + (_gnssSuperfIndex?.[d.id]||0), 0);
+    // Ajouter les orphelins si présents dans la liste filtrée
+    const orphFilt = tous.filter(d => d._src === 'gnss_orphelin');
+    totalHa += orphFilt.reduce((s,d) => s+(d.superficie||0), 0);
+  }
 
   const kpiEl = document.getElementById('dos-kpi');
   if(!kpiEl) return;
