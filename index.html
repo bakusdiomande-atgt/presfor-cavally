@@ -6447,11 +6447,11 @@ async function pubLoadFromFirebase(){
 
 // Calculer les infos publicité d'un dossier AFOR
 function pubCalcDossier(d){
-  // Dates depuis AFOR direct OU depuis le fichier importé (pubCQ contient les dates AFOR)
+  // Dates : depuis dossiersAFOR OU depuis pubCQ (fichier importé dans module Publicité)
   const cqData    = pubCQ[d.id] || {};
-  const dateOV    = d.date_OV || d.date_ov || null;
-  const dateCP    = d.date_CP || d.date_cp || null;
-  const etapeAfor = d.etape_afor || d.etape || '';
+  const dateOV    = d.date_OV || d.date_ov || cqData.date_OV || null;
+  const dateCP    = d.date_CP || d.date_cp || cqData.date_CP || null;
+  const etapeAfor = d.etape_afor || cqData.statut_cq || d.etape || '';
   const today     = new Date(); today.setHours(0,0,0,0);
   const toDate    = s => { if(!s) return null; const dt=new Date(s); return isNaN(dt)?null:dt; };
   const diffDays  = (a,b) => Math.round((b-a)/(1000*60*60*24));
@@ -6588,16 +6588,16 @@ function pubGetDossiers(tousLesDossiers){
       const etapeAfor = (d.etape_afor || '').toUpperCase();
       const hasOV     = d.date_OV || d.date_ov;
       const cq        = pubCQ[d.id];
-      // Un dossier est en pub si :
-      // 1. Il a une date OV dans dossiersAFOR
+      // Un dossier est en pub uniquement si :
+      // 1. Il a une date OV dans dossiersAFOR (source la plus fiable)
       // 2. Son étape actuelle est OV/CP/AP/VA
-      // 3. Il a une fiche CQ importée (statut quelconque = il était en pub)
-      const hasCQ     = !!cq;
-      const pubEtapes = ['OV','CP','AP','VA','OP'];
+      // 3. Sa fiche CQ indique une étape pub ET a une date OV dans pubCQ
+      const cqHasOV   = cq && (cq.date_OV || cq.dateOV || cq.date_CP);
+      const pubEtapes = ['OV','CP','AP','VA'];
       return hasOV
-        || pubEtapes.some(e => etape.includes(e))
-        || pubEtapes.some(e => etapeAfor.includes(e))
-        || hasCQ;  // présence dans pubCQ = dossier en pub
+        || pubEtapes.some(e => etape === e)
+        || pubEtapes.some(e => etapeAfor === e)
+        || cqHasOV;
     })
     .map(d => pubCalcDossier(d));
 }
@@ -7115,6 +7115,8 @@ function pubImportCQ(input){
           niveau:       niveau || null,
           statut_cq:    statut || null,
           rejete:       isRejete,
+          date_OV:      dateOV || null,
+          date_CP:      dateCP || null,
           motif_qc1:    (motifQC1 && motifQC1 !== 'N/A') ? motifQC1 : null,
           motif_qc2:    (motifQC2 && motifQC2 !== 'N/A') ? motifQC2 : null,
           motif_final:  (motifFinal && motifFinal !== 'N/A') ? motifFinal : null,
