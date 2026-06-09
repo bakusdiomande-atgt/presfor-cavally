@@ -250,7 +250,6 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 .admin-card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:28px 32px;width:100%;max-width:700px;max-height:88vh;overflow-y:auto;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-
 </head>
 <body>
 
@@ -261,7 +260,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       <div>
         <div class="auth-logo-title">PRESFOR · Cavally</div>
         <div class="auth-logo-sub">Plateforme de suivi foncier — Groupement CAG</div>
-      <div style="font-size:10px;color:#2A6B42;font-weight:700;margin-top:4px;">v3.9 — 08/06/2026</div>
+      <div style="font-size:10px;color:#2A6B42;font-weight:700;margin-top:4px;">v3.9 — 09/06/2026</div>
       </div>
     </div>
     <div class="auth-field">
@@ -290,7 +289,6 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <button onclick="adminRefreshUsers()" style="background:var(--accent-lt);border:none;color:var(--accent-txt);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;">↻ Actualiser</button>
-        <button onclick="adminRestoreBackup()" style="background:var(--amber-lt);border:1px solid var(--amber);color:var(--amber-txt);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;" title="Restaurer depuis le backup local">⚠ Restaurer backup</button>
         <button onclick="adminClosePanel()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);">×</button>
       </div>
     </div>
@@ -756,13 +754,10 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     <!-- Détail programme -->
     <div class="panel" id="prog-panel-detail">
       <div class="page-head">
-        <div>
-          <h2 id="prog-detail-title">Détail du programme</h2>
-          <p id="prog-detail-subtitle"></p>
-        </div>
+        <div><h2 id="prog-detail-title">Détail du programme</h2><p id="prog-detail-subtitle"></p></div>
         <div class="btn-row">
-          <button class="btn-s" onclick="progShowPanel('list')">← Retour à la liste</button>
-          <button class="btn-s" id="prog-detail-edit-btn" onclick="" style="display:none">✏ Modifier</button>
+          <button class="btn-s" onclick="progShowPanel('list')">← Retour</button>
+          <button class="btn-s" id="prog-detail-edit-btn" style="display:none" onclick="">✏ Modifier</button>
         </div>
       </div>
       <div id="prog-detail-content"></div>
@@ -971,12 +966,9 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     <!-- Détail saisie -->
     <div class="panel" id="saisie-panel-detail">
       <div class="page-head">
-        <div>
-          <h2 id="saisie-detail-title">Détail de la saisie</h2>
-          <p id="saisie-detail-subtitle"></p>
-        </div>
+        <div><h2 id="saisie-detail-title">Détail de la saisie</h2><p id="saisie-detail-subtitle"></p></div>
         <div class="btn-row">
-          <button class="btn-s" onclick="saisieShowPanel('list')">← Retour à la liste</button>
+          <button class="btn-s" onclick="saisieShowPanel('list')">← Retour</button>
           <button class="btn-s" id="saisie-detail-edit-btn" onclick="">✏ Modifier</button>
         </div>
       </div>
@@ -1191,15 +1183,15 @@ tbody td{padding:9px 12px;vertical-align:middle;}
             <span id="gnss-btn-label">Opérateurs GNSS</span>
             <input type="file" accept=".xlsx,.xls" style="display:none" onchange="gnssImportExcel(this)">
           </label>
+          <label class="btn-s" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:#E0F2F1;color:#00695C;border-color:#00695C;" title="Mettre à jour les dossiers" id="btn-maj-import" class="viewer-hidden">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
+            Mise à jour dossiers
+            <input type="file" accept=".xlsx,.xls" style="display:none" onchange="dosMAJImportExcel(this)">
+          </label>
           <label class="btn-s" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:var(--blue-lt);color:var(--blue-txt);border-color:var(--blue);" title="Importer base AFOR (CF)" id="btn-afor-import" class="btn-s viewer-hidden">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
             <span id="afor-btn-label">Base AFOR</span>
             <input type="file" id="afor-import-file" accept=".xlsx,.xls" style="display:none" onchange="aforImportExcel(this)">
-          </label>
-          <label class="btn-s" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:#E0F2F1;color:#00695C;border-color:#00695C;" title="Mettre à jour les dossiers depuis un fichier de mise à jour" id="btn-maj-import" class="viewer-hidden">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
-            Mise à jour dossiers
-            <input type="file" accept=".xlsx,.xls" style="display:none" onchange="dosMAJImportExcel(this)">
           </label>
           <button class="btn-s" onclick="dosExportCSV()" style="display:inline-flex;align-items:center;gap:5px;">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
@@ -1236,12 +1228,6 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     <option value="">CFI + CFC</option>
     <option value="CFI">CFI</option>
     <option value="CFC">CFC</option>
-  </select>
-  <select id="dos-f-src" onchange="dosRenderList()" style="background:var(--accent-lt);color:var(--accent-txt);border:1px solid var(--accent);font-weight:600;padding:6px 10px;border-radius:6px;font-size:12px;">
-    <option value="">Tous (AFOR + Manuel)</option>
-    <option value="afor">Base AFOR</option>
-    <option value="manuel">Saisies manuelles</option>
-    <option value="gnss_orphelin">⚠ GNSS sans dossier AFOR</option>
   </select>
   <select id="dos-f-statut" onchange="dosRenderList()">
     <option value="">Tous statuts</option>
@@ -1530,8 +1516,8 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       <div class="tw"><table>
         <thead><tr>
           <th>Rang</th><th>Agent</th><th>Fonction</th>
-          <th>Programmes</th><th>Saisies</th><th>Dossiers / Parcelles levées</th>
-          <th>Fiches CF / Superficie ha</th><th>Jours terrain</th><th>Moy./jour</th><th>Performance</th>
+          <th>Programmes</th><th>Saisies</th><th>Dossiers traités</th>
+          <th>Dossiers CF</th><th>Jours terrain</th><th>Moy./jour</th><th>Performance</th>
         </tr></thead>
         <tbody id="ag-perf-tbody"></tbody>
       </table></div>
@@ -1669,13 +1655,8 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     </div>
 
   
-
-
-
-
-
-
   </div>
+
 
   <!-- MODULE PUBLICITÉ FONCIÈRE (M6) -->
   <div id="module-pub" class="module" style="display:none;flex:1;min-width:0;">
@@ -1839,7 +1820,11 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     </div>
   </div>
 
-</div><!-- fin .app --><div class="toast" id="toast"></div>
+</main>
+</div>
+
+</div><!-- fin .app -->
+<div class="toast" id="toast"></div>
 
 <script>
 // ═══════════════════════════════════════════
@@ -2217,19 +2202,13 @@ function progRenderPage(){
 
 function progShowPanel(id,btn){
   document.querySelectorAll('#module-prog .panel').forEach(p=>p.classList.remove('active'));
-  const panel = document.getElementById('prog-panel-'+id);
-  if(!panel){ console.error('Panel introuvable: prog-panel-'+id); return; }
+  const panel=document.getElementById('prog-panel-'+id);
+  if(!panel){console.error('Panel introuvable: prog-panel-'+id);return;}
   panel.classList.add('active');
   document.querySelectorAll('#sb-prog .nav-item').forEach(n=>n.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  else {
-    const btns = document.querySelectorAll('#sb-prog .nav-item');
-    const map = {list:0, form:1, schema:2, rules:3, guide:4};
-    // 'detail' n'a pas de nav-item — activer 'list' par défaut
-    const idx = map[id] !== undefined ? map[id] : 0;
-    btns[idx]?.classList.add('active');
-  }
-  if(id==='form' && !progEditingId) progResetForm();
+  if(btn)btn.classList.add('active');
+  else{const btns=document.querySelectorAll('#sb-prog .nav-item');const map={list:0,form:1,schema:2,rules:3,guide:4,detail:0};btns[map[id]??0]?.classList.add('active');}
+  if(id==='form'&&!progEditingId)progResetForm();
 }
 
 function progAddVillage(e){
@@ -2790,17 +2769,13 @@ function saisieRenderPerf(){
 
 function saisieShowPanel(id,btn){
   document.querySelectorAll('#module-saisie .panel').forEach(p=>p.classList.remove('active'));
-  const panel = document.getElementById('saisie-panel-'+id);
-  if(!panel){ console.error('Panel introuvable: saisie-panel-'+id); return; }
+  const panel=document.getElementById('saisie-panel-'+id);
+  if(!panel){console.error('Panel introuvable: saisie-panel-'+id);return;}
   panel.classList.add('active');
   document.querySelectorAll('#module-saisie .nav-item').forEach(n=>n.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  else {
-    const btns = document.querySelectorAll('#module-saisie .nav-item');
-    const map = {list:0, form:1, corr:2, perf:3};
-    btns[map[id] !== undefined ? map[id] : 0]?.classList.add('active');
-  }
-  if(id==='form' && !saisieEditingId) saisieResetForm();
+  if(btn)btn.classList.add('active');
+  else{const btns=document.querySelectorAll('#module-saisie .nav-item');const map={list:0,form:1,corr:2,perf:3,detail:0};btns[map[id]??0]?.classList.add('active');}
+  if(id==='form'&&!saisieEditingId)saisieResetForm();
 }
 
 function saisieLoadProgs(){
@@ -3907,49 +3882,31 @@ function dosGetSuperficie(d){
 }
 
 function dosRenderKPI(filtered){
-  const fSrcVal = document.getElementById('dos-f-src')?.value || '';
-  const inclureOrphelins = fSrcVal === 'gnss_orphelin';
-
-  // Liste de base selon le contexte
-  const baseList = inclureOrphelins ? _gnssOrphelins : [...dossiers, ...dossiersAFOR];
-  const tous = filtered ? filtered : baseList;
+  const tous = filtered ? filtered : [...dossiers, ...dossiersAFOR];
   const tot  = tous.length;
-
   const retards = tous.filter(d=>aforCalcRetard(d).retard).length;
   const va      = tous.filter(d=>d.etape==='VA').length;
   const manuel  = filtered ? filtered.filter(d=>!d._src||d._src==='manuel').length : dossiers.length;
   const afor    = filtered ? filtered.filter(d=>d._src==='afor').length            : dossiersAFOR.length;
 
-  // Superficie :
-  // Sans filtre → total brut gnssData (toutes parcelles levées)
-  // Avec filtre → somme des dossiers filtrés via index + gnss directs
+  // Superficie : total brut GNSS si pas de filtre, index si filtré
   let totalHa = 0;
-  if(!filtered && !inclureOrphelins){
-    // Vue globale : total complet depuis gnssData
-    totalHa = (gnssData||[]).reduce((s,g) => s+(g.superficie||0), 0);
+  if(!filtered){
+    totalHa = (gnssData||[]).reduce((s,g)=>s+(g.superficie||0),0);
   } else {
-    totalHa = tous.reduce((s,d) => {
-      if(d._src === 'gnss' && d._gnss) return s + (d._gnss.superficie||0);
-      if(d._src === 'gnss_orphelin')   return s + (d.superficie||0);
-      return s + (_gnssSuperfIndex?.[d.id]||0);
-    }, 0);
+    totalHa = tous.reduce((s,d)=>s+(_gnssSuperfIndex?.[d.id]||0),0);
   }
 
   const kpiEl = document.getElementById('dos-kpi');
   if(!kpiEl) return;
-
-  // Badge "filtré" uniquement si un filtre est réellement actif
   const isFiltered = !!filtered;
-  const filterLabel = isFiltered
-    ? ' <span style="font-size:9px;background:var(--accent);color:#fff;padding:1px 5px;border-radius:8px;vertical-align:middle;margin-left:4px;">filtré</span>'
-    : '';
-
+  const lbl = isFiltered ? ' <span style="font-size:9px;background:var(--accent);color:#fff;padding:1px 5px;border-radius:8px;">filtré</span>' : '';
   kpiEl.innerHTML =
-    `<div class="kpi blue"><div class="kpi-l">Total dossiers</div><div class="kpi-v">${tot.toLocaleString('fr-FR')}${filterLabel}</div><div class="kpi-s">${manuel} manuels · ${afor} AFOR</div></div>
+    `<div class="kpi blue"><div class="kpi-l">Total dossiers</div><div class="kpi-v">${tot.toLocaleString('fr-FR')}${lbl}</div><div class="kpi-s">${manuel} manuels · ${afor} AFOR</div></div>
      <div class="kpi ${retards>0?'red':'green'}"><div class="kpi-l">En retard</div><div class="kpi-v">${retards}</div><div class="kpi-s">${tot>0?Math.round(retards/tot*100):0}%</div></div>
      <div class="kpi green"><div class="kpi-l">Validés (VA)</div><div class="kpi-v">${va}</div><div class="kpi-s">${tot>0?Math.round(va/tot*100):0}%</div></div>
      <div class="kpi amber"><div class="kpi-l">CFI / CFC</div><div class="kpi-v">${tous.filter(d=>d.type==='CFI').length}</div><div class="kpi-s">${tous.filter(d=>d.type==='CFC').length} CFC</div></div>
-     <div class="kpi teal"><div class="kpi-l">Superficie totale${filterLabel}</div><div class="kpi-v" style="font-size:16px;">${totalHa.toFixed(1)}</div><div class="kpi-s">hectares levés GNSS</div></div>`;
+     <div class="kpi teal"><div class="kpi-l">Superficie GNSS${lbl}</div><div class="kpi-v" style="font-size:16px;">${totalHa.toFixed(1)}</div><div class="kpi-s">hectares levés</div></div>`;
 }
 
 function dosRenderList(){
@@ -3958,23 +3915,7 @@ function dosRenderList(){
   const fe = document.getElementById('dos-f-etape')?.value||'';
   const fa = document.getElementById('dos-f-agent')?.value||'';
   const ft = document.getElementById('dos-f-type')?.value||'';
-  const fs    = document.getElementById('dos-f-statut')?.value||'';
-  const fSrc  = document.getElementById('dos-f-src')?.value||'';
-
-  // Si filtre orphelins : afficher uniquement les parcelles GNSS sans dossier AFOR
-  if(fSrc === 'gnss_orphelin'){
-    let orphList = [..._gnssOrphelins];
-    if(q) orphList = orphList.filter(d =>
-      (d.nom_demandeur||'').toLowerCase().includes(q) ||
-      (d.code_parcelle||'').toLowerCase().includes(q) ||
-      (d.village||'').toLowerCase().includes(q));
-    if(fd) orphList = orphList.filter(d => (d.dept||'').includes(fd));
-    dosListFiltered = orphList;
-    dosPage = 0;
-    dosRenderKPI(orphList);
-    dosRenderPage();
-    return;
-  }
+  const fs = document.getElementById('dos-f-statut')?.value||'';
 
   // ══ Combinaison dossiers + parcelles GNSS ══
   // PASSE 1 : identifier les entrées GNSS matchées par un dossier AFOR ou manuel
@@ -4065,8 +4006,7 @@ function dosRenderList(){
 
   dosListFiltered = liste;
   dosPage = 0;
-  // Passer null si aucun filtre actif pour éviter le badge "filtré"
-  const hasFilter = !!(q || fd || fe || fa || (ft && ft !== '') || fs || (fSrc && fSrc !== ''));
+  const hasFilter = !!(q||fd||fe||fa||(ft&&ft!=='')||fs);
   dosRenderKPI(hasFilter ? liste : null);
   dosRenderPage();
 
@@ -4180,33 +4120,16 @@ function dosRenderStats(){
   document.getElementById('dos-stats-agents').innerHTML=Object.entries(pa).sort((a,b)=>b[1].nb-a[1].nb).map(([a,v])=>`<tr><td style="font-size:12px">${a}</td><td style="text-align:center;font-weight:600">${v.nb}</td><td style="text-align:center;color:var(--text2)">${v.sup.toFixed(1)}</td></tr>`).join('');
 }
 function dosShowPanel(id,btn){
-  // Fonction unique — toutes extensions fusionnées
-  const panel = document.getElementById('dos-panel-'+id);
-  if(!panel){ console.warn('dosShowPanel: panel introuvable dos-panel-'+id); return; }
   document.querySelectorAll('#module-dossier .panel').forEach(p=>p.classList.remove('active'));
-  panel.classList.add('active');
+  document.getElementById('dos-panel-'+id).classList.add('active');
   document.querySelectorAll('#sb-dos .nav-item').forEach(n=>n.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  else{ const m={list:0,form:1,pipeline:2,stats:3}; document.querySelectorAll('#sb-dos .nav-item')[m[id]]?.classList.add('active'); }
-  if(id==='form' && !dosEditingId) dosResetForm();
-  if(id==='pipeline')  dosRenderPipeline();
-  if(id==='list')      dosRenderAll();
-  // Panels AFOR
-  if(id==='afor-dash')     aforRenderDashboard();
-  if(id==='afor-pipeline') aforRenderKanban();
-  if(id==='afor-liste')    aforRenderListe();
-  if(id==='afor-agents')   aforRenderAgents();
-  // Panels AFOR CF
-  if(id==='afor-cf-liste'){
-    const sel = document.getElementById('afor-cf-agent');
-    if(sel && dossiersAFOR.length){
-      const agents = [...new Set(dossiersAFOR.map(d=>d.agent).filter(Boolean))].sort();
-      sel.innerHTML = '<option value="">Tous les agents CE</option>' + agents.map(a=>`<option value="${a}">${a}</option>`).join('');
-    }
-    document.getElementById('afor-list-nb').textContent = dossiersAFOR.length||'0';
-    aforCFRenderList();
-  }
-  if(id==='afor-cf-agents') aforCFRenderAgents();
+  if(btn)btn.classList.add('active');
+  else{const m={list:0,form:1,pipeline:2,stats:3};document.querySelectorAll('#sb-dos .nav-item')[m[id]]?.classList.add('active');}
+  if(id==='form'&&!dosEditingId)dosResetForm();
+  if(id==='pipeline')dosRenderPipeline();
+  if(id==='list')dosRenderAll();
+  if(id==='afor-cf-liste')aforCFRenderList();
+  if(id==='afor-cf-agents')aforCFRenderAgents();
 }
 function dosUpdateGeo(){
   geoUpdateSP('df-dept','df-sp','df-village');
@@ -5041,6 +4964,7 @@ function gnssStatsForAgent(nomAgent){
   };
 }
 
+
 // ── Activités et sous-activités par fonction ──
 const ACTIVITES_PAR_FONCTION = {
   'Commissaire enquêteur': {
@@ -5206,23 +5130,6 @@ function agRenderList(){
     const absent = absences.some(ab=>ab.agent===a.nom&&ab.debut<=today&&ab.fin>=today);
     const init = a.nom.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
 
-    // PATCH v3.8 — Carte adaptée selon la fonction de l'agent
-    const isGNSS = a.fonction === 'Opérateur GNSS';
-    const gnssStats = isGNSS ? gnssStatsForAgent(a.nom) : null;
-    const statsRow = isGNSS
-      ? `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;border-top:1px solid var(--border);padding-top:10px;">
-          <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--accent)">${nbProgs}</div><div style="font-size:9px;color:var(--text3)">Programmes</div></div>
-          <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue)">${nbSaisies}</div><div style="font-size:9px;color:var(--text3)">Saisies</div></div>
-          <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:${gnssStats.parcelles>0?'14':'15'}px;font-weight:700;color:${gnssStats.parcelles>0?'#00695C':'var(--text3)'}">${gnssStats.parcelles||0}</div><div style="font-size:9px;color:var(--text3)">Parcelles levées</div></div>
-          <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:${gnssStats.superficie>0?'12':'15'}px;font-weight:700;color:${gnssStats.superficie>0?'#00695C':'var(--text3)'}">${gnssStats.superficie>0?gnssStats.superficie.toFixed(1)+' ha':'0'}</div><div style="font-size:9px;color:var(--text3)">Superficie</div></div>
-        </div>
-        ${gnssData.length===0?'<div style="margin-top:6px;font-size:10px;color:var(--amber-txt);text-align:center;padding:4px;background:var(--amber-lt);border-radius:4px;">⚠ Importez le fichier GNSS</div>':!gnssStats.hasColumn?'<div style="margin-top:6px;font-size:10px;color:var(--amber-txt);text-align:center;padding:4px;background:var(--amber-lt);border-radius:4px;">⚠ Ajoutez colonne NOM_OPERATEUR dans le fichier GNSS</div>':''}`
-      : `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;border-top:1px solid var(--border);padding-top:10px;">
-          <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--accent)">${nbProgs}</div><div style="font-size:9px;color:var(--text3)">Programmes</div></div>
-          <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue)">${nbSaisies}</div><div style="font-size:9px;color:var(--text3)">Saisies</div></div>
-          <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--amber)">${nbDos}</div><div style="font-size:9px;color:var(--text3)">Dossiers</div></div>
-          <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--teal)">${nbFichesCF}</div><div style="font-size:9px;color:var(--text3)">Fiches CF</div></div>
-        </div>`;
     return `<div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;border-top:3px solid ${c.brd};cursor:pointer;transition:box-shadow .15s;" onclick="agOpenFiche('${a.nom.replace(/'/g,"\\'")}')">
       <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
         <div style="width:42px;height:42px;border-radius:50%;background:${c.bg};border:2px solid ${c.brd};display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:${c.tx};flex-shrink:0;">${init}</div>
@@ -5236,7 +5143,12 @@ function agRenderList(){
         <div style="margin-bottom:3px;">&#128222; ${a.tel}</div>
         <div>${(a.depts||[]).map(d=>`<span style="font-size:10px;background:var(--surface2);padding:1px 6px;border-radius:8px;margin-right:3px;">${d.replace('Dép. ','')}</span>`).join('')}</div>
       </div>
-      ${statsRow}
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;border-top:1px solid var(--border);padding-top:10px;">
+        <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--accent)">${nbProgs}</div><div style="font-size:9px;color:var(--text3)">Programmes</div></div>
+        <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue)">${nbSaisies}</div><div style="font-size:9px;color:var(--text3)">Saisies</div></div>
+        <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--amber)">${nbDos}</div><div style="font-size:9px;color:var(--text3)">Dossiers</div></div>
+        <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--teal)">${nbFichesCF}</div><div style="font-size:9px;color:var(--text3)">Fiches CF</div></div>
+      </div>
     </div>`;
   }).join('');
 }
@@ -5355,55 +5267,25 @@ function agOpenFiche(nom){
     </div>
     `;
   
-  // Bloc CF — données AFOR pour cet agent
-  const mesFichesCF  = (dossiersAFOR||[]).filter(d => d.agent === nom);
-  const nbCFI        = mesFichesCF.filter(d => d.type === 'CFI').length;
-  const nbCFC        = mesFichesCF.filter(d => d.type === 'CFC').length;
-  const nbCFRetards  = mesFichesCF.filter(d => aforCalcRetard(d).retard).length;
-  const etapesCF     = {};
-  ETAPES_CF.forEach(e => { etapesCF[e] = mesFichesCF.filter(d => d.etape === e).length; });
-  // Données GNSS pour cet agent (si opérateur GNSS)
-  const gnssStats    = (a.fonction === 'Opérateur GNSS') ? gnssStatsForAgent(nom) : null;
-
-  if(mesFichesCF.length > 0 || gnssStats){
-    let blocExtra = '';
-
-    // Bloc CF AFOR
-    if(mesFichesCF.length > 0){
-      blocExtra +=
-        '<div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 20px;border-top:3px solid var(--accent);margin-top:12px;">'+
-        '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:12px;">Certificats Fonciers — Base AFOR</div>'+
-        '<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px;">'+
-        '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--accent)">'+mesFichesCF.length+'</div><div style="font-size:10px;color:var(--text3)">Total CF</div></div>'+
-        '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:#22C55E">'+nbCFI+'</div><div style="font-size:10px;color:var(--text3)">CFI</div></div>'+
-        '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:#16A34A">'+nbCFC+'</div><div style="font-size:10px;color:var(--text3)">CFC</div></div>'+
-        '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:'+(nbCFRetards>0?'var(--red)':'var(--accent)')+'">'+nbCFRetards+'</div><div style="font-size:10px;color:var(--text3)">En retard</div></div>'+
-        '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:#0369A1">'+mesFichesCF.filter(function(d){return d.etape==='VA';}).length+'</div><div style="font-size:10px;color:var(--text3)">Validés (VA)</div></div>'+
-        '</div>'+
-        '<div style="display:flex;flex-wrap:wrap;gap:6px;">'+
-        ETAPES_CF.map(function(e){
-          const n=etapesCF[e]||0; if(!n) return '';
-          const c=ETAPES_CF_COLORS[e]||{bg:'#eee',tx:'#333'};
-          return '<div style="background:'+c.bg+';border-radius:8px;padding:5px 10px;text-align:center;min-width:55px;"><div style="font-size:11px;font-weight:700;color:'+c.tx+'">'+e+'</div><div style="font-size:16px;font-weight:700;color:'+c.tx+'">'+n+'</div></div>';
-        }).join('')+
-        '</div></div>';
-    }
-
-    // Bloc GNSS
-    if(gnssStats && gnssStats.hasColumn){
-      blocExtra +=
-        '<div style="background:#E0F2F1;border-radius:var(--radius);padding:16px 20px;border-top:3px solid #00695C;margin-top:12px;">'+
-        '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#00695C;margin-bottom:12px;">Levés GNSS</div>'+
-        '<div style="display:flex;gap:24px;flex-wrap:wrap;">'+
-        '<div style="text-align:center;"><div style="font-size:28px;font-weight:700;color:#00695C">'+gnssStats.parcelles+'</div><div style="font-size:11px;color:#004D40">Parcelles levées</div></div>'+
-        '<div style="text-align:center;"><div style="font-size:28px;font-weight:700;color:#00695C">'+gnssStats.superficie.toFixed(1)+' ha</div><div style="font-size:11px;color:#004D40">Superficie totale</div></div>'+
-        (gnssStats.villages&&gnssStats.villages.length?'<div style="flex:1;min-width:200px;"><div style="font-size:11px;font-weight:600;color:#004D40;margin-bottom:6px;">Villages couverts ('+gnssStats.villages.length+')</div><div style="font-size:11px;color:#00695C;line-height:1.6">'+gnssStats.villages.slice(0,10).join(', ')+(gnssStats.villages.length>10?'...':'')+'</div></div>':'')+
-        '</div></div>';
-    }
-
-    if(blocExtra){
-      document.getElementById('ag-fiche-content').innerHTML += blocExtra;
-    }
+  // Ajouter bloc CF si données disponibles
+  if(mesFichesCF.length>0){
+    document.getElementById('ag-fiche-content').innerHTML +=
+      '<div style="grid-column:1/-1;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 20px;border-top:3px solid var(--accent);margin-top:0;">'+
+      '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:12px;">Certificats Fonciers — Base AFOR</div>'+
+      '<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px;">'+
+      '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--accent)">'+mesFichesCF.length+'</div><div style="font-size:10px;color:var(--text3)">Total CF</div></div>'+
+      '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:#22C55E">'+nbCFI+'</div><div style="font-size:10px;color:var(--text3)">CFI</div></div>'+
+      '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:#16A34A">'+nbCFC+'</div><div style="font-size:10px;color:var(--text3)">CFC</div></div>'+
+      '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:'+(nbCFRetards>0?'var(--red)':'var(--accent)')+'">'+nbCFRetards+'</div><div style="font-size:10px;color:var(--text3)">En retard</div></div>'+
+      '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:#0369A1">'+mesFichesCF.filter(function(d){return d.etape==='VA';}).length+'</div><div style="font-size:10px;color:var(--text3)">Validés (VA)</div></div>'+
+      '</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;">'+
+      ETAPES_CF.map(function(e){
+        const n=etapesCF[e]||0; if(!n) return '';
+        const c=ETAPES_CF_COLORS[e]||{bg:'#eee',tx:'#333'};
+        return '<div style="background:'+c.bg+';border-radius:8px;padding:5px 10px;text-align:center;min-width:55px;"><div style="font-size:11px;font-weight:700;color:'+c.tx+'">'+e+'</div><div style="font-size:16px;font-weight:700;color:'+c.tx+'">'+n+'</div></div>';
+      }).join('')+
+      '</div></div>';
   }
 
 
@@ -5417,84 +5299,51 @@ function agOpenFiche(nom){
 // ── Performance comparative ──
 function agRenderPerf(){
   const data = AGENTS_FULL.map(a=>{
-    const mesProgs    = programmes.filter(p=>p.agent===a.nom);
-    const mesSaisies  = saisies.filter(s=>s.agent===a.nom);
+    const mesProgs = programmes.filter(p=>p.agent===a.nom);
+    const mesSaisies = saisies.filter(s=>s.agent===a.nom);
     const mesDossiers = dossiers.filter(d=>d.agent===a.nom);
-    // Fiches CF AFOR attribuées à cet agent (CE)
-    const mesFichesCF = (dossiersAFOR||[]).filter(d=>d.agent===a.nom);
-    const totalDos    = mesSaisies.reduce((s,x)=>s+(x.ndos||0),0);
-    const jours       = new Set(mesSaisies.map(s=>s.date)).size;
-    const moy         = jours>0?Math.round(totalDos/jours):0;
-    // dosCF = dossiers manuels CF + fiches AFOR
-    const dosCF       = mesDossiers.filter(d=>d.activite==='CF').length + mesFichesCF.length;
-    return {a, nbProgs:mesProgs.length, nbSaisies:mesSaisies.length, totalDos, jours, moy, dosCF, nbFichesCF:mesFichesCF.length};
-  }).sort((x,y)=>{
-    // Tri : GNSS par parcelles, CE/autres par fiches CF AFOR (+ dossiers saisis)
-    const isGNSSx = x.a.fonction==='Opérateur GNSS';
-    const isGNSSy = y.a.fonction==='Opérateur GNSS';
-    const vx = isGNSSx ? gnssStatsForAgent(x.a.nom).parcelles : (x.dosCF||x.totalDos);
-    const vy = isGNSSy ? gnssStatsForAgent(y.a.nom).parcelles : (y.dosCF||y.totalDos);
-    return vy - vx;
-  });
+    const totalDos = mesSaisies.reduce((s,x)=>s+(x.ndos||0),0);
+    const jours = new Set(mesSaisies.map(s=>s.date)).size;
+    const moy = jours>0?Math.round(totalDos/jours):0;
+    const dosCF = mesDossiers.filter(d=>d.activite==='CF').length;
+    return {a, nbProgs:mesProgs.length, nbSaisies:mesSaisies.length, totalDos, jours, moy, dosCF};
+  }).sort((x,y)=>y.totalDos-x.totalDos);
 
-  // maxDos basé sur fiches CF pour les CE (mesure plus représentative)
-  const maxDos = Math.max(...data.filter(d=>d.a.fonction!=='Opérateur GNSS').map(d=>d.dosCF||d.totalDos), 1);
+  const maxDos = data[0]?.totalDos||1;
   const totalAll = data.reduce((s,d)=>s+d.totalDos,0);
-  const actifs = data.filter(d=>d.nbSaisies>0||d.dosCF>0).length;
-  const meilleurCE = data.filter(d=>d.a.fonction==='Commissaire enquêteur').sort((a,b)=>b.dosCF-a.dosCF)[0];
+  const actifs = data.filter(d=>d.nbSaisies>0).length;
+  const meilleur = data[0];
 
-  const totalFichesCF = data.reduce((s,d)=>s+d.nbFichesCF,0);
   document.getElementById('ag-perf-kpi').innerHTML=`
-    <div class="kpi green"><div class="kpi-l">Dossiers saisis M2</div><div class="kpi-v">${totalAll}</div><div class="kpi-s">Tous agents</div></div>
-    <div class="kpi blue"><div class="kpi-l">Fiches CF AFOR</div><div class="kpi-v">${totalFichesCF.toLocaleString('fr-FR')}</div><div class="kpi-s">Base AFOR</div></div>
-    <div class="kpi amber"><div class="kpi-l">Meilleur CE</div><div class="kpi-v">${meilleurCE?.dosCF||0}</div><div class="kpi-s">${meilleurCE?.a.nom.split(' ')[0]||'—'}</div></div>
-    <div class="kpi"><div class="kpi-l">Agents actifs</div><div class="kpi-v">${actifs}</div><div class="kpi-s">Avec données</div></div>`;
+    <div class="kpi green"><div class="kpi-l">Production totale</div><div class="kpi-v">${totalAll}</div><div class="kpi-s">Tous agents</div></div>
+    <div class="kpi blue"><div class="kpi-l">Agents actifs</div><div class="kpi-v">${actifs}</div><div class="kpi-s">Avec saisies</div></div>
+    <div class="kpi amber"><div class="kpi-l">Meilleure perf.</div><div class="kpi-v">${meilleur?.totalDos||0}</div><div class="kpi-s">${meilleur?.a.nom.split(' ')[0]||'—'}</div></div>
+    <div class="kpi"><div class="kpi-l">Moy. par agent</div><div class="kpi-v">${actifs>0?Math.round(totalAll/actifs):0}</div><div class="kpi-s">Dossiers saisis</div></div>`;
 
   document.getElementById('ag-perf-tbody').innerHTML = data.map((d,i)=>{
     const c = agFonctionColor(d.a.fonction);
-    const isGNSS = d.a.fonction === 'Opérateur GNSS';
-    const gnssStats = isGNSS ? gnssStatsForAgent(d.a.nom) : null;
-    // Score de performance : GNSS sur parcelles, CE sur fiches AFOR
-    const perfVal = isGNSS ? gnssStats.parcelles : d.dosCF;
-    const maxVal  = isGNSS
-      ? Math.max(...data.filter(x=>x.a.fonction==='Opérateur GNSS').map(x=>gnssStatsForAgent(x.a.nom).parcelles), 1)
-      : maxDos;
-    const pct = maxVal>0?Math.round(perfVal/maxVal*100):0;
+    const pct = maxDos>0?Math.round(d.totalDos/maxDos*100):0;
     const perf = pct>=80?{label:'Excellent',bg:'var(--accent-lt)',tx:'var(--accent-txt)'}:
                  pct>=50?{label:'Bon',bg:'var(--blue-lt)',tx:'var(--blue-txt)'}:
                  pct>=20?{label:'Moyen',bg:'var(--amber-lt)',tx:'var(--amber-txt)'}:
                          {label:'Faible',bg:'var(--surface2)',tx:'var(--text2)'};
-    // Pour les CE : la vraie production = fiches AFOR (dosCF) + dossiers saisis M2
-    const affichageVal  = isGNSS ? gnssStats.parcelles : d.dosCF;
-    const affichageMax  = isGNSS
-      ? Math.max(...data.filter(x=>x.a.fonction==='Opérateur GNSS').map(x=>gnssStatsForAgent(x.a.nom).parcelles), 1)
-      : maxDos;
-    const pctBar = affichageMax>0 ? Math.round(affichageVal/affichageMax*100) : 0;
-
-    const dosCell = isGNSS
-      ? `<td style="padding:9px 12px;text-align:center;font-weight:700;color:#00695C;">${gnssStats.parcelles} <span style="font-size:10px;font-weight:400;color:var(--text3)">parc.</span></td>`
-      : `<td style="padding:9px 12px;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;min-width:60px;">
-              <div style="width:${pctBar}%;height:100%;background:var(--accent);border-radius:3px;"></div>
-            </div>
-            <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--accent);min-width:24px;">${d.dosCF}</span>
-            ${d.nbFichesCF>0?`<span style="font-size:9px;background:var(--blue-lt);color:var(--blue-txt);padding:1px 5px;border-radius:8px;">${d.nbFichesCF} AFOR</span>`:''}
-          </div>
-        </td>`;
-    const supCell = isGNSS
-      ? `<td style="padding:9px 12px;text-align:center;font-weight:700;color:#00695C;">${gnssStats.superficie>0?gnssStats.superficie.toFixed(1)+' ha':'—'}</td>`
-      : `<td style="padding:9px 12px;text-align:center;color:var(--text2);font-size:12px;">${d.totalDos>0?d.totalDos+' saisis':'—'}</td>`;
     return`<tr style="border-bottom:1px solid var(--border);">
       <td style="padding:9px 12px;text-align:center;font-family:'Syne',sans-serif;font-weight:700;color:${i<3?'var(--accent)':'var(--text3)'};">${i+1}</td>
       <td style="padding:9px 12px;font-weight:600;font-size:13px;">${d.a.nom}</td>
       <td style="padding:9px 12px;"><span style="font-size:10px;padding:2px 7px;border-radius:8px;background:${c.bg};color:${c.tx};border:1px solid ${c.brd}">${d.a.fonction}</span></td>
       <td style="padding:9px 12px;text-align:center;">${d.nbProgs}</td>
       <td style="padding:9px 12px;text-align:center;">${d.nbSaisies}</td>
-      ${dosCell}
-      ${supCell}
+      <td style="padding:9px 12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;min-width:60px;">
+            <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:3px;"></div>
+          </div>
+          <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--accent);min-width:24px;">${d.totalDos}</span>
+        </div>
+      </td>
+      <td style="padding:9px 12px;text-align:center;">${d.dosCF}</td>
       <td style="padding:9px 12px;text-align:center;">${d.jours}</td>
-      <td style="padding:9px 12px;text-align:center;">${isGNSS&&gnssStats.parcelles>0?'—':d.moy}</td>
+      <td style="padding:9px 12px;text-align:center;">${d.moy}</td>
       <td style="padding:9px 12px;"><span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:${perf.bg};color:${perf.tx}">${perf.label}</span></td>
     </tr>`;
   }).join('');
@@ -5638,82 +5487,46 @@ function zvShowPanel(id, btn){
 
 // ── Stats globales ──
 function zvGetVilleStats(village, dept){
-  const mesProgs   = programmes.filter(p=>p.villages&&p.villages.includes(village));
-  const mesSaisies = saisies.filter(s=>s.village===village);
-  // Dossiers manuels + AFOR (normalisé : dept stocké en majuscules dans AFOR)
-  const deptNorm   = (dept||'').replace('Dép. ','').toUpperCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z]/g,'');
-  const mesDos     = [
-    ...dossiers.filter(d=>d.village===village&&d.dept===dept),
-    ...(dossiersAFOR||[]).filter(d=>{
-      const dv = (d.village||'').trim().toLowerCase();
-      const ddn = (d.dept||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z]/g,'');
-      return dv===village.trim().toLowerCase() && ddn===deptNorm;
-    }),
-  ];
-  const agents = [...new Set([...mesProgs.map(p=>p.agent),...mesSaisies.map(s=>s.agent)])];
-  // Superficie totale levée dans ce village (données GNSS)
-  const superfGnss = (gnssData||[])
-    .filter(g=>(g.village||'').trim().toLowerCase()===village.trim().toLowerCase())
-    .reduce((s,g)=>s+(g.superficie||0),0);
-  return {
-    nbProgs:   mesProgs.length,
-    nbSaisies: mesSaisies.length,
-    nbDos:     mesDos.length,
-    nbAfor:    (dossiersAFOR||[]).filter(d=>{
-      const ddn=(d.dept||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z]/g,'');
-      return (d.village||'').trim().toLowerCase()===village.trim().toLowerCase()&&ddn===deptNorm;
-    }).length,
-    superfGnss: Math.round(superfGnss*10)/10,
-    agents,
-  };
+  const mesProgs  = programmes.filter(p=>p.villages&&p.villages.includes(village));
+  const mesSaisies= saisies.filter(s=>s.village===village);
+  const mesDos    = dossiers.filter(d=>d.village===village&&d.dept===dept);
+  const agents    = [...new Set([...mesProgs.map(p=>p.agent),...mesSaisies.map(s=>s.agent)])];
+  return { nbProgs:mesProgs.length, nbSaisies:mesSaisies.length, nbDos:mesDos.length, agents };
 }
 
 function zvGetDeptStats(dept){
   const c = ZV_GEO[dept];
   if(!c) return {};
   const allVillages = Object.values(c.sp).flat();
-  let totalProgs=0, totalSaisies=0, totalDos=0, couverts=0, partiels=0, totalSuperfGnss=0;
+  let totalProgs=0, totalSaisies=0, totalDos=0, couverts=0, partiels=0;
   allVillages.forEach(v=>{
-    const s = zvGetVilleStats(v, dept);
-    totalProgs      += s.nbProgs;
-    totalSaisies    += s.nbSaisies;
-    totalDos        += s.nbDos;
-    totalSuperfGnss += s.superfGnss||0;
-    // Un village est "couvert" si au moins 1 dossier CF (manuel ou AFOR)
-    if(s.nbDos > 0)       couverts++;
+    const s=zvGetVilleStats(v,dept);
+    totalProgs+=s.nbProgs; totalSaisies+=s.nbSaisies; totalDos+=s.nbDos;
+    if(s.nbDos>0) couverts++;
     else if(s.nbSaisies>0) partiels++;
   });
-  return {
-    allVillages, totalProgs, totalSaisies, totalDos, couverts, partiels,
-    totalSuperfGnss: Math.round(totalSuperfGnss*10)/10,
-    nonTraites: allVillages.length - couverts - partiels,
-    pct: allVillages.length>0 ? Math.round((couverts/allVillages.length)*100) : 0,
-  };
+  return {allVillages, totalProgs, totalSaisies, totalDos, couverts, partiels,
+          nonTraites: allVillages.length-couverts-partiels,
+          pct: allVillages.length>0?Math.round((couverts/allVillages.length)*100):0};
 }
 
 // ── KPI ──
 function zvRenderKPI(){
-  const depts   = Object.keys(ZV_GEO);
-  const allV    = depts.flatMap(d=>Object.values(ZV_GEO[d].sp).flat());
-  const totalV  = allV.length;
-  const totalSP = depts.reduce((s,d)=>s+Object.keys(ZV_GEO[d].sp).length, 0);
-  // Total dossiers = manuels + AFOR
-  const totalDos = dossiers.length + (dossiersAFOR||[]).length;
-  // Superficie levée totale (GNSS)
-  const totalHaGnss = (gnssData||[]).reduce((s,g)=>s+(g.superficie||0),0);
-  // Villages couverts = au moins 1 dossier CF dans le village (manuels ou AFOR)
+  const depts = Object.keys(ZV_GEO);
+  const allV = depts.flatMap(d=>Object.values(ZV_GEO[d].sp).flat());
+  const totalV = allV.length;
+  const totalDos = dossiers.length;
   const couverts = allV.filter(v=>{
-    const dept = depts.find(d=>Object.values(ZV_GEO[d].sp).flat().includes(v));
-    const stats = zvGetVilleStats(v, dept);
-    return stats.nbDos > 0;
+    const dept=depts.find(d=>Object.values(ZV_GEO[d].sp).flat().includes(v));
+    return dossiers.some(d=>d.village===v&&d.dept===dept);
   }).length;
-  const pct = totalV>0 ? Math.round(couverts/totalV*100) : 0;
+  const pct = totalV>0?Math.round(couverts/totalV*100):0;
+  const totalSP = depts.reduce((s,d)=>s+Object.keys(ZV_GEO[d].sp).length,0);
   document.getElementById('zv-kpi').innerHTML=`
     <div class="kpi blue"><div class="kpi-l">Départements</div><div class="kpi-v">4</div><div class="kpi-s">Région du Cavally</div></div>
     <div class="kpi"><div class="kpi-l">Sous-préfectures</div><div class="kpi-v">${totalSP}</div><div class="kpi-s">${totalV} villages recensés</div></div>
     <div class="kpi green"><div class="kpi-l">Villages couverts</div><div class="kpi-v">${couverts}</div><div class="kpi-s">Taux : ${pct}%</div></div>
-    <div class="kpi amber"><div class="kpi-l">Dossiers CF</div><div class="kpi-v">${totalDos.toLocaleString('fr-FR')}</div><div class="kpi-s">${totalHaGnss>0?totalHaGnss.toFixed(0)+' ha levés':'Zone entière'}</div></div>`;
+    <div class="kpi amber"><div class="kpi-l">Dossiers CF ouverts</div><div class="kpi-v">${totalDos}</div><div class="kpi-s">Sur la zone entière</div></div>`;
 }
 
 // ── Vue d'ensemble : cartes départements ──
@@ -5787,15 +5600,7 @@ function zvRenderDept(){
 
   // Tableau par sous-préfecture
   html2 += Object.entries(info.sp).map(([sp, villages])=>{
-    const deptNormSP = (dept||'').replace('Dép. ','').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z]/g,'');
-    const spDos = villages.reduce((sum,v)=>{
-      const manuel = dossiers.filter(d=>d.village===v&&d.dept===dept).length;
-      const afor   = (dossiersAFOR||[]).filter(d=>{
-        const ddn=(d.dept||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z]/g,'');
-        return (d.village||'').trim().toLowerCase()===v.trim().toLowerCase()&&ddn===deptNormSP;
-      }).length;
-      return sum + manuel + afor;
-    }, 0);
+    const spDos = villages.reduce((sum,v)=>sum+dossiers.filter(d=>d.village===v&&d.dept===dept).length,0);
     const spSaisies = villages.reduce((sum,v)=>sum+saisies.filter(s=>s.village===v).length,0);
     return `<div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden;">
       <div style="background:${info.couleur.bg};padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid ${info.couleur.brd};">
@@ -5867,17 +5672,13 @@ function zvRenderVillages(){
     const dinfo=info2[r.dept];
     const sc=r.statut==='couvert'?'b-green':r.statut==='partiel'?'b-amber':'b-gray';
     const sl=r.statut==='couvert'?'Couvert':r.statut==='partiel'?'Partiel':'Non traité';
-    const aforLbl = r.vs.nbAfor>0
-      ? `<span style="font-size:9px;background:var(--blue-lt);color:var(--blue-txt);padding:1px 4px;border-radius:3px;margin-left:3px;">${r.vs.nbAfor} AFOR</span>` : '';
-    const gnssLbl = r.vs.superfGnss>0
-      ? `<span style="font-size:9px;background:#E0F2F1;color:#00695C;padding:1px 4px;border-radius:3px;margin-left:3px;">${r.vs.superfGnss} ha</span>` : '';
     return`<tr style="border-bottom:1px solid var(--border);">
       <td style="padding:8px 12px;font-weight:500">${r.village}</td>
       <td style="padding:8px 12px;"><span style="font-size:10px;padding:2px 7px;border-radius:8px;background:${dinfo?dinfo.couleur.bg:'var(--surface2)'};color:${dinfo?dinfo.couleur.tx:'var(--text2)'}">${r.dept.replace('Dép. ','')}</span></td>
       <td style="padding:8px 12px;font-size:11px;color:var(--text2)">${r.sp}</td>
       <td style="padding:8px 12px;text-align:center">${r.vs.nbProgs}</td>
       <td style="padding:8px 12px;text-align:center">${r.vs.nbSaisies}</td>
-      <td style="padding:8px 12px;text-align:center;font-weight:600;color:var(--accent)">${r.vs.nbDos}${aforLbl}${gnssLbl}</td>
+      <td style="padding:8px 12px;text-align:center;font-weight:600;color:var(--accent)">${r.vs.nbDos}</td>
       <td style="padding:8px 12px;font-size:11px;color:var(--text2)">${r.vs.agents.slice(0,2).join(', ')||'—'}</td>
       <td style="padding:8px 12px;"><span class="badge ${sc}">${sl}</span></td>
     </tr>`;
@@ -8179,11 +7980,6 @@ setInterval(notifCheck, 60 * 60 * 1000);
 // ═══════════════════════════════════════════
 
 const FIREBASE_URL = 'https://presfor-cavally-default-rtdb.europe-west1.firebasedatabase.app';
-const FIREBASE_API_KEY = 'AIzaSyDt_APyGTXNFnA3k8shKwricp5iLodfdMQ';
-// Auth Firebase anonyme désactivée — accès direct à Firebase
-
-
-
 let isSaving = false;
 let saveQueue = false;
 let lastKnownTs = null;
@@ -8196,7 +7992,7 @@ let serverAvailable = false;
 // ── Charger depuis Firebase ──
 async function serverLoad(){
   updateSyncIndicator('pending');
-    try {
+  try {
     const r = await fetch(FIREBASE_URL + '/presfor.json', {
       signal: AbortSignal.timeout(20000)
     });
@@ -8204,76 +8000,20 @@ async function serverLoad(){
     const d = await r.json();
 
     if(!d || d.reset){
-      // Firebase vide — tenter restauration depuis backup localStorage
-      try {
-        const bkProg = localStorage.getItem('presfor_backup_programmes');
-        const bkSais = localStorage.getItem('presfor_backup_saisies');
-        const bkDos  = localStorage.getItem('presfor_backup_dossiers');
-        const bkTs   = localStorage.getItem('presfor_backup_ts');
-        if(bkProg && bkSais){
-          const restoredProgs = JSON.parse(bkProg);
-          const restoredSais  = JSON.parse(bkSais);
-          const restoredDos   = bkDos ? JSON.parse(bkDos) : [];
-          if(restoredProgs.length > 0 || restoredSais.length > 0){
-            const msg = '⚠ Firebase vide mais backup local existe : ' + restoredProgs.length + ' programmes, ' + restoredSais.length + ' saisies. Restaurer ?';
-            const conf = confirm(msg);
-            if(conf){
-              programmes = restoredProgs;
-              saisies    = restoredSais;
-              dossiers   = restoredDos;
-              progCounter = programmes.length;
-              saisieCounter = saisies.length;
-              dosCounter = dossiers.length;
-              fbInitialized = true; serverAvailable = true;
-              updateSyncIndicator('ok');
-              progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
-              setTimeout(serverSave, 1000);
-              showToast('✓ ' + programmes.length + ' programmes et ' + saisies.length + ' saisies restaures !');
-              return true;
-            }
-          }
-        }
-      } catch(e) { console.warn('Restauration backup:', e.message); }
       programmes=[]; saisies=[]; dossiers=[]; absences=[];
       progCounter=0; saisieCounter=0; dosCounter=0;
       lastKnownTs = d ? d.updated_at : null;
       fbInitialized = true; serverAvailable = true;
       updateSyncIndicator('ok');
       progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
-      console.log('Firebase vide — application reinitialisee');
+      console.log('Firebase vide — application réinitialisée');
       return true;
     }
-    const remoteProg = Array.isArray(d.programmes) ? d.programmes : [];
-    const remoteSais = Array.isArray(d.saisies)    ? d.saisies    : [];
-    const remoteDos  = Array.isArray(d.dossiers)   ? d.dossiers   : [];
-    const remoteAbs  = Array.isArray(d.absences)   ? d.absences   : [];
 
-    // Protection anti-régression : si Firebase a moins de données que le backup local,
-    // fusionner plutôt qu'écraser
-    let bkProg = [], bkSais = [];
-    try {
-      const bp = localStorage.getItem('presfor_backup_programmes');
-      const bs = localStorage.getItem('presfor_backup_saisies');
-      if(bp) bkProg = JSON.parse(bp);
-      if(bs) bkSais = JSON.parse(bs);
-    } catch(e) {}
-
-    if(bkProg.length > remoteProg.length){
-      console.warn('PROTECTION : Firebase a ' + remoteProg.length + ' programmes mais backup local en a ' + bkProg.length + ' — fusion');
-      programmes = mergeById(remoteProg, bkProg);
-    } else {
-      programmes = remoteProg;
-    }
-
-    if(bkSais.length > remoteSais.length * 0.8 && bkSais.length > remoteSais.length){
-      console.warn('PROTECTION : Firebase a ' + remoteSais.length + ' saisies mais backup local en a ' + bkSais.length + ' — fusion');
-      saisies = mergeById(remoteSais, bkSais);
-    } else {
-      saisies = remoteSais;
-    }
-
-    dossiers = remoteDos;
-    absences = remoteAbs;
+    programmes = Array.isArray(d.programmes) ? d.programmes : [];
+    saisies    = Array.isArray(d.saisies)    ? d.saisies    : [];
+    dossiers   = Array.isArray(d.dossiers)   ? d.dossiers   : [];
+    absences   = Array.isArray(d.absences)   ? d.absences   : [];
     if(d.users_db && typeof d.users_db === 'object'){
       users_db = Object.assign({}, d.users_db, users_db);
     }
@@ -8299,36 +8039,6 @@ async function serverLoad(){
     updateSyncIndicator('ok');
     progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
     console.log('Firebase chargé:', saisies.length, 'saisies,', programmes.length, 'programmes');
-
-    // Charger pubCQ et pubOppositions depuis Firebase au démarrage
-    pubLoadFromFirebase().catch(()=>{});
-
-    // Charger AFOR depuis Firebase (toujours — pour tous les utilisateurs)
-    aforLoadFromFirebase().then(loaded => {
-      if(loaded){
-        aforRenderAll();
-        dosRenderAll();
-        dashRenderAll();
-        console.log('AFOR chargé:', dossiersAFOR.length, 'dossiers');
-      } else if(dossiersAFOR.length > 0){
-        // Données déjà en localStorage — juste rafraîchir l'UI
-        aforRenderAll();
-      }
-    });
-
-    // Charger GNSS depuis Firebase (toujours)
-    gnssLoadFromFirebase().then(loaded => {
-      if(loaded){
-        gnssUpdateBtnLabel();
-        dashRenderCardGNSS();
-        dosRenderAll();
-        console.log('GNSS chargé:', gnssData.length, 'parcelles');
-      } else if(gnssData.length > 0){
-        gnssUpdateBtnLabel();
-        dashRenderCardGNSS();
-      }
-    });
-
     return true;
   } catch(e) {
     console.log('Firebase erreur:', e.message);
@@ -8484,13 +8194,6 @@ async function serverSave(){
       lastKnownTs = ts;
       serverAvailable = true;
       updateSyncIndicator('ok');
-      // Sauvegarde localStorage — backup local en cas de perte Firebase
-      try {
-        localStorage.setItem('presfor_backup_programmes', JSON.stringify(programmes));
-        localStorage.setItem('presfor_backup_saisies',    JSON.stringify(saisies));
-        localStorage.setItem('presfor_backup_dossiers',   JSON.stringify(dossiers));
-        localStorage.setItem('presfor_backup_ts',         ts);
-      } catch(e) { console.warn('Backup localStorage:', e.message); }
       // Rafraîchir l'UI si on a mergé des données tierces
       if(needsUIRefresh){
         progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
@@ -8508,67 +8211,29 @@ async function serverSave(){
 // ── Sauvegarde différée après chaque modification ──
 function scheduleSave(){
   if(!fbInitialized) return;
-  // Sauvegarde locale IMMÉDIATE à chaque modification (backup de sécurité)
-  try {
-    localStorage.setItem('presfor_backup_programmes', JSON.stringify(programmes));
-    localStorage.setItem('presfor_backup_saisies',    JSON.stringify(saisies));
-    localStorage.setItem('presfor_backup_dossiers',   JSON.stringify(dossiers));
-    localStorage.setItem('presfor_backup_ts',         new Date().toISOString());
-  } catch(e) {}
-  if(!isOnline){
-    saveToOfflineQueue();
-    return;
-  }
-  if(saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(serverSave, 1500);
+  try{
+    localStorage.setItem('presfor_backup_programmes',JSON.stringify(programmes));
+    localStorage.setItem('presfor_backup_saisies',JSON.stringify(saisies));
+    localStorage.setItem('presfor_backup_dossiers',JSON.stringify(dossiers));
+    localStorage.setItem('presfor_backup_ts',new Date().toISOString());
+  }catch(e){}
+  if(!isOnline){saveToOfflineQueue();return;}
+  if(saveTimer)clearTimeout(saveTimer);
+  saveTimer=setTimeout(serverSave,1500);
 }
 
 // ── Polling toutes les 10 secondes ──
 async function syncPoll(){
   if(!isOnline || isSaving) return;
   try {
-    // Lire le nœud racine pour détecter changements programmes/saisies ET afor/gnss
-    const r = await fetch(FIREBASE_URL + '/presfor.json?shallow=true', {
+    const r = await fetch(FIREBASE_URL + '/presfor/updated_at.json', {
       signal: AbortSignal.timeout(8000)
     });
     if(!r.ok) return;
-    // Fallback : lire juste updated_at
-    const rTs = await fetch(FIREBASE_URL + '/presfor/updated_at.json', {
-      signal: AbortSignal.timeout(8000)
-    });
-    if(!rTs.ok) return;
-    const ts = await rTs.json();
-
+    const ts = await r.json();
     if(ts && ts !== lastKnownTs){
       console.log('Mise à jour Firebase détectée, rechargement...');
-      await serverLoad(); // serverLoad gère maintenant AFOR + GNSS
-    } else {
-      // Vérifier séparément AFOR et GNSS via leurs nœuds meta dédiés
-      try {
-        const localAforTs = localStorage.getItem('presfor_afor_ts') || '1970-01-01';
-        const rAfor = await fetch(FIREBASE_URL + '/presfor/afor_meta.json', { signal: AbortSignal.timeout(5000) });
-        if(rAfor.ok){
-          const meta = await rAfor.json();
-          if(meta && meta.ts && meta.ts > localAforTs){
-            const loaded = await aforLoadFromFirebase();
-            if(loaded){ aforRenderAll(); dosRenderAll(); dashRenderAll();
-              console.log('AFOR sync depuis autre utilisateur:', dossiersAFOR.length, 'dossiers'); }
-          }
-        }
-      } catch(e){}
-
-      try {
-        const localGnssTs = localStorage.getItem('presfor_gnss_ts') || '1970-01-01';
-        const rGnss = await fetch(FIREBASE_URL + '/presfor/gnss_meta.json', { signal: AbortSignal.timeout(5000) });
-        if(rGnss.ok){
-          const meta = await rGnss.json();
-          if(meta && meta.ts && meta.ts > localGnssTs){
-            const loaded = await gnssLoadFromFirebase();
-            if(loaded){ gnssUpdateBtnLabel(); dashRenderCardGNSS(); dosRenderAll();
-              console.log('GNSS sync depuis autre utilisateur:', gnssData.length, 'parcelles'); }
-          }
-        }
-      } catch(e){}
+      await serverLoad();
     }
   } catch(e) {}
 }
@@ -8802,8 +8467,7 @@ function aforImportExcel(input){
           dept: (row[AFOR_COLS.dept]||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''),
           sp: (row[AFOR_COLS.sp]||'').trim(),
           village: (row[AFOR_COLS.village]||'').trim(),
-          agent: (row[AFOR_COLS.agent]||'').trim(),
-          code_parcelle: (row[AFOR_COLS.code_parcelle]||'').trim(),
+          agent: aforAgentNom((row[AFOR_COLS.agent]||'').trim()),
           type: (row[AFOR_COLS.type]||'').trim(),
           etape,
           date_DD:  fmtD(row[AFOR_COLS.date_DD]),
@@ -8882,7 +8546,7 @@ function aforImportExcel(input){
 }
 
 function aforRenderAll(){
-  gnssRebuildSuperfIndex(); // Reconstruire l'index superficie après import AFOR
+  gnssRebuildSuperfIndex();
   aforUpdateBtnLabel();
   // Met à jour les cards dashboard + badge sidebar
   const nb=document.getElementById('afor-list-nb');
@@ -8940,7 +8604,15 @@ function aforGetAgentsData(){
 
 function aforRenderAgents(){}
 
-// dosShowPanel étendu — voir fonction principale ci-dessus
+// Étendre dosShowPanel pour les panels AFOR
+const _dosShowPanel = dosShowPanel;
+function dosShowPanel(id, btn){
+  _dosShowPanel(id, btn);
+  if(id==='afor-dash') aforRenderDashboard();
+  if(id==='afor-pipeline') aforRenderKanban();
+  if(id==='afor-liste') aforRenderListe();
+  if(id==='afor-agents') aforRenderAgents();
+}
 
 
 
@@ -9129,7 +8801,22 @@ function aforCFExportCSV(){
   showToast('Export CSV téléchargé !');
 }
 
-// dosShowPanel CF étendu — voir fonction principale ci-dessus
+// Étendre dosShowPanel pour les panels AFOR CF
+const _origDosShowPanel = typeof dosShowPanel === 'function' ? dosShowPanel : null;
+function dosShowPanel(id, btn){
+  if(_origDosShowPanel) _origDosShowPanel(id, btn);
+  if(id==='afor-cf-liste'){
+    const sel=document.getElementById('afor-cf-agent');
+    if(sel && dossiersAFOR.length){
+      const agents=[...new Set(dossiersAFOR.map(d=>d.agent).filter(Boolean))].sort();
+      sel.innerHTML='<option value="">Tous les agents CE</option>'+agents.map(a=>`<option value="${a}">${a}</option>`).join('');
+    }
+    document.getElementById('afor-list-nb').textContent=dossiersAFOR.length||'0';
+    aforCFRenderList();
+  }
+  if(id==='afor-cf-agents') aforCFRenderAgents();
+}
+
 
 // ═══════════════════════════════════════════
 // MODULE GNSS — Parcelles levées / Superficie
@@ -9201,50 +8888,21 @@ function gnssImportExcel(input){
       gnssIndexNomVil = {};     // index par nom+village (fallback)
       let nb=0, ignore=0;
 
-      // ── Détecter automatiquement la colonne opérateur ──
-      // Afficher toutes les colonnes disponibles dans la console pour diagnostic
-      if(rows.length > 0){
-        const allCols = Object.keys(rows[0]);
-        console.log('GNSS colonnes disponibles:', allCols);
-      }
-
-      // Chercher la colonne opérateur de façon flexible (insensible casse/accents/espaces)
-      const normCol = s => (s||'').toString().toUpperCase()
-        .normalize('NFD').replace(/[̀-ͯ]/g,'')
-        .replace(/[\s_\-\.]/g,'').trim();
-
-      // Mots-clés identifiant la colonne opérateur
-      // NOM_AGENT est le vrai nom dans le fichier GNSS Cavally
-      const OP_KEYWORDS = ['NOM_AGENT','AGENT','OPERATEUR','OPER','TOPOGRAPHE','TOPO','GNSS','PRENEUR','NOM_OP'];
-      
-      // Trouver la clé réelle dans le fichier
-      const opKey = rows.length > 0
-        ? Object.keys(rows[0]).find(k => OP_KEYWORDS.some(kw => normCol(k).includes(kw)))
-        : null;
-
-      const hasOperateur = !!opKey && rows.some(r => r[opKey] && String(r[opKey]).trim());
-      console.log('GNSS colonne opérateur détectée:', opKey || 'AUCUNE', '| hasOperateur:', hasOperateur);
-
       rows.forEach(row=>{
-        const nom       = (row['NOM_DEMAND']||'').trim();
-        const village   = (row['NOM_VILLAG']||'').trim();
-        const dept      = gnssNorm(row['NOM_DEPART']||'');
-        const sp        = (row['NOM_SSPREF']||'').trim();
-        const superf    = parseFloat(row['SUPERF'])||0;
-        const code      = (row['N_DEMCGE']||'').trim();
-        const num       = (row['NUM_DEMAND']||'').trim();
-        // Lire la colonne NOM_AGENT (nom réel dans le fichier GNSS Cavally)
-        const operateur = (
-          row['NOM_AGENT'] || (opKey ? row[opKey] : '') || ''
-        ).toString().trim();
+        const nom     = (row['NOM_DEMAND']||'').trim();
+        const village = (row['NOM_VILLAG']||'').trim();
+        const dept    = gnssNorm(row['NOM_DEPART']||'');
+        const sp      = (row['NOM_SSPREF']||'').trim();
+        const superf  = parseFloat(row['SUPERF'])||0;
+        const code    = (row['N_DEMCGE']||'').trim();
+        const num     = (row['NUM_DEMAND']||'').trim();
 
         if(!nom || superf <= 0){ ignore++; return; }
 
         const entry = {
           nom_demand: nom, village, dept, sp,
           superficie: superf, n_demcge: code, num_demand: num,
-          operateur,   // nom de l'opérateur GNSS qui a fait le levé
-          _matched: false
+          _matched: false  // sera marqué true si lié à un dossier AFOR
         };
         gnssData.push(entry);
 
@@ -9276,11 +8934,7 @@ function gnssImportExcel(input){
 
       gnssUpdateBtnLabel();
       gnssRenderAll();
-      const nbAvecOp = gnssData.filter(g=>g.operateur).length;
-      const opMsg = hasOperateur
-        ? ` · ${nbAvecOp} avec opérateur`
-        : ' · ⚠ Ajoutez colonne NOM_OPERATEUR pour les stats individuelles';
-      showToast(`GNSS chargé : ${nb} parcelles · ${gnssGetTotalHa().toFixed(1)} ha${opMsg}`);
+      showToast(`GNSS chargé : ${nb} parcelles levées · ${gnssGetTotalHa().toFixed(1)} ha`);
     }catch(err){ showToast('Erreur lecture : '+err.message); console.error(err); }
   };
   reader.readAsArrayBuffer(file);
@@ -9349,7 +9003,7 @@ function gnssGetStats(){
 
 // ── Rafraîchir tout après import GNSS ──
 function gnssRenderAll(){
-  gnssRebuildSuperfIndex(); // Reconstruire l'index superficie après import GNSS
+  gnssRebuildSuperfIndex();
   gnssUpdateBtnLabel();
   dashRenderCardGNSS();
   // Rafraîchir la liste dossiers si visible
@@ -9499,8 +9153,6 @@ function applyViewerRestrictions(){
 async function aforSaveToFirebase(){
   const ts = new Date().toISOString();
   const payload = { data: dossiersAFOR, ts, count: dossiersAFOR.length };
-
-  // 1. Sauvegarder les données AFOR dans leur nœud dédié
   const r = await fetch(FIREBASE_URL + '/presfor/afor_cf.json', {
     method: 'PUT',
     headers: {'Content-Type':'application/json'},
@@ -9508,18 +9160,6 @@ async function aforSaveToFirebase(){
     signal: AbortSignal.timeout(30000)
   });
   if(!r.ok) throw new Error('HTTP ' + r.status);
-
-  // 2. Mettre à jour UNIQUEMENT le nœud afor_meta (séparé de presfor.json)
-  //    pour ne PAS déclencher un serverLoad qui écraserait programmes/saisies
-  try {
-    await fetch(FIREBASE_URL + '/presfor/afor_meta.json', {
-      method: 'PUT',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ ts, count: dossiersAFOR.length }),
-      signal: AbortSignal.timeout(10000)
-    });
-  } catch(e) { console.warn('AFOR PATCH afor_meta:', e.message); }
-
   console.log('AFOR sauvegardé Firebase:', dossiersAFOR.length, 'dossiers');
   showToast('Base AFOR synchronisée ✓ (' + dossiersAFOR.length.toLocaleString('fr-FR') + ' dossiers)');
 }
@@ -9535,7 +9175,7 @@ async function aforLoadFromFirebase(){
     // Comparer avec données locales : prendre les plus récentes
     const localTs  = localStorage.getItem('presfor_afor_ts') || '1970-01-01';
     const remoteTs = d.ts || '1970-01-01';
-    if(true){ // Toujours charger depuis Firebase pour cohérence multi-utilisateurs
+    if(remoteTs > localTs || dossiersAFOR.length === 0){
       dossiersAFOR = d.data;
       const nb = aforDeduplicate();
       // Sauvegarder localement
@@ -9555,7 +9195,6 @@ async function aforLoadFromFirebase(){
 async function gnssSaveToFirebase(){
   const ts = new Date().toISOString();
   const payload = { data: gnssData, ts, count: gnssData.length };
-
   const r = await fetch(FIREBASE_URL + '/presfor/gnss_data.json', {
     method: 'PUT',
     headers: {'Content-Type':'application/json'},
@@ -9563,17 +9202,6 @@ async function gnssSaveToFirebase(){
     signal: AbortSignal.timeout(30000)
   });
   if(!r.ok) throw new Error('HTTP ' + r.status);
-
-  // Mettre à jour UNIQUEMENT le nœud gnss_meta (séparé de presfor.json)
-  try {
-    await fetch(FIREBASE_URL + '/presfor/gnss_meta.json', {
-      method: 'PUT',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ ts, count: gnssData.length }),
-      signal: AbortSignal.timeout(10000)
-    });
-  } catch(e) { console.warn('GNSS PATCH gnss_meta:', e.message); }
-
   console.log('GNSS sauvegardé Firebase:', gnssData.length, 'parcelles');
   showToast('GNSS synchronisé ✓ (' + gnssData.length.toLocaleString('fr-FR') + ' parcelles)');
 }
@@ -9588,7 +9216,7 @@ async function gnssLoadFromFirebase(){
     if(!d || !Array.isArray(d.data) || !d.data.length) return false;
     const localTs  = localStorage.getItem('presfor_gnss_ts') || '1970-01-01';
     const remoteTs = d.ts || '1970-01-01';
-    if(true){ // Toujours charger depuis Firebase pour cohérence multi-utilisateurs
+    if(remoteTs > localTs || gnssData.length === 0){
       gnssData = d.data;
       // Reconstruire les index
       gnssIndex = {}; gnssIndexFull = {}; gnssIndexNomVil = {};
@@ -9880,37 +9508,6 @@ function adminLoadUsers(){
       <td style="padding:8px 12px;">${isMe ? '<span style="font-size:11px;color:var(--text3)">Vous</span>' : `<button class="btn-d" onclick="adminDeleteUser('${u.id}')">Sup.</button>`}</td>
     </tr>`;
   }).join('');
-}
-
-// ── Restauration manuelle depuis backup localStorage ──
-function adminRestoreBackup(){
-  try {
-    const bkProg = localStorage.getItem('presfor_backup_programmes');
-    const bkSais = localStorage.getItem('presfor_backup_saisies');
-    const bkDos  = localStorage.getItem('presfor_backup_dossiers');
-    const bkTs   = localStorage.getItem('presfor_backup_ts');
-    if(!bkProg && !bkSais){
-      alert('Aucun backup local trouvé. Le backup est créé automatiquement après chaque synchronisation réussie.');
-      return;
-    }
-    const restoredProgs = bkProg ? JSON.parse(bkProg) : [];
-    const restoredSais  = bkSais ? JSON.parse(bkSais) : [];
-    const restoredDos   = bkDos  ? JSON.parse(bkDos)  : [];
-    const conf = confirm(       '⚠ RESTAURATION DU BACKUP LOCAL  ' +       restoredProgs.length + ' programmes ' +       restoredSais.length  + ' saisies ' +       restoredDos.length   + ' dossiers manuels ' +       'Sauvegardé le : ' + (bkTs ? new Date(bkTs).toLocaleString('fr-FR') : 'inconnu') + '. Remplacer Firebase?');
-    if(!conf) return;
-    programmes = restoredProgs;
-    saisies    = restoredSais;
-    dossiers   = restoredDos;
-    progCounter   = programmes.length;
-    saisieCounter = saisies.length;
-    dosCounter    = dossiers.length;
-    serverSave();
-    progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
-    adminClosePanel();
-    showToast('✓ Backup restauré : ' + programmes.length + ' programmes · ' + saisies.length + ' saisies');
-  } catch(e) {
-    alert('Erreur restauration : ' + e.message);
-  }
 }
 
 async function adminRefreshUsers(){
