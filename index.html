@@ -6422,8 +6422,7 @@ function pubCalcDossier(d){
   // Contrôle qualité
   const cq = pubCQ[d.id] || null;
 
-  // ── Réconciliation superficie AFOR vs GNSS ──
-  // Règle : si similitude < 10% → prendre GNSS, sinon prendre AFOR
+  // ── Superficie : matching GNSS par nom+prénom+SP+village ──
   const cqSup = pubCQ[d.id];
 
   const normN = s => {
@@ -6433,62 +6432,57 @@ function pubCalcDossier(d){
       .replace(/[^A-Z0-9 ]/g,' ').replace(/  +/g,' ').trim();
   };
 
-  // 1. Superficie AFOR depuis le fichier importé (constat limite ou CQ)
+  // Superficie AFOR depuis le fichier importé (fallback)
   const aforSuperf = cqSup && cqSup.superf ? parseFloat(cqSup.superf)||0 : 0;
 
-  // 2. Superficie GNSS — matching multi-critères
-  let gnssParcelles = [];
-  const code = (d.code_parcelle || '').trim();
-  const deptN = normN(d.dept || '');
-  const villN = normN(d.village || '');
-  const spN   = normN(d.sp || '');
+  // Matching GNSS : nom+prénom + SP + village (critères demandés)
+  const prN  = normN(d.prenom || '');
+  const nomN = normN(d.nom || d.nom_demandeur || '');
+  const spN  = normN(d.sp || '');
+  const villN= normN(d.village || '');
+  const v1   = (nomN + ' ' + prN).trim();  // NOM PRENOM
+  const v2   = (prN  + ' ' + nomN).trim(); // PRENOM NOM
 
-  // Priorité 1 : code parcelle exact
-  if(code){
-    gnssParcelles = (gnssData||[]).filter(g => (g.n_demcge||'').trim() === code);
-  }
-  // Priorité 2 : N° dossier (num_demand)
-  if(!gnssParcelles.length){
-    gnssParcelles = (gnssData||[]).filter(g => (g.num_demand||'').trim() === (d.id||'').trim());
-  }
-  // Priorité 3 : nom demandeur + localisation
-  if(!gnssParcelles.length){
-    const prN  = normN(d.prenom || '');
-    const nomN = normN(d.nom || d.nom_demandeur || '');
-    const v1 = (nomN + ' ' + prN).trim();
-    const v2 = (prN + ' ' + nomN).trim();
+  let gnssParcelles = [];
+
+  // Critère principal : nom+prénom + SP + village (les 4 ensemble)
+  if(v1 && spN && villN){
     gnssParcelles = (gnssData||[]).filter(g => {
       const gn = normN(g.nom_demand || '');
       if(gn !== v1 && gn !== v2) return false;
-      // Confirmer par localisation si possible
-      const gd = normN(g.dept || '');
-      const gv = normN(g.village || '');
-      if(deptN && gd && gd !== deptN) return false;
-      if(villN && gv && gv !== villN) return false;
-      return true;
+      const gsp  = normN(g.sp      || '');
+      const gvil = normN(g.village || '');
+      return gsp === spN && gvil === villN;
     });
-    // Si pas de match avec localisation, essayer sans
-    if(!gnssParcelles.length){
-      gnssParcelles = (gnssData||[]).filter(g => {
-        const gn = normN(g.nom_demand || '');
-        return gn === v1 || gn === v2;
-      });
-    }
+  }
+
+  // Fallback 1 : nom+prénom + village (sans SP)
+  if(!gnssParcelles.length && v1 && villN){
+    gnssParcelles = (gnssData||[]).filter(g => {
+      const gn = normN(g.nom_demand || '');
+      if(gn !== v1 && gn !== v2) return false;
+      return normN(g.village || '') === villN;
+    });
+  }
+
+  // Fallback 2 : nom+prénom seul
+  if(!gnssParcelles.length && v1){
+    gnssParcelles = (gnssData||[]).filter(g => {
+      const gn = normN(g.nom_demand || '');
+      return gn === v1 || gn === v2;
+    });
   }
 
   const gnssTotal = gnssParcelles.reduce((s,g) => s+(g.superficie||0), 0);
 
-  // 3. Réconciliation : similitude < 10% → GNSS, sinon AFOR
+  // Décision finale : GNSS si trouvé, sinon AFOR
   let superf = 0;
-  if(gnssTotal > 0 && aforSuperf > 0){
-    const diff = Math.abs(gnssTotal - aforSuperf) / aforSuperf;
-    superf = diff <= 0.10 ? gnssTotal : aforSuperf;
-  } else if(gnssTotal > 0){
-    superf = gnssTotal;   // GNSS seul
+  if(gnssTotal > 0){
+    superf = gnssTotal;        // GNSS prioritaire
   } else if(aforSuperf > 0){
-    superf = aforSuperf;  // AFOR seul
+    superf = aforSuperf;       // AFOR en fallback
   } else {
-    superf = parseFloat(d.superficie_gnss || d.superficie || 0) || 0;
+    superf = 0;
   }
 
   return {
