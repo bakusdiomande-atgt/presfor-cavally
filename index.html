@@ -8761,18 +8761,22 @@ function aforRenderListePage(){}
 
 // ── Performance agents ──
 function aforGetAgentsData(){
-  // Liste des vrais agents CE (valeurs de AFOR_AGENT_MAP)
-  const vraisAgents = new Set(Object.values(AFOR_AGENT_MAP));
-  // Ajouter aussi les noms issus de AGENTS_DATA (fonction CE)
-  (AGENTS_DATA||[]).forEach(a => {
-    if(a.fonction && a.fonction.toLowerCase().includes('commissaire')) vraisAgents.add(a.nom);
-  });
+  // Vrais agents CE = noms de plus de 4 caractères, non numériques
+  // ET présents dans AFOR_AGENT_MAP (clés ou valeurs) ou AGENTS_DATA
+  const vraisAgentsCles = new Set([
+    ...Object.keys(AFOR_AGENT_MAP),
+    ...Object.values(AFOR_AGENT_MAP),
+    ...(AGENTS_DATA||[]).filter(a=>a.fonction&&a.fonction.toLowerCase().includes('commissaire')).map(a=>a.nom)
+  ]);
+  // Normaliser pour comparaison insensible aux accents/casse
+  const normA = s => (s||'').trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const vraisNormes = new Set([...vraisAgentsCles].map(normA));
 
   const agents={};
   dossiersAFOR.forEach(d=>{
     if(!d.agent) return;
-    // Filtrer : ne garder que les vrais agents CE connus
-    if(!vraisAgents.has(d.agent)) return;
+    // Accepter si le nom normalisé est dans la liste des vrais agents
+    if(!vraisNormes.has(normA(d.agent))) return;
     if(!agents[d.agent]) agents[d.agent]={nom:d.agent,total:0,retards:0,tempsDD_RDC:[],tempsRDC_CL:[],tempsCL_OV:[]};
     const ag=agents[d.agent];
     ag.total++;
