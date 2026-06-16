@@ -5864,22 +5864,29 @@ function dashRenderCardCFAgents(){  const _g=document.getElementById('dash-card-
   const M=['🥇','🥈','🥉'];
   const rows=data.map((ag,i)=>{
     const ev=ag.score>=80?{c:'#16A34A',l:'Excellent'}:ag.score>=60?{c:'#2563EB',l:'Bon'}:ag.score>=40?{c:'#D97706',l:'Moyen'}:{c:'#DC2626',l:'À améliorer'};
-    const ha=(()=>{return dossiersAFOR.filter(x=>x.agent===ag.nom).reduce((s,x)=>{const g=gnssForDossier(x);return s+(g?g.superficie:0);},0);})();
-    const haStr=ha>0?(ha>=1000?(ha/1000).toFixed(1)+'k ha':ha.toFixed(0)+' ha'):'—';
-    const agNomEsc = ag.nom.replace(/'/g,"\\'");
+    const haStr=ag.ha>0?(ag.ha>=1000?(ag.ha/1000).toFixed(1)+'k ha':ag.ha.toFixed(0)+' ha'):'—';
+    const agNomEsc = ag.nom.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    // Badges étapes
+    const etapeBadges = ETAPES_CF.map(e => {
+      const n = ag.parEtape[e]||0;
+      if(!n) return '';
+      const c = ETAPES_CF_COLORS[e]||{bg:'#eee',tx:'#333'};
+      return `<span style="font-size:9px;padding:1px 5px;border-radius:8px;background:${c.bg};color:${c.tx};font-weight:700;margin-right:2px;">${e}:${n}</span>`;
+    }).join('');
     return `<tr style="border-bottom:1px solid #F9FAFB;">
-      <td style="padding:6px 6px 6px 0;font-size:11px;">${M[i]||`<span style="color:#9CA3AF">${i+1}.</span>`} ${ag.nom.split(' ').slice(0,2).join(' ')}</td>
-      <td style="padding:6px;text-align:right;font-weight:700;font-size:11px;">${ag.total}</td>
-      <td style="padding:6px;text-align:right;font-size:10px;color:#DC2626;">${ag.retards}</td>
-      <td style="padding:6px;text-align:right;font-size:10px;font-weight:600;color:#00695C;">${haStr}</td>
-      <td style="padding:6px 0;min-width:80px;">
+      <td style="padding:7px 6px 7px 0;font-size:11px;font-weight:600;">${M[i]||`<span style="color:#9CA3AF">${i+1}.</span>`} ${ag.nom.split(' ').slice(0,2).join(' ')}</td>
+      <td style="padding:7px 6px;text-align:right;font-weight:700;font-size:12px;">${ag.total}</td>
+      <td style="padding:7px 6px;text-align:right;font-size:11px;color:#DC2626;font-weight:600;">${ag.retards}</td>
+      <td style="padding:7px 6px;font-size:10px;">${etapeBadges}</td>
+      <td style="padding:7px 6px;text-align:right;font-size:10px;font-weight:600;color:#00695C;">${haStr}<br><span style="color:#9CA3AF;font-weight:400;">${ag.parcelles} parc.</span></td>
+      <td style="padding:7px 0;min-width:70px;">
         <div style="display:flex;align-items:center;gap:4px;">
           <div style="flex:1;height:5px;background:#F3F4F6;border-radius:3px;overflow:hidden;"><div style="width:${ag.score}%;height:100%;background:${ev.c};border-radius:3px;"></div></div>
           <span style="font-size:10px;font-weight:700;color:${ev.c}">${ag.score}%</span>
         </div>
       </td>
-      <td style="padding:6px 0 6px 6px;">
-        <button onclick="agentCEShowDossiers('${agNomEsc}')" style="font-size:10px;padding:2px 8px;border:1px solid var(--accent);background:var(--accent-lt);color:var(--accent-txt);border-radius:4px;cursor:pointer;">📋 Dossiers</button>
+      <td style="padding:7px 0 7px 6px;">
+        <button onclick="agentCEShowDossiers('${agNomEsc}')" style="font-size:10px;padding:3px 10px;border:1px solid var(--accent);background:var(--accent-lt);color:var(--accent-txt);border-radius:4px;cursor:pointer;">📋</button>
       </td>
     </tr>`;
   }).join('');
@@ -5889,8 +5896,10 @@ function dashRenderCardCFAgents(){  const _g=document.getElementById('dash-card-
         <th style="text-align:left;padding:8px 6px 6px 0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6B7280;">Agent CE</th>
         <th style="text-align:right;font-size:10px;font-weight:600;color:#0369A1;padding:8px 6px 6px;">Total</th>
         <th style="text-align:right;font-size:10px;font-weight:600;color:#DC2626;padding:8px 6px 6px;">Retards</th>
+        <th style="font-size:10px;font-weight:600;color:#6B7280;padding:8px 6px 6px;">Étapes</th>
+        <th style="text-align:right;font-size:10px;font-weight:600;color:#00695C;padding:8px 6px 6px;">Ha / Parc.</th>
         <th style="padding:8px 0 6px 6px;font-size:10px;font-weight:600;color:#16A34A;">Score</th>
-        <th style="padding:8px 0 6px 6px;font-size:10px;font-weight:600;color:#6B7280;"></th>
+        <th style="padding:8px 0 6px 6px;"></th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
@@ -5898,7 +5907,18 @@ function dashRenderCardCFAgents(){  const _g=document.getElementById('dash-card-
 
 // ── Modale dossiers par agent CE ──
 function agentCEShowDossiers(nomAgent){
-  const dossiers_ce = dossiersAFOR.filter(d => d.agent === nomAgent)
+  // Trouver toutes les variantes du nom de cet agent
+  const normA4 = s => (s||'').trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const canonMap4 = {};
+  Object.entries(AFOR_AGENT_MAP).forEach(([raw,canon])=>{
+    canonMap4[normA4(raw)]=canon; canonMap4[normA4(canon)]=canon;
+  });
+  const canonAgent = canonMap4[normA4(nomAgent)] || nomAgent;
+  const dossiers_ce = dossiersAFOR.filter(d => {
+    if(!d.agent) return false;
+    const canon = canonMap4[normA4(d.agent)] || d.agent;
+    return canon === canonAgent;
+  })
     .sort((a,b) => {
       // Tri : retards d'abord, puis par étape décroissante
       const ra = aforCalcRetard(a), rb = aforCalcRetard(b);
@@ -8761,40 +8781,78 @@ function aforRenderListePage(){}
 
 // ── Performance agents ──
 function aforGetAgentsData(){
-  // Vrais agents CE = noms de plus de 4 caractères, non numériques
-  // ET présents dans AFOR_AGENT_MAP (clés ou valeurs) ou AGENTS_DATA
-  const vraisAgentsCles = new Set([
-    ...Object.keys(AFOR_AGENT_MAP),
-    ...Object.values(AFOR_AGENT_MAP),
-    ...(AGENTS_DATA||[]).filter(a=>a.fonction&&a.fonction.toLowerCase().includes('commissaire')).map(a=>a.nom)
-  ]);
-  // Normaliser pour comparaison insensible aux accents/casse
+  // Construire un mapping inverse : toutes les variantes d'un agent → nom canonique
+  // Le nom canonique = valeur dans AFOR_AGENT_MAP, ou le nom brut si pas dans le map
   const normA = s => (s||'').trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-  const vraisNormes = new Set([...vraisAgentsCles].map(normA));
 
-  const agents={};
-  dossiersAFOR.forEach(d=>{
-    if(!d.agent) return;
-    // Accepter si le nom normalisé est dans la liste des vrais agents
-    if(!vraisNormes.has(normA(d.agent))) return;
-    if(!agents[d.agent]) agents[d.agent]={nom:d.agent,total:0,retards:0,tempsDD_RDC:[],tempsRDC_CL:[],tempsCL_OV:[]};
-    const ag=agents[d.agent];
-    ag.total++;
-    const r=aforCalcRetard(d);
-    if(r.retard) ag.retards++;
-    const t1=aforJours(d.date_DD,d.date_RDC);
-    const t2=aforJours(d.date_RDC,d.date_CL);
-    const t3=aforJours(d.date_CL,d.date_OV);
-    if(t1!==null&&t1>=0) ag.tempsDD_RDC.push(t1);
-    if(t2!==null&&t2>=0) ag.tempsRDC_CL.push(t2);
-    if(t3!==null&&t3>=0) ag.tempsCL_OV.push(t3);
+  // Map : nom_normalisé → nom_canonique
+  const canonicalMap = {};
+  Object.entries(AFOR_AGENT_MAP).forEach(([raw, canon]) => {
+    canonicalMap[normA(raw)]   = canon;
+    canonicalMap[normA(canon)] = canon;
   });
-  const moy=arr=>arr.length?Math.round(arr.reduce((a,b)=>a+b,0)/arr.length):null;
-  return Object.values(agents).map(ag=>{
-    const score=ag.total>0?Math.round((1-ag.retards/ag.total)*100):100;
-    return {...ag, score,
-      mDD_RDC:moy(ag.tempsDD_RDC), mRDC_CL:moy(ag.tempsRDC_CL), mCL_OV:moy(ag.tempsCL_OV)};
-  }).sort((a,b)=>b.score-a.score||b.total-a.total);
+
+  // Exclure les valeurs qui ne sont pas des noms (numériques, trop courts, codes)
+  const isNomAgent = s => {
+    if(!s || s.length < 4) return false;
+    if(/^[\d\s]+$/.test(s)) return false;   // que des chiffres
+    if(/^[0-9A-F]{4,}$/i.test(s)) return false; // code hex
+    return true;
+  };
+
+  const agents = {};
+  dossiersAFOR.forEach(d => {
+    if(!d.agent || !isNomAgent(d.agent)) return;
+    // Trouver le nom canonique
+    const canon = canonicalMap[normA(d.agent)] || d.agent;
+    if(!agents[canon]) agents[canon] = {
+      nom: canon,
+      variantes: new Set(),
+      total: 0, retards: 0,
+      parEtape: {},   // {DD:5, RDC:12, ...}
+      tempsDD_RDC:[], tempsRDC_CL:[], tempsCL_OV:[],
+    };
+    const ag = agents[canon];
+    ag.variantes.add(d.agent);
+    ag.total++;
+    // Répartition par étape
+    if(d.etape) ag.parEtape[d.etape] = (ag.parEtape[d.etape]||0) + 1;
+    // Retards
+    const r = aforCalcRetard(d);
+    if(r.retard) ag.retards++;
+    // Temps de transition
+    const t1 = aforJours(d.date_DD, d.date_RDC);
+    const t2 = aforJours(d.date_RDC, d.date_CL);
+    const t3 = aforJours(d.date_CL,  d.date_OV);
+    if(t1 !== null && t1 >= 0) ag.tempsDD_RDC.push(t1);
+    if(t2 !== null && t2 >= 0) ag.tempsRDC_CL.push(t2);
+    if(t3 !== null && t3 >= 0) ag.tempsCL_OV.push(t3);
+  });
+
+  const moy = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : null;
+  return Object.values(agents).map(ag => {
+    const score = ag.total > 0 ? Math.round((1-ag.retards/ag.total)*100) : 100;
+    // Superficie et parcelles GNSS
+    const dossiers_ag = dossiersAFOR.filter(d => {
+      const canon = canonicalMap[normA(d.agent)] || d.agent;
+      return canon === ag.nom;
+    });
+    const gnssStats = dossiers_ag.reduce((acc,d) => {
+      const g = gnssForDossier(d);
+      if(g){ acc.ha += g.superficie; acc.parcelles++; }
+      return acc;
+    }, {ha:0, parcelles:0});
+    return {
+      ...ag,
+      score,
+      variantes: [...ag.variantes],
+      mDD_RDC:  moy(ag.tempsDD_RDC),
+      mRDC_CL:  moy(ag.tempsRDC_CL),
+      mCL_OV:   moy(ag.tempsCL_OV),
+      ha:       gnssStats.ha,
+      parcelles: gnssStats.parcelles,
+    };
+  }).sort((a,b) => b.total - a.total || a.nom.localeCompare(b.nom));
 }
 
 function aforRenderAgents(){}
