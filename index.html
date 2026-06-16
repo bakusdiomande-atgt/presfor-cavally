@@ -8792,13 +8792,13 @@ function aforGetAgentsData(){
     canonicalMap[normA(canon)] = canon;
   });
 
-  // Exclure les valeurs qui ne sont pas des noms (numériques, trop courts, codes)
-  const isNomAgent = s => {
-    if(!s || s.length < 4) return false;
-    if(/^[\d\s]+$/.test(s)) return false;   // que des chiffres
-    if(/^[0-9A-F]{4,}$/i.test(s)) return false; // code hex
-    return true;
-  };
+  // N'accepter QUE les agents dont le nom normalisé est dans AFOR_AGENT_MAP
+  const agentsConnus = new Set([
+    ...Object.keys(AFOR_AGENT_MAP).map(normA),
+    ...Object.values(AFOR_AGENT_MAP).map(normA),
+    ...(AGENTS_DATA||[]).filter(a=>a.fonction&&a.fonction.toLowerCase().includes('commissaire')).map(a=>normA(a.nom))
+  ]);
+  const isNomAgent = s => agentsConnus.has(normA(s||''));
 
   const agents = {};
   dossiersAFOR.forEach(d => {
