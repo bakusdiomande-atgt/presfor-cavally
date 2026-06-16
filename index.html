@@ -8593,20 +8593,51 @@ function aforCalcRetard(dos){
 
 // ── Mapping agents AFOR (Nom CE) ↔ agents app ──
 const AFOR_AGENT_MAP = {
-  'ABOYA Affoua Inès':              'Aboya Affoua Ines',
-  'ANGBONOU AUGUSTIN BROU CEDRIC':  'Agbonou A. B. C. Beranger',
-  'BAKAYOKO ADAMA':                 'Bakayoko Adama',
-  'BIO MICHEL FRANCK OLIVIER':      'Bio Michel Franck',
-  'DAGO GUY-MELAINE GBALOU':        'Dago Guy Melaine',
-  "DIBY N'DA YAO ARNAUD":           'Diby Arnaud',
-  'DJAHI GAPEA':                    'Djahi Gapea',
-  'KOUADIO AHOU ESTELLE':           'Kouadio Ahou Estelle',
-  'KOUASSI KOBINA GREGOIRE PHILIPPE':'Kouassi Kobina Philippe',
-  "N'GUESSAN YAO ARMAND":           "N'Guessan Armand",
-  'SIDIBE IBRAHIMA':                'Sidibe Ibrahima',
-  'TIZIE IRIE PHILIPPE':            'Tizie Irie Phillipe',
-  'YEBOUA ADJIA EMMANUELA':         'Yeboua Adjia Emmanuela',
+  'ABOYA Affoua Inès':               'ABOYA Affoua Inès',
+  'ANGBONOU AUGUSTIN BROU CEDRIC':   'ANGBONOU AUGUSTIN BROU CEDRIC',
+  'BAKAYOKO ADAMA':                  'BAKAYOKO ADAMA',
+  'BIO MICHEL FRANCK OLIVIER':       'BIO MICHEL FRANCK OLIVIER',
+  'DAGO GUY-MELAINE GBALOU':         'DAGO GUY-MELAINE GBALOU',
+  "DIBY N'DA YAO ARNAUD":            "DIBY N'DA YAO ARNAUD",
+  'DJAHI GAPEA':                     'DJAHI GAPEA',
+  'KOUADIO AHOU ESTELLE':            'KOUADIO AHOU ESTELLE',
+  'KOUASSI KOBINA GREGOIRE PHILIPPE':'KOUASSI KOBINA GREGOIRE PHILIPPE',
+  "N'GUESSAN YAO ARMAND":            "N'GUESSAN YAO ARMAND",
+  'SIDIBE IBRAHIMA':                 'SIDIBE IBRAHIMA',
+  'TIZIE IRIE PHILIPPE':             'TIZIE IRIE PHILIPPE',
+  'YEBOUA ADJIA EMMANUELA':          'YEBOUA ADJIA EMMANUELA',
+  // Variantes courtes (pour compatibilité avec anciens imports)
+  'Aboya Affoua Ines':               'ABOYA Affoua Inès',
+  'Bakayoko Adama':                  'BAKAYOKO ADAMA',
+  'Bio Michel Franck':               'BIO MICHEL FRANCK OLIVIER',
+  'Dago Guy Melaine':                'DAGO GUY-MELAINE GBALOU',
+  'Diby Arnaud':                     "DIBY N'DA YAO ARNAUD",
+  'Djahi Gapea':                     'DJAHI GAPEA',
+  'Kouadio Ahou Estelle':            'KOUADIO AHOU ESTELLE',
+  'Kouassi Kobina Philippe':         'KOUASSI KOBINA GREGOIRE PHILIPPE',
+  "N'Guessan Armand":               "N'GUESSAN YAO ARMAND",
+  'Sidibe Ibrahima':                 'SIDIBE IBRAHIMA',
+  'Tizie Irie Phillipe':             'TIZIE IRIE PHILIPPE',
+  'Yeboua Adjia Emmanuela':          'YEBOUA ADJIA EMMANUELA',
+  'Agbonou A. B. C. Beranger':       'ANGBONOU AUGUSTIN BROU CEDRIC',
 };
+
+// Noms canoniques des 13 agents CE (référence absolue)
+const AGENTS_CE_CANONIQUES = [
+  'ABOYA Affoua Inès',
+  'ANGBONOU AUGUSTIN BROU CEDRIC',
+  'BAKAYOKO ADAMA',
+  'BIO MICHEL FRANCK OLIVIER',
+  'DAGO GUY-MELAINE GBALOU',
+  "DIBY N'DA YAO ARNAUD",
+  'DJAHI GAPEA',
+  'KOUADIO AHOU ESTELLE',
+  'KOUASSI KOBINA GREGOIRE PHILIPPE',
+  "N'GUESSAN YAO ARMAND",
+  'SIDIBE IBRAHIMA',
+  'TIZIE IRIE PHILIPPE',
+  'YEBOUA ADJIA EMMANUELA',
+];
 function aforAgentNom(raw){ return AFOR_AGENT_MAP[raw] || raw; }
 
 // ── Mettre à jour le label du bouton AFOR ──
@@ -8792,17 +8823,11 @@ function aforGetAgentsData(){
     canonicalMap[normA(canon)] = canon;
   });
 
-  // Accepter les noms qui ressemblent à des noms de personnes
+  // Accepter uniquement les noms canoniques (ou leurs variantes via AFOR_AGENT_MAP)
   const isNomAgent = s => {
     if(!s) return false;
-    const t = s.trim();
-    if(t.length < 5) return false;                          // trop court
-    if(/^[\d\s\-_]+$/.test(t)) return false;               // que chiffres/tirets
-    if(/^\d{3}-\d{3}-\d+$/.test(t)) return false;          // format N° dossier
-    if(/^[0-9A-F]{4,}$/i.test(t)) return false;            // code hex
-    if(/^\d+$/.test(t.replace(/[-_\s]/g,''))) return false; // numérique
-    if((t.match(/[a-zA-ZÀ-ÿ]/g)||[]).length < 3) return false; // pas assez de lettres
-    return true;
+    const canon = canonicalMap[normA(s)] || s;
+    return AGENTS_CE_CANONIQUES.some(c => normA(c) === normA(canon) || normA(c) === normA(s));
   };
 
   const agents = {};
