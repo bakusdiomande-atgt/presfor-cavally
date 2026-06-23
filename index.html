@@ -8812,45 +8812,38 @@ function aforRenderListePage(){}
 
 // ── Performance agents ──
 function aforGetAgentsData(){
-  // Construire un mapping inverse : toutes les variantes d'un agent → nom canonique
-  // Le nom canonique = valeur dans AFOR_AGENT_MAP, ou le nom brut si pas dans le map
-  const normA = s => (s||'').trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const normA = s => (s||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 
-  // Map : nom_normalisé → nom_canonique
-  const canonicalMap = {};
+  // Index de normalisation des 13 noms canoniques
+  const canonNormes = {};
+  AGENTS_CE_CANONIQUES.forEach(c => { canonNormes[normA(c)] = c; });
+  // Ajouter les variantes depuis AFOR_AGENT_MAP
   Object.entries(AFOR_AGENT_MAP).forEach(([raw, canon]) => {
-    canonicalMap[normA(raw)]   = canon;
-    canonicalMap[normA(canon)] = canon;
+    canonNormes[normA(raw)]   = canon;
+    canonNormes[normA(canon)] = canon;
   });
 
-  // Accepter uniquement les noms canoniques (ou leurs variantes via AFOR_AGENT_MAP)
-  const isNomAgent = s => {
-    if(!s) return false;
-    const canon = canonicalMap[normA(s)] || s;
-    return AGENTS_CE_CANONIQUES.some(c => normA(c) === normA(canon) || normA(c) === normA(s));
+  // Fonction : trouver le nom canonique d'un agent, ou null si pas un vrai CE
+  const getCanon = s => {
+    if(!s) return null;
+    return canonNormes[normA(s)] || null; // null si pas dans la liste
   };
 
   const agents = {};
   dossiersAFOR.forEach(d => {
-    if(!d.agent || !isNomAgent(d.agent)) return;
-    // Trouver le nom canonique
-    const canon = canonicalMap[normA(d.agent)] || d.agent;
+    const canon = getCanon(d.agent);
+    if(!canon) return; // ignorer si pas un vrai agent CE
     if(!agents[canon]) agents[canon] = {
       nom: canon,
-      variantes: new Set(),
       total: 0, retards: 0,
-      parEtape: {},   // {DD:5, RDC:12, ...}
+      parEtape: {},
       tempsDD_RDC:[], tempsRDC_CL:[], tempsCL_OV:[],
     };
     const ag = agents[canon];
-    ag.variantes.add(d.agent);
     ag.total++;
-    // Répartition par étape
     if(d.etape) ag.parEtape[d.etape] = (ag.parEtape[d.etape]||0) + 1;
-    // Retards
     const r = aforCalcRetard(d);
     if(r.retard) ag.retards++;
-    // Temps de transition
     const t1 = aforJours(d.date_DD, d.date_RDC);
     const t2 = aforJours(d.date_RDC, d.date_CL);
     const t3 = aforJours(d.date_CL,  d.date_OV);
@@ -8859,27 +8852,28 @@ function aforGetAgentsData(){
     if(t3 !== null && t3 >= 0) ag.tempsCL_OV.push(t3);
   });
 
+  // S'assurer que les 13 agents apparaissent même avec 0 dossier
+  AGENTS_CE_CANONIQUES.forEach(c => {
+    if(!agents[c]) agents[c] = {nom:c, total:0, retards:0, parEtape:{}, tempsDD_RDC:[], tempsRDC_CL:[], tempsCL_OV:[]};
+  });
+
   const moy = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : null;
   return Object.values(agents).map(ag => {
-    const score = ag.total > 0 ? Math.round((1-ag.retards/ag.total)*100) : 100;
+    const score = ag.total > 0 ? Math.round((1-ag.retards/ag.total)*100) : 0;
     // Superficie et parcelles GNSS
-    const dossiers_ag = dossiersAFOR.filter(d => {
-      const canon = canonicalMap[normA(d.agent)] || d.agent;
-      return canon === ag.nom;
-    });
-    const gnssStats = dossiers_ag.reduce((acc,d) => {
-      const g = gnssForDossier(d);
-      if(g){ acc.ha += g.superficie; acc.parcelles++; }
-      return acc;
-    }, {ha:0, parcelles:0});
+    const gnssStats = dossiersAFOR.filter(d => getCanon(d.agent) === ag.nom)
+      .reduce((acc,d) => {
+        const g = gnssForDossier(d);
+        if(g){ acc.ha += g.superficie||0; acc.parcelles++; }
+        return acc;
+      }, {ha:0, parcelles:0});
     return {
       ...ag,
       score,
-      variantes: [...ag.variantes],
-      mDD_RDC:  moy(ag.tempsDD_RDC),
-      mRDC_CL:  moy(ag.tempsRDC_CL),
-      mCL_OV:   moy(ag.tempsCL_OV),
-      ha:       gnssStats.ha,
+      mDD_RDC:   moy(ag.tempsDD_RDC),
+      mRDC_CL:   moy(ag.tempsRDC_CL),
+      mCL_OV:    moy(ag.tempsCL_OV),
+      ha:        gnssStats.ha,
       parcelles: gnssStats.parcelles,
     };
   }).sort((a,b) => b.total - a.total || a.nom.localeCompare(b.nom));
@@ -9180,7 +9174,7 @@ function gnssImportExcel(input){
         const code    = (row['N_DEMCGE']||'').trim();
         const num     = (row['NUM_DEMAND']||'').trim();
 
-        if(!nom || superf <= 0){ ignore++; return; }
+        if((!nom && !code) || superf <= 0){ ignore++; return; }
 
         const entry = {
           nom_demand: nom, village, dept, sp,
