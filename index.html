@@ -3296,6 +3296,22 @@ function saisieShowDetail(id){
   window.scrollTo(0,0);
 }
 
+function saisieDownloadModele(){
+  // Créer un fichier CSV modèle simple à télécharger
+  const headers = ['N° Dossier','Prénom Demandeur','Nom Demandeur','Région','Département',
+    'Sous-Préfecture','Village','Code Parcelle','Superficie (ha)','Étape',
+    'Date Réalisation','Agent CE','Observations'];
+  const exemple = ['096-003-120080','Konan','KOUASSI','CAVALLY','GUIGLO',
+    'NIZAHON','Béhébo','','2.45','RDC','24/06/2026','DIBY NDA YAO ARNAUD',''];
+  const esc = v => '"'+String(v||'').replace(/"/g,'""')+'"';
+  const csv = [headers.map(esc).join(','), exemple.map(esc).join(',')].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download = 'PRESFOR_Saisie_Terrain_Modele.csv';
+  a.click();
+  showToast('Modèle CSV téléchargé');
+}
+
 function saisieResetForm(){
   saisieEditingId=null;
   document.getElementById('saisie-form-title').textContent='Nouvelle saisie quotidienne';
@@ -3321,226 +3337,171 @@ let saisieImportData = [];
 
 function saisieImportExcel(input){
   const file = input.files[0];
-  if(!file)return;
-  input.value='';
+  if(!file) return;
+  input.value = '';
+  if(typeof XLSX === 'undefined'){ showToast('Bibliothèque Excel non chargée.'); return; }
+  showToast('Lecture du fichier terrain...');
+
   const reader = new FileReader();
   reader.onload = function(e){
     try{
-      const wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      // Lire en tableau brut pour contrôler la ligne de départ
-      const allRows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
-      if(!allRows.length){showToast('Fichier vide.');return;}
+      const wb   = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false});
+      if(!rows.length){ showToast('Fichier vide.'); return; }
 
-      // Détecter la ligne d'en-tête (celle qui contient "Agent" ou "Date")
-      const MOTS_ENTETE = ['agent','date','village','etape','departement','dept'];
-      let headerRow = -1;
-      for(let i=0;i<Math.min(10,allRows.length);i++){
-        const r = allRows[i];
-        const vals = r.map(c=>String(c||'').toLowerCase().replace(/[\s\*▼↑]/g,''));
-        if(MOTS_ENTETE.filter(m=>vals.some(v=>v.includes(m))).length >= 3){
-          headerRow = i; break;
-        }
-      }
-      if(headerRow < 0){showToast('En-têtes non trouvés. Vérifiez le format du fichier.');return;}
+      // Normalisation flexible des clés de colonnes
+      const norm = s => (s||'').toString().toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .replace(/[\s_\-\.]/g,'').trim();
 
-      // Les données commencent 2 lignes après l'en-tête (hints + exemple)
-      const dataStart = headerRow + 3;
-      const headers = allRows[headerRow].map(h=>String(h||'').trim());
-
-      // Mots à ignorer dans les lignes de données
-      const MOTS_INSTR = ['liste déroulante','jj/mm','aaaa','hh:mm','ex :','ex:','exemple',
-        'séparer','suite','selon','↑','▼','*','suit le','pour topo','pour ce','automatiquement'];
-      const estInstr = v => {
-        if(!v && v!==0) return true;
-        const s = String(v).toLowerCase().trim();
-        return MOTS_INSTR.some(m=>s.includes(m));
-      };
-
-      // Convertir en objets en ignorant les lignes d'instruction
-      const rows = allRows.slice(dataStart).filter(r=>{
-        if(!r.some(c=>c!==null&&c!=='')) return false;
-        // Ignorer si tous les champs non vides sont des instructions
-        const vals = r.filter(c=>c!==null&&c!=='');
-        if(vals.length === 0) return false;
-        if(vals.every(v=>estInstr(v))) return false;
-        return true;
-      }).map(r=>{
-        const obj={};
-        headers.forEach((h,i)=>{if(h) obj[h]=r[i]!==undefined?r[i]:'';});
-        return obj;
-      });
-
-      if(!rows.length){showToast('Aucune donnée trouvée. Vérifiez que vous avez rempli à partir de la ligne '+( dataStart+1)+'.');return;}
-      saisieImportData = [];
-
-      const fmtD = (d)=>{
-        if(!d)return '';
-        if(d instanceof Date)return d.toISOString().split('T')[0];
-        const s=String(d).trim();
-        if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
-        const p=s.split(/[\/\-\.]/);
-        if(p.length===3){if(p[2].length===4)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');return p[0]+'-'+p[1].padStart(2,'0')+'-'+p[2].padStart(2,'0');}
-        return s;
-      };
-      const get = (row, keys)=>{
+      const getCol = (row, patterns) => {
         for(const k of Object.keys(row)){
-          if(keys.some(key=>k.toLowerCase().replace(/[\s_\*\(\)]/g,'').replace(/[éèê]/g,'e').replace(/[àâ]/g,'a').replace(/î/g,'i').replace(/ô/g,'o').replace(/û/g,'u').replace(/ç/g,'c').includes(key.toLowerCase().replace(/[\s_\*\(\)]/g,'').replace(/[éèê]/g,'e').replace(/[àâ]/g,'a').replace(/î/g,'i').replace(/ô/g,'o').replace(/û/g,'u').replace(/ç/g,'c'))))
-            return String(row[k]||'').trim();
-        }return '';
-      };
-
-      rows.forEach((row,i)=>{
-        const errs = [];
-        const date_raw = (() => {
-          // Chercher la colonne Date dans les en-têtes (insensible à la casse et aux *)
-          const dateKey = Object.keys(row).find(k => k.replace(/[\s\*▼↑]/g,'').toLowerCase() === 'date');
-          const val = dateKey ? row[dateKey] : get(row,['date','jour','journee']);
-          // Si c'est un nombre (date Excel sérielle)
-          if(typeof val === 'number') {
-            const d = new Date(Math.round((val - 25569) * 86400 * 1000));
-            return d.toISOString().split('T')[0];
+          if(patterns.some(p => norm(k).includes(norm(p)))){
+            const v = row[k];
+            return v === null || v === undefined ? '' : String(v).trim();
           }
-          // Si c'est une Date JS
-          if(val instanceof Date && !isNaN(val.getTime())) {
-            return val.toISOString().split('T')[0];
-          }
-          return val;
-        })();
-        const date = fmtD(date_raw);
-        const agent    = get(row,['agent','nom','responsable']);
-        const dept     = get(row,['departement','dept','zone']);
-        const village  = get(row,['village','localite','lieu']);
-        const etape    = get(row,['etape','phase','activite','operation']);
-        const ndos     = parseInt(get(row,['dossier','nombre','ndos','traites','production']))||0;
-        const hdep = fmtHeure((() => {
-          const k = Object.keys(row).find(k2 => {
-            const n = k2.replace(/[\s\*▼↑]/g,'').toLowerCase();
-            return n.includes('heuredepart') || n.includes('hdep') || n === 'heuredep' || n.includes('depart');
-          });
-          return k ? row[k] : '';
-        })());
-        const hret = fmtHeure((() => {
-          const k = Object.keys(row).find(k2 => {
-            const n = k2.replace(/[\s\*▼↑]/g,'').toLowerCase();
-            return n.includes('heureretour') || n.includes('hret') || n === 'heureret' || n.includes('retour');
-          });
-          return k ? row[k] : '';
-        })());
-        const km       = parseInt(get(row,['km','kilometre','distance']))||0;
-        const incident = get(row,['incident','probleme','difficulte']);
-        const meteo    = get(row,['meteo','temps','météo'])||'Ensoleillé';
-        const obs      = get(row,['observation','obs','commentaire','remarque']);
-        const superficie = parseFloat(get(row,['superficie','surface','ha','hectare','sup']))||0;
-        const prog_ref = get(row,['programme','prog','ref','reference','prog_ref']);
-        const sp       = get(row,['sousprefecture','sp','sous_pref']);
-        const duree    = get(row,['duree','durée','temps_travail']);
-
-        if(!date)  errs.push('Date manquante');
-        if(!agent) errs.push('Agent manquant');
-        if(!village)errs.push('Village manquant');
-
-        const s = {
-          id:(()=>{
-            // ID basé sur le contenu pour éviter les doublons
-            const key = (date||'')+'_'+(agent||'').replace(/\s/g,'')+'_'+(village||'').replace(/\s/g,'')+'_'+(ndos||0);
-            return 'SAI-'+key.replace(/[^a-zA-Z0-9_-]/g,'').substring(0,30)+'-'+(i%1000);
-          })(),
-          date, agent,
-          dept: dept?(dept.includes('Dép.')?dept:'Dép. '+dept):'',
-          sp, village,
-          etape: etape||'Enquête terrain',
-          ndos, superficie, dossiers:[],
-          hdep: hdep||'07:00', hret: hret||'17:00',
-          duree: duree||'', km, incident, meteo, obs,
-          prog_ref,
-        };
-        saisieImportData.push({s, errs, ligne:i+2});
-      });
-
-      // ── Détection des doublons potentiels ──
-      let totalDoublons = 0;
-      saisieImportData.forEach((d, di) => {
-        if(d.errs.length > 0) return;
-        const s = d.s;
-        // Doublon exact : même ID déjà en base
-        if(saisies.find(x => x.id === s.id)){
-          d.doublon = 'exact'; totalDoublons++; return;
         }
-        // Doublon potentiel : même agent + date + village en base
-        const enBase = saisies.find(x =>
-          x.date === s.date &&
-          x.agent.toLowerCase().trim() === s.agent.toLowerCase().trim() &&
-          x.village.toLowerCase().trim() === s.village.toLowerCase().trim()
-        );
-        if(enBase){ d.doublon = 'base'; d.doublon_ref = enBase.id; totalDoublons++; return; }
-        // Doublon dans le batch lui-même (même agent + date + village)
-        const enBatch = saisieImportData.slice(0, di).find(other =>
-          other.errs.length === 0 && !other.doublon &&
-          other.s.date === s.date &&
-          other.s.agent.toLowerCase().trim() === s.agent.toLowerCase().trim() &&
-          other.s.village.toLowerCase().trim() === s.village.toLowerCase().trim()
-        );
-        if(enBatch){ d.doublon = 'batch'; totalDoublons++; }
+        return '';
+      };
+
+      const fmtDate = v => {
+        if(!v || v === 'N/A') return null;
+        if(v instanceof Date) return isNaN(v) ? null : v.toISOString().split('T')[0];
+        const s = String(v).trim();
+        if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0,10);
+        const p = s.split(/[\/\-\.]/);
+        if(p.length === 3){
+          if(p[2].length === 4) return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');
+          if(p[0].length === 4) return p[0]+'-'+p[1].padStart(2,'0')+'-'+p[2].padStart(2,'0');
+        }
+        return null;
+      };
+
+      const ETAPES_VALIDES = ['DD','RDC','CL','OV','CP','AP','VA'];
+
+      let nbMajM3 = 0, nbNouveauxM3 = 0, nbSaisies = 0, nbIgnores = 0;
+      const saisiesAjouter = [];
+
+      // Ignorer les 3 premières lignes si c'est le modèle (titre + exemple)
+      const dataRows = rows.filter(row => {
+        const num = getCol(row, ['Dossier','NumDossier','numero']);
+        return num && num.length > 3 && !num.startsWith('Ex:') && !num.startsWith('ex:');
       });
 
-      const total = saisieImportData.length;
-      const totalErr = saisieImportData.filter(d=>d.errs.length>0).length;
-      const modal = document.getElementById('saisie-import-modal');
-      const msgDoublons = totalDoublons > 0 ? ` · ⚠ ${totalDoublons} doublon(s) détecté(s)` : '';
-      document.getElementById('saisie-import-info').textContent =
-        total+' saisie(s) détectée(s). '+(totalErr>0?totalErr+' ligne(s) invalides seront ignorées.':'Toutes les lignes sont valides.')+msgDoublons;
-      // Afficher/masquer le bouton "Ignorer les doublons"
-      const btnUpdate = document.getElementById('btn-import-update');
-      if(btnUpdate) btnUpdate.style.display = totalDoublons > 0 ? 'inline-flex' : 'none';
+      dataRows.forEach(row => {
+        const numDossier = getCol(row, ['Dossier','NumDossier','numero']);
+        const prenom     = getCol(row, ['Prenom','prenom demandeur']);
+        const nom        = getCol(row, ['Nom demandeur','Nom','NomDemandeur']);
+        const region     = getCol(row, ['Region','NOM_REGION']);
+        const dept       = getCol(row, ['Departement','dept','NOM_DEPART']);
+        const sp         = getCol(row, ['SousPrefecture','SP','NOM_SSPREF']);
+        const village    = getCol(row, ['Village','NOM_VILLAG']);
+        const code       = getCol(row, ['CodeParcelle','Code','N_DEMCGE']);
+        const superfStr  = getCol(row, ['Superficie','SUPERF','ha']);
+        const etape      = getCol(row, ['Etape','EtapeActuelle']).toUpperCase().trim();
+        const dateStr    = getCol(row, ['DateRealisation','Date','dateCreation']);
+        const agent      = getCol(row, ['AgentCE','Agent','NomCE']);
+        const obs        = getCol(row, ['Observations','obs','commentaire']);
 
-      const etapeBadge = e=>{
-        const m={'Enquête terrain':'var(--blue-lt)','Bornage':'var(--teal-lt)','Constitution':'var(--amber-lt)'};
-        return'<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:'+(m[e]||'var(--surface2)')+'">'+e+'</span>';
-      };
-      const doublonBadge = d => {
-        if(!d.doublon) return '<span style="color:var(--accent);font-weight:500">OK</span>';
-        if(d.doublon === 'exact') return '<span style="color:var(--red-txt);font-weight:500">Doublon exact</span>';
-        if(d.doublon === 'base') return `<span style="color:var(--amber-txt);font-weight:500" title="Déjà en base : ${d.doublon_ref}">⚠ Doublon base</span>`;
-        if(d.doublon === 'batch') return '<span style="color:var(--amber-txt);font-weight:500">⚠ Doublon batch</span>';
-        return '<span style="color:var(--red-txt)">'+d.errs.join(', ')+'</span>';
-      };
+        if(!numDossier){ nbIgnores++; return; }
+        if(etape && !ETAPES_VALIDES.includes(etape)){ nbIgnores++; return; }
 
-      document.getElementById('saisie-import-preview').innerHTML =
-        '<table style="width:100%;border-collapse:collapse;font-size:12px;">'+
-        '<thead><tr style="background:var(--surface2)">'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">L.</th>'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Date</th>'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Agent</th>'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Village</th>'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Étape</th>'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center">Dos.</th>'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left">Statut</th>'+
-        '</tr></thead><tbody>'+
-        saisieImportData.map(d=>{
-          const ok=d.errs.length===0 && !d.doublon;
-          const isErreur = d.errs.length > 0;
-          const isDoublon = !!d.doublon;
-          const bg = isErreur ? 'background:var(--red-lt)' : isDoublon ? 'background:var(--amber-lt)' : '';
-          return'<tr style="border-bottom:1px solid var(--border);'+bg+'">'+
-            '<td style="padding:4px 8px;color:var(--text3)">'+d.ligne+'</td>'+
-            '<td style="padding:4px 8px;font-family:DM Mono,monospace;font-size:11px">'+d.s.date+'</td>'+
-            '<td style="padding:4px 8px;font-weight:500">'+d.s.agent+'</td>'+
-            '<td style="padding:4px 8px">'+d.s.village+'</td>'+
-            '<td style="padding:4px 8px">'+etapeBadge(d.s.etape)+'</td>'+
-            '<td style="padding:4px 8px;text-align:center;font-weight:600;color:var(--accent)">'+d.s.ndos+'</td>'+
-            '<td style="padding:4px 8px">'+(isErreur ? '<span style="color:var(--red-txt)">'+d.errs.join(', ')+'</span>' : doublonBadge(d))+'</td>'+
-          '</tr>';
-        }).join('')+'</tbody></table>';
+        const dateFormatted = fmtDate(dateStr) || new Date().toISOString().split('T')[0];
+        const superf = parseFloat(superfStr) || 0;
 
-      if(totalErr>0){
-        document.getElementById('saisie-import-errors').style.display='block';
-        document.getElementById('saisie-import-errors').textContent=totalErr+' ligne(s) incomplètes ignorées.';
-      } else {
-        document.getElementById('saisie-import-errors').style.display='none';
+        // ── Mettre à jour ou créer dans M3 (dossiersAFOR) ──
+        const idxAfor = dossiersAFOR.findIndex(d => d.id === numDossier);
+
+        if(idxAfor >= 0){
+          // Dossier existant → mettre à jour
+          const dos = dossiersAFOR[idxAfor];
+          let modif = false;
+
+          // Mettre à jour l'étape si plus avancée
+          if(etape && ETAPES_CF.indexOf(etape) >= ETAPES_CF.indexOf(dos.etape||'DD')){
+            dos.etape = etape;
+            dos['date_'+etape] = dateFormatted;
+            modif = true;
+          }
+
+          // Mettre à jour les infos manquantes
+          if(agent && !dos.agent){ dos.agent = agent; modif = true; }
+          if(code  && !dos.code_parcelle){ dos.code_parcelle = code; modif = true; }
+          if(superf > 0 && !dos.superficie_gnss){ dos.superficie_gnss = superf; modif = true; }
+          if(village && !dos.village){ dos.village = village; modif = true; }
+          if(sp && !dos.sp){ dos.sp = sp; modif = true; }
+          if(dept && !dos.dept){ dos.dept = dept.toUpperCase(); modif = true; }
+
+          if(modif) nbMajM3++;
+          else nbIgnores++;
+
+        } else {
+          // Dossier non trouvé → créer dans M3
+          const newDos = {
+            id: numDossier,
+            prenom: prenom || '',
+            nom_demandeur: nom || '',
+            dept: (dept||'').toUpperCase(),
+            sp: sp || '',
+            village: village || '',
+            agent: agent || '',
+            code_parcelle: code || '',
+            superficie_gnss: superf || 0,
+            type: 'CFI',
+            etape: etape || 'DD',
+            _src: 'saisie_terrain',
+            _date_import: dateFormatted,
+          };
+          if(etape) newDos['date_'+etape] = dateFormatted;
+          dossiersAFOR.push(newDos);
+          nbNouveauxM3++;
+        }
+
+        // ── Créer la saisie dans M2 ──
+        const saisie = {
+          id: 'SAI-' + Date.now() + '-' + Math.random().toString(36).substr(2,5),
+          date: dateFormatted,
+          agent: agent || '',
+          dept: (dept||'').toUpperCase(),
+          sp: sp || '',
+          village: village || '',
+          num_dossier: numDossier,
+          prenom: prenom || '',
+          nom: nom || '',
+          etape: etape || '',
+          code_parcelle: code || '',
+          superficie: superf || 0,
+          obs: obs || '',
+          _src: 'import_terrain',
+        };
+        saisiesAjouter.push(saisie);
+        nbSaisies++;
+      });
+
+      // Ajouter les saisies
+      saisies.push(...saisiesAjouter);
+
+      // Sauvegarder M3 (AFOR) et M2 (saisies)
+      if(nbMajM3 > 0 || nbNouveauxM3 > 0){
+        aforSaveToFirebase().catch(()=>{});
+        gnssRebuildSuperfIndex();
       }
-      modal.style.display='flex';
-    }catch(err){showToast('Erreur lecture : '+err.message);}
+      scheduleSave();
+      serverSave();
+
+      // Rafraîchir les modules
+      if(typeof dosRenderAll === 'function') dosRenderAll();
+      if(typeof saisieRenderAll === 'function') saisieRenderAll();
+
+      const msg = `Import terrain : ${nbSaisies} saisies · ${nbMajM3} dossiers M3 mis à jour · ${nbNouveauxM3} nouveaux · ${nbIgnores} ignorés`;
+      showToast(msg);
+      console.log(msg);
+
+    }catch(err){
+      showToast('Erreur import terrain : ' + err.message);
+      console.error(err);
+    }
   };
   reader.readAsArrayBuffer(file);
 }
