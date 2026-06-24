@@ -3891,8 +3891,12 @@ function dosRenderKPI(filtered){
 
   // Superficie : total brut GNSS si pas de filtre, index si filtré
   let totalHa = 0;
+  const fStatut = document.getElementById('dos-f-statut')?.value||'';
   if(!filtered){
     totalHa = (gnssData||[]).reduce((s,g)=>s+(g.superficie||0),0);
+  } else if(fStatut === 'sans_leve'){
+    // CF sans levé GNSS → superficie GNSS = 0 par définition
+    totalHa = 0;
   } else {
     totalHa = tous.reduce((s,d)=>s+(_gnssSuperfIndex?.[d.id]||0),0);
   }
