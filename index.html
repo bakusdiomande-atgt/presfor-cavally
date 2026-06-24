@@ -8325,8 +8325,12 @@ const AFOR_COLS = {
 // Mapping normalisé des étapes (fichier → standard)
 function aforNormEtape(e){
   if(!e) return '';
-  const m={'DD':'DD','RDC':'RDC','CL':'CL','OV':'OV','OP':'OV','CP':'CP','AP':'AP','VA':'VA'};
-  return m[String(e).trim().toUpperCase()] || '';
+  const m={
+    'DD':'DD','RDC':'RDC','CL':'CL','OV':'OV','OP':'OV',
+    'CP':'CP','AP':'AP','VA':'VA','CE':'CL',
+    'DEMANDE':'DD','CONSTAT':'CL','PUBLICITE':'OV','VALIDATION':'VA'
+  };
+  return m[String(e).trim().toUpperCase()] || String(e).trim().toUpperCase() || 'DD';
 }
 
 // Calculer durée en jours entre deux dates
@@ -8460,7 +8464,7 @@ function aforImportExcel(input){
         const num = row[AFOR_COLS.num];
         const etapeRaw = row[AFOR_COLS.etape];
         const etape = aforNormEtape(etapeRaw);
-        if(!num || !etape) {ignore++; return;}
+        if(!num) {ignore++; return;} // Accepter même sans étape reconnue
         const fmtD = v => {
           if(!v) return null;
           if(v instanceof Date) return isNaN(v)?null:v.toISOString().split('T')[0];
