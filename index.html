@@ -4823,9 +4823,24 @@ function agRenderList(){
     // Fiches CF : compter depuis dossiersAFOR (noms normalisés à l'import)
     // Stats AFOR depuis M3
     const normAg = s => (s||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    // Trouver tous les noms canoniques correspondant à cet agent
+    const agNomCourt = a.nom; // ex: "Diby Arnaud"
+    // Chercher dans AFOR_AGENT_MAP les clés qui donnent ce nom court
+    const agNomsOriginaux = new Set([agNomCourt]);
+    Object.entries(AFOR_AGENT_MAP).forEach(([raw, mapped]) => {
+      if(normAg(mapped) === normAg(agNomCourt) || normAg(raw) === normAg(agNomCourt)) {
+        agNomsOriginaux.add(raw);
+        agNomsOriginaux.add(mapped);
+      }
+    });
     const fichesCF = (dossiersAFOR||[]).filter(d => {
-      const canon = (AFOR_AGENT_MAP && AFOR_AGENT_MAP[d.agent]) || d.agent;
-      return normAg(canon) === normAg(a.nom) || normAg(d.agent) === normAg(a.nom);
+      const agentTest = d.agent_raw || d.agent || '';
+      const agentMapped = AFOR_AGENT_MAP[agentTest] || agentTest;
+      return agNomsOriginaux.has(d.agent) ||
+             agNomsOriginaux.has(agentTest) ||
+             agNomsOriginaux.has(agentMapped) ||
+             normAg(d.agent) === normAg(agNomCourt) ||
+             normAg(agentMapped) === normAg(agNomCourt);
     });
     const nbFichesCF = fichesCF.length;
     const parEtapeCF = {};
@@ -4980,12 +4995,20 @@ function agOpenFiche(nom){
   
   // Calculer les stats CF depuis M3 (dossiersAFOR)
   const normAgent = s => (s||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  // Construire l'ensemble des noms originaux de cet agent
+  const agNomsSet = new Set([nom]);
+  Object.entries(AFOR_AGENT_MAP||{}).forEach(([raw, mapped]) => {
+    if(normAgent(mapped) === normAgent(nom) || normAgent(raw) === normAgent(nom)){
+      agNomsSet.add(raw); agNomsSet.add(mapped);
+    }
+  });
   const mesFichesCF = (dossiersAFOR||[]).filter(d => {
-    const canon = (typeof AFOR_AGENT_MAP!=='undefined' && AFOR_AGENT_MAP) 
-      ? (AFOR_AGENT_MAP[d.agent] || d.agent) : d.agent;
-    const canonA = (typeof AFOR_AGENT_MAP!=='undefined' && AFOR_AGENT_MAP)
-      ? (AFOR_AGENT_MAP[nom] || nom) : nom;
-    return normAgent(canon) === normAgent(canonA);
+    const agentRaw = d.agent_raw || d.agent || '';
+    const agentMapped = (AFOR_AGENT_MAP||{})[agentRaw] || agentRaw;
+    return agNomsSet.has(d.agent) || agNomsSet.has(agentRaw) ||
+           agNomsSet.has(agentMapped) ||
+           normAgent(d.agent) === normAgent(nom) ||
+           normAgent(agentMapped) === normAgent(nom);
   });
   const nbCFI = mesFichesCF.filter(d=>d.type==='CFI').length;
   const nbCFC = mesFichesCF.filter(d=>d.type==='CFC').length;
