@@ -1706,6 +1706,9 @@ function geoUpdateVillage(deptId, spId, vilId) {
 // ════════════════════════════════════════
 let programmes = [];
 let saisies = [];
+let saisiesFiltered = [];
+let saisiesPage = 0;
+const SAISIES_PAGE_SIZE = 50;
 let dossiers = [];
 let dosEditingId = null;
 let saisieEditingId = null;
@@ -9802,8 +9805,7 @@ setTimeout(syncPoll, 10000);
 // ═══════════════════════════════════════════
 
 // Données saisies (remise à zéro — nouveau format)
-// saisies, saisiesFiltered, saisiesPage déjà déclarés plus haut
-const SAISIES_PAGE_SIZE = 50;
+// saisies, saisiesFiltered, saisiesPage, SAISIES_PAGE_SIZE déclarés plus haut
 // Charger depuis localStorage (nouveau format v2)
 try {
   const savedV2 = localStorage.getItem('presfor_saisies_v2');
