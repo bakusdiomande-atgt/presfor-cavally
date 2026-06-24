@@ -4823,24 +4823,33 @@ function agRenderList(){
     // Fiches CF : compter depuis dossiersAFOR (noms normalisés à l'import)
     // Stats AFOR depuis M3
     const normAg = s => (s||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    // Trouver tous les noms canoniques correspondant à cet agent
-    const agNomCourt = a.nom; // ex: "Diby Arnaud"
-    // Chercher dans AFOR_AGENT_MAP les clés qui donnent ce nom court
-    const agNomsOriginaux = new Set([agNomCourt]);
-    Object.entries(AFOR_AGENT_MAP).forEach(([raw, mapped]) => {
-      if(normAg(mapped) === normAg(agNomCourt) || normAg(raw) === normAg(agNomCourt)) {
-        agNomsOriginaux.add(raw);
-        agNomsOriginaux.add(mapped);
+    // Matching agent : chercher par nom court ET nom original (AFOR_AGENT_MAP dans les deux sens)
+    const agNomCourt = a.nom;
+    // Construire ensemble de tous les noms liés à cet agent
+    const agNoms = new Set([normAg(agNomCourt)]);
+    Object.entries(AFOR_AGENT_MAP||{}).forEach(([raw, mapped]) => {
+      if(normAg(mapped) === normAg(agNomCourt) || normAg(raw) === normAg(agNomCourt)){
+        agNoms.add(normAg(raw));
+        agNoms.add(normAg(mapped));
+      }
+    });
+    // Aussi chercher dans AGENTS_CE_CANONIQUES pour les correspondances
+    (AGENTS_CE_CANONIQUES||[]).forEach(canon => {
+      if(normAg(canon) === normAg(agNomCourt)){
+        agNoms.add(normAg(canon));
+        // Ajouter toutes les variantes de ce nom canonique
+        Object.entries(AFOR_AGENT_MAP||{}).forEach(([raw, mapped]) => {
+          if(normAg(mapped) === normAg(canon) || normAg(raw) === normAg(canon)){
+            agNoms.add(normAg(raw));
+            agNoms.add(normAg(mapped));
+          }
+        });
       }
     });
     const fichesCF = (dossiersAFOR||[]).filter(d => {
-      const agentTest = d.agent_raw || d.agent || '';
-      const agentMapped = AFOR_AGENT_MAP[agentTest] || agentTest;
-      return agNomsOriginaux.has(d.agent) ||
-             agNomsOriginaux.has(agentTest) ||
-             agNomsOriginaux.has(agentMapped) ||
-             normAg(d.agent) === normAg(agNomCourt) ||
-             normAg(agentMapped) === normAg(agNomCourt);
+      const ag = d.agent_raw || d.agent || '';
+      const agMapped = (AFOR_AGENT_MAP||{})[ag] || ag;
+      return agNoms.has(normAg(ag)) || agNoms.has(normAg(agMapped));
     });
     const nbFichesCF = fichesCF.length;
     const parEtapeCF = {};
@@ -4995,20 +5004,28 @@ function agOpenFiche(nom){
   
   // Calculer les stats CF depuis M3 (dossiersAFOR)
   const normAgent = s => (s||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  // Construire l'ensemble des noms originaux de cet agent
-  const agNomsSet = new Set([nom]);
+  // Matching agent : tous les noms liés via AFOR_AGENT_MAP
+  const agNomsSet = new Set([normAgent(nom)]);
   Object.entries(AFOR_AGENT_MAP||{}).forEach(([raw, mapped]) => {
-    if(normAgent(mapped) === normAgent(nom) || normAgent(raw) === normAgent(nom)){
-      agNomsSet.add(raw); agNomsSet.add(mapped);
+    if(normAgent(mapped)===normAgent(nom)||normAgent(raw)===normAgent(nom)){
+      agNomsSet.add(normAgent(raw));
+      agNomsSet.add(normAgent(mapped));
+    }
+  });
+  (AGENTS_CE_CANONIQUES||[]).forEach(canon => {
+    if(normAgent(canon)===normAgent(nom)){
+      agNomsSet.add(normAgent(canon));
+      Object.entries(AFOR_AGENT_MAP||{}).forEach(([raw,mapped])=>{
+        if(normAgent(mapped)===normAgent(canon)||normAgent(raw)===normAgent(canon)){
+          agNomsSet.add(normAgent(raw)); agNomsSet.add(normAgent(mapped));
+        }
+      });
     }
   });
   const mesFichesCF = (dossiersAFOR||[]).filter(d => {
-    const agentRaw = d.agent_raw || d.agent || '';
-    const agentMapped = (AFOR_AGENT_MAP||{})[agentRaw] || agentRaw;
-    return agNomsSet.has(d.agent) || agNomsSet.has(agentRaw) ||
-           agNomsSet.has(agentMapped) ||
-           normAgent(d.agent) === normAgent(nom) ||
-           normAgent(agentMapped) === normAgent(nom);
+    const ag = d.agent_raw || d.agent || '';
+    const agMapped = (AFOR_AGENT_MAP||{})[ag] || ag;
+    return agNomsSet.has(normAgent(ag)) || agNomsSet.has(normAgent(agMapped));
   });
   const nbCFI = mesFichesCF.filter(d=>d.type==='CFI').length;
   const nbCFC = mesFichesCF.filter(d=>d.type==='CFC').length;
@@ -9776,6 +9793,7 @@ setTimeout(syncPoll, 10000);
 
 // Données saisies (remise à zéro — nouveau format)
 // saisies, saisiesFiltered, saisiesPage déjà déclarés plus haut
+const SAISIES_PAGE_SIZE = 50;
 // Charger depuis localStorage (nouveau format v2)
 try {
   const savedV2 = localStorage.getItem('presfor_saisies_v2');
