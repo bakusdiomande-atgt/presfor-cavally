@@ -9713,80 +9713,18 @@ switchModule('accueil');
 setTimeout(notifCheck, 3000);
 setTimeout(syncPoll, 10000);
 
-</script>
 
 
-<!-- ══ MODAL DOSSIERS EN RETARD ══ -->
-<div id="retard-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:8000;align-items:flex-start;justify-content:center;padding:40px 16px;box-sizing:border-box;overflow-y:auto;">
-  <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);width:100%;max-width:900px;overflow:hidden;">
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--border);">
-      <div>
-        <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;">Dossiers CF en retard</div>
-        <div id="retard-modal-subtitle" style="font-size:12px;color:var(--text2);margin-top:2px;"></div>
-      </div>
-      <button onclick="document.getElementById('retard-modal').style.display='none'" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);">×</button>
-    </div>
-    <div style="padding:0 24px 8px;">
-      <div class="filter-bar" style="padding:10px 0;">
-        <select id="retard-f-dept" onchange="retardRenderList()">
-          <option value="">Tous les dép.</option>
-          <option value="GUIGLO">Guiglo</option>
-          <option value="BLOLEQUIN">Bloléquin</option>
-          <option value="TAI">Taï</option>
-          <option value="TOULEPLEU">Toulépleu</option>
-        </select>
-        <select id="retard-f-etape" onchange="retardRenderList()">
-          <option value="">Toutes les étapes</option>
-          <option value="DD">DD — Demande</option>
-          <option value="RDC">RDC</option>
-          <option value="CL">CL</option>
-          <option value="OV">OV</option>
-          <option value="CP">CP</option>
-          <option value="AP">AP</option>
-        </select>
-        <select id="retard-f-agent" onchange="retardRenderList()">
-          <option value="">Tous les agents</option>
-        </select>
-      </div>
-    </div>
-    <div style="overflow-x:auto;max-height:60vh;overflow-y:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <thead style="position:sticky;top:0;background:var(--surface2);z-index:1;">
-          <tr>
-            <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);">N° Dossier</th>
-            <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);">Demandeur</th>
-            <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);">Localisation</th>
-            <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);">Agent CE</th>
-            <th style="padding:9px 12px;text-align:center;font-size:11px;font-weight:600;color:var(--text2);">Étape</th>
-            <th style="padding:9px 12px;text-align:right;font-size:11px;font-weight:600;color:#DC2626;">Retard</th>
-            <th style="padding:9px 12px;text-align:right;font-size:11px;font-weight:600;color:var(--text2);">Seuil</th>
-          </tr>
-        </thead>
-        <tbody id="retard-modal-tbody"></tbody>
-      </table>
-    </div>
-    <div style="padding:12px 24px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);display:flex;justify-content:space-between;">
-      <span id="retard-modal-count"></span>
-      <button onclick="retardExportCSV()" style="background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;font-weight:600;">↓ Exporter CSV</button>
-    </div>
-  </div>
-</div>
-
-</body>
-</html>// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
 // MODULE SAISIE QUOTIDIENNE — Terrain CE & GNSS
 // ═══════════════════════════════════════════
 
 // Données saisies (remise à zéro — nouveau format)
-let saisies = [];
-let saisiesFiltered = [];
-let saisiesPage = 0;
-const SAISIES_PAGE_SIZE = 50;
-
-// Charger depuis localStorage
+// saisies, saisiesFiltered, saisiesPage déjà déclarés plus haut
+// Charger depuis localStorage (nouveau format v2)
 try {
-  const saved = localStorage.getItem('presfor_saisies_v2');
-  if(saved) saisies = JSON.parse(saved);
+  const savedV2 = localStorage.getItem('presfor_saisies_v2');
+  if(savedV2) saisies = JSON.parse(savedV2);
 } catch(e) {}
 
 function saisiesSave(){
@@ -10045,3 +9983,66 @@ function saisieExportCSV(){
 }
 
 
+
+
+</script>
+
+
+<!-- ══ MODAL DOSSIERS EN RETARD ══ -->
+<div id="retard-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:8000;align-items:flex-start;justify-content:center;padding:40px 16px;box-sizing:border-box;overflow-y:auto;">
+  <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);width:100%;max-width:900px;overflow:hidden;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--border);">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;">Dossiers CF en retard</div>
+        <div id="retard-modal-subtitle" style="font-size:12px;color:var(--text2);margin-top:2px;"></div>
+      </div>
+      <button onclick="document.getElementById('retard-modal').style.display='none'" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);">×</button>
+    </div>
+    <div style="padding:0 24px 8px;">
+      <div class="filter-bar" style="padding:10px 0;">
+        <select id="retard-f-dept" onchange="retardRenderList()">
+          <option value="">Tous les dép.</option>
+          <option value="GUIGLO">Guiglo</option>
+          <option value="BLOLEQUIN">Bloléquin</option>
+          <option value="TAI">Taï</option>
+          <option value="TOULEPLEU">Toulépleu</option>
+        </select>
+        <select id="retard-f-etape" onchange="retardRenderList()">
+          <option value="">Toutes les étapes</option>
+          <option value="DD">DD — Demande</option>
+          <option value="RDC">RDC</option>
+          <option value="CL">CL</option>
+          <option value="OV">OV</option>
+          <option value="CP">CP</option>
+          <option value="AP">AP</option>
+        </select>
+        <select id="retard-f-agent" onchange="retardRenderList()">
+          <option value="">Tous les agents</option>
+        </select>
+      </div>
+    </div>
+    <div style="overflow-x:auto;max-height:60vh;overflow-y:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead style="position:sticky;top:0;background:var(--surface2);z-index:1;">
+          <tr>
+            <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);">N° Dossier</th>
+            <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);">Demandeur</th>
+            <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);">Localisation</th>
+            <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);">Agent CE</th>
+            <th style="padding:9px 12px;text-align:center;font-size:11px;font-weight:600;color:var(--text2);">Étape</th>
+            <th style="padding:9px 12px;text-align:right;font-size:11px;font-weight:600;color:#DC2626;">Retard</th>
+            <th style="padding:9px 12px;text-align:right;font-size:11px;font-weight:600;color:var(--text2);">Seuil</th>
+          </tr>
+        </thead>
+        <tbody id="retard-modal-tbody"></tbody>
+      </table>
+    </div>
+    <div style="padding:12px 24px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);display:flex;justify-content:space-between;">
+      <span id="retard-modal-count"></span>
+      <button onclick="retardExportCSV()" style="background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;font-weight:600;">↓ Exporter CSV</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
