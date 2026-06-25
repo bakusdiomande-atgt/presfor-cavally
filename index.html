@@ -1,4 +1,4 @@
- <thead><tr>
+<thead><tr>
   <th>N° Dossier</th>
   <th>Prénom · Nom</th>
   <th>Localisation</th>
@@ -8462,8 +8462,12 @@ function aforImportExcel(input){
   const reader = new FileReader();
   reader.onload = function(e){
     try{
-      const wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      const wb = XLSX.read(e.target.result, {type:'array', cellDates:true, cellNF:false, cellHTML:false});
       const ws = wb.Sheets[wb.SheetNames[0]];
+      // Limiter aux colonnes nécessaires (A→V = 22 cols) pour éviter plantage sur motifs de rejet
+      const range = XLSX.utils.decode_range(ws['!ref']||'A1');
+      range.e.c = 21; // Colonne V (index 21 = col 22)
+      ws['!ref'] = XLSX.utils.encode_range(range);
       const rows = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false});
       if(!rows.length){showToast('Fichier vide.');return;}
       let nb=0, ignore=0;
