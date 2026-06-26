@@ -8459,6 +8459,7 @@ function aforImportExcel(input){
   if(!file) return;
   input.value='';
   if(typeof XLSX === 'undefined'){showToast('Bibliothèque Excel non chargée.'); return;}
+  
   showToast('Lecture du fichier AFOR...');
   const reader = new FileReader();
   reader.onload = function(e){
