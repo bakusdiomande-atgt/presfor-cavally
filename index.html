@@ -987,7 +987,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
           <label class="btn-s" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:var(--blue-lt);color:var(--blue-txt);border-color:var(--blue);" title="Importer base AFOR (CF)" id="btn-afor-import" class="btn-s viewer-hidden">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
             <span id="afor-btn-label">Base AFOR</span>
-            <input type="file" id="afor-import-file" accept=".xlsx,.xls" style="display:none" onchange="aforImportExcel(this)">
+            <input type="file" id="afor-import-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="aforImportExcel(this)">
           </label>
           <button class="btn-s" onclick="dosExportCSV()" style="display:inline-flex;align-items:center;gap:5px;">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
@@ -3140,6 +3140,7 @@ function saisieImportExcel(input){
   input.value = '';
   if(typeof XLSX==='undefined'){showToast('Bibliothèque Excel non chargée.');return;}
   showToast('Lecture du fichier terrain...');
+  const isCsv = file.name.toLowerCase().endsWith('.csv');
   const reader = new FileReader();
   reader.onload = function(e){
     try{
@@ -8462,22 +8463,35 @@ function aforImportExcel(input){
   const reader = new FileReader();
   reader.onload = function(e){
     try{
-      const wb = XLSX.read(e.target.result, {type:'array', cellDates:true, cellNF:false, cellHTML:false});
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      // Limiter aux colonnes nécessaires (A→V = 22 cols) pour éviter plantage sur motifs de rejet
-      const range = XLSX.utils.decode_range(ws['!ref']||'A1');
-      range.e.c = 21; // Limiter à col V (index 21) pour éviter les colonnes problématiques
-      ws['!ref'] = XLSX.utils.encode_range(range);
-      // Nettoyer les cellules avec contenu problématique avant parsing
-      const cellKeys = Object.keys(ws).filter(k => k[0] !== '!');
-      cellKeys.forEach(k => {
-        const cell = ws[k];
-        if(cell && cell.v && typeof cell.v === 'string' && cell.v.length > 500){
-          cell.v = cell.v.substring(0, 200); // Tronquer les valeurs très longues
-          cell.w = cell.v;
-        }
-      });
-      const rows = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false, blankrows:false});
+      let rows;
+      if(isCsv){
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/).filter(l=>l.trim());
+        const hdrs = lines[0].split(',').map(h=>h.replace(/^"|"$/g,'').trim());
+        const parseCSVLine = line => {
+          const vals=[]; let cur='', inQ=false;
+          for(let i=0;i<line.length;i++){
+            if(line[i]==='"'){inQ=!inQ;}
+            else if(line[i]===',' && !inQ){vals.push(cur.trim());cur='';}
+            else cur+=line[i];
+          }
+          vals.push(cur.trim());
+          return vals;
+        };
+        rows = lines.slice(1).map(line=>{
+          const vals=parseCSVLine(line);
+          const obj={};
+          hdrs.forEach((h,i)=>{obj[h]=vals[i]||null;});
+          return obj;
+        }).filter(r=>r[hdrs[0]]);
+      } else {
+        const wb = XLSX.read(e.target.result, {type:'array', cellDates:true, cellNF:false, cellHTML:false});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const range = XLSX.utils.decode_range(ws['!ref']||'A1');
+        range.e.c = 21;
+        ws['!ref'] = XLSX.utils.encode_range(range);
+        rows = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false, blankrows:false});
+      }
       if(!rows.length){showToast('Fichier vide.');return;}
       let nb=0, ignore=0;
       const imported = [];
@@ -8582,8 +8596,8 @@ function aforImportExcel(input){
       }
     }catch(err){showToast('Erreur lecture : '+err.message); console.error(err);}
   };
-  reader.readAsArrayBuffer(file);
-}
+    if(isCsv) reader.readAsText(file, 'UTF-8');
+  else reader.readAsArrayBuffer(file);}
 
 function aforRenderAll(){
   gnssRebuildSuperfIndex();
