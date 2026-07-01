@@ -8459,32 +8459,34 @@ function aforImportExcel(input){
   if(!file) return;
   input.value='';
   if(typeof XLSX === 'undefined'){showToast('Bibliothèque Excel non chargée.'); return;}
-  
   showToast('Lecture du fichier AFOR...');
+  const isCsvFile = file.name.toLowerCase().endsWith('.csv');
   const reader = new FileReader();
   reader.onload = function(e){
     try{
-      let rows;
-      if(isCsv){
+      let rows = [];
+      if(isCsvFile){
         const text = e.target.result;
         const lines = text.split(/\r?\n/).filter(l=>l.trim());
+        if(!lines.length){showToast('Fichier CSV vide.');return;}
         const hdrs = lines[0].split(',').map(h=>h.replace(/^"|"$/g,'').trim());
         const parseCSVLine = line => {
           const vals=[]; let cur='', inQ=false;
-          for(let i=0;i<line.length;i++){
-            if(line[i]==='"'){inQ=!inQ;}
-            else if(line[i]===',' && !inQ){vals.push(cur.trim());cur='';}
-            else cur+=line[i];
+          for(let i2=0;i2<line.length;i2++){
+            if(line[i2]==='"'){inQ=!inQ;}
+            else if(line[i2]===',' && !inQ){vals.push(cur);cur='';}
+            else cur+=line[i2];
           }
-          vals.push(cur.trim());
+          vals.push(cur);
           return vals;
         };
         rows = lines.slice(1).map(line=>{
           const vals=parseCSVLine(line);
           const obj={};
-          hdrs.forEach((h,i)=>{obj[h]=vals[i]||null;});
+          hdrs.forEach((h,i2)=>{obj[h]=(vals[i2]||'').replace(/^"|"$/g,'').trim()||null;});
           return obj;
         }).filter(r=>r[hdrs[0]]);
+        console.log('CSV lu:', rows.length, 'lignes');
       } else {
         const wb = XLSX.read(e.target.result, {type:'array', cellDates:true, cellNF:false, cellHTML:false});
         const ws = wb.Sheets[wb.SheetNames[0]];
@@ -8492,6 +8494,7 @@ function aforImportExcel(input){
         range.e.c = 21;
         ws['!ref'] = XLSX.utils.encode_range(range);
         rows = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false, blankrows:false});
+        console.log('XLSX lu:', rows.length, 'lignes');
       }
       if(!rows.length){showToast('Fichier vide.');return;}
       let nb=0, ignore=0;
@@ -8595,10 +8598,12 @@ function aforImportExcel(input){
          document.getElementById('dos-panel-list').classList.contains('active')){
         dosRenderAll();
       }
-    }catch(err){showToast('Erreur lecture : '+err.message); console.error(err);}
+    
+    }catch(err){showToast('Erreur: '+err.message); console.error('aforImport:', err);}
   };
-    if(isCsv) reader.readAsText(file, 'UTF-8');
-  else reader.readAsArrayBuffer(file);}
+  if(isCsvFile) reader.readAsText(file, 'UTF-8');
+  else reader.readAsArrayBuffer(file);
+}
 
 function aforRenderAll(){
   gnssRebuildSuperfIndex();
