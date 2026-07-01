@@ -3607,7 +3607,12 @@ function dosRenderKPI(filtered){
     // CF sans levé GNSS → superficie GNSS = 0 par définition
     totalHa = 0;
   } else {
-    totalHa = tous.reduce((s,d)=>s+(_gnssSuperfIndex?.[d.id]||0),0);
+    // Les lignes GNSS orphelines (sans dossier AFOR) n'ont pas d'entrée dans _gnssSuperfIndex
+    // (indexé par ID de dossier AFOR) : on lit alors directement leur superficie GNSS.
+    totalHa = tous.reduce((s,d)=>{
+      if(d._src==='gnss') return s + (d._gnss?.superficie || 0);
+      return s + (_gnssSuperfIndex?.[d.id]||0);
+    }, 0);
   }
 
   const kpiEl = document.getElementById('dos-kpi');
@@ -9965,8 +9970,8 @@ async function adminResetPwd(){
 // ═══════════════════════════════════════════
 // INIT GLOBAL
 // ═══════════════════════════════════════════
-document.getElementById('hdate').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
-document.getElementById('sf-date').value=new Date().toISOString().split('T')[0];
+{ const _hdate = document.getElementById('hdate'); if(_hdate) _hdate.textContent=new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long',year:'numeric'}); }
+{ const _sfdate = document.getElementById('sf-date'); if(_sfdate) _sfdate.value=new Date().toISOString().split('T')[0]; }
 
 function buildAgentOptions(selectId, allOption) {
   const sel = document.getElementById(selectId);
