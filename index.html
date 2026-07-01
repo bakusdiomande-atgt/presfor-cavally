@@ -997,6 +997,10 @@ tbody td{padding:9px 12px;vertical-align:middle;}
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
             Doublons supprimés
           </button>
+          <button class="btn-s" onclick="gnssExportOrphansCSV()" title="Exporter les parcelles GNSS sans correspondance parfaite avec la base AFOR" style="display:inline-flex;align-items:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+            Parcelles GNSS à vérifier
+          </button>
           <button class="btn-s" onclick="dosExportCSV()" style="display:inline-flex;align-items:center;gap:5px;">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
             Exporter CSV
@@ -3585,12 +3589,14 @@ function dosGetSuperficie(d){
 }
 
 function dosRenderKPI(filtered){
-  const tous = filtered ? filtered : [...dossiers, ...dossiersAFOR];
+  const gnssOrphans = (!filtered && typeof gnssGetOrphanEntries==='function') ? gnssGetOrphanEntries() : [];
+  const tous = filtered ? filtered : [...dossiers, ...dossiersAFOR, ...gnssOrphans];
   const tot  = tous.length;
   const retards = tous.filter(d=>aforCalcRetard(d).retard).length;
   const va      = tous.filter(d=>d.etape==='VA').length;
   const manuel  = filtered ? filtered.filter(d=>!d._src||d._src==='manuel').length : dossiers.length;
   const afor    = filtered ? filtered.filter(d=>d._src==='afor').length            : dossiersAFOR.length;
+  const gnssSeul = filtered ? filtered.filter(d=>d._src==='gnss').length           : gnssOrphans.length;
 
   // Superficie : total brut GNSS si pas de filtre, index si filtré
   let totalHa = 0;
@@ -3609,7 +3615,7 @@ function dosRenderKPI(filtered){
   const isFiltered = !!filtered;
   const lbl = isFiltered ? ' <span style="font-size:9px;background:var(--accent);color:#fff;padding:1px 5px;border-radius:8px;">filtré</span>' : '';
   kpiEl.innerHTML =
-    `<div class="kpi blue"><div class="kpi-l">Total dossiers</div><div class="kpi-v">${tot.toLocaleString('fr-FR')}${lbl}</div><div class="kpi-s">${manuel} manuels · ${afor} AFOR</div></div>
+    `<div class="kpi blue"><div class="kpi-l">Total dossiers</div><div class="kpi-v">${tot.toLocaleString('fr-FR')}${lbl}</div><div class="kpi-s">${manuel} manuels · ${afor} AFOR${gnssSeul?(' · '+gnssSeul+' GNSS seul'):''}</div></div>
      <div class="kpi ${retards>0?'red':'green'}"><div class="kpi-l">En retard</div><div class="kpi-v">${retards}</div><div class="kpi-s">${tot>0?Math.round(retards/tot*100):0}%</div></div>
      <div class="kpi green"><div class="kpi-l">Validés (VA)</div><div class="kpi-v">${va}</div><div class="kpi-s">${tot>0?Math.round(va/tot*100):0}%</div></div>
      <div class="kpi amber"><div class="kpi-l">CFI / CFC</div><div class="kpi-v">${tous.filter(d=>d.type==='CFI').length}</div><div class="kpi-s">${tous.filter(d=>d.type==='CFC').length} CFC</div></div>
@@ -3625,34 +3631,9 @@ function dosRenderList(){
   const fs = document.getElementById('dos-f-statut')?.value||'';
 
   // ══ Combinaison dossiers + parcelles GNSS ══
-  // PASSE 1 : identifier les entrées GNSS matchées par un dossier AFOR ou manuel
-  const gnssMatchedSet = new Set(); // indices dans gnssData déjà liés à un dossier
-  const tousAfor = [...dossiers, ...(dossiersAFOR||[])];
-  tousAfor.forEach(d=>{
-    const info = typeof gnssForDossier==='function' ? gnssForDossier(d) : null;
-    if(info && info.entries) info.entries.forEach(e=>{
-      const idx = gnssData.indexOf(e);
-      if(idx>=0) gnssMatchedSet.add(idx);
-    });
-  });
-
-  // PASSE 2 : parcelles GNSS non liées à aucun dossier → lignes autonomes
-  const gnssSansAfor = (gnssData||[])
-    .map((g, idx)=>({ g, idx }))
-    .filter(({idx})=>!gnssMatchedSet.has(idx))
-    .map(({g, idx})=>({
-      id: g.n_demcge || ('GNSS-'+idx),
-      prenom: '',
-      nom: g.nom_demand||'',
-      nom_demandeur: g.nom_demand||'',
-      village: g.village||'',
-      sp: g.sp||'',
-      dept: g.dept||'',
-      code_parcelle: g.n_demcge||'',
-      type: '—', etape: '—',
-      _src: 'gnss',
-      _gnss: g
-    }));
+  // Parcelles GNSS sans correspondance parfaite (code+nom) avec un dossier AFOR/manuel
+  // → traitées comme lignes de dossier autonomes (voir gnssGetOrphanEntries)
+  const gnssSansAfor = typeof gnssGetOrphanEntries==='function' ? gnssGetOrphanEntries() : [];
 
   const _aforLen = dossiersAFOR ? dossiersAFOR.length : -1;
   const tous = [
@@ -9099,9 +9080,15 @@ function gnssForDossier(dos){
   const code    = gnssNorm(dos.code_parcelle||'');
   let entries = null;
 
-  // Critère 1 : N_DEMCGE = Code Parcelle (le plus précis)
+  // Critère 1 : Code Parcelle = N_DEMCGE — ET nom du demandeur cohérent.
+  // Une correspondance de code SEUL ne suffit pas : si le nom diffère, ce n'est pas
+  // une correspondance parfaite. Ces parcelles restent alors non rattachées ici et
+  // sont traitées à part (voir gnssGetOrphanEntries) : conservées comme dossiers
+  // distincts, sans écraser la superficie de ce dossier AFOR.
   if(code && gnssIndex[code] && gnssIndex[code].length){
-    entries = gnssIndex[code];
+    const parCode = gnssIndex[code];
+    const memeNom = nom ? parCode.filter(e => gnssNorm(e.nom_demand) === nom) : [];
+    if(memeNom.length) entries = memeNom;
   }
   // Critère 2 : NOM_DEMAND + village + SP + département
   if(!entries){
@@ -9125,6 +9112,56 @@ function gnssForDossier(dos){
     nb_parcelles: entries.length,
     entries,
   };
+}
+
+// ── Parcelles GNSS non rattachées par correspondance parfaite (code + nom) à un dossier AFOR/manuel ──
+// Regroupe les 2 cas demandés : "même code, nom différent, localisation conforme" (conservées comme
+// dossier distinct) et "aucune cohérence" (ajoutées telles quelles). Utilisé à la fois pour compléter
+// la liste des dossiers (M3) et pour les KPI (total dossiers), afin de rester cohérent partout.
+function gnssGetOrphanEntries(){
+  if(!gnssData || !gnssData.length) return [];
+  const gnssMatchedSet = new Set();
+  const tousAfor = [...dossiers, ...(dossiersAFOR||[])];
+  tousAfor.forEach(d=>{
+    const info = gnssForDossier(d);
+    if(info && info.entries) info.entries.forEach(e=>{
+      const idx = gnssData.indexOf(e);
+      if(idx>=0) gnssMatchedSet.add(idx);
+    });
+  });
+  // Index code_parcelle → dossier AFOR/manuel correspondant (pour distinguer les 2 cas de non-correspondance)
+  const codeToDossier = {};
+  tousAfor.forEach(d=>{
+    const c = gnssNorm(d.code_parcelle||'');
+    if(c && !codeToDossier[c]) codeToDossier[c] = d;
+  });
+  return (gnssData||[])
+    .map((g, idx)=>({ g, idx }))
+    .filter(({idx})=>!gnssMatchedSet.has(idx))
+    .map(({g, idx})=>{
+      const code = gnssNorm(g.n_demcge||'');
+      const dAfor = code ? codeToDossier[code] : null;
+      let raison = 'aucune_coherence';
+      if(dAfor){
+        const villageOk = gnssNorm(dAfor.village||'') === gnssNorm(g.village||'');
+        const spOk = gnssNorm(dAfor.sp||'') === gnssNorm(g.sp||'');
+        raison = (villageOk && spOk) ? 'meme_code_nom_different' : 'code_localisation_incoherente';
+      }
+      return {
+        id: g.n_demcge || ('GNSS-'+idx),
+        prenom: '',
+        nom: g.nom_demand||'',
+        nom_demandeur: g.nom_demand||'',
+        village: g.village||'',
+        sp: g.sp||'',
+        dept: g.dept||'',
+        code_parcelle: g.n_demcge||'',
+        type: '—', etape: '—',
+        _src: 'gnss',
+        _gnss_raison: raison,
+        _gnss: g
+      };
+    });
 }
 
 // ── Déterminer si un dossier est "borné" ──
@@ -9290,6 +9327,29 @@ function aforExportDedupCSV(){
   a.download = 'AFOR_doublons_supprimes_' + new Date().toISOString().split('T')[0] + '.csv';
   a.click();
   showToast(dossiersAFORDedupRemoved.length + ' doublon(s) exporté(s) pour audit.');
+}
+
+// ── Export CSV des parcelles GNSS sans correspondance parfaite (audit rapprochement AFOR/GNSS) ──
+function gnssExportOrphansCSV(){
+  const orphans = typeof gnssGetOrphanEntries==='function' ? gnssGetOrphanEntries() : [];
+  if(!orphans.length){
+    showToast('Aucune parcelle GNSS en attente de rapprochement.');
+    return;
+  }
+  const raisonLabel = { meme_code_nom_different: 'Même code parcelle, nom différent (localisation conforme)', code_localisation_incoherente: 'Code parcelle trouvé mais localisation incohérente', aucune_coherence: 'Aucune correspondance avec la base AFOR' };
+  const header = ['Code Parcelle','Nom demandeur (GNSS)','Village','Sous-Préfecture','Département','Superficie (ha)','Cas de figure'];
+  const rows = orphans.map(o => [
+    o.code_parcelle||'', o.nom_demandeur||'', o.village||'', o.sp||'', o.dept||'',
+    (o._gnss?.superficie||0).toFixed(2), raisonLabel[o._gnss_raison]||o._gnss_raison
+  ]);
+  const csv = '\uFEFF' + [header, ...rows]
+    .map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';'))
+    .join('\r\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'GNSS_parcelles_a_verifier_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+  showToast(orphans.length + ' parcelle(s) GNSS exportée(s) pour audit.');
 }
 
 
