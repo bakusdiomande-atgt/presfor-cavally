@@ -989,6 +989,10 @@ tbody td{padding:9px 12px;vertical-align:middle;}
             <span id="afor-btn-label">Base AFOR</span>
             <input type="file" id="afor-import-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="aforImportExcel(this)">
           </label>
+          <button class="btn-s viewer-hidden" id="btn-afor-wipe" onclick="aforWipeFirebase()" title="Purger la base AFOR sur Firebase (admin)" style="display:none;align-items:center;gap:6px;background:#FDECEA;color:#B71C1C;border-color:#B71C1C;">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5ZM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 5.885 16h4.23a2 2 0 0 0 1.994-1.84l.853-10.66H13.5a.5.5 0 0 0 0-1z"/></svg>
+            Vider Firebase AFOR
+          </button>
           <button class="btn-s" onclick="dosExportCSV()" style="display:inline-flex;align-items:center;gap:5px;">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
             Exporter CSV
@@ -9253,38 +9257,64 @@ function applyViewerRestrictions(){
 
 
 // ── Persistance Firebase pour dossiersAFOR (partagé tous comptes) ──
+// Structure Firebase : /presfor/afor_cf/data/{id} = {objet dossier}  (id-keyed, écrit par lots de 500 via PATCH)
+//                       /presfor/afor_cf/meta     = {ts, count}
 async function aforSaveToFirebase(){
   const ts = new Date().toISOString();
-  const payload = { data: dossiersAFOR, ts, count: dossiersAFOR.length };
-  console.log('Sauvegarde Firebase AFOR:', dossiersAFOR.length, 'dossiers, payload ~'+Math.round(JSON.stringify(payload).length/1024)+'KB');
-  const r = await fetch(FIREBASE_URL + '/presfor/afor_cf.json', {
+  const CHUNK = 500;
+  const total = dossiersAFOR.length;
+  const nbChunks = Math.max(1, Math.ceil(total / CHUNK));
+  console.log('Sauvegarde Firebase AFOR:', total, 'dossiers en', nbChunks, 'lot(s) de', CHUNK);
+  for(let i=0, lot=1; i<total; i+=CHUNK, lot++){
+    const slice = dossiersAFOR.slice(i, i+CHUNK);
+    const obj = {};
+    slice.forEach(d=>{ if(d && d.id!=null && d.id!=='') obj[String(d.id)] = d; });
+    const r = await fetch(FIREBASE_URL + '/presfor/afor_cf/data.json', {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(obj),
+      signal: AbortSignal.timeout(60000)
+    });
+    if(!r.ok) throw new Error('HTTP ' + r.status + ' (lot ' + lot + '/' + nbChunks + ') - ' + await r.text().catch(()=>''));
+    console.log('AFOR — lot', lot, '/', nbChunks, 'envoyé (' + slice.length + ' dossiers)');
+  }
+  // Métadonnées (horodatage + compteur), un seul petit appel
+  const rMeta = await fetch(FIREBASE_URL + '/presfor/afor_cf/meta.json', {
     method: 'PUT',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(60000)
+    body: JSON.stringify({ ts, count: total }),
+    signal: AbortSignal.timeout(15000)
   });
-  if(!r.ok) throw new Error('HTTP ' + r.status + ' - ' + await r.text().catch(()=>''));
-  console.log('AFOR sauvegardé Firebase:', dossiersAFOR.length, 'dossiers OK');
-  showToast('Base AFOR synchronisée ✓ (' + dossiersAFOR.length.toLocaleString('fr-FR') + ' dossiers)');
+  if(!rMeta.ok) throw new Error('HTTP ' + rMeta.status + ' (meta)');
+  console.log('AFOR sauvegardé Firebase:', total, 'dossiers OK (' + nbChunks + ' lots)');
+  showToast('Base AFOR synchronisée ✓ (' + total.toLocaleString('fr-FR') + ' dossiers, ' + nbChunks + ' lot(s))');
 }
 
 async function aforLoadFromFirebase(){
   try{
     const r = await fetch(FIREBASE_URL + '/presfor/afor_cf.json', {
-      signal: AbortSignal.timeout(15000)
+      signal: AbortSignal.timeout(20000)
     });
     if(!r.ok) return false;
     const d = await r.json();
     if(!d) return false;
-    // Supporter deux formats : {data:[...],ts} ou {id1:{...}, id2:{...}} (chunks)
+    // Supporter plusieurs formats :
+    // 1) Nouveau format : { meta:{ts,count}, data:{id1:{...}, id2:{...}} }
+    // 2) Ancien format  : { data:[...], ts }
+    // 3) Format legacy  : { id1:{...}, id2:{...} } à la racine
     let dataArr = [];
-    if(Array.isArray(d.data) && d.data.length){
+    let remoteTs = null;
+    if(d.data && typeof d.data === 'object' && !Array.isArray(d.data)){
+      dataArr = Object.values(d.data).filter(v => v && typeof v === 'object' && v.id);
+      remoteTs = (d.meta && d.meta.ts) || d.ts || null;
+    } else if(Array.isArray(d.data) && d.data.length){
       dataArr = d.data;
+      remoteTs = d.ts || null;
     } else if(typeof d === 'object' && !Array.isArray(d) && !d.data){
       dataArr = Object.values(d).filter(v => v && typeof v === 'object' && v.id);
     }
     if(!dataArr.length) return false;
-    const remoteTs = d.ts || new Date().toISOString();
+    remoteTs = remoteTs || new Date().toISOString();
     const localTs  = localStorage.getItem('presfor_afor_ts') || '1970-01-01';
     if(remoteTs >= localTs || dossiersAFOR.length === 0){
       dossiersAFOR = dataArr;
@@ -9299,6 +9329,28 @@ async function aforLoadFromFirebase(){
     }
     return false;
   }catch(e){ console.warn('aforLoadFromFirebase:', e.message); return false; }
+}
+
+// ── Purge complète de la base AFOR sur Firebase (admin uniquement) ──
+async function aforWipeFirebase(){
+  if(!currentUser || currentUser.role !== 'admin'){ showToast('Accès refusé.'); return; }
+  if(!confirm('⚠ Ceci va supprimer TOUTES les données AFOR de Firebase (base partagée par tous les comptes).\n\nCette action est irréversible. Continuer ?')) return;
+  if(!confirm('Confirmation finale : vider définitivement la base AFOR sur Firebase ?')) return;
+  try{
+    const r = await fetch(FIREBASE_URL + '/presfor/afor_cf.json', {
+      method: 'DELETE',
+      signal: AbortSignal.timeout(20000)
+    });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    dossiersAFOR = [];
+    try{ localStorage.removeItem('presfor_afor_data'); localStorage.removeItem('presfor_afor_ts'); }catch(e){}
+    aforRenderAll();
+    console.log('AFOR Firebase vidé (DELETE /presfor/afor_cf)');
+    showToast('Base AFOR Firebase vidée ✓ — réimportez votre fichier CSV/Excel pour reconstruire la base.');
+  }catch(e){
+    console.error('aforWipeFirebase:', e);
+    showToast('Erreur suppression Firebase: ' + e.message);
+  }
 }
 
 
@@ -9545,10 +9597,14 @@ function authApplyUI(){
     document.getElementById('tb-user-role').textContent = roleLabel;
     document.getElementById('tb-logout-btn').style.display = 'block';
     document.getElementById('tb-admin-btn').style.display = isAdmin ? 'block' : 'none';
+    const wipeBtn = document.getElementById('btn-afor-wipe');
+    if(wipeBtn) wipeBtn.style.display = isAdmin ? 'inline-flex' : 'none';
   } else {
     ui.style.display = 'none';
     document.getElementById('tb-logout-btn').style.display = 'none';
     document.getElementById('tb-admin-btn').style.display = 'none';
+    const wipeBtn = document.getElementById('btn-afor-wipe');
+    if(wipeBtn) wipeBtn.style.display = 'none';
   }
   // Masquer Réinitialiser pour non-admin
   document.querySelectorAll('.nav-item').forEach(btn=>{
