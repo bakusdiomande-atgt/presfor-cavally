@@ -993,6 +993,10 @@ tbody td{padding:9px 12px;vertical-align:middle;}
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5ZM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 5.885 16h4.23a2 2 0 0 0 1.994-1.84l.853-10.66H13.5a.5.5 0 0 0 0-1z"/></svg>
             Vider Firebase AFOR
           </button>
+          <button class="btn-s" onclick="aforExportDedupCSV()" title="Exporter la liste des doublons supprimés lors du dernier import AFOR" style="display:inline-flex;align-items:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+            Doublons supprimés
+          </button>
           <button class="btn-s" onclick="dosExportCSV()" style="display:inline-flex;align-items:center;gap:5px;">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
             Exporter CSV
@@ -9233,6 +9237,9 @@ function dashRenderCardGNSS(){
 
 
 // ── Déduplication de dossiersAFOR (appelée après import ET après restauration) ──
+// Historique du dernier dédoublonnage AFOR (pour audit / export)
+let dossiersAFORDedupRemoved = [];
+
 function aforDeduplicate(){
   if(!dossiersAFOR || !dossiersAFOR.length) return 0;
   const nr = s => (s||'').toString().trim().toUpperCase()
@@ -9240,6 +9247,7 @@ function aforDeduplicate(){
     .replace(/[^A-Z0-9]/g,' ').replace(/\s+/g,' ').trim();
   const er = {DD:0,RDC:1,CL:2,OV:3,CP:4,AP:5,VA:6};
   const map = {};
+  const removed = [];
   dossiersAFOR.forEach(d=>{
     // Clé de dédoublonnage : identité + parcelle. Le code parcelle (ou, à défaut, l'ID
     // du dossier) distingue les parcelles multiples d'une même personne dans un même
@@ -9250,11 +9258,38 @@ function aforDeduplicate(){
     const ex = map[k];
     if(!ex){ map[k]=d; return; }
     const rn=er[d.etape]||0, re=er[ex.etape]||0;
-    if(rn>re||(rn===re&&(d.id||'')>(ex.id||''))) map[k]=d;
+    if(rn>re||(rn===re&&(d.id||'')>(ex.id||''))){
+      removed.push(Object.assign({}, ex, {_conserve_id: d.id, _cle_dedup: k}));
+      map[k]=d;
+    } else {
+      removed.push(Object.assign({}, d, {_conserve_id: ex.id, _cle_dedup: k}));
+    }
   });
   const avant = dossiersAFOR.length;
   dossiersAFOR = Object.values(map);
+  dossiersAFORDedupRemoved = removed;
   return avant - dossiersAFOR.length; // nombre de doublons supprimés
+}
+
+// ── Export CSV des doublons supprimés lors du dernier dédoublonnage (audit) ──
+function aforExportDedupCSV(){
+  if(!dossiersAFORDedupRemoved || !dossiersAFORDedupRemoved.length){
+    showToast('Aucun doublon enregistré pour le dernier import/dédoublonnage.');
+    return;
+  }
+  const header = ['N° Dossier supprimé','Prénom','Nom','Département','Sous-Préfecture','Village','Code Parcelle','Type','Étape','Agent CE','N° Dossier conservé'];
+  const rows = dossiersAFORDedupRemoved.map(d => [
+    d.id||'', d.prenom||'', d.nom_demandeur||d.nom||'', d.dept||'', d.sp||'', d.village||'',
+    d.code_parcelle||'', d.type||'', d.etape||'', d.agent||'', d._conserve_id||''
+  ]);
+  const csv = '\uFEFF' + [header, ...rows]
+    .map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';'))
+    .join('\r\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'AFOR_doublons_supprimes_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+  showToast(dossiersAFORDedupRemoved.length + ' doublon(s) exporté(s) pour audit.');
 }
 
 
