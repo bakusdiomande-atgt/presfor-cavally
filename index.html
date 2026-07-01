@@ -8505,16 +8505,29 @@ function aforImportExcel(input){
     try{
       let rows = [];
       if(isCsvFile){
-        const text = String(e.target.result).replace(/^\uFEFF/,''); // retirer le BOM UTF-8 éventuel
+        // Décodage : essayer UTF-8, retomber sur Windows-1252 si trop de caractères de remplacement (accents corrompus)
+        const buf = e.target.result;
+        let text = new TextDecoder('utf-8').decode(buf);
+        const nbReplacement = (text.match(/\uFFFD/g)||[]).length;
+        if(nbReplacement > 2){
+          text = new TextDecoder('windows-1252').decode(buf);
+          console.log('CSV: encodage Windows-1252 détecté (fallback depuis UTF-8,', nbReplacement, 'caractères corrompus)');
+        }
+        text = text.replace(/^\uFEFF/,''); // retirer le BOM UTF-8 éventuel
         const lines = text.split(/\r?\n/).filter(l=>l.trim());
         if(!lines.length){showToast('Fichier CSV vide.');return;}
-        const hdrsRaw = lines[0].split(',').map(h=>h.replace(/^"|"$/g,'').trim());
+        // Détection du séparateur : virgule ou point-virgule (format Excel FR)
+        const nbComma = (lines[0].match(/,/g)||[]).length;
+        const nbSemi  = (lines[0].match(/;/g)||[]).length;
+        const delim = nbSemi > nbComma ? ';' : ',';
+        console.log('CSV: séparateur détecté =', delim==';'?'point-virgule':'virgule');
+        const hdrsRaw = lines[0].split(delim).map(h=>h.replace(/^"|"$/g,'').trim());
         const hdrs = hdrsRaw.map(h => AFOR_CANON_MAP[aforNormHdr(h)] || h);
         const parseCSVLine = line => {
           const vals=[]; let cur='', inQ=false;
           for(let i2=0;i2<line.length;i2++){
             if(line[i2]==='"'){inQ=!inQ;}
-            else if(line[i2]===',' && !inQ){vals.push(cur);cur='';}
+            else if(line[i2]===delim && !inQ){vals.push(cur);cur='';}
             else cur+=line[i2];
           }
           vals.push(cur);
@@ -8653,8 +8666,7 @@ function aforImportExcel(input){
     
     }catch(err){showToast('Erreur: '+err.message); console.error('aforImport:', err);}
   };
-  if(isCsvFile) reader.readAsText(file, 'UTF-8');
-  else reader.readAsArrayBuffer(file);
+  reader.readAsArrayBuffer(file); // ArrayBuffer pour CSV et XLSX (détection d'encodage pour CSV)
 }
 
 function aforRenderAll(){
