@@ -9275,17 +9275,24 @@ async function aforLoadFromFirebase(){
     });
     if(!r.ok) return false;
     const d = await r.json();
-    if(!d || !Array.isArray(d.data) || !d.data.length) return false;
-    // Comparer avec données locales : prendre les plus récentes
+    if(!d) return false;
+    // Supporter deux formats : {data:[...],ts} ou {id1:{...}, id2:{...}} (chunks)
+    let dataArr = [];
+    if(Array.isArray(d.data) && d.data.length){
+      dataArr = d.data;
+    } else if(typeof d === 'object' && !Array.isArray(d) && !d.data){
+      dataArr = Object.values(d).filter(v => v && typeof v === 'object' && v.id);
+    }
+    if(!dataArr.length) return false;
+    const remoteTs = d.ts || new Date().toISOString();
     const localTs  = localStorage.getItem('presfor_afor_ts') || '1970-01-01';
-    const remoteTs = d.ts || '1970-01-01';
-    if(remoteTs > localTs || dossiersAFOR.length === 0){
-      dossiersAFOR = d.data;
+    if(remoteTs >= localTs || dossiersAFOR.length === 0){
+      dossiersAFOR = dataArr;
+      console.log('AFOR Firebase chargé:', dossiersAFOR.length, 'dossiers');
       const nb = aforDeduplicate();
-      // Sauvegarder localement
       try{
         localStorage.setItem('presfor_afor_data', JSON.stringify(dossiersAFOR));
-        localStorage.setItem('presfor_afor_ts', d.ts);
+        localStorage.setItem('presfor_afor_ts', remoteTs);
       }catch(e){}
       console.log('AFOR chargé Firebase:', dossiersAFOR.length, 'dossiers ('+nb+' doublons supprimés)');
       return true;
