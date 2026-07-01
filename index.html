@@ -3831,8 +3831,21 @@ function dosShowPanel(id,btn){
   if(id==='form'&&!dosEditingId)dosResetForm();
   if(id==='pipeline')dosRenderPipeline();
   if(id==='list')dosRenderAll();
-  if(id==='afor-cf-liste')aforCFRenderList();
+  if(id==='afor-cf-liste'){
+    aforCFRenderList();
+    const sel=document.getElementById('afor-cf-agent');
+    if(sel && dossiersAFOR.length){
+      const agents=[...new Set(dossiersAFOR.map(d=>d.agent).filter(Boolean))].sort();
+      sel.innerHTML='<option value="">Tous les agents CE</option>'+agents.map(a=>`<option value="${a}">${a}</option>`).join('');
+    }
+    const nbEl=document.getElementById('afor-list-nb');
+    if(nbEl) nbEl.textContent=dossiersAFOR.length||'0';
+  }
   if(id==='afor-cf-agents')aforCFRenderAgents();
+  if(id==='afor-dash') aforRenderDashboard();
+  if(id==='afor-pipeline') aforRenderKanban();
+  if(id==='afor-liste') aforRenderListe();
+  if(id==='afor-agents') aforRenderAgents();
 }
 function dosUpdateGeo(){
   geoUpdateSP('df-dept','df-sp','df-village');
@@ -8458,6 +8471,28 @@ function aforUpdateBtnLabel(){
   }
 }
 // ── Import depuis fichier AFOR Excel ──
+// Normalise un texte d'en-tête pour comparaison insensible aux accents/casse/espaces
+function aforNormHdr(s){
+  return (s||'').toString().replace(/^\uFEFF/,'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-zA-Z0-9]+/g,' ').trim().toLowerCase();
+}
+// Table de correspondance "en-tête normalisé" → "en-tête canonique attendu par AFOR_COLS"
+const AFOR_CANON_MAP = (function(){
+  const m = {};
+  Object.values(AFOR_COLS).forEach(c => { m[aforNormHdr(c)] = c; });
+  return m;
+})();
+// Remappe les clés d'un objet-ligne vers les en-têtes canoniques quand une correspondance existe
+function aforCanonicalizeRow(row){
+  const out = {};
+  Object.keys(row).forEach(k=>{
+    const canon = AFOR_CANON_MAP[aforNormHdr(k)];
+    out[canon || k] = row[k];
+  });
+  return out;
+}
+
 function aforImportExcel(input){
   const file = input.files[0];
   if(!file) return;
@@ -8470,10 +8505,11 @@ function aforImportExcel(input){
     try{
       let rows = [];
       if(isCsvFile){
-        const text = e.target.result;
+        const text = String(e.target.result).replace(/^\uFEFF/,''); // retirer le BOM UTF-8 éventuel
         const lines = text.split(/\r?\n/).filter(l=>l.trim());
         if(!lines.length){showToast('Fichier CSV vide.');return;}
-        const hdrs = lines[0].split(',').map(h=>h.replace(/^"|"$/g,'').trim());
+        const hdrsRaw = lines[0].split(',').map(h=>h.replace(/^"|"$/g,'').trim());
+        const hdrs = hdrsRaw.map(h => AFOR_CANON_MAP[aforNormHdr(h)] || h);
         const parseCSVLine = line => {
           const vals=[]; let cur='', inQ=false;
           for(let i2=0;i2<line.length;i2++){
@@ -8490,14 +8526,14 @@ function aforImportExcel(input){
           hdrs.forEach((h,i2)=>{obj[h]=(vals[i2]||'').replace(/^"|"$/g,'').trim()||null;});
           return obj;
         }).filter(r=>r[hdrs[0]]);
-        console.log('CSV lu:', rows.length, 'lignes');
+        console.log('CSV lu:', rows.length, 'lignes. En-têtes détectés:', hdrsRaw.join(' | '));
       } else {
         const wb = XLSX.read(e.target.result, {type:'array', cellDates:true, cellNF:false, cellHTML:false});
         const ws = wb.Sheets[wb.SheetNames[0]];
         const range = XLSX.utils.decode_range(ws['!ref']||'A1');
         range.e.c = 21;
         ws['!ref'] = XLSX.utils.encode_range(range);
-        rows = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false, blankrows:false});
+        rows = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false, blankrows:false}).map(aforCanonicalizeRow);
         console.log('XLSX lu:', rows.length, 'lignes');
       }
       if(!rows.length){showToast('Fichier vide.');return;}
@@ -8543,6 +8579,13 @@ function aforImportExcel(input){
         imported.push(dos);
         nb++;
       });
+      // ── Garde-fou : ne rien écraser si aucune ligne n'a pu être reconnue ──
+      if(imported.length === 0){
+        const foundHdrs = Object.keys(rows[0]||{});
+        console.error('AFOR import: 0 dossier reconnu.', rows.length, 'lignes lues mais colonne "'+AFOR_COLS.num+'" introuvable. En-têtes trouvés:', foundHdrs);
+        showToast('Import annulé : colonne "'+AFOR_COLS.num+'" introuvable dans le fichier (' + rows.length + ' lignes lues, 0 reconnue). Vérifiez les en-têtes.');
+        return;
+      }
       // ── Fusion intelligente : comparer avec les données existantes ──
       const INDEX = {};
       dossiersAFOR.forEach(d=>{ INDEX[d.id] = d; });
@@ -8595,7 +8638,12 @@ function aforImportExcel(input){
         console.log('AFOR sauvegardé local:', dossiersAFOR.length, 'dossiers,', Math.round(aforJson.length/1024), 'ko');
       }catch(e){ console.warn('localStorage AFOR:', e.message); }
       // Sauvegarde Firebase en arrière-plan (partagé avec tous les comptes)
-      aforSaveToFirebase().catch(e=>console.warn('AFOR Firebase save:', e.message));
+      // Garde-fou : ne jamais synchroniser une base vide (protège contre un import raté qui écraserait Firebase)
+      if(dossiersAFOR.length > 0){
+        aforSaveToFirebase().catch(e=>console.warn('AFOR Firebase save:', e.message));
+      } else {
+        console.warn('AFOR: sauvegarde Firebase annulée (0 dossier en mémoire)');
+      }
       showToast(msg);
       aforRenderAll();
       if(document.getElementById('dos-panel-list') &&
@@ -8711,17 +8759,8 @@ function aforGetAgentsData(){
 
 function aforRenderAgents(){}
 
-// Étendre dosShowPanel pour les panels AFOR
-const _dosShowPanel = dosShowPanel;
-function dosShowPanel(id, btn){
-  _dosShowPanel(id, btn);
-  if(id==='afor-dash') aforRenderDashboard();
-  if(id==='afor-pipeline') aforRenderKanban();
-  if(id==='afor-liste') aforRenderListe();
-  if(id==='afor-agents') aforRenderAgents();
-}
-
-
+// (Note : la logique afor-dash / afor-pipeline / afor-liste / afor-agents
+// est désormais intégrée directement dans dosShowPanel, plus haut dans le fichier)
 
 // ── Modal dossiers en retard ──
 function openRetardModal(){
@@ -8908,21 +8947,7 @@ function aforCFExportCSV(){
   showToast('Export CSV téléchargé !');
 }
 
-// Étendre dosShowPanel pour les panels AFOR CF
-const _origDosShowPanel = typeof dosShowPanel === 'function' ? dosShowPanel : null;
-function dosShowPanel(id, btn){
-  if(_origDosShowPanel) _origDosShowPanel(id, btn);
-  if(id==='afor-cf-liste'){
-    const sel=document.getElementById('afor-cf-agent');
-    if(sel && dossiersAFOR.length){
-      const agents=[...new Set(dossiersAFOR.map(d=>d.agent).filter(Boolean))].sort();
-      sel.innerHTML='<option value="">Tous les agents CE</option>'+agents.map(a=>`<option value="${a}">${a}</option>`).join('');
-    }
-    document.getElementById('afor-list-nb').textContent=dossiersAFOR.length||'0';
-    aforCFRenderList();
-  }
-  if(id==='afor-cf-agents') aforCFRenderAgents();
-}
+// (Note : logique afor-cf-liste / afor-cf-agents déjà intégrée dans dosShowPanel, plus haut)
 
 
 // ═══════════════════════════════════════════
