@@ -8577,6 +8577,7 @@ function aforImportExcel(input){
           dept: (row[AFOR_COLS.dept]||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''),
           sp: (row[AFOR_COLS.sp]||'').trim(),
           village: (row[AFOR_COLS.village]||'').trim(),
+          code_parcelle: (row[AFOR_COLS.code_parcelle]||'').trim(),
           agent: aforAgentNom((row[AFOR_COLS.agent]||'').trim()),
           agent_raw: (row[AFOR_COLS.agent]||'').trim(),
           type: (row[AFOR_COLS.type]||'').trim(),
@@ -9240,8 +9241,12 @@ function aforDeduplicate(){
   const er = {DD:0,RDC:1,CL:2,OV:3,CP:4,AP:5,VA:6};
   const map = {};
   dossiersAFOR.forEach(d=>{
+    // Clé de dédoublonnage : identité + parcelle. Le code parcelle (ou, à défaut, l'ID
+    // du dossier) distingue les parcelles multiples d'une même personne dans un même
+    // village — sans ça, deux dossiers légitimes distincts seraient fusionnés à tort.
+    const codeOrId = (d.code_parcelle && d.code_parcelle.trim()) ? nr(d.code_parcelle) : ('ID:'+nr(d.id||''));
     const k = nr(d.prenom||'')+' '+nr(d.nom||d.nom_demandeur||'')
-      +'|'+nr(d.village||'')+'|'+nr(d.sp||'')+'|'+(d.type||'');
+      +'|'+nr(d.village||'')+'|'+nr(d.sp||'')+'|'+(d.type||'')+'|'+codeOrId;
     const ex = map[k];
     if(!ex){ map[k]=d; return; }
     const rn=er[d.etape]||0, re=er[ex.etape]||0;
