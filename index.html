@@ -1226,7 +1226,9 @@ tbody td{padding:9px 12px;vertical-align:middle;}
             <th title="Durée moy. DD→RDC (seuil: 1j)">DD→RDC moy.</th>
             <th title="Durée moy. RDC→CL (seuil: 3j)">RDC→CL moy.</th>
             <th title="Durée moy. CL→OV (seuil: 14j)">CL→OV moy.</th>
-            <th>En retard</th><th>Score</th><th>Évaluation</th>
+            <th>En retard</th>
+            <th title="Superficie des dossiers levés au GNSS avec correspondance parfaite (code parcelle + nom)">Superficie GNSS</th>
+            <th>Score</th><th>Évaluation</th>
           </tr></thead>
           <tbody id="afor-cf-agents-tbody"></tbody>
         </table>
@@ -1324,7 +1326,8 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       <div class="tw"><table>
         <thead><tr>
           <th>Rang</th><th>Agent</th><th>Fonction</th>
-          <th>Programmes</th><th>Saisies</th><th>Dossiers traités</th>
+          <th>Programmes</th><th>Saisies</th><th title="Dossiers saisis (CE/ISF) ou parcelles levées (Opérateur GNSS)">Dossiers traités</th>
+          <th title="Superficie GNSS levée (colonne NOM_AGENT du fichier GNSS)">Superficie (ha)</th>
           <th>Dossiers CF</th><th>Jours terrain</th><th>Moy./jour</th><th>Performance</th>
         </tr></thead>
         <tbody id="ag-perf-tbody"></tbody>
@@ -4666,10 +4669,13 @@ function gnssStatsForAgent(nomAgent){
   });
 
   const superficie = parcelles.reduce((s,g)=>s+(g.superficie||0), 0);
+  const jours = new Set(parcelles.map(g=>g.date_leve).filter(Boolean)).size;
   return {
     parcelles: parcelles.length,
     superficie: Math.round(superficie*10)/10,
     hasColumn: true,
+    jours,
+    moyParJour: jours>0 ? Math.round(parcelles.length/jours*10)/10 : 0,
     villages: [...new Set(parcelles.map(g=>g.village).filter(Boolean))],
     depts:    [...new Set(parcelles.map(g=>g.dept).filter(Boolean))],
   };
@@ -4917,9 +4923,22 @@ function agOpenFiche(nom){
   const mesSaisies = saisies.filter(s=>s.agent===nom);
   const mesDossiers = dossiers.filter(d=>d.agent===nom);
   const mesAbsences = absences.filter(ab=>ab.agent===nom);
-  const totalDos = mesSaisies.reduce((s,x)=>s+(x.ndos||0),0);
-  const jours = new Set(mesSaisies.map(s=>s.date)).size;
-  const moy = jours>0?Math.round(totalDos/jours):0;
+  const isGnssAgent = a.fonction === 'Opérateur GNSS';
+  const ficheGnssStats = (isGnssAgent && typeof gnssStatsForAgent==='function') ? gnssStatsForAgent(nom) : null;
+  let totalDos, jours, moy, kpi3Label, kpi4Label;
+  if(isGnssAgent && ficheGnssStats && ficheGnssStats.hasColumn){
+    totalDos = ficheGnssStats.parcelles;
+    jours    = ficheGnssStats.jours;
+    moy      = ficheGnssStats.moyParJour;
+    kpi3Label = 'Parcelles GNSS levées';
+    kpi4Label = 'Moy. parcelles/jour';
+  } else {
+    totalDos = mesSaisies.reduce((s,x)=>s+(x.ndos||0),0);
+    jours = new Set(mesSaisies.map(s=>s.date)).size;
+    moy = jours>0?Math.round(totalDos/jours):0;
+    kpi3Label = 'Dossiers saisis';
+    kpi4Label = 'Moy./jour';
+  }
   const absent = mesAbsences.some(ab=>ab.debut<=today&&ab.fin>=today);
 
   // Progression dans les activités
@@ -4974,9 +4993,13 @@ function agOpenFiche(nom){
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
           <div class="kpi green"><div class="kpi-l">Programmes</div><div class="kpi-v">${mesProgs.length}</div></div>
           <div class="kpi blue"><div class="kpi-l">Jours terrain</div><div class="kpi-v">${jours}</div></div>
-          <div class="kpi amber"><div class="kpi-l">Dossiers saisis</div><div class="kpi-v">${totalDos}</div></div>
-          <div class="kpi"><div class="kpi-l">Moy./jour</div><div class="kpi-v">${moy}</div></div>
+          <div class="kpi amber"><div class="kpi-l">${kpi3Label}</div><div class="kpi-v">${totalDos}</div></div>
+          <div class="kpi"><div class="kpi-l">${kpi4Label}</div><div class="kpi-v">${moy}</div></div>
         </div>
+        ${isGnssAgent && ficheGnssStats && ficheGnssStats.hasColumn ? `<div class="kpi-bar" style="grid-template-columns:repeat(2,1fr);">
+          <div class="kpi teal"><div class="kpi-l">Superficie GNSS levée</div><div class="kpi-v" style="font-size:16px;">${ficheGnssStats.superficie.toFixed(1)} ha</div></div>
+          <div class="kpi"><div class="kpi-l">Villages couverts</div><div class="kpi-v" style="font-size:16px;">${(ficheGnssStats.villages||[]).length}</div></div>
+        </div>` : ''}
 
         <!-- Programmes récents -->
         <div class="tw">
@@ -5084,23 +5107,36 @@ function agRenderPerf(){
     const mesProgs = programmes.filter(p=>p.agent===a.nom);
     const mesSaisies = saisies.filter(s=>s.agent===a.nom);
     const mesDossiers = dossiers.filter(d=>d.agent===a.nom);
-    const totalDos = mesSaisies.reduce((s,x)=>s+(x.ndos||0),0);
-    const jours = new Set(mesSaisies.map(s=>s.date)).size;
-    const moy = jours>0?Math.round(totalDos/jours):0;
     const dosCF = mesDossiers.filter(d=>d.activite==='CF').length;
-    return {a, nbProgs:mesProgs.length, nbSaisies:mesSaisies.length, totalDos, jours, moy, dosCF};
+    const isGnss = a.fonction === 'Opérateur GNSS';
+    const gStats = (isGnss && typeof gnssStatsForAgent==='function') ? gnssStatsForAgent(a.nom) : null;
+    let totalDos, jours, moy, ha;
+    if(isGnss && gStats && gStats.hasColumn){
+      // Opérateur GNSS : production basée exclusivement sur le fichier GNSS (colonne NOM_AGENT)
+      totalDos = gStats.parcelles;
+      jours    = gStats.jours;
+      moy      = gStats.moyParJour;
+      ha       = gStats.superficie;
+    } else {
+      totalDos = mesSaisies.reduce((s,x)=>s+(x.ndos||0),0);
+      jours    = new Set(mesSaisies.map(s=>s.date)).size;
+      moy      = jours>0?Math.round(totalDos/jours):0;
+      ha       = null;
+    }
+    return {a, nbProgs:mesProgs.length, nbSaisies:mesSaisies.length, totalDos, jours, moy, dosCF, ha, isGnss, gnssSansDonnee: isGnss && !(gStats && gStats.hasColumn)};
   }).sort((x,y)=>y.totalDos-x.totalDos);
 
   const maxDos = data[0]?.totalDos||1;
   const totalAll = data.reduce((s,d)=>s+d.totalDos,0);
-  const actifs = data.filter(d=>d.nbSaisies>0).length;
+  const actifs = data.filter(d=>d.nbSaisies>0||d.isGnss&&d.totalDos>0).length;
   const meilleur = data[0];
+  const totalHaGnss = data.reduce((s,d)=>s+(d.ha||0),0);
 
   document.getElementById('ag-perf-kpi').innerHTML=`
     <div class="kpi green"><div class="kpi-l">Production totale</div><div class="kpi-v">${totalAll}</div><div class="kpi-s">Tous agents</div></div>
-    <div class="kpi blue"><div class="kpi-l">Agents actifs</div><div class="kpi-v">${actifs}</div><div class="kpi-s">Avec saisies</div></div>
+    <div class="kpi blue"><div class="kpi-l">Agents actifs</div><div class="kpi-v">${actifs}</div><div class="kpi-s">Avec production</div></div>
     <div class="kpi amber"><div class="kpi-l">Meilleure perf.</div><div class="kpi-v">${meilleur?.totalDos||0}</div><div class="kpi-s">${meilleur?.a.nom.split(' ')[0]||'—'}</div></div>
-    <div class="kpi"><div class="kpi-l">Moy. par agent</div><div class="kpi-v">${actifs>0?Math.round(totalAll/actifs):0}</div><div class="kpi-s">Dossiers saisis</div></div>`;
+    <div class="kpi teal"><div class="kpi-l">Superficie GNSS</div><div class="kpi-v" style="font-size:16px;">${totalHaGnss.toFixed(1)} ha</div><div class="kpi-s">Opérateurs GNSS</div></div>`;
 
   document.getElementById('ag-perf-tbody').innerHTML = data.map((d,i)=>{
     const c = agFonctionColor(d.a.fonction);
@@ -5122,7 +5158,10 @@ function agRenderPerf(){
           </div>
           <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--accent);min-width:24px;">${d.totalDos}</span>
         </div>
+        ${d.isGnss?'<span style="font-size:9px;color:var(--text3)">parcelles GNSS</span>':''}
+        ${d.gnssSansDonnee?'<span style="font-size:9px;color:var(--red-txt)">aucune donnée GNSS trouvée</span>':''}
       </td>
+      <td style="padding:9px 12px;text-align:center;font-weight:600;">${d.ha!==null?d.ha.toFixed(1)+' ha':'—'}</td>
       <td style="padding:9px 12px;text-align:center;">${d.dosCF}</td>
       <td style="padding:9px 12px;text-align:center;">${d.jours}</td>
       <td style="padding:9px 12px;text-align:center;">${d.moy}</td>
@@ -8909,10 +8948,12 @@ function aforCFRenderAgents(){
     const meilleur = data[0];
     const moinsbon = data[data.length-1];
     const totalRet = dossiersAFOR.filter(d=>aforCalcRetard(d).retard).length;
+    const totalHaCE = data.reduce((s,ag)=>s+(ag.ha||0),0);
     kpi.innerHTML = `
       <div class="kpi green"><div class="kpi-l">Meilleur agent</div><div class="kpi-v">${meilleur?.score||0}%</div><div class="kpi-s">${meilleur?.nom.split(' ')[0]||'—'}</div></div>
       <div class="kpi red"><div class="kpi-l">Total retards CF</div><div class="kpi-v">${totalRet}</div><div class="kpi-s">${Math.round(totalRet/Math.max(total,1)*100)}% du total</div></div>
-      <div class="kpi amber"><div class="kpi-l">Agent à suivre</div><div class="kpi-v">${moinsbon?.score||0}%</div><div class="kpi-s">${moinsbon?.nom.split(' ')[0]||'—'}</div></div>`;
+      <div class="kpi amber"><div class="kpi-l">Agent à suivre</div><div class="kpi-v">${moinsbon?.score||0}%</div><div class="kpi-s">${moinsbon?.nom.split(' ')[0]||'—'}</div></div>
+      <div class="kpi teal"><div class="kpi-l">Superficie GNSS (CE)</div><div class="kpi-v" style="font-size:16px;">${totalHaCE.toFixed(1)} ha</div><div class="kpi-s">Correspondance parfaite</div></div>`;
   }
   const tbody = document.getElementById('afor-cf-agents-tbody');
   if(!tbody) return;
@@ -8925,6 +8966,7 @@ function aforCFRenderAgents(){
       <td style="padding:9px 12px;text-align:center"><b>${ag.total}</b><br><span style="font-size:10px;color:var(--text3)">${ag.retards} retards</span></td>
       ${delaiCell(ag.mDD_RDC,1)}${delaiCell(ag.mRDC_CL,3)}${delaiCell(ag.mCL_OV,14)}
       <td style="padding:9px 12px;text-align:center;font-weight:600;color:${ag.retards>0?'var(--red-txt)':'var(--accent)'}">${ag.retards}</td>
+      <td style="padding:9px 12px;text-align:center;font-weight:600;">${ag.ha.toFixed(1)} ha<br><span style="font-size:10px;color:var(--text3);font-weight:400;">${ag.parcelles} parcelle${ag.parcelles>1?'s':''}</span></td>
       <td style="padding:9px 12px;min-width:120px">${bar}</td>
       <td style="padding:9px 12px"><span class="badge ${ev.b}">${ev.l}</span></td>
     </tr>`;
@@ -9024,19 +9066,22 @@ function gnssImportExcel(input){
       let nb=0, ignore=0;
 
       rows.forEach(row=>{
-        const nom     = (row['NOM_DEMAND']||'').trim();
-        const village = (row['NOM_VILLAG']||'').trim();
-        const dept    = gnssNorm(row['NOM_DEPART']||'');
-        const sp      = (row['NOM_SSPREF']||'').trim();
-        const superf  = parseFloat(row['SUPERF'])||0;
-        const code    = (row['N_DEMCGE']||'').trim();
-        const num     = (row['NUM_DEMAND']||'').trim();
+        const nom       = (row['NOM_DEMAND']||'').trim();
+        const village   = (row['NOM_VILLAG']||'').trim();
+        const dept      = gnssNorm(row['NOM_DEPART']||'');
+        const sp        = (row['NOM_SSPREF']||'').trim();
+        const superf    = parseFloat(row['SUPERF'])||0;
+        const code      = (row['N_DEMCGE']||'').trim();
+        const num       = (row['NUM_DEMAND']||'').trim();
+        const operateur = (row['NOM_AGENT']||'').trim();
+        const dateLeve  = (row['DATE_CREA']||'').trim();
 
         if((!nom && !code) || superf <= 0){ ignore++; return; }
 
         const entry = {
           nom_demand: nom, village, dept, sp,
           superficie: superf, n_demcge: code, num_demand: num,
+          operateur, date_leve: dateLeve,
           _matched: false  // sera marqué true si lié à un dossier AFOR
         };
         gnssData.push(entry);
