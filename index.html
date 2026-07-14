@@ -4840,7 +4840,10 @@ function agRenderList(){
     const c = agFonctionColor(a.fonction);
     const nbProgs    = programmes.filter(p=>p.agent===a.nom).length;
     const nbSaisies  = saisies.filter(s=>s.agent===a.nom).length;
-    const nbDos      = saisies.filter(s=>s.agent===a.nom).reduce((sum,s)=>sum+(s.ndos||0),0);
+    const isGnssAgent = a.fonction === 'Opérateur GNSS';
+    const gStats = (isGnssAgent && typeof gnssStatsForAgent==='function') ? gnssStatsForAgent(a.nom) : null;
+    const nbDos      = (isGnssAgent && gStats && gStats.hasColumn) ? gStats.parcelles : saisies.filter(s=>s.agent===a.nom).reduce((sum,s)=>sum+(s.ndos||0),0);
+    const dosLabel   = isGnssAgent ? 'Parcelles GNSS' : 'Dossiers';
     const nbDossiers = dossiers.filter(d=>d.agent===a.nom).length;
     // Fiches CF : compter depuis dossiersAFOR (noms normalisés à l'import)
     // Stats AFOR depuis M3
@@ -4876,7 +4879,7 @@ function agRenderList(){
     const nbFichesCF = fichesCF.length;
     const parEtapeCF = {};
     fichesCF.forEach(d=>{if(d.etape) parEtapeCF[d.etape]=(parEtapeCF[d.etape]||0)+1;});
-    const superfTotale = fichesCF.reduce((s,d)=>{
+    const superfTotale = (isGnssAgent && gStats && gStats.hasColumn) ? gStats.superficie : fichesCF.reduce((s,d)=>{
       const g=gnssForDossier?gnssForDossier(d):null;
       return s+(g?g.superficie:0);
     },0);
@@ -4899,12 +4902,13 @@ function agRenderList(){
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;border-top:1px solid var(--border);padding-top:10px;">
         <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--accent)">${nbProgs}</div><div style="font-size:9px;color:var(--text3)">Programmes</div></div>
         <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue)">${nbSaisies}</div><div style="font-size:9px;color:var(--text3)">Saisies</div></div>
-        <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--amber)">${nbDos}</div><div style="font-size:9px;color:var(--text3)">Dossiers</div></div>
+        <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--amber)">${nbDos}</div><div style="font-size:9px;color:var(--text3)">${dosLabel}</div></div>
         <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--teal)">${nbFichesCF}</div><div style="font-size:9px;color:var(--text3)">Dossiers AFOR</div></div>
       </div>
-      ${nbFichesCF>0?`<div style="padding:6px 14px 10px;display:flex;flex-wrap:wrap;gap:3px;border-top:1px solid var(--border);">
+      ${(nbFichesCF>0 || superfTotale>0)?`<div style="padding:6px 14px 10px;display:flex;flex-wrap:wrap;gap:3px;border-top:1px solid var(--border);">
         ${ETAPES_CF.map(e=>{const n=parEtapeCF[e]||0;if(!n)return '';const c=ETAPES_CF_COLORS[e]||{bg:'#eee',tx:'#333'};return '<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:'+c.bg+';color:'+c.tx+';font-weight:700;">'+e+':'+n+'</span>';}).join('')}
         ${superfTotale>0?'<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:#E0F2F1;color:#00695C;font-weight:700;">'+superfTotale.toFixed(1)+' ha</span>':''}
+        ${isGnssAgent && gStats && !gStats.hasColumn?'<span style="font-size:9px;color:var(--red-txt)">aucune donnée GNSS trouvée</span>':''}
       </div>`:''}
     </div>`;
   }).join('');
