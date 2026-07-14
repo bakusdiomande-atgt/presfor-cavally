@@ -1281,13 +1281,17 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
       Exporter CSV
     </button>
+    <button class="nav-item" onclick="gnssExportUnmatchedCSV()" style="color:var(--red-txt)" title="Parcelles GNSS dont l'opérateur (NOM_AGENT) n'a été reconnu pour aucun agent">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8.982 1.566a1.13 1.13 0 0 0-1.964 0L.165 13.233c-.457.778.091 1.767.982 1.767h13.706c.891 0 1.439-.99.982-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg>
+      Opérateurs GNSS non reconnus
+    </button>
   </nav>
   <main class="main">
 
     <!-- Liste agents -->
     <div class="panel active" id="ag-panel-list">
       <div class="page-head">
-        <div><h2>Agents et équipes</h2><p>27 agents PRESFOR — Région du Cavally</p></div>
+        <div><h2>Agents et équipes</h2><p id="ag-subtitle">27 agents PRESFOR — Région du Cavally</p></div>
       </div>
       <div class="kpi-bar" id="ag-kpi"></div>
       <div class="filter-bar">
@@ -1827,6 +1831,10 @@ const AGENTS_DATA=[
   {nom:'Agbonou A. B. C. Beranger',fonction:'Commissaire enquêteur'},
   {nom:'Yeboua Adjia Emmanuela',fonction:'Commissaire enquêteur'},
   {nom:'Aboya Affoua Ines',fonction:'Commissaire enquêteur'},
+  {nom:'Gueu Minwodo Siril',fonction:'Commissaire enquêteur'},
+  {nom:'Bleu Deaouhande Wilfried',fonction:'Commissaire enquêteur'},
+  {nom:'Ettien Aimee Sandrine',fonction:'Commissaire enquêteur'},
+  {nom:'Grah Legnond Edgard',fonction:'Commissaire enquêteur'},
   {nom:'Yao Atouman Jean Charles',fonction:'Opérateur GNSS'},
   {nom:'Dje Christian Dominique Konan',fonction:'Opérateur GNSS'},
   {nom:'Fakayode Abdul',fonction:'Opérateur GNSS'},
@@ -4610,6 +4618,10 @@ const AGENTS_FULL = [
   {nom:'Agbonou A. B. C. Beranger',      tel:'0757351147',  fonction:'Commissaire enquêteur'},
   {nom:'Yeboua Adjia Emmanuela',         tel:'0708136233',  fonction:'Commissaire enquêteur'},
   {nom:'Aboya Affoua Ines',              tel:'0797583942',  fonction:'Commissaire enquêteur'},
+  {nom:'Gueu Minwodo Siril',             tel:'0720503523',  fonction:'Commissaire enquêteur'},
+  {nom:'Bleu Deaouhande Wilfried',       tel:'0709871683',  fonction:'Commissaire enquêteur'},
+  {nom:'Ettien Aimee Sandrine',          tel:'0788625302',  fonction:'Commissaire enquêteur'},
+  {nom:'Grah Legnond Edgard',            tel:'0767287311',  fonction:'Commissaire enquêteur'},
   {nom:'Yao Atouman Jean Charles',       tel:'0555100634',  fonction:'Opérateur GNSS'},
   {nom:'Dje Christian Dominique Konan',  tel:'0720530055',  fonction:'Opérateur GNSS'},
   {nom:'Fakayode Abdul',                 tel:'0173735246',  fonction:'Opérateur GNSS'},
@@ -4679,6 +4691,53 @@ function gnssStatsForAgent(nomAgent){
     villages: [...new Set(parcelles.map(g=>g.village).filter(Boolean))],
     depts:    [...new Set(parcelles.map(g=>g.dept).filter(Boolean))],
   };
+}
+
+// ── Parcelles GNSS dont la valeur NOM_AGENT n'a matché aucun des opérateurs connus ──
+// (fautes de frappe non couvertes par GNSS_AGENT_KEYS, numéros de téléphone, valeurs vides/parasites)
+function gnssGetUnmatchedOperateurs(){
+  if(!gnssData || !gnssData.length) return [];
+  const opAgents = AGENTS_FULL.filter(a => a.fonction === 'Opérateur GNSS');
+  const allMatchKeys = opAgents.map(a => {
+    const keys = GNSS_AGENT_KEYS[a.nom] || [];
+    const fallback = gnssNormName(a.nom).split(' ').filter(w=>w.length>2).slice(0,2);
+    return keys.length ? keys : fallback;
+  });
+  return gnssData.filter(g => {
+    if(!g.operateur || !g.operateur.trim()) return true; // valeur vide = non reconnue
+    const opNorm = gnssNormName(g.operateur);
+    const matched = allMatchKeys.some(keys => keys.length && keys.every(k => opNorm.includes(k)));
+    return !matched;
+  });
+}
+
+// ── Export CSV des parcelles GNSS avec un NOM_AGENT non reconnu (audit rapprochement opérateur) ──
+function gnssExportUnmatchedCSV(){
+  const unmatched = gnssGetUnmatchedOperateurs();
+  if(!unmatched.length){
+    showToast('Toutes les parcelles GNSS ont un opérateur reconnu.');
+    return;
+  }
+  // Regrouper par valeur brute de NOM_AGENT pour un audit plus lisible
+  const groupes = {};
+  unmatched.forEach(g=>{
+    const key = (g.operateur && g.operateur.trim()) ? g.operateur.trim() : '(vide)';
+    if(!groupes[key]) groupes[key] = {nb:0, ha:0};
+    groupes[key].nb++;
+    groupes[key].ha += g.superficie||0;
+  });
+  const header = ['Valeur NOM_AGENT (brute)','Nombre de parcelles','Superficie totale (ha)'];
+  const rows = Object.entries(groupes)
+    .sort((a,b)=>b[1].nb-a[1].nb)
+    .map(([nom,v]) => [nom, v.nb, v.ha.toFixed(2)]);
+  const csv = '\uFEFF' + [header, ...rows]
+    .map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';'))
+    .join('\r\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'GNSS_operateurs_non_reconnus_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+  showToast(unmatched.length + ' parcelle(s) sans opérateur reconnu exportée(s) pour audit.');
 }
 
 
@@ -4784,6 +4843,8 @@ function agRenderAll(){
   agRenderPerf();
   agRenderAbsences();
   document.getElementById('ag-nb').textContent = AGENTS_FULL.length;
+  const _agSub = document.getElementById('ag-subtitle');
+  if(_agSub) _agSub.textContent = AGENTS_FULL.length + ' agents PRESFOR — Région du Cavally';
 }
 
 function agShowPanel(id, btn){
