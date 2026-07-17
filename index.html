@@ -390,20 +390,10 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       <label class="fl">Seuil dossiers bloqués (jours)</label>
       <input class="fi" type="number" id="notif-seuil-dos" value="30" min="1" max="90">
     </div>
-    <div class="ff" style="margin-top:10px;">
-      <label class="fl">Seuil agents sans saisie (jours)</label>
-      <input class="fi" type="number" id="notif-seuil-agent" value="3" min="1" max="30">
-    </div>
     <div style="margin-top:12px;">
       <label style="font-size:12px;font-weight:600;color:var(--text1);display:block;margin-bottom:8px;">Alertes actives :</label>
-      <label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:6px;cursor:pointer;">
-        <input type="checkbox" id="notif-chk-dos" checked> Dossiers bloqués
-      </label>
-      <label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:6px;cursor:pointer;">
-        <input type="checkbox" id="notif-chk-agents" checked> Agents sans saisie
-      </label>
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;">
-        <input type="checkbox" id="notif-chk-progs" checked> Programmes en retard
+        <input type="checkbox" id="notif-chk-dos" checked> Dossiers bloqués
       </label>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px;">
@@ -444,8 +434,6 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="margin-right:4px"><path d="M8.354 1.146a.5.5 0 0 0-.708 0l-6 6A.5.5 0 0 0 1.5 7.5v7a.5.5 0 0 0 .5.5h4.5a.5.5 0 0 0 .5-.5v-4h2v4a.5.5 0 0 0 .5.5H14a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.146-.354L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.354 1.146z"/></svg>
       Accueil
     </button>
-    <button class="tb-mod active" onclick="switchModule('prog')" id="tab-prog"><span class="mod-num">M1</span>Programme planifié</button>
-    <button class="tb-mod" onclick="switchModule('saisie')" id="tab-saisie"><span class="mod-num">M2</span>Saisie quotidienne</button>
     <button class="tb-mod" onclick="switchModule('dossier')" id="tab-dossier"><span class="mod-num">M3</span>Dossiers fonciers</button>
     <button class="tb-mod" onclick="switchModule('agents')" id="tab-agents"><span class="mod-num">M4</span>Agents &amp; équipes</button>
     <button class="tb-mod" onclick="switchModule('zones')" id="tab-zones"><span class="mod-num">M5</span>Zones &amp; villages</button>
@@ -512,12 +500,10 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     <!-- Zone cards (tout le reste) -->
     <div style="flex:1;min-width:0;overflow-y:auto;padding:14px 16px 24px;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div id="dash-card-saisies"    style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #E5E7EB;overflow:hidden;"></div>
         <div id="dash-card-dossiers"   style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #E5E7EB;overflow:hidden;"></div>
         <div id="dash-card-depts"      style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #E5E7EB;overflow:hidden;"></div>
         <div id="dash-card-activites"  style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #E5E7EB;overflow:hidden;"></div>
         <div id="dash-card-agents"     style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #E5E7EB;overflow:hidden;"></div>
-        <div id="dash-card-programmes" style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #E5E7EB;overflow:hidden;"></div>
         <div id="dash-card-cf-etapes"  style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #E5E7EB;overflow:hidden;grid-column:1/-1;"></div>
         <div id="dash-card-cf-agents"  style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #E5E7EB;overflow:hidden;"></div>
         <div id="dash-card-cf-retards" style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.09);border:1px solid #E5E7EB;overflow:hidden;"></div>
@@ -528,390 +514,6 @@ tbody td{padding:9px 12px;vertical-align:middle;}
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     MODULE 1 · PROGRAMME PLANIFIÉ
-══════════════════════════════════════════════ -->
-<div id="module-prog" class="module active" style="display:flex;flex:1;min-width:0;">
-  <nav class="sidebar" id="sb-prog">
-    <div class="sb-sec">
-      <div class="sb-label">Programmes</div>
-      <button class="nav-item active" onclick="progShowPanel('list',this)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4h12v1.5H2zm0 3h12v1.5H2zm0 3h8v1.5H2z"/></svg>
-        Liste des programmes
-        <span class="nav-badge" id="prog-nb">0</span>
-      </button>
-      <button class="nav-item" onclick="progShowPanel('form',this)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z"/></svg>
-        Nouveau programme
-      </button>
-    </div>
-    <div class="sb-sec">
-      <div class="sb-label">Documentation</div>
-      <button class="nav-item" onclick="progShowPanel('schema',this)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h5v5H2zm7 0h5v5H9zM2 9h5v5H2zm7 0h5v5H9z"/></svg>
-        Schéma de données
-      </button>
-      <button class="nav-item" onclick="progShowPanel('rules',this)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm.75 10.5h-1.5v-5h1.5v5zm0-6.5h-1.5V3.5h1.5V5z"/></svg>
-        Règles de validation
-      </button>
-      <button class="nav-item" onclick="progShowPanel('guide',this)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm1 2v8h8V4H4zm1 1h6v1.5H5V5zm0 2.5h6v1.5H5zm0 2.5h4v1.5H5z"/></svg>
-        Guide terrain
-      </button>
-    </div>
-    <div class="nav-div"></div>
-    <div class="sb-sec">
-      <button class="nav-item" onclick="progClearAll()" style="color:var(--red-txt)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5ZM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 5.885 16h4.23a2 2 0 0 0 1.994-1.84l.853-10.66H13.5a.5.5 0 0 0 0-1z"/></svg>
-        Réinitialiser
-      </button>
-    </div>
-  </nav>
-  <main class="main">
-
-    <!-- Liste -->
-    <div class="panel active" id="prog-panel-list">
-      <div class="page-head">
-        <div><h2>Programmes planifiés</h2><p>Vue d'ensemble — Région du Cavally</p></div>
-        <div class="btn-row">
-          <div class="btn-row">
-          <label class="btn-s" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;" title="Importer depuis un fichier Excel">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
-            Importer Excel
-            <input type="file" id="prog-import-file" accept=".xlsx,.xls" style="display:none" onchange="progImportExcel(this)">
-          </label>
-          <button class="btn-p" onclick="progShowPanel('form')">+ Nouveau programme</button>
-        </div>
-        </div>
-      </div>
-      <div class="kpi-bar" id="prog-kpi"></div>
-      <div class="filter-bar">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-          <label style="font-size:12px;font-weight:600;color:var(--text2)">Période :</label>
-          <input type="date" id="prog-f-debut" onchange="progRenderAll()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px">
-          <span style="font-size:12px;color:var(--text2)">→</span>
-          <input type="date" id="prog-f-fin" onchange="progRenderAll()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px">
-          <button onclick="progResetPeriode()" style="font-size:11px;padding:4px 10px;background:var(--border);border:none;border-radius:6px;cursor:pointer;color:var(--text2)">✕ Tout</button>
-        </div>
-        <input type="text" id="prog-search" placeholder="Rechercher..." oninput="progRenderTable()">
-        <select id="prog-f-dept" onchange="progRenderTable()">
-          <option value="">Tous les départements</option>
-          <option>Dép. Guiglo</option><option>Dép. Bloléquin</option>
-          <option>Dép. Toulépleu</option><option>Dép. Taï</option>
-        </select>
-        <select id="prog-f-statut" onchange="progRenderTable()">
-          <option value="">Tous statuts</option>
-          <option>En cours</option><option>Planifié</option><option>Terminé</option><option>En retard</option>
-        </select>
-      </div>
-      <div class="tw">
-        <table>
-          <thead><tr><th>Référence</th><th>Période</th><th>Dép. · Localité(s)</th><th>Agent</th><th>Objectif Ha</th><th>Objectif Dos.</th><th>Progression</th><th>Statut</th><th></th></tr></thead>
-          <tbody id="prog-tbody"></tbody>
-        </table>
-        <div id="prog-empty" class="empty-state" style="display:none">
-          <p>Aucun programme. Créez le premier.</p>
-          <button class="btn-p" onclick="progShowPanel('form')">+ Créer</button>
-        </div>
-        <div id="prog-pagination"></div>
-      </div>
-    </div>
-
-    <!-- Formulaire -->
-    <div class="panel" id="prog-panel-form">
-      <div class="page-head">
-        <div><h2 id="prog-form-title">Nouveau programme planifié</h2><p>Champs <span style="color:var(--red)">*</span> obligatoires</p></div>
-      </div>
-      <div class="suc-banner" id="prog-suc"></div>
-      <div class="val-sum" id="prog-val-sum"><p>Erreurs :</p><ul id="prog-val-list"></ul></div>
-      <div class="fc">
-        <form id="prog-form" onsubmit="progSubmit(event)" novalidate>
-          <input type="hidden" id="prog-edit-id">
-          <div class="fs">
-            <div class="fs-title">1 · Identification</div>
-            <div class="fg">
-              <div class="ff"><label class="fl">Référence</label><input class="fi" id="pf-ref" readonly style="background:var(--surface2);color:var(--text2)"><span class="fhint">Auto-générée</span></div>
-              <div class="ff"><label class="fl">Type de période <span class="req">*</span></label><select class="fsel" id="pf-periode" onchange="progUpdateDates()"><option value="">-- Sélectionner --</option><option>Semaine</option><option>Mois</option><option>Trimestre</option></select><span class="ferr" id="pe-periode">Requis.</span></div>
-              <div class="ff"><label class="fl">Date de début <span class="req">*</span></label><input class="fi" type="date" id="pf-debut" onchange="progCheckDates()"><span class="ferr" id="pe-debut">Requise.</span></div>
-              <div class="ff"><label class="fl">Date de fin <span class="req">*</span></label><input class="fi" type="date" id="pf-fin" onchange="progCheckDates()"><span class="ferr" id="pe-fin">Doit être postérieure.</span></div>
-            </div>
-          </div>
-          <div class="fs">
-            <div class="fs-title">2 · Territoire</div>
-            <div class="fg">
-              <div class="ff"><label class="fl">Département <span class="req">*</span></label><select class="fsel" id="pf-dept" onchange="geoUpdateSP('pf-dept','pf-sp','pf-village-sel')"><option value="">-- Sélectionner --</option><option>Dép. Guiglo</option><option>Dép. Bloléquin</option><option>Dép. Toulépleu</option><option>Dép. Taï</option></select><span class="ferr" id="pe-dept">Requis.</span></div>
-              <div class="ff"><label class="fl">Sous-préfecture</label><select class="fsel" id="pf-sp" onchange="geoUpdateVillage('pf-dept','pf-sp','pf-village-sel')"><option value="">-- Sous-préfecture --</option></select></div>
-              <div class="ff full">
-                <label class="fl">Villages cibles <span class="req">*</span></label>
-                <div class="v-input-w"><input class="fi" id="pf-village-in" placeholder="Taper un village + Entrée" style="flex:1" onkeydown="progAddVillage(event)"><button type="button" class="btn-s" onclick="progAddVillage({key:'Enter',preventDefault:()=>{}})">Ajouter</button></div>
-                <div id="prog-vtags" style="margin-top:5px;"></div>
-                <span class="ferr" id="pe-villages">Au moins un village requis.</span>
-                <input type="hidden" id="pf-villages">
-              </div>
-            </div>
-          </div>
-          <div class="fs">
-            <div class="fs-title">3 · Agent et objectifs</div>
-            <div class="fg3">
-              <div class="ff"><label class="fl">Agent <span class="req">*</span></label><select class="fsel" id="pf-agent"><option value="">-- Sélectionner un agent --</option></select><span class="ferr" id="pe-agent">Requis.</span></div>
-              <div class="ff">
-                <label class="fl">Activité principale <span class="req">*</span></label>
-                <select class="fsel" id="pf-operation" onchange="progUpdateSousEtapes();progUpdateObjUnite();">
-                  <option value="">-- Sélectionner --</option>
-                  <option value="ISF">ISF — Ingénierie Socio Foncière</option>
-                  <option value="CF">CF — Certificat Foncier</option>
-                  <option value="DTV">DTV — Délimitation Terroir Villageois</option>
-                  <option value="CONTRAT">CONTRAT — Formalisation contractuelle</option>
-                </select>
-                <span class="ferr" id="pe-op">Requis.</span>
-              </div>
-              <div class="ff full" id="pf-sousetapes-wrap" style="display:none">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-                  <label class="fl" style="margin:0">Sous-étapes à réaliser <span style="color:var(--text3);font-weight:400">(auto selon activité)</span></label>
-                  <div style="display:flex;gap:4px;">
-                    <button type="button" style="font-size:10px;padding:2px 8px;border:1px solid var(--border);background:var(--surface2);border-radius:4px;cursor:pointer;" onclick="document.querySelectorAll('#pf-sousetapes-list input').forEach(cb=>cb.checked=true);progSaveSousEtapes()">Tout cocher</button>
-                    <button type="button" style="font-size:10px;padding:2px 8px;border:1px solid var(--border);background:var(--surface2);border-radius:4px;cursor:pointer;" onclick="document.querySelectorAll('#pf-sousetapes-list input').forEach(cb=>cb.checked=false);progSaveSousEtapes()">Tout décocher</button>
-                  </div>
-                </div>
-                <div id="pf-sousetapes-list" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;"></div>
-                <input type="hidden" id="pf-sousetapes">
-              </div>
-              <div id="wrap-obj-ha" class="ff"><label class="fl" id="lbl-obj-ha">Objectif (Ha)</label><input class="fi" type="number" id="pf-objectif" min="0" step="0.1" placeholder="Ex : 25.5"><span class="fhint">Superficie totale en Ha</span></div>
-              <div id="wrap-obj-dos" class="ff"><label class="fl" id="lbl-obj-dos">Objectif (Dossiers) <span class="req">*</span></label><input class="fi" type="number" id="pf-objectif-dos" min="0" step="1" placeholder="Ex : 50"><span class="ferr" id="pe-obj">Requis.</span><span class="fhint">Nombre de dossiers à traiter</span></div>
-              <div id="wrap-obj-vil" style="display:none" class="ff"><label class="fl">Objectif (Villages)</label><input class="fi" type="number" id="pf-objectif-vil" min="0" step="1" placeholder="Ex : 5"><span class="fhint">Nombre de villages</span></div>
-            </div>
-          </div>
-          <div class="fs">
-            <div class="fs-title">4 · Ressources</div>
-            <div class="fg">
-              <div class="ff"><label class="fl">Nb agents mobilisés</label><input class="fi" type="number" id="pf-nragents" min="1" max="50" placeholder="Ex : 3"></div>
-              <div class="ff"><label class="fl">Budget alloué (FCFA)</label><input class="fi" type="number" id="pf-budget" placeholder="Ex : 500000"><span class="fhint">Optionnel</span></div>
-              <div class="ff full"><label class="fl">Observations</label><textarea class="fta" id="pf-obs" placeholder="Conditions terrain, difficultés prévues..."></textarea></div>
-            </div>
-          </div>
-          <div class="fa">
-            <button type="submit" class="btn-p">Enregistrer</button>
-            <button type="button" class="btn-s" onclick="progResetForm()">Annuler</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Schéma -->
-    <div class="panel" id="prog-panel-schema">
-      <div class="page-head"><div><h2>Schéma de données</h2><p>Structure des tables du Module Programme</p></div></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-        <div class="schema-table">
-          <div class="sch-head" style="background:var(--accent)">programmes <span style="font-size:10px;font-weight:400;opacity:.7;background:rgba(255,255,255,.12);padding:1px 7px;border-radius:8px;">Table principale</span></div>
-          <div class="sch-field"><span class="sf-name">id</span><span class="sf-type">VARCHAR(20)</span><span class="sf-key">PK</span><span class="sf-desc">PROG-AAAA-NNN</span></div>
-          <div class="sch-field"><span class="sf-name">periode_type</span><span class="sf-type">ENUM</span><span class="sf-desc">Semaine/Mois/Trimestre</span></div>
-          <div class="sch-field"><span class="sf-name">date_debut</span><span class="sf-type">DATE</span></div>
-          <div class="sch-field"><span class="sf-name">date_fin</span><span class="sf-type">DATE</span></div>
-          <div class="sch-field"><span class="sf-name">departement_id</span><span class="sf-type">VARCHAR(20)</span><span class="sf-key">FK→depts</span></div>
-          <div class="sch-field"><span class="sf-name">sous_prefecture</span><span class="sf-type">VARCHAR(100)</span></div>
-          <div class="sch-field"><span class="sf-name">agent_id</span><span class="sf-type">VARCHAR(20)</span><span class="sf-key">FK→agents</span></div>
-          <div class="sch-field"><span class="sf-name">type_operation</span><span class="sf-type">ENUM</span></div>
-          <div class="sch-field"><span class="sf-name">objectif_dossiers</span><span class="sf-type">SMALLINT</span></div>
-          <div class="sch-field"><span class="sf-name">budget_fcfa</span><span class="sf-type">INTEGER</span></div>
-          <div class="sch-field"><span class="sf-name">statut</span><span class="sf-type">ENUM</span><span class="sf-desc">Planifié/En cours/Terminé</span></div>
-          <div class="sch-field"><span class="sf-name">created_at</span><span class="sf-type">TIMESTAMP</span></div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:12px;">
-          <div class="schema-table">
-            <div class="sch-head" style="background:var(--teal)">programme_villages <span style="font-size:10px;font-weight:400;opacity:.7;background:rgba(255,255,255,.12);padding:1px 7px;border-radius:8px;">Liaison</span></div>
-            <div class="sch-field"><span class="sf-name">programme_id</span><span class="sf-type">VARCHAR(20)</span><span class="sf-key">FK</span></div>
-            <div class="sch-field"><span class="sf-name">village_nom</span><span class="sf-type">VARCHAR(100)</span></div>
-            <div class="sch-field"><span class="sf-name">objectif_local</span><span class="sf-type">SMALLINT</span></div>
-          </div>
-          <div class="schema-table">
-            <div class="sch-head" style="background:var(--blue)">executions <span style="font-size:10px;font-weight:400;opacity:.7;background:rgba(255,255,255,.12);padding:1px 7px;border-radius:8px;">Module 2</span></div>
-            <div class="sch-field"><span class="sf-name">programme_id</span><span class="sf-type">VARCHAR(20)</span><span class="sf-key">FK</span></div>
-            <div class="sch-field"><span class="sf-name">date_saisie</span><span class="sf-type">DATE</span></div>
-            <div class="sch-field"><span class="sf-name">dossiers_realises</span><span class="sf-type">SMALLINT</span></div>
-          </div>
-          <div class="schema-table">
-            <div class="sch-head" style="background:var(--amber)">departements_cavally <span style="font-size:10px;font-weight:400;opacity:.7;background:rgba(255,255,255,.12);padding:1px 7px;border-radius:8px;">Référentiel</span></div>
-            <div class="sch-field"><span class="sf-name">id</span><span class="sf-type">VARCHAR(20)</span><span class="sf-key">PK</span></div>
-            <div class="sch-field"><span class="sf-name">nom</span><span class="sf-type">VARCHAR(100)</span></div>
-            <div class="sch-field"><span class="sf-name">sous_prefectures</span><span class="sf-type">TEXT</span><span class="sf-desc">JSON</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Règles -->
-    <div class="panel" id="prog-panel-rules">
-      <div class="page-head"><div><h2>Règles de validation</h2><p>Contraintes appliquées à la saisie</p></div></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div class="rule-card"><h4>Champs obligatoires</h4><ul class="rule-list"><li><span class="rsev sev-b">BLOQUANT</span>Référence auto — non modifiable</li><li><span class="rsev sev-b">BLOQUANT</span>Type de période requis</li><li><span class="rsev sev-b">BLOQUANT</span>Date début + date fin requises</li><li><span class="rsev sev-b">BLOQUANT</span>Département obligatoire</li><li><span class="rsev sev-b">BLOQUANT</span>Au moins un village cible</li><li><span class="rsev sev-b">BLOQUANT</span>Agent responsable obligatoire</li><li><span class="rsev sev-b">BLOQUANT</span>Type d'opération obligatoire</li><li><span class="rsev sev-b">BLOQUANT</span>Objectif : 1 à 200 dossiers</li></ul></div>
-        <div class="rule-card"><h4>Cohérence temporelle</h4><ul class="rule-list"><li><span class="rsev sev-b">BLOQUANT</span>Date fin strictement postérieure à date début</li><li><span class="rsev sev-w">ALERTE</span>Durée &lt; 3 jours → alerte courte durée</li><li><span class="rsev sev-b">BLOQUANT</span>Période "Semaine" → durée max 7 jours</li><li><span class="rsev sev-b">BLOQUANT</span>Période "Mois" → durée max 31 jours</li><li><span class="rsev sev-w">ALERTE</span>Chevauchement même agent même période</li><li><span class="rsev sev-i">INFO</span>Date passée → statut "En cours" auto</li></ul></div>
-        <div class="rule-card"><h4>Objectifs et capacité</h4><ul class="rule-list"><li><span class="rsev sev-w">ALERTE</span>Objectif &gt; 30 doss./semaine → charge élevée</li><li><span class="rsev sev-w">ALERTE</span>Objectif &gt; 120 doss./mois → surcharge</li><li><span class="rsev sev-i">INFO</span>Budget non renseigné → avertissement</li><li><span class="rsev sev-w">ALERTE</span>Nb agents &lt; objectif ÷ 30 → sous-effectif</li><li><span class="rsev sev-i">INFO</span>Cadence = objectif ÷ nb_jours affichée</li></ul></div>
-        <div class="rule-card"><h4>Intégrité référentielle</h4><ul class="rule-list"><li><span class="rsev sev-b">BLOQUANT</span>Agent doit exister dans la table agents</li><li><span class="rsev sev-b">BLOQUANT</span>Département doit exister dans le référentiel</li><li><span class="rsev sev-w">ALERTE</span>Agent non affecté au département</li><li><span class="rsev sev-b">BLOQUANT</span>Programme non supprimable si exécutions liées</li><li><span class="rsev sev-i">INFO</span>Référence unique — collision auto-détectée</li></ul></div>
-      </div>
-    </div>
-
-    <!-- Détail programme -->
-    <div class="panel" id="prog-panel-detail">
-      <div class="page-head">
-        <div><h2 id="prog-detail-title">Détail du programme</h2><p id="prog-detail-subtitle"></p></div>
-        <div class="btn-row">
-          <button class="btn-s" onclick="progShowPanel('list')">← Retour</button>
-          <button class="btn-s" id="prog-detail-edit-btn" style="display:none" onclick="">✏ Modifier</button>
-        </div>
-      </div>
-      <div id="prog-detail-content"></div>
-    </div>
-
-    <!-- Guide -->
-    <div class="panel" id="prog-panel-guide">
-      <div class="page-head"><div><h2>Guide terrain</h2><p>Procédure pour superviseurs et chefs d'équipe</p></div></div>
-      <div class="fc" style="max-width:660px;">
-        <div style="display:flex;flex-direction:column;gap:0;">
-          <div class="guide-step"><div class="step-spine"><div class="step-num">1</div><div class="step-line"></div></div><div class="step-c"><h4>Préparer le programme avant la période</h4><p>Avant chaque semaine ou mois, le superviseur crée les programmes par agent en fixant villages, objectif et type d'opération.</p><div class="step-note">Créer au plus tard la veille du démarrage.</div></div></div>
-          <div class="guide-step"><div class="step-spine"><div class="step-num">2</div><div class="step-line"></div></div><div class="step-c"><h4>Saisir les villages cibles avec précision</h4><p>Chaque village séparément, avec le nom officiel du référentiel Cavally pour permettre la corrélation géographique.</p><div class="step-tip">Village non recensé → créé en attente de validation.</div></div></div>
-          <div class="guide-step"><div class="step-spine"><div class="step-num">3</div><div class="step-line"></div></div><div class="step-c"><h4>Définir un objectif réaliste</h4><p>Enquête terrain : 8–12 dossiers/j. Bornage : 4–6 dossiers/j. Un objectif irréaliste fausse la corrélation.</p><div class="step-note">Un objectif irréaliste rend les alertes de retard non pertinentes.</div></div></div>
-          <div class="guide-step"><div class="step-spine"><div class="step-num">4</div><div class="step-line"></div></div><div class="step-c"><h4>Communiquer la référence à l'agent</h4><p>La référence PROG-AAAA-NNN est le lien entre ce programme et toutes les saisies terrain. L'agent doit l'avoir.</p><div class="step-ok">C'est le fil conducteur de la corrélation automatique.</div></div></div>
-          <div class="guide-step"><div class="step-spine"><div class="step-num">5</div><div class="step-line"></div></div><div class="step-c"><h4>Suivre l'avancement et clôturer</h4><p>À l'échéance, clôturer le programme. Le taux d'atteinte est calculé automatiquement et alimente les rapports de performance.</p><div class="step-ok">Programmes clôturés → historique de performance agent.</div></div></div>
-        </div>
-      </div>
-    </div>
-
-  </main>
-
-<div id="prog-import-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.45);z-index:500;align-items:center;justify-content:center;">
-  <div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:24px 28px;max-width:700px;width:90%;max-height:80vh;overflow-y:auto;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <h3 style="font-family:'Syne',sans-serif;font-size:16px;font-weight:600;">Aperçu import Excel</h3>
-      <button onclick="document.getElementById('prog-import-modal').style.display='none'" style="border:none;background:none;font-size:20px;cursor:pointer;color:var(--text2);">×</button>
-    </div>
-    <div id="prog-import-info" style="font-size:12px;color:var(--text2);margin-bottom:12px;"></div>
-    <div id="prog-import-preview" style="overflow-x:auto;margin-bottom:16px;"></div>
-    <div id="prog-import-errors" style="display:none;background:var(--red-lt);border:1px solid rgba(184,48,37,.2);border-radius:var(--radius-sm);padding:10px 13px;margin-bottom:12px;font-size:12px;color:var(--red-txt);"></div>
-    <div style="display:flex;gap:8px;">
-      <button class="btn-p" id="prog-import-confirm" onclick="progImportConfirm()">Importer ces programmes</button>
-      <button class="btn-s" onclick="document.getElementById('prog-import-modal').style.display='none'">Annuler</button>
-    </div>
-  </div>
-</div>
-</div><!-- fin module-prog -->
-
-
-<!-- ══════════════════════════════════════════════
-     MODULE 2 · SAISIE QUOTIDIENNE
-══════════════════════════════════════════════ -->
-<div id="module-saisie" class="module" style="display:none;flex:1;min-width:0;">
-  <nav class="sidebar" id="sb-saisie">
-    <div class="sb-sec">
-      <div class="sb-label">SAISIES</div>
-      <button class="nav-item active" onclick="saisieShowPanel('list',this)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4h12v1.5H2zm0 3h12v1.5H2zm0 3h8v1.5H2z"/></svg>
-        Journal terrain
-        <span class="nav-badge" id="saisie-nb">0</span>
-      </button>
-      <button class="nav-item" onclick="saisieShowPanel('stats',this)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 11H2v3h2v-3zm5-4H7v7h2V7zm5-5h-2v12h2V2zm-2-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1h-2z"/></svg>
-        Statistiques
-      </button>
-    </div>
-    <div class="sb-sec" style="margin-top:auto;padding-top:12px;border-top:1px solid var(--border);">
-      <label class="btn-s" style="cursor:pointer;display:flex;align-items:center;gap:6px;font-size:11px;background:#E8F5E9;color:#2E7D32;border-color:#2E7D32;justify-content:center;padding:6px;" title="Importer fichier terrain CE & GNSS">
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
-        Importer fichier terrain
-        <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="saisieImportExcel(this)">
-      </label>
-      <button class="btn-s" onclick="saisieExportCSV()" style="margin-top:6px;font-size:11px;width:100%;">↓ Exporter CSV</button>
-      <button class="btn-s" onclick="saisieReset()" style="margin-top:6px;font-size:11px;width:100%;color:var(--red);border-color:var(--red);" title="Vider toutes les saisies">🗑 Réinitialiser</button>
-    </div>
-  </nav>
-
-  <main class="main" style="flex:1;overflow-y:auto;padding:20px;">
-
-    <!-- Panel Journal -->
-    <div class="panel active" id="saisie-panel-list">
-      <div class="page-head">
-        <div><h2>Journal des saisies terrain</h2><p id="saisie-subtitle">Déclarations journalières — Région du Cavally</p></div>
-        <div class="btn-row">
-          <button class="btn-s" onclick="saisieRenderAll()">↻ Actualiser</button>
-        </div>
-      </div>
-
-      <!-- KPI -->
-      <div id="saisie-kpi" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;"></div>
-
-      <!-- Filtres -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
-        <input id="saisie-f-text" type="text" placeholder="Agent, village, N° dossier..."
-          style="padding:7px 11px;border:1px solid var(--border);border-radius:6px;font-size:12px;min-width:200px;"
-          oninput="saisieRenderList()">
-        <select id="saisie-f-agent" onchange="saisieRenderList()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
-          <option value="">Tous les agents</option>
-        </select>
-        <select id="saisie-f-dept" onchange="saisieRenderList()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
-          <option value="">Tous les dép.</option>
-          <option>Dép. Guiglo</option><option>Dép. Bloléquin</option>
-          <option>Dép. Taï</option><option>Dép. Toulépleu</option>
-        </select>
-        <select id="saisie-f-activite" onchange="saisieRenderList()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
-          <option value="">Toutes activités</option>
-          <option value="CF">CF</option>
-          <option value="DTV">DTV</option>
-          <option value="CONTRAT">CONTRAT</option>
-        </select>
-        <select id="saisie-f-etape" onchange="saisieRenderList()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
-          <option value="">Toutes étapes</option>
-          <option>Demande CF</option><option>RDC</option>
-          <option>Levé et bornage</option><option>PV de constat de limite</option>
-          <option>Ouverture de publicité</option><option>Clôture de publicité</option>
-          <option>Approbation CPCDC</option><option>Validation enquête</option>
-        </select>
-        <input id="saisie-f-date" type="date" onchange="saisieRenderList()"
-          style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
-        <span id="saisie-count" style="font-size:12px;color:var(--text2);margin-left:auto;font-weight:600;"></span>
-      </div>
-
-      <!-- Tableau -->
-      <div class="tw">
-        <table style="font-size:12px;">
-          <thead><tr>
-            <th>Date</th>
-            <th>Agent</th>
-            <th>Fonction</th>
-            <th>Département</th>
-            <th>SP / Village</th>
-            <th>Activité</th>
-            <th>Étape réalisée</th>
-            <th>N° Dossier</th>
-            <th>Demandeur</th>
-            <th style="text-align:center">Nb dos.</th>
-            <th style="text-align:center">Superficie</th>
-            <th>Réf. Prog.</th>
-            <th>Observations</th>
-            <th>Actions</th>
-          </tr></thead>
-          <tbody id="saisie-tbody"></tbody>
-        </table>
-      </div>
-      <div id="saisie-pagination" style="display:flex;justify-content:center;gap:6px;margin-top:12px;flex-wrap:wrap;"></div>
-    </div>
-
-    <!-- Panel Statistiques -->
-    <div class="panel" id="saisie-panel-stats">
-      <div class="page-head"><div><h2>Statistiques saisies terrain</h2><p>Vue par agent, activité et étape</p></div></div>
-      <div id="saisie-stats-content"></div>
-    </div>
-
-    <!-- Panel Détail (conservé pour compatibilité) -->
-    <div class="panel" id="saisie-panel-detail">
-      <div class="page-head">
-        <div><h2 id="saisie-detail-title">Détail</h2><p id="saisie-detail-subtitle"></p></div>
-        <button class="btn-s" onclick="saisieShowPanel('list')">← Retour</button>
-      </div>
-      <div id="saisie-detail-content"></div>
-    </div>
-
-  </main>
-</div>
 
 <div id="module-dossier" class="module" style="display:none;flex:1;min-width:0;">
   <nav class="sidebar" id="sb-dos">
@@ -1330,7 +932,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       <div class="tw"><table>
         <thead><tr>
           <th>Rang</th><th>Agent</th><th>Fonction</th>
-          <th>Programmes</th><th>Saisies</th><th title="Dossiers saisis (CE/ISF) ou parcelles levées (Opérateur GNSS)">Dossiers traités</th>
+          <th title="Dossiers saisis (CE/ISF) ou parcelles levées (Opérateur GNSS)">Dossiers traités</th>
           <th title="Superficie GNSS levée (colonne NOM_AGENT du fichier GNSS)">Superficie (ha)</th>
           <th>Dossiers CF</th><th>Jours terrain</th><th>Moy./jour</th><th>Performance</th>
         </tr></thead>
@@ -1447,14 +1049,13 @@ tbody td{padding:9px 12px;vertical-align:middle;}
         <select id="zv-vil-statut" onchange="zvRenderVillages()">
           <option value="">Tous statuts</option>
           <option value="couvert">Couverts</option>
-          <option value="partiel">Partiels</option>
           <option value="nontraite">Non traités</option>
         </select>
       </div>
       <div class="tw"><table>
         <thead><tr>
           <th>Village</th><th>Département</th><th>Sous-préfecture</th>
-          <th>Programmes</th><th>Saisies</th><th>Dossiers CF</th>
+          <th>Dossiers CF</th>
           <th>Agents intervenus</th><th>Statut</th>
         </tr></thead>
         <tbody id="zv-vil-tbody"></tbody>
@@ -1723,29 +1324,15 @@ function geoUpdateVillage(deptId, spId, vilId) {
 // DÉCLARATIONS GLOBALES ANTICIPÉES
 // (pour éviter les erreurs "before initialization")
 // ════════════════════════════════════════
-let programmes = [];
-let saisies = [];
-let saisiesFiltered = [];
-let saisiesPage = 0;
-const SAISIES_PAGE_SIZE = 50;
 let dossiers = [];
 let dosEditingId = null;
-let saisieEditingId = null;
-let progEditingId = null;
-let saisieCounter = 0;
-let progVillages = [];
 let dosImportData = [];
-let progImportData = [];
 let users_db = {}; // Comptes utilisateurs
 let currentUser = null;
 
 // ── Pagination ──
 const PAGE_SIZE = 50;
-let progPage = 0;
-let saisiePage = 0;
 let dosPage = 0;
-let progListFiltered = [];
-let saisieListFiltered = [];
 let dosListFiltered = [];
 
 // ════════════════════════════════════════
@@ -1893,8 +1480,6 @@ function renderPagination(containerId, page, total, pageSize, onPageFn){
     <span style="font-size:12px;color:var(--text2);">Page ${page+1} / ${totalPages}</span>
   </div>`;
 }
-function progGoPage(p){ progPage=p; progRenderPage(); }
-function saisieGoPage(p){ saisiePage=p; saisieRenderPage(); }
 function dosGoPage(p){ dosPage=p; dosRenderPage(); }
 function fmtDate(d){if(!d)return'—';return new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});}
 function fmtHeure(h){if(!h)return'';return h;}
@@ -1920,816 +1505,41 @@ function switchModule(id){
 }
 
 
-// ═══════════════════════════════════════════
-// MODULE 1 · PROGRAMME
-// ═══════════════════════════════════════════
 
 
-let progCounter=0;
-
-const PROG_SAMPLE = [];
-
-function progInit(){
-  programmes=[];
-  progCounter=0;
-  progGenRef();
-}
-
-function progSave(){  scheduleSave();
-}
-function progRenderAll(){progRenderKPI();progRenderTable();document.getElementById('prog-nb').textContent=programmes.length;}
-
-function progGetPeriodFilter(){
-  const d=document.getElementById('prog-f-debut')?.value;
-  const f=document.getElementById('prog-f-fin')?.value;
-  return {d,f};
-}
-
-function progFilterByPeriode(list){
-  const {d,f}=progGetPeriodFilter();
-  return list.filter(p=>{
-    if(d && p.date_fin < d) return false;
-    if(f && p.date_debut > f) return false;
-    return true;
-  });
-}
-
-function progResetPeriode(){
-  const el1=document.getElementById('prog-f-debut');
-  const el2=document.getElementById('prog-f-fin');
-  if(el1) el1.value='';
-  if(el2) el2.value='';
-  progRenderAll();
-}
-
-function progRenderKPI(){
-  const filtered=progFilterByPeriode(programmes);
-  const ec=filtered.filter(p=>p.statut==='En cours').length;
-  const ret=filtered.filter(p=>p.statut==='En retard').length;
-  const tObj=filtered.reduce((s,p)=>s+p.objectif,0);
-  const tReal=filtered.reduce((s,p)=>s+(p.realise||0),0);
-  const taux=tObj>0?Math.round(tReal/tObj*100):0;
-  const label=filtered.length<programmes.length?`sur ${filtered.length}`:`sur ${programmes.length}`;
-  document.getElementById('prog-kpi').innerHTML=`
-    <div class="kpi green"><div class="kpi-l">En cours</div><div class="kpi-v">${ec}</div><div class="kpi-s">${label}</div></div>
-    <div class="kpi blue"><div class="kpi-l">Taux global</div><div class="kpi-v">${taux}%</div><div class="kpi-s">${tReal} / ${tObj} dos.</div></div>
-    <div class="kpi"><div class="kpi-l">Planifiés</div><div class="kpi-v">${filtered.filter(p=>p.statut==='Planifié').length}</div><div class="kpi-s">À démarrer</div></div>
-    <div class="kpi ${ret>0?'red':''}"><div class="kpi-l">En retard</div><div class="kpi-v">${ret}</div><div class="kpi-s">${ret>0?'Action requise':'Aucun'}</div></div>`;
-}
-
-function progRenderTable(){
-  const q=(document.getElementById('prog-search').value||'').toLowerCase();
-  const fd=document.getElementById('prog-f-dept').value;
-  const fs=document.getElementById('prog-f-statut').value;
-  const list=progFilterByPeriode(programmes).filter(p=>{
-    const mq=!q||p.id.toLowerCase().includes(q)||p.agent.toLowerCase().includes(q)||p.villages.join(' ').toLowerCase().includes(q);
-    return mq&&(!fd||p.dept===fd)&&(!fs||p.statut===fs);
-  });
-  progListFiltered = list;
-  progPage = 0;
-  progRenderPage();
-}
-
-function progRenderPage(){
-  const list = progListFiltered;
-  const tbody=document.getElementById('prog-tbody');
-  const empty=document.getElementById('prog-empty');
-  const paginEl = document.getElementById('prog-pagination');
-  if(!list.length){tbody.innerHTML='';empty.style.display='block';if(paginEl)paginEl.innerHTML='';return;}
-  empty.style.display='none';
-  const sb=s=>{const m={'En cours':'b-green','Planifié':'b-blue','Terminé':'b-gray','En retard':'b-red'};return`<span class="badge ${m[s]||'b-gray'}">${s}</span>`;};
-  const page = progListFiltered.slice(progPage*PAGE_SIZE, (progPage+1)*PAGE_SIZE);
-  tbody.innerHTML=page.map(p=>{
-    const objRef = p.objectif > 0 ? p.objectif : (p.objectif_dos > 0 ? p.objectif_dos : 1);
-    const pct = Math.min(100, Math.round((p.realise||0) / objRef * 100));
-    const fc = pct>=90?'var(--accent)':pct>=60?'var(--amber)':'var(--red)';
-    const villages = Array.isArray(p.villages) ? p.villages.join(', ') : (p.villages||'');
-    return`<tr><td class="td-mono">${p.id}</td>
-      <td><strong style="font-size:12px">${p.periode_type||''}</strong><br><span style="font-size:11px;color:var(--text2)">${fmtDate(p.date_debut)}→${fmtDate(p.date_fin)}</span></td>
-      <td><span style="font-size:12px;font-weight:500">${p.dept||''}</span><br><span style="font-size:11px;color:var(--text2)">${villages}</span></td>
-      <td style="font-size:13px">${p.agent||''}</td>
-      <td style="text-align:center">${p.objectif?p.objectif+' ha':'—'}</td>
-      <td style="text-align:center;font-size:12px;color:var(--text2)">${p.objectif_dos?p.objectif_dos+' dos.':'—'}</td>
-      <td style="min-width:100px"><div class="prog"><div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${fc}"></div></div><span class="prog-pct" style="color:${fc}">${pct}%</span></div><span style="font-size:10px;color:var(--text3)">${p.realise||0} réal.</span></td>
-      <td>${sb(p.statut)}</td>
-      <td><div style="display:flex;gap:5px">
-        <button class="btn-s" style="font-size:11px;padding:4px 8px;background:var(--accent-lt);color:var(--accent-txt);border-color:var(--accent)" onclick="event.stopPropagation();progShowDetail('${p.id}')">🔍 Détail</button>
-        <button class="btn-s" style="font-size:11px;padding:4px 8px" onclick="event.stopPropagation();progEdit('${p.id}')">Modifier</button>
-        <button class="btn-d" onclick="event.stopPropagation();progDelete('${p.id}')">Sup.</button>
-      </div></td>
-    </tr>`;
-  }).join('');
-  if(paginEl) paginEl.innerHTML = renderPagination('prog-pagination', progPage, list.length, PAGE_SIZE, 'progGoPage');
-}
-
-function progShowPanel(id,btn){
-  document.querySelectorAll('#module-prog .panel').forEach(p=>p.classList.remove('active'));
-  const panel=document.getElementById('prog-panel-'+id);
-  if(!panel){console.error('Panel introuvable: prog-panel-'+id);return;}
-  panel.classList.add('active');
-  document.querySelectorAll('#sb-prog .nav-item').forEach(n=>n.classList.remove('active'));
-  if(btn)btn.classList.add('active');
-  else{const btns=document.querySelectorAll('#sb-prog .nav-item');const map={list:0,form:1,schema:2,rules:3,guide:4,detail:0};btns[map[id]??0]?.classList.add('active');}
-  if(id==='form'&&!progEditingId)progResetForm();
-}
-
-function progAddVillage(e){
-  if(e.key!=='Enter')return;
-  e.preventDefault?.();
-  const inp=document.getElementById('pf-village-in');
-  const v=(inp.value||'').trim();
-  if(!v||progVillages.includes(v))return;
-  progVillages.push(v);inp.value='';progRenderVtags();
-}
-function progRemoveVillage(v){progVillages=progVillages.filter(x=>x!==v);progRenderVtags();}
-function progRenderVtags(){
-  document.getElementById('prog-vtags').innerHTML=progVillages.map(v=>`<span class="vtag">${v}<span class="vtag-x" onclick="progRemoveVillage('${v}')">×</span></span>`).join('');
-  document.getElementById('pf-villages').value=progVillages.join(',');
-}
-
-function progGenRef(){progCounter++;document.getElementById('pf-ref').value='PROG-'+new Date().getFullYear()+'-'+String(progCounter).padStart(3,'0');}
-
-function progCheckDates(){
-  const d1=document.getElementById('pf-debut').value,d2=document.getElementById('pf-fin').value;
-  if(d1&&d2&&d2<=d1){document.getElementById('pe-fin').classList.add('show');document.getElementById('pf-fin').classList.add('err');}
-  else{document.getElementById('pe-fin').classList.remove('show');document.getElementById('pf-fin').classList.remove('err');}
-}
-function progUpdateDates(){
-  const p=document.getElementById('pf-periode').value,d1=document.getElementById('pf-debut');
-  if(!d1.value)return;
-  const s=new Date(d1.value),e=new Date(s);
-  if(p==='Semaine')e.setDate(e.getDate()+6);
-  else if(p==='Mois')e.setDate(e.getDate()+29);
-  else if(p==='Trimestre')e.setDate(e.getDate()+89);
-  document.getElementById('pf-fin').value=e.toISOString().split('T')[0];
-  progCheckDates();
-}
-
-function progValidate(){
-  const errs=[];
-  const rq=(id,msg,eid)=>{const v=document.getElementById(id).value;if(!v){document.getElementById(eid)?.classList.add('show');document.getElementById(id)?.classList.add('err');errs.push(msg);}else{document.getElementById(eid)?.classList.remove('show');document.getElementById(id)?.classList.remove('err');}};
-  rq('pf-periode','Période requise','pe-periode');
-  rq('pf-dept','Département requis','pe-dept');
-  rq('pf-agent','Agent requis','pe-agent');
-  rq('pf-operation','Opération requise','pe-op');
-  // Valider au moins un objectif selon la fonction de l'agent
-  const agentNom = document.getElementById('pf-agent').value;
-  const unite = getAgentUnite(agentNom);
-  const objHa  = parseFloat(document.getElementById('pf-objectif')?.value)||0;
-  const objDos = parseFloat(document.getElementById('pf-objectif-dos')?.value)||0;
-  const objVil = parseFloat(document.getElementById('pf-objectif-vil')?.value)||0;
-  const hasObj = objHa > 0 || objDos > 0 || objVil > 0;
-  if(!hasObj){
-    document.getElementById('pe-obj').classList.add('show');
-    errs.push('Objectif requis (Ha, Dossiers ou Villages selon votre fonction)');
-  } else {
-    document.getElementById('pe-obj').classList.remove('show');
-  }
-  const d1=document.getElementById('pf-debut').value,d2=document.getElementById('pf-fin').value;
-  if(!d1){document.getElementById('pe-debut').classList.add('show');errs.push('Date début requise');}else document.getElementById('pe-debut').classList.remove('show');
-  if(!d2||d2<=d1){document.getElementById('pe-fin').classList.add('show');errs.push('Date fin invalide');}else document.getElementById('pe-fin').classList.remove('show');
-  if(!progVillages.length){document.getElementById('pe-villages').classList.add('show');errs.push('Village requis');}else document.getElementById('pe-villages').classList.remove('show');
-  return errs;
-}
-
-function progSubmit(e){
-  e.preventDefault();
-  if(isViewer()){ showToast('Accès refusé — rôle visuel uniquement.'); return; }
-  document.getElementById('prog-suc').classList.remove('show');
-  const errs=progValidate();
-  if(errs.length){document.getElementById('prog-val-sum').classList.add('show');document.getElementById('prog-val-list').innerHTML=errs.map(x=>`<li>${x}</li>`).join('');return;}
-  document.getElementById('prog-val-sum').classList.remove('show');
-  const now=new Date(),d1=new Date(document.getElementById('pf-debut').value),d2=new Date(document.getElementById('pf-fin').value);
-  const statut=now<d1?'Planifié':now>d2?'Terminé':'En cours';
-  const prog={
-    id:progEditingId||document.getElementById('pf-ref').value,
-    periode_type:document.getElementById('pf-periode').value,
-    date_debut:document.getElementById('pf-debut').value,
-    date_fin:document.getElementById('pf-fin').value,
-    dept:document.getElementById('pf-dept').value,
-    sp:document.getElementById('pf-sp').value,
-    villages:[...progVillages],
-    agent:document.getElementById('pf-agent').value,
-    op:document.getElementById('pf-operation').value,
-    sousetapes:JSON.parse(document.getElementById('pf-sousetapes').value||'[]'),
-    objectif: parseFloat(document.getElementById('pf-objectif')?.value)||0,
-    objectif_dos: parseFloat(document.getElementById('pf-objectif-dos')?.value)||0,
-    objectif_vil: parseFloat(document.getElementById('pf-objectif-vil')?.value)||0,
-    nb_agents:parseInt(document.getElementById('pf-nragents').value)||1,
-    budget:parseInt(document.getElementById('pf-budget').value)||0,
-    obs:document.getElementById('pf-obs').value,
-    statut,realise:0,
-  };
-  if(progEditingId){const i=programmes.findIndex(p=>p.id===progEditingId);if(i>=0){prog.realise=programmes[i].realise;programmes[i]=prog;}}
-  else programmes.unshift(prog);
-  progSave();progRenderAll();
-  document.getElementById('prog-suc').textContent=progEditingId?`Programme ${prog.id} mis à jour.`:`Programme ${prog.id} créé.`;
-  document.getElementById('prog-suc').classList.add('show');
-  showToast(progEditingId?'Mis à jour !':'Créé avec succès !');
-  progEditingId=null;progResetForm();
-  setTimeout(()=>progShowPanel('list'),1000);
-}
-
-function progEdit(id){
-  const p=programmes.find(x=>x.id===id);if(!p)return;
-  if(!canModifyProg(p)){showToast('Modification impossible : délai de 24h dépassé.');return;}
-  if(!canModifyProg(p)){showToast('Modification impossible : délai de 24h dépassé.');return;}
-  progEditingId=id;
-  document.getElementById('prog-form-title').textContent='Modifier le programme';
-  document.getElementById('pf-ref').value=p.id||'';
-  document.getElementById('pf-periode').value=p.periode_type||'Semaine';
-  document.getElementById('pf-debut').value=p.date_debut||'';
-  document.getElementById('pf-fin').value=p.date_fin||'';
-  document.getElementById('pf-dept').value=p.dept||'';
-  geoUpdateSP('pf-dept','pf-sp','pf-village-sel');
-  document.getElementById('pf-sp').value=p.sp||'';
-  geoUpdateVillage('pf-dept','pf-sp','pf-village-sel');
-  document.getElementById('pf-agent').value=p.agent||'';
-  progRestoreSousEtapes(p.op||'', p.sousetapes||[]);
-  document.getElementById('pf-objectif').value=p.objectif||0;
-  const elDos=document.getElementById('pf-objectif-dos');
-  const elVil=document.getElementById('pf-objectif-vil');
-  if(elDos) elDos.value=p.objectif_dos||0;
-  if(elVil) elVil.value=p.objectif_vil||0;
-  setTimeout(progUpdateObjUnite, 50);
-  document.getElementById('pf-nragents').value=p.nb_agents||1;
-  document.getElementById('pf-budget').value=p.budget||'';
-  document.getElementById('pf-obs').value=p.obs||'';
-  progVillages=[...(p.villages||[])];progRenderVtags();
-  progShowPanel('form');window.scrollTo(0,0);
-}
-
-function progDelete(id){
-  if(!canDelete()){showToast('Action réservée au coordinateur.');return;}
-  if(!confirm(`Supprimer ${id} ?`))return;
-  programmes=programmes.filter(p=>p.id!==id);progSave();progRenderAll();showToast('Supprimé.');
-}
-
-function progResetForm(){
-  progEditingId=null;
-  document.getElementById('prog-form-title').textContent='Nouveau programme planifié';
-  document.getElementById('prog-form').reset();
-  progVillages=[];progRenderVtags();
-  document.querySelectorAll('#prog-panel-form .ferr').forEach(e=>e.classList.remove('show'));
-  document.querySelectorAll('#prog-panel-form .fi,#prog-panel-form .fsel').forEach(e=>e.classList.remove('err'));
-  document.getElementById('prog-val-sum').classList.remove('show');
-  document.getElementById('prog-suc').classList.remove('show');
-  progCounter--;progGenRef();
-  setTimeout(progUpdateObjUnite, 50);
-}
-function progShowDetail(id){
-  const p = programmes.find(x=>x.id===id);
-  if(!p){ showToast('Programme introuvable.'); return; }
-
-  // Saisies liées à ce programme
-  const mesSaisies = saisies.filter(s=>s.prog_ref===id);
-  const totalRealise = mesSaisies.reduce((s,x)=>s+(x.ndos||0),0);
-  const totalHa = mesSaisies.reduce((s,x)=>s+(x.superficie||0),0);
-  const joursT = [...new Set(mesSaisies.map(s=>s.date))].sort();
-  const dernierJour = joursT[joursT.length-1];
-
-  // Objectif de référence
-  const objRef = p.objectif>0 ? p.objectif : (p.objectif_dos>0 ? p.objectif_dos : 0);
-  const pct = objRef>0 ? Math.min(100,Math.round(totalRealise/objRef*100)) : 0;
-  const colPct = pct>=90?'var(--accent)':pct>=60?'var(--amber)':'var(--red)';
-
-  // Statut badge
-  const statutBadge = {
-    'En cours':'<span class="badge b-green">En cours</span>',
-    'Planifié':'<span class="badge b-blue">Planifié</span>',
-    'Terminé':'<span class="badge b-gray">Terminé</span>',
-    'En retard':'<span class="badge b-red">En retard</span>',
-  }[p.statut]||'';
-
-  // Villages
-  const villageTags = (Array.isArray(p.villages)?p.villages:[]).map(v=>
-    `<span style="display:inline-block;background:var(--accent-lt);color:var(--accent-txt);padding:2px 9px;border-radius:20px;font-size:12px;margin:2px;">${v}</span>`
-  ).join('');
-
-  // Sous-étapes
-  const sousetapes = Array.isArray(p.sousetapes) ? p.sousetapes : [];
-  const actDef = ACTIVITES[p.op] || null;
-  const sousetapesHtml = sousetapes.length
-    ? sousetapes.map(e=>`<span style="display:inline-flex;align-items:center;gap:4px;background:${actDef?actDef.couleur.bg:'var(--surface2)'};color:${actDef?actDef.couleur.tx:'var(--text2)'};border:1px solid ${actDef?actDef.couleur.brd:'var(--border)'};padding:3px 10px;border-radius:20px;font-size:11px;margin:2px;">✓ ${e}</span>`).join('')
-    : '<span style="color:var(--text3);font-size:12px;">—</span>';
-
-  // Tableau des saisies liées
-  const saisiesRows = mesSaisies.length===0
-    ? `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3);">Aucune saisie liée à ce programme</td></tr>`
-    : [...mesSaisies].sort((a,b)=>b.date.localeCompare(a.date)).map(s=>{
-        const etapeBadge = `<span class="badge b-blue" style="font-size:10px;">${s.etape}</span>`;
-        return `<tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:8px 12px;font-size:12px;color:var(--text2);white-space:nowrap;">${fmtDate(s.date)}</td>
-          <td style="padding:8px 12px;font-weight:500;font-size:12px;">${s.agent}</td>
-          <td style="padding:8px 12px;">${s.village||'—'}</td>
-          <td style="padding:8px 12px;">${etapeBadge}</td>
-          <td style="padding:8px 12px;text-align:center;font-family:'Syne',sans-serif;font-weight:700;color:var(--accent);font-size:15px;">${s.ndos}</td>
-          <td style="padding:8px 12px;text-align:center;font-size:12px;color:var(--teal);">${s.superficie?s.superficie+' ha':'—'}</td>
-          <td style="padding:8px 12px;font-size:11px;color:var(--text2);">${s.incident&&s.incident!==''?'⚠ '+s.incident:''}</td>
-        </tr>`;
-      }).join('');
-
-  // Production par village
-  const parVillage = {};
-  mesSaisies.forEach(s=>{
-    if(!parVillage[s.village]) parVillage[s.village]={dos:0,ha:0};
-    parVillage[s.village].dos+=s.ndos||0;
-    parVillage[s.village].ha+=(s.superficie||0);
-  });
-  const villageRows = Object.entries(parVillage).sort((a,b)=>b[1].dos-a[1].dos).map(([v,d])=>{
-    const pctV = objRef>0 ? Math.min(100,Math.round(d.dos/objRef*100)) : 0;
-    return `<tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:8px 12px;font-weight:500;">${v}</td>
-      <td style="padding:8px 12px;text-align:center;font-weight:700;color:var(--accent);">${d.dos}</td>
-      <td style="padding:8px 12px;text-align:center;color:var(--teal);">${d.ha.toFixed(1)} ha</td>
-    </tr>`;
-  }).join('');
-
-  // Construire le contenu
-  document.getElementById('prog-detail-title').textContent = p.id;
-  document.getElementById('prog-detail-subtitle').textContent = p.agent + ' · ' + (p.dept||'') + ' · ' + (p.op||'');
-  const editBtn = document.getElementById('prog-detail-edit-btn');
-  editBtn.style.display = 'inline-flex';
-  editBtn.onclick = ()=>progEdit(id);
-
-  document.getElementById('prog-detail-content').innerHTML = `
-    <!-- KPI rapides -->
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;">
-      <div class="kpi ${pct>=90?'green':pct>=60?'amber':'red'}">
-        <div class="kpi-l">Progression</div>
-        <div class="kpi-v">${pct}%</div>
-        <div class="kpi-s">${totalRealise} / ${objRef||'—'}</div>
-      </div>
-      <div class="kpi blue">
-        <div class="kpi-l">Jours terrain</div>
-        <div class="kpi-v">${joursT.length}</div>
-        <div class="kpi-s">${dernierJour?'Dernier : '+fmtDate(dernierJour):'Aucune saisie'}</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-l">Superficie traitée</div>
-        <div class="kpi-v">${totalHa.toFixed(1)}</div>
-        <div class="kpi-s">hectares</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-l">Saisies liées</div>
-        <div class="kpi-v">${mesSaisies.length}</div>
-        <div class="kpi-s">déclarations</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-l">Statut</div>
-        <div class="kpi-v" style="font-size:14px;margin-top:4px;">${statutBadge}</div>
-        <div class="kpi-s">&nbsp;</div>
-      </div>
-    </div>
-
-    <!-- Infos programme -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
-      <div class="tw" style="padding:16px 18px;">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent2);margin-bottom:12px;">Identification</div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
-            <span style="color:var(--text2);">Référence</span>
-            <span style="font-family:'DM Mono',monospace;font-weight:600;">${p.id}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
-            <span style="color:var(--text2);">Agent responsable</span>
-            <span style="font-weight:600;">${p.agent||'—'}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
-            <span style="color:var(--text2);">Activité</span>
-            <span style="font-weight:600;">${p.op||'—'}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
-            <span style="color:var(--text2);">Département</span>
-            <span style="font-weight:600;">${p.dept||'—'}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
-            <span style="color:var(--text2);">Sous-préfecture</span>
-            <span style="font-weight:600;">${p.sp||'—'}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
-            <span style="color:var(--text2);">Période</span>
-            <span style="font-weight:600;">${p.periode_type||'—'}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
-            <span style="color:var(--text2);">Du</span>
-            <span>${fmtDate(p.date_debut)} → ${fmtDate(p.date_fin)}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
-            <span style="color:var(--text2);">Objectif Ha</span>
-            <span style="font-weight:600;">${p.objectif?p.objectif+' ha':'—'}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
-            <span style="color:var(--text2);">Objectif Dossiers</span>
-            <span style="font-weight:600;">${p.objectif_dos?p.objectif_dos+' dos.':'—'}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;">
-            <span style="color:var(--text2);">Budget</span>
-            <span style="font-weight:600;">${p.budget?p.budget.toLocaleString('fr-FR')+' FCFA':'—'}</span>
-          </div>
-        </div>
-      </div>
-
-      <div style="display:flex;flex-direction:column;gap:14px;">
-        <!-- Villages cibles -->
-        <div class="tw" style="padding:16px 18px;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent2);margin-bottom:10px;">Villages cibles</div>
-          <div>${villageTags||'<span style="color:var(--text3);font-size:12px;">—</span>'}</div>
-        </div>
-
-        <!-- Sous-étapes -->
-        <div class="tw" style="padding:16px 18px;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent2);margin-bottom:10px;">Sous-étapes planifiées</div>
-          <div>${sousetapesHtml}</div>
-        </div>
-
-        <!-- Barre de progression détaillée -->
-        <div class="tw" style="padding:16px 18px;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent2);margin-bottom:10px;">Progression</div>
-          <div style="height:14px;background:var(--surface2);border-radius:7px;overflow:hidden;margin-bottom:8px;">
-            <div style="width:${pct}%;height:100%;background:${colPct};border-radius:7px;transition:width .4s;"></div>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;">
-            <span style="color:var(--text2);">${totalRealise} réalisés</span>
-            <span style="font-weight:700;color:${colPct};">${pct}%</span>
-            <span style="color:var(--text2);">${objRef} objectif</span>
-          </div>
-          ${p.obs?`<div style="margin-top:10px;padding:8px 10px;background:var(--surface2);border-radius:6px;font-size:12px;color:var(--text2);">📝 ${p.obs}</div>`:''}
-        </div>
-      </div>
-    </div>
-
-    <!-- Production par village -->
-    ${Object.keys(parVillage).length>0?`
-    <div class="tw" style="margin-bottom:20px;">
-      <div style="padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);">
-        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);">Production par village</span>
-      </div>
-      <table style="font-size:13px;">
-        <thead><tr>
-          <th>Village</th>
-          <th style="text-align:center;">Dossiers réalisés</th>
-          <th style="text-align:center;">Superficie (ha)</th>
-        </tr></thead>
-        <tbody>${villageRows}</tbody>
-      </table>
-    </div>`:''}
-
-    <!-- Journal des saisies -->
-    <div class="tw">
-      <div style="padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);">Journal des saisies liées (${mesSaisies.length})</span>
-        ${mesSaisies.length>0?`<button class="btn-s" style="font-size:10px;padding:3px 9px;" onclick="switchModule('saisie')">Voir tout M2</button>`:''}
-      </div>
-      <table style="font-size:12px;">
-        <thead><tr>
-          <th>Date</th><th>Agent</th><th>Village</th><th>Étape</th>
-          <th style="text-align:center;">Dossiers</th>
-          <th style="text-align:center;">Superficie</th>
-          <th>Incident</th>
-        </tr></thead>
-        <tbody>${saisiesRows}</tbody>
-      </table>
-    </div>
-  `;
-
-  progShowPanel('detail');
-  window.scrollTo(0,0);
-}
-
-function progClearAll(){
-  if(!confirm('ATTENTION — Réinitialisation complète\n\nCette action va effacer TOUTES les données (programmes, saisies, dossiers) sur TOUS les appareils connectés.\n\nConfirmer ?'))return;
-  if(!confirm('Dernière confirmation — Voulez-vous vraiment tout effacer ?'))return;
-  // Stopper le polling pendant la réinitialisation
-  const wasSyncPending = syncPending;
-  syncPending = true;
-  // Vider toutes les données
-  programmes=[]; saisies=[]; dossiers=[]; absences=[];
-  progCounter=0;
-  // Vider le localStorage
-  try{
-    localStorage.removeItem('presfor_programmes');
-    localStorage.removeItem('presfor_saisies');
-    localStorage.removeItem('presfor_dossiers');
-    localStorage.removeItem('presfor_absences');
-    localStorage.removeItem('presfor_progs');
-    localStorage.removeItem('presfor_last_notif_sent');
-  }catch(e){}
-  // Sauvegarder sur Firebase (écraser avec données vides)
-  updateSyncIndicator('pending');
-  const resetTs = new Date().toISOString();
-  fetch(FIREBASE_URL + '/presfor.json', {
-    method: 'PUT',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      programmes:[], saisies:[], dossiers:[], absences:[],
-      reset: true,
-      updated_at: resetTs
-    })
-  }).then(r => {
-    if(r.ok){
-      lastServerTimestamp = resetTs;
-      syncPending = false;
-      updateSyncIndicator('ok');
-      progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
-      showToast('Réinitialisation complète. Toutes les machines seront vidées dans 15 secondes.');
-    }
-  }).catch(e => {
-    syncPending = false;
-    showToast('Erreur réinitialisation: ' + e.message);
-  });
-}
 
 
-// ═══════════════════════════════════════════
-// MODULE 2 · SAISIE QUOTIDIENNE
-// ═══════════════════════════════════════════
 
 
-let saisieDosList=[];
 
-const SAISIE_SAMPLE = [];
 
-function saisieInit(){
-  saisies=[];
-  saisieCounter=0;
-  
-}
 
-function saisSave(){  scheduleSave();
-}
-function saisieRenderAll(){saisieRenderKPI();saisieRenderList();saisieRenderCorr();saisieRenderPerf();document.getElementById('saisie-nb').textContent=saisies.length;}
 
-function saisieRenderKPI(){
-  const today=new Date().toISOString().split('T')[0];
-  const td=saisies.filter(s=>s.date===today);
-  const tDos=td.reduce((a,s)=>a+s.ndos,0);
-  const tAll=saisies.reduce((a,s)=>a+s.ndos,0);
-  const ag=new Set(td.map(s=>s.agent)).size;
-  const inc=saisies.filter(s=>s.incident&&s.incident!=='').length;
-  document.getElementById('saisie-kpi').innerHTML=`
-    <div class="kpi green"><div class="kpi-l">Dossiers aujourd'hui</div><div class="kpi-v">${tDos}</div><div class="kpi-s">${ag} agent(s)</div></div>
-    <div class="kpi blue"><div class="kpi-l">Total saisis</div><div class="kpi-v">${tAll}</div><div class="kpi-s">${saisies.length} saisies</div></div>
-    <div class="kpi"><div class="kpi-l">Ce mois</div><div class="kpi-v">${saisies.filter(s=>s.date&&s.date.startsWith(new Date().toISOString().slice(0,7))).length}</div><div class="kpi-s">Saisies</div></div>
-    <div class="kpi ${inc>0?'amber':''}"><div class="kpi-l">Incidents</div><div class="kpi-v">${inc}</div><div class="kpi-s">${inc>0?'À suivre':'Aucun'}</div></div>`;
-}
 
-function saisieRenderList(){
-  const q=(document.getElementById('saisie-srch').value||'').toLowerCase();
-  const fa=document.getElementById('saisie-f-agent').value;
-  const fd=document.getElementById('saisie-f-dept').value;
-  const fdt=document.getElementById('saisie-f-date').value;
-  const list=saisies.filter(s=>{
-    const mq=!q||s.id.toLowerCase().includes(q)||s.agent.toLowerCase().includes(q)||s.village.toLowerCase().includes(q)||(s.prog_ref||'').toLowerCase().includes(q);
-    return mq&&(!fa||s.agent===fa)&&(!fd||s.dept===fd)&&(!fdt||s.date===fdt);
-  }).sort((a,b)=>b.date.localeCompare(a.date));
-  saisieListFiltered = list;
-  saisiePage = 0;
-  saisieRenderPage();
-}
 
-function saisieRenderPage(){
-  const list = saisieListFiltered;
-  const tbody=document.getElementById('saisie-tbody');
-  const empty=document.getElementById('saisie-empty');
-  const paginEl = document.getElementById('saisie-pagination');
-  if(!list.length){tbody.innerHTML='';empty.style.display='block';if(paginEl)paginEl.innerHTML='';return;}
-  empty.style.display='none';
-  const eb=e=>{const m={'Enquête terrain':'b-blue','Bornage':'b-teal','Constitution':'b-amber','Validation techn.':'b-amber','Enregistrement':'b-green'};return`<span class="badge ${m[e]||'b-gray'}">${e}</span>`;};
-  const page = list.slice(saisiePage*PAGE_SIZE, (saisiePage+1)*PAGE_SIZE);
-  tbody.innerHTML=page.map(s=>{
-    let ecartHtml='<span class="badge b-gray">—</span>';
-    if(s.prog_ref){const p=PROGS_REF.find(p=>p.id===s.prog_ref);if(p){const cum=saisies.filter(x=>x.prog_ref===s.prog_ref&&x.date<=s.date).reduce((a,x)=>a+x.ndos,0);const pct=Math.round(cum/p.objectif*100);ecartHtml=`<span class="badge ${pct>=90?'b-green':pct>=65?'b-amber':'b-red'}">${pct}%</span>`;}}
-    return`<tr><td class="td-mono">${s.id}</td><td style="font-size:12px;white-space:nowrap">${fmtDate(s.date)}</td>
-      <td style="font-weight:500">${s.agent}</td>
-      <td><span style="font-size:12px">${s.dept}</span><br><span style="font-size:11px;color:var(--text2)">${s.village}</span></td>
-      <td>${eb(s.etape)}</td>
-      <td style="text-align:center;font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--accent)">${s.ndos}</td>
-      <td style="text-align:center;font-size:12px;color:var(--teal);font-weight:600">${s.superficie?s.superficie+' ha':'—'}</td>
-      <td style="font-size:11px;color:var(--text2);white-space:nowrap">${fmtHeure(s.hdep)||"—"}→${fmtHeure(s.hret)||"—"}<br><span style="color:var(--text3)">${s.duree}</span></td>
-      <td>${ecartHtml}</td>
-      <td><div style="display:flex;gap:5px;align-items:center">
-        ${saisieIsLocked(s)?'<span title="Saisie verrouillée (+7j)" style="color:var(--amber);font-size:13px;">🔒</span>':''}
-        <button class="btn-s" style="font-size:11px;padding:4px 8px;background:var(--accent-lt);color:var(--accent-txt);border-color:var(--accent)" onclick="event.stopPropagation();saisieShowDetail('${s.id}')">🔍 Détail</button>
-        <button class="btn-s" style="font-size:11px;padding:4px 8px" onclick="event.stopPropagation();saisieEdit('${s.id}')">Modifier</button>
-        <button class="btn-d" onclick="event.stopPropagation();saisieDelete('${s.id}')">Sup.</button>
-      </div></td>
-    </tr>`;
-  }).join('');
-  if(paginEl) paginEl.innerHTML = renderPagination('saisie-pagination', saisiePage, list.length, PAGE_SIZE, 'saisieGoPage');
-}
 
-function saisieRenderCorr(){
-  const tObj=PROGS_REF.reduce((a,p)=>a+p.objectif,0);
-  const tReal=saisies.reduce((a,s)=>a+s.ndos,0);
-  const taux=tObj>0?Math.round(tReal/tObj*100):0;
-  const enAv=PROGS_REF.filter(p=>saisies.filter(s=>s.prog_ref===p.id).reduce((a,s)=>a+s.ndos,0)>=p.objectif).length;
-  const enRet=PROGS_REF.filter(p=>saisies.filter(s=>s.prog_ref===p.id).reduce((a,s)=>a+s.ndos,0)<p.objectif*0.5).length;
-  document.getElementById('corr-kpi').innerHTML=`
-    <div class="kpi"><div class="kpi-l">Objectif total</div><div class="kpi-v">${tObj}</div><div class="kpi-s">Planifiés</div></div>
-    <div class="kpi green"><div class="kpi-l">Réalisé</div><div class="kpi-v">${tReal}</div><div class="kpi-s">Taux : ${taux}%</div></div>
-    <div class="kpi"><div class="kpi-l">Prog. OK/avance</div><div class="kpi-v">${enAv}</div><div class="kpi-s">sur ${PROGS_REF.length}</div></div>
-    <div class="kpi ${enRet>0?'red':''}"><div class="kpi-l">En retard</div><div class="kpi-v">${enRet}</div><div class="kpi-s">&lt;50% objectif</div></div>`;
 
-  const mkBar=(name,plan,real,flex1)=>{
-    const t=plan>0?Math.min(100,Math.round(real/plan*100)):0;
-    const col=t>=90?'var(--accent2)':t>=65?'var(--amber)':'var(--red)';
-    return`<div class="corr-agent"><span class="ca-name" style="width:${flex1||92}px">${name}</span><div style="flex:1"><div class="ca-prog"><div class="ca-prog-real" style="width:${t}%;background:${col}"></div></div><div class="ca-label"><span>${real} réal.</span><span>${plan} plan.</span></div></div><span class="ca-taux" style="color:${col}">${t}%</span></div>`;
-  };
-  document.getElementById('corr-agent-body').innerHTML=AGENTS.map(a=>{
-    const plan=PROGS_REF.filter(p=>p.agent===a).reduce((s,p)=>s+p.objectif,0);
-    const real=saisies.filter(s=>s.agent===a).reduce((s,x)=>s+x.ndos,0);
-    if(plan===0&&real===0)return null;
-    return mkBar(a,plan,real);
-  }).filter(Boolean).join('');
-  document.getElementById('corr-dept-body').innerHTML=['Dép. Guiglo','Dép. Bloléquin','Dép. Toulépleu','Dép. Taï'].map(dep=>{
-    const plan=PROGS_REF.filter(p=>p.dept===dep).reduce((s,p)=>s+p.objectif,0);
-    const real=saisies.filter(s=>s.dept===dep).reduce((s,x)=>s+x.ndos,0);
-    return mkBar(dep.replace('Dép. ',''),plan,real,82);
-  }).join('');
-  document.getElementById('corr-tbody').innerHTML=PROGS_REF.map(p=>{
-    const real=saisies.filter(s=>s.prog_ref===p.id).reduce((a,s)=>a+s.ndos,0);
-    const ecart=real-p.objectif;const t=Math.round(real/p.objectif*100);
-    const col=t>=90?'b-green':t>=65?'b-amber':'b-red';
-    const ec=t>=90?'var(--accent)':t>=65?'var(--amber)':'var(--red)';
-    return`<tr><td class="td-mono">${p.id}</td><td>${p.agent}</td><td>${p.dept}</td>
-      <td style="text-align:center">${p.objectif}</td>
-      <td style="text-align:center;font-weight:600;color:var(--accent)">${real}</td>
-      <td style="text-align:center;font-weight:600;color:${ec}">${ecart>=0?'+':''}${ecart}</td>
-      <td><div class="prog"><div class="prog-bar"><div class="prog-fill" style="width:${Math.min(100,t)}%;background:${ec}"></div></div><span class="prog-pct" style="color:${ec}">${t}%</span></div></td>
-      <td><span class="badge ${col}">${t>=90?'Atteint':t>=65?'En cours':'En retard'}</span></td></tr>`;
-  }).join('');
-}
 
-function saisieRenderPerf(){
-  const total=saisies.reduce((a,s)=>a+s.ndos,0);
-  const meill=AGENTS.map(a=>({a,n:saisies.filter(s=>s.agent===a).reduce((x,s)=>x+s.ndos,0)})).sort((a,b)=>b.n-a.n)[0];
-  const njours=new Set(saisies.map(s=>s.date)).size;
-  document.getElementById('perf-kpi').innerHTML=`
-    <div class="kpi green"><div class="kpi-l">Production totale</div><div class="kpi-v">${total}</div><div class="kpi-s">Tous agents</div></div>
-    <div class="kpi blue"><div class="kpi-l">Jours terrain</div><div class="kpi-v">${njours}</div><div class="kpi-s">Avec saisie</div></div>
-    <div class="kpi"><div class="kpi-l">Moy./jour</div><div class="kpi-v">${njours>0?Math.round(total/njours):0}</div><div class="kpi-s">Zone entière</div></div>
-    <div class="kpi amber"><div class="kpi-l">Meilleure perf.</div><div class="kpi-v">${meill?.n||0}</div><div class="kpi-s">${meill?.a||'—'}</div></div>`;
-  document.getElementById('perf-grid').innerHTML=AGENTS.filter(a=>{const ms=saisies.filter(s=>s.agent===a);const pr=PROGS_REF.find(p=>p.agent===a);return ms.length>0||pr;}).map(a=>{
-    const ms=saisies.filter(s=>s.agent===a);
-    const tot=ms.reduce((x,s)=>x+s.ndos,0);
-    const jrs=new Set(ms.map(s=>s.date)).size;
-    const pr=PROGS_REF.find(p=>p.agent===a);
-    const taux=pr&&pr.objectif>0?Math.min(100,Math.round(tot/pr.objectif*100)):0;
-    const inc=ms.filter(s=>s.incident&&s.incident!=='').length;
-    const col=taux>=90?'var(--accent)':taux>=65?'var(--amber)':'var(--red)';
-    const init=a.split(' ').map(w=>w[0]).join('').toUpperCase();
-    return`<div class="perf-card"><div style="display:flex;align-items:center;gap:9px;margin-bottom:12px"><div class="av">${init}</div><div><div style="font-weight:600;font-size:13px">${a}</div><div style="font-size:11px;color:var(--text2)">${pr?.dept||'—'}</div></div></div>
-      <div class="perf-stat"><span>Dossiers traités</span><span style="color:var(--accent)">${tot}</span></div>
-      <div class="perf-stat"><span>Jours terrain</span><span>${jrs}</span></div>
-      <div class="perf-stat"><span>Moy. / jour</span><span>${jrs>0?Math.round(tot/jrs):0}</span></div>
-      <div class="perf-stat"><span>Taux objectif</span><span style="color:${col}">${taux}%</span></div>
-      <div class="perf-stat"><span>Incidents</span><span style="color:${inc>0?'var(--amber)':'inherit'}">${inc}</span></div>
-    </div>`;
-  }).join('');
-}
 
-function saisieShowPanel(id,btn){
-  document.querySelectorAll('#module-saisie .panel').forEach(p=>p.classList.remove('active'));
-  const panel=document.getElementById('saisie-panel-'+id);
-  if(!panel){console.error('Panel introuvable: saisie-panel-'+id);return;}
-  panel.classList.add('active');
-  document.querySelectorAll('#module-saisie .nav-item').forEach(n=>n.classList.remove('active'));
-  if(btn)btn.classList.add('active');
-  else{const btns=document.querySelectorAll('#module-saisie .nav-item');const map={list:0,form:1,corr:2,perf:3,detail:0};btns[map[id]??0]?.classList.add('active');}
-  if(id==='form'&&!saisieEditingId)saisieResetForm();
-}
 
-function saisieLoadProgs(){
-  const sel=document.getElementById('sf-prog-ref');
-  sel.innerHTML='<option value="">-- Lier à un programme --</option>';
-  PROGS_REF.forEach(p=>sel.innerHTML+=`<option value="${p.id}">${p.id} · ${p.agent} · ${p.dept}</option>`);
-}
-function saisieLoadDossiers(agent, village){
-  const sel=document.getElementById('sf-dossier-ref');
-  if(!sel)return;
-  sel.innerHTML='<option value="">-- Lier à un dossier (optionnel) --</option>';
-  let list=dossiers.filter(d=>d.etape!=='Clôturé');
-  if(agent)list=list.filter(d=>d.agent===agent);
-  if(village)list=list.filter(d=>d.village===village);
-  if(!list.length)list=dossiers.filter(d=>d.etape!=='Clôturé');
-  list.forEach(d=>sel.innerHTML+=`<option value="${d.id}">${d.ref_officiel} · ${d.demandeur} · ${d.village} (${d.etape})</option>`);
-}
-function saisieOnDossierChange(){
-  const dosId=document.getElementById('sf-dossier-ref')?.value;
-  if(!dosId)return;
-  const dos=dossiers.find(d=>d.id===dosId);
-  if(!dos)return;
-  // Pré-remplir l'étape si le dossier a une étape
-  const etapeChip=document.querySelector(`#saisie-chips .chip[data-v="${dos.etape}"]`);
-  if(etapeChip){saisieSelEtape&&saisieSelEtape(etapeChip);}
-  showToast('Dossier '+dos.ref_officiel+' sélectionné');
-}
-function saisieUpdateGeo(){
-  geoUpdateSP('sf-dept','sf-sp','sf-village');
-}
 
-function saisieSelEtape(el){
-  document.querySelectorAll('#saisie-chips .chip').forEach(c=>c.classList.remove('selected'));
-  el.classList.add('selected');document.getElementById('sf-etape').value=el.dataset.v;
-}
-function saisieAdj(n){
-  const inp=document.getElementById('sf-ndos');
-  inp.value=Math.max(0,Math.min(99,(parseInt(inp.value)||0)+n));
-  saisieCheckAlert();
-}
-function saisieCheckAlert(){
-  const v=parseInt(document.getElementById('sf-ndos').value)||0;
-  const etape=document.getElementById('sf-etape').value;
-  const norms={Bornage:5,Constitution:6,'Enquête terrain':10,'Validation techn.':8,Enregistrement:6};
-  const norm=norms[etape]||8;
-  document.getElementById('sf-cadence').textContent=etape?`Cadence normale : ${norm}–${norm+2}/jour`:'';
-  const aw=document.getElementById('saisie-alert-warn');
-  if(v>norm*1.5&&v>0){aw.innerHTML=`<span>⚠</span><span>Production (${v}) nettement supérieure à la cadence normale (${norm}/j). Vérifier.</span>`;aw.classList.add('show');}
-  else aw.classList.remove('show');
-}
-function saisieCheckProg(){
-  const agent=document.getElementById('sf-agent').value,date=document.getElementById('sf-date').value;
-  if(!agent||!date)return;
-  const ex=saisies.find(s=>s.agent===agent&&s.date===date&&s.id!==saisieEditingId);
-  const ao=document.getElementById('saisie-alert-ok');
-  if(ex){ao.innerHTML=`<span>ℹ</span><span>Saisie existante pour ${agent} le ${fmtDate(date)} (${ex.id}).</span>`;ao.classList.add('show');}
-  else ao.classList.remove('show');
-}
+
+
+
+
+
+
+
+
+
   // Charger les dossiers filtrés par agent et village
   const ag=document.getElementById('sf-agent')?.value;
   const vl=document.getElementById('sf-village')?.value;
   saisieLoadDossiers(ag,vl);
 
-function saisieCalcDuree(){
-  const dep=document.getElementById('sf-hdep').value,ret=document.getElementById('sf-hret').value;
-  if(!dep||!ret){document.getElementById('sf-duree').value='';return;}
-  const [dh,dm]=dep.split(':').map(Number),[rh,rm]=ret.split(':').map(Number);
-  const diff=(rh*60+rm)-(dh*60+dm);
-  document.getElementById('sf-duree').value=diff>0?`${Math.floor(diff/60)}h${String(diff%60).padStart(2,'0')}`:'Invalide';
-}
-function saisieGenRef(){saisieCounter++;document.getElementById('sf-ref').value='SAI-'+new Date().getFullYear()+'-'+String(saisieCounter).padStart(3,'0');}
 
-function saisieAddDos(){
-  const id='DOS-'+String(Math.floor(Math.random()*9000)+1000);
-  saisieDosList.push({id});
-  document.getElementById('saisie-dos-list').innerHTML+=`<div class="dos-item" id="dos-${id}">
-    <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${id}</span>
-    <select style="font-size:12px;padding:3px 6px;border:1px solid var(--border-med);border-radius:4px;background:var(--surface);width:100%"><option>Enquête terrain</option><option>Bornage</option><option>Constitution</option><option>Validation techn.</option><option>Enregistrement</option></select>
-    <input type="text" placeholder="Observation..." style="font-size:12px;padding:3px 6px;border:1px solid var(--border-med);border-radius:4px;width:100%">
-    <button type="button" class="dos-remove" onclick="this.closest('.dos-item').remove()">×</button>
-  </div>`;
-}
 
-function saisieValidate(){
-  const errs=[];
-  const rq=(id,msg,eid)=>{const v=document.getElementById(id).value;if(!v){document.getElementById(eid)?.classList.add('show');document.getElementById(id)?.classList.add('err');errs.push(msg);}else{document.getElementById(eid)?.classList.remove('show');document.getElementById(id)?.classList.remove('err');}};
-  rq('sf-date','Date requise','se-date');rq('sf-agent','Agent requis','se-agent');
-  rq('sf-dept','Département requis','se-dept');rq('sf-village','Village requis','se-village');
-  if(!document.getElementById('sf-etape').value){document.getElementById('se-etape').classList.add('show');errs.push('Étape requise');}else document.getElementById('se-etape').classList.remove('show');
-  const n=parseInt(document.getElementById('sf-ndos').value);
-  if(isNaN(n)||n<0||n>99){document.getElementById('se-ndos').classList.add('show');errs.push('Dossiers 0–99');}else document.getElementById('se-ndos').classList.remove('show');
-  const dep=document.getElementById('sf-hdep').value,ret=document.getElementById('sf-hret').value;
-  if(!dep)errs.push('Heure départ requise');
-  if(!ret||ret<=dep){document.getElementById('se-hret').classList.add('show');errs.push('Heure retour invalide');}else document.getElementById('se-hret').classList.remove('show');
-  return errs;
-}
 
-function saisieSubmit(e){
-  e.preventDefault();
-  if(isViewer()){ showToast('Accès refusé — rôle visuel uniquement.'); return; }
-  document.getElementById('saisie-suc').classList.remove('show');
-  const errs=saisieValidate();
-  if(errs.length){document.getElementById('saisie-val-sum').classList.add('show');document.getElementById('saisie-val-list').innerHTML=errs.map(x=>`<li>${x}</li>`).join('');return;}
-  document.getElementById('saisie-val-sum').classList.remove('show');
-  const s={
-    id:saisieEditingId||document.getElementById('sf-ref').value,
-    date:document.getElementById('sf-date').value,
-    agent:document.getElementById('sf-agent').value,
-    dept:document.getElementById('sf-dept').value,
-    sp:document.getElementById('sf-sp').value,
-    village:document.getElementById('sf-village').value,
-    etape:document.getElementById('sf-etape').value,
-    ndos:parseInt(document.getElementById('sf-ndos').value)||0,superficie:parseFloat(document.getElementById('sf-superficie')?.value||0)||0,dossier_ref:document.getElementById('sf-dossier-ref')?.value||'',
-    dossiers:[...saisieDosList],
-    hdep:document.getElementById('sf-hdep').value,
-    hret:document.getElementById('sf-hret').value,
-    duree:document.getElementById('sf-duree').value,
-    km:parseInt(document.getElementById('sf-km').value)||0,
-    incident:document.getElementById('sf-incident').value,
-    meteo:document.getElementById('sf-meteo').value,
-    obs:document.getElementById('sf-obs').value,
-    prog_ref:document.getElementById('sf-prog-ref').value,
-  };
-  if(saisieEditingId){const i=saisies.findIndex(x=>x.id===saisieEditingId);if(i>=0)saisies[i]=s;}
-  else saisies.unshift(s);
-  saisSave();saisieRenderAll();
-  document.getElementById('saisie-suc').textContent=saisieEditingId?`Saisie ${s.id} mise à jour.`:`Saisie ${s.id} enregistrée.`;
-  document.getElementById('saisie-suc').classList.add('show');
-  showToast(saisieEditingId?'Saisie mise à jour !':'Saisie enregistrée !');
-  saisieEditingId=null;saisieResetForm();
-  setTimeout(()=>saisieShowPanel('list'),900);
-}
 
 // ═══════════════════════════════════════════
 // VERROU SAISIES > 7 JOURS
@@ -2742,11 +1552,6 @@ function getLockPassword(){
   return localStorage.getItem('presfor_lock_pwd') || 'COORD2026';
 }
 
-function saisieIsLocked(s){
-  if(!s || !s.date) return false;
-  const diff = Math.floor((new Date() - new Date(s.date + 'T12:00:00')) / 86400000);
-  return diff > LOCK_DAYS;
-}
 
 function showLockModal(s, action, id){
   lockPendingId = id;
@@ -2771,625 +1576,18 @@ function lockConfirm(){
   lockPendingId = null; lockPendingAction = null;
 }
 
-function saisieEdit(id){
-  const s=saisies.find(x=>x.id===id);if(!s)return;
-  if(saisieIsLocked(s)){ showLockModal(s,'edit',id); return; }
-  saisieEditUnlocked(id);
-}
 
-function saisieEditUnlocked(id){
-  const s=saisies.find(x=>x.id===id);if(!s)return;
-  saisieEditingId=id;
-  document.getElementById('saisie-form-title').textContent='Modifier la saisie';
-  document.getElementById('sf-ref').value=s.id;
-  document.getElementById('sf-date').value=s.date;
-  document.getElementById('sf-agent').value=s.agent;
-  document.getElementById('sf-dept').value=s.dept;saisieUpdateGeo();
-  document.getElementById('sf-sp').value=s.sp||'';
-  document.getElementById('sf-village').value=s.village;
-  document.getElementById('sf-ndos').value=s.ndos;
-  document.getElementById('sf-etape').value=s.etape;
-  document.querySelectorAll('#saisie-chips .chip').forEach(c=>c.classList.toggle('selected',c.dataset.v===s.etape));
-  document.getElementById('sf-hdep').value=s.hdep;
-  document.getElementById('sf-hret').value=s.hret;
-  document.getElementById('sf-duree').value=s.duree||'';
-  document.getElementById('sf-km').value=s.km||'';
-  document.getElementById('sf-incident').value=s.incident||'';
-  document.getElementById('sf-meteo').value=s.meteo||'Ensoleillé';
-  document.getElementById('sf-obs').value=s.obs||'';
-  document.getElementById('sf-prog-ref').value=s.prog_ref||'';
-  saisieDosList=[...(s.dossiers||[])];
-  saisieShowPanel('form');window.scrollTo(0,0);
-}
 
-function saisieDelete(id){
-  const s=saisies.find(x=>x.id===id);
-  if(s && saisieIsLocked(s)){ showLockModal(s,'delete',id); return; }
-  saisieDeleteUnlocked(id);
-}
 
-function saisieDeleteUnlocked(id){
-  if(!canDelete()){showToast('Action réservée au coordinateur.');return;}
-  if(!confirm(`Supprimer ${id} ?`))return;
-  saisies=saisies.filter(s=>s.id!==id);saisSave();saisieRenderAll();showToast('Supprimé.');
-}
 
-// ═══════════════════════════════════════════
-// SAISIE RAPIDE
-// ═══════════════════════════════════════════
-function srOpen(){
-  const modal = document.getElementById('sr-modal');
-  document.getElementById('sr-date').value = new Date().toISOString().split('T')[0];
-  document.getElementById('sr-ndos').value = 0;
-  document.getElementById('sr-superficie').value = '';
-  document.getElementById('sr-incident').value = '';
-  document.getElementById('sr-etape').value = '';
-  document.getElementById('sr-err').style.display = 'none';
-  document.getElementById('sr-suc').style.display = 'none';
-  document.querySelectorAll('#sr-chips .chip').forEach(c=>c.classList.remove('selected'));
-  // Peupler les agents
-  const sel = document.getElementById('sr-agent');
-  sel.innerHTML = '<option value="">-- Agent --</option>';
-  AGENTS_DATA.forEach(a=>{
-    const opt = document.createElement('option');
-    opt.value = a.nom; opt.textContent = a.nom + ' — ' + a.fonction;
-    sel.appendChild(opt);
-  });
-  srUpdateVillages();
-  modal.style.display = 'flex';
-}
 
-function srClose(){
-  document.getElementById('sr-modal').style.display = 'none';
-}
 
-function srSelEtape(el){
-  document.querySelectorAll('#sr-chips .chip').forEach(c=>c.classList.remove('selected'));
-  el.classList.add('selected');
-  document.getElementById('sr-etape').value = el.dataset.v;
-}
-
-function srAdj(n){
-  const inp = document.getElementById('sr-ndos');
-  inp.value = Math.max(0, Math.min(99, (parseInt(inp.value)||0) + n));
-}
-
-function srUpdateVillages(){
-  const dept = document.getElementById('sr-dept').value;
-  const agent = document.getElementById('sr-agent').value;
-  const sel = document.getElementById('sr-village');
-  sel.innerHTML = '<option value="">-- Village --</option>';
-  if(!dept) return;
-  // Chercher les villages depuis les données existantes ou le référentiel zones
-  const vilsFromSaisies = [...new Set(
-    saisies.filter(s=>s.dept===dept).map(s=>s.village).filter(Boolean)
-  )].sort();
-  vilsFromSaisies.forEach(v=>{
-    const o = document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o);
-  });
-  // Compléter avec les villages du référentiel si disponible
-  if(typeof ZONES_DATA !== 'undefined'){
-    const zone = ZONES_DATA.find(z=>z.dept===dept);
-    if(zone && zone.villages){
-      zone.villages.forEach(v=>{
-        if(!vilsFromSaisies.includes(v)){
-          const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o);
-        }
-      });
-    }
-  }
-}
-
-function srSubmit(){
-  const date   = document.getElementById('sr-date').value;
-  const agent  = document.getElementById('sr-agent').value;
-  const dept   = document.getElementById('sr-dept').value;
-  const village= document.getElementById('sr-village').value;
-  const etape  = document.getElementById('sr-etape').value;
-  const ndos   = parseInt(document.getElementById('sr-ndos').value)||0;
-
-  const errs = [];
-  if(!date)    errs.push('Date requise');
-  if(!agent)   errs.push('Agent requis');
-  if(!dept)    errs.push('Département requis');
-  if(!village) errs.push('Village requis');
-  if(!etape)   errs.push('Étape requise');
-  if(ndos < 0) errs.push('Nombre de dossiers invalide');
-
-  const errDiv = document.getElementById('sr-err');
-  if(errs.length){ errDiv.style.display='block'; errDiv.textContent=errs.join(' · '); return; }
-  errDiv.style.display='none';
-
-  // Vérifier doublon (même agent + date + village)
-  const doublon = saisies.find(x =>
-    x.date===date &&
-    x.agent.toLowerCase().trim()===agent.toLowerCase().trim() &&
-    x.village.toLowerCase().trim()===village.toLowerCase().trim()
-  );
-  if(doublon && !confirm(`Une saisie similaire existe déjà pour ${agent} à ${village} le ${fmtDate(date)}.\nContinuer quand même ?`)) return;
-
-  saisieCounter = (saisieCounter||0) + 1;
-  const id = 'SAI-'+ date.replace(/-/g,'') +'-'+ agent.replace(/\s/g,'').substring(0,6).toUpperCase() +'-'+ String(saisieCounter).padStart(3,'0');
-  const superficie = parseFloat(document.getElementById('sr-superficie').value)||0;
-  const incident   = document.getElementById('sr-incident').value;
-
-  saisies.unshift({
-    id, date, agent, dept,
-    sp: '', village, etape, ndos, superficie,
-    dossiers:[], hdep:'07:00', hret:'17:00', duree:'10h00',
-    km:0, incident, meteo:'Ensoleillé', obs:'',
-    prog_ref:'', created_at:new Date().toLocaleString('fr-FR')
-  });
-
-  saisSave(); saisieRenderAll(); dashRenderAll();
-
-  const sucDiv = document.getElementById('sr-suc');
-  sucDiv.textContent = `✓ ${id} enregistrée — ${ndos} dossier(s) à ${village}`;
-  sucDiv.style.display = 'block';
-  // Réinitialiser pour une saisie suivante rapide
-  document.getElementById('sr-ndos').value = 0;
-  document.getElementById('sr-superficie').value = '';
-  document.getElementById('sr-incident').value = '';
-  document.getElementById('sr-etape').value = '';
-  document.querySelectorAll('#sr-chips .chip').forEach(c=>c.classList.remove('selected'));
-  showToast('Saisie rapide enregistrée !');
-}
-
-function saisieShowDetail(id){
-  const s = saisies.find(x=>x.id===id);
-  if(!s){ showToast('Saisie introuvable.'); return; }
-
-  // Programme lié
-  const progLie = s.prog_ref ? programmes.find(p=>p.id===s.prog_ref) : null;
-
-  // Dossier lié
-  const dosLie = s.dossier_ref ? (dossiers.find(d=>d.id===s.dossier_ref) || (dossiersAFOR||[]).find(d=>d.id===s.dossier_ref)) : null;
-
-  // Cumul de production de l'agent ce jour-là
-  const memeJour = saisies.filter(x=>x.agent===s.agent && x.date===s.date);
-  const totalJour = memeJour.reduce((a,x)=>a+(x.ndos||0),0);
-  const totalHaJour = memeJour.reduce((a,x)=>a+(x.superficie||0),0);
-
-  // Couleur étape
-  const etapeColors = {
-    'Enquête terrain':'b-blue','Bornage':'b-teal',
-    'Constitution du dossier':'b-amber','PV de constat de limite':'b-amber',
-    'Recensement droit coutumier':'b-amber','Demande certificat foncier':'b-red',
-    'Enregistrement':'b-green','Clôturé':'b-green'
-  };
-  const etapeBadge = `<span class="badge ${etapeColors[s.etape]||'b-gray'}">${s.etape||'—'}</span>`;
-
-  // Statut verrou
-  const locked = saisieIsLocked(s);
-  const lockedBadge = locked
-    ? '<span style="background:var(--amber-lt);color:var(--amber-txt);padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;">🔒 Verrouillée (+7j)</span>'
-    : '<span style="background:var(--accent-lt);color:var(--accent-txt);padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;">✓ Modifiable</span>';
-
-  // Météo icône
-  const meteoIcon = {'Ensoleillé':'☀️','Nuageux':'☁️','Pluie légère':'🌦️','Forte pluie':'🌧️'}[s.meteo||'']||'🌤️';
-
-  // Incident badge
-  const incidentHtml = s.incident && s.incident !== ''
-    ? `<span style="background:var(--red-lt);color:var(--red-txt);padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">⚠ ${s.incident}</span>`
-    : '<span style="color:var(--text3);font-size:12px;">Aucun incident</span>';
-
-  // Dossiers détail
-  const dosItems = Array.isArray(s.dossiers) && s.dossiers.length
-    ? s.dossiers.map(d=>`<div style="background:var(--surface2);border-radius:6px;padding:6px 10px;font-size:12px;font-family:'DM Mono',monospace;">${d.id||'—'}</div>`).join('')
-    : '<span style="color:var(--text3);font-size:12px;">Aucun détail par dossier</span>';
-
-  // Autres saisies du même agent ce jour
-  const autresSaisies = memeJour.filter(x=>x.id!==id);
-  const autresRows = autresSaisies.length
-    ? autresSaisies.map(x=>`<tr style="border-bottom:1px solid var(--border);">
-        <td style="padding:7px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent)">${x.id}</td>
-        <td style="padding:7px 12px;font-size:12px;">${x.village||'—'}</td>
-        <td style="padding:7px 12px;"><span class="badge ${etapeColors[x.etape]||'b-gray'}" style="font-size:10px;">${x.etape}</span></td>
-        <td style="padding:7px 12px;text-align:center;font-weight:700;color:var(--accent);">${x.ndos}</td>
-        <td style="padding:7px 12px;text-align:center;font-size:11px;color:var(--teal);">${x.superficie?x.superficie+' ha':'—'}</td>
-      </tr>`).join('')
-    : `<tr><td colspan="5" style="padding:14px;text-align:center;color:var(--text3);">Seule saisie de la journée</td></tr>`;
-
-  // Mettre à jour l'entête
-  document.getElementById('saisie-detail-title').textContent = s.id;
-  document.getElementById('saisie-detail-subtitle').textContent = s.agent + ' · ' + fmtDate(s.date) + ' · ' + (s.village||'');
-  document.getElementById('saisie-detail-edit-btn').onclick = ()=>saisieEdit(id);
-
-  document.getElementById('saisie-detail-content').innerHTML = `
-    <!-- KPI -->
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;">
-      <div class="kpi blue">
-        <div class="kpi-l">Dossiers traités</div>
-        <div class="kpi-v">${s.ndos}</div>
-        <div class="kpi-s">Cette saisie</div>
-      </div>
-      <div class="kpi green">
-        <div class="kpi-l">Total ce jour</div>
-        <div class="kpi-v">${totalJour}</div>
-        <div class="kpi-s">${memeJour.length} saisie(s)</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-l">Superficie</div>
-        <div class="kpi-v" style="font-size:16px;">${s.superficie?s.superficie+' ha':'—'}</div>
-        <div class="kpi-s">Cette saisie</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-l">Durée terrain</div>
-        <div class="kpi-v" style="font-size:16px;">${s.duree||'—'}</div>
-        <div class="kpi-s">${s.hdep||'—'} → ${s.hret||'—'}</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-l">Km parcourus</div>
-        <div class="kpi-v" style="font-size:16px;">${s.km||0}</div>
-        <div class="kpi-s">kilomètres</div>
-      </div>
-    </div>
-
-    <!-- Deux colonnes -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
-
-      <!-- Colonne gauche : informations -->
-      <div class="tw" style="padding:16px 18px;">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent2);margin-bottom:12px;">Informations de la saisie</div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          ${[
-            ['Référence', `<span style="font-family:'DM Mono',monospace;font-weight:600;">${s.id}</span>`],
-            ['Agent', `<strong>${s.agent}</strong>`],
-            ['Date', fmtDate(s.date)],
-            ['Département', s.dept||'—'],
-            ['Sous-préfecture', s.sp||'—'],
-            ['Village', `<strong>${s.village||'—'}</strong>`],
-            ['Étape réalisée', etapeBadge],
-            ['Météo', `${meteoIcon} ${s.meteo||'—'}`],
-            ['Incident', incidentHtml],
-            ['Statut', lockedBadge],
-          ].map(([label, val])=>`
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">
-              <span style="color:var(--text2);">${label}</span>
-              <span style="text-align:right;max-width:60%;">${val}</span>
-            </div>`).join('')}
-          ${s.obs?`<div style="margin-top:6px;padding:8px 10px;background:var(--surface2);border-radius:6px;font-size:12px;color:var(--text2);">📝 ${s.obs}</div>`:''}
-        </div>
-      </div>
-
-      <!-- Colonne droite : liens et dossiers -->
-      <div style="display:flex;flex-direction:column;gap:14px;">
-
-        <!-- Programme lié -->
-        <div class="tw" style="padding:14px 18px;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent2);margin-bottom:10px;">Programme lié</div>
-          ${progLie ? `
-            <div style="background:var(--accent-lt);border-radius:8px;padding:10px 14px;">
-              <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--accent-txt);margin-bottom:4px;">${progLie.id}</div>
-              <div style="font-size:13px;font-weight:600;">${progLie.agent}</div>
-              <div style="font-size:11px;color:var(--text2);margin-top:2px;">${progLie.dept||''} · ${progLie.op||''}</div>
-              <div style="margin-top:8px;">
-                <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:3px;">
-                  <span>Objectif</span><span>${progLie.objectif||progLie.objectif_dos||0}</span>
-                </div>
-                <div style="height:6px;background:rgba(0,0,0,0.1);border-radius:3px;overflow:hidden;">
-                  <div style="width:${Math.min(100,Math.round((progLie.realise||0)/Math.max(progLie.objectif||progLie.objectif_dos||1,1)*100))}%;height:100%;background:var(--accent);border-radius:3px;"></div>
-                </div>
-              </div>
-              <button class="btn-s" style="margin-top:8px;font-size:11px;padding:3px 9px;" onclick="progShowDetail('${progLie.id}')">Voir le programme</button>
-            </div>` : `<span style="color:var(--text3);font-size:12px;">Aucun programme lié</span>`}
-        </div>
-
-        <!-- Dossier lié -->
-        ${dosLie ? `
-        <div class="tw" style="padding:14px 18px;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent2);margin-bottom:10px;">Dossier CF lié</div>
-          <div style="background:var(--blue-lt);border-radius:8px;padding:10px 14px;">
-            <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--blue-txt);margin-bottom:4px;">${dosLie.id}</div>
-            <div style="font-size:13px;font-weight:600;">${(dosLie.prenom||'')+' '+(dosLie.nom||dosLie.nom_demandeur||'')}</div>
-            <div style="font-size:11px;color:var(--text2);margin-top:2px;">${dosLie.village||''} · ${dosLie.type||''}</div>
-            <div style="margin-top:6px;"><span class="badge b-blue" style="font-size:10px;">${dosLie.etape||'—'}</span></div>
-          </div>
-        </div>` : ''}
-
-        <!-- Détail dossiers -->
-        <div class="tw" style="padding:14px 18px;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent2);margin-bottom:10px;">Détail par dossier (${Array.isArray(s.dossiers)?s.dossiers.length:0})</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;">${dosItems}</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Autres saisies du même jour -->
-    <div class="tw">
-      <div style="padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);">
-          Autres saisies de ${s.agent.split(' ')[0]} le ${fmtDate(s.date)} (${autresSaisies.length})
-        </span>
-        <span style="font-size:11px;color:var(--accent);font-weight:600;">Total jour : ${totalJour} dossiers · ${totalHaJour.toFixed(1)} ha</span>
-      </div>
-      <table style="font-size:12px;">
-        <thead><tr>
-          <th>Référence</th><th>Village</th><th>Étape</th>
-          <th style="text-align:center;">Dossiers</th>
-          <th style="text-align:center;">Superficie</th>
-        </tr></thead>
-        <tbody>${autresRows}</tbody>
-      </table>
-    </div>
-  `;
-
-  saisieShowPanel('detail');
-  window.scrollTo(0,0);
-}
-
-function saisieDownloadModele(){
-  // Créer un fichier CSV modèle simple à télécharger
-  const headers = ['N° Dossier','Prénom Demandeur','Nom Demandeur','Région','Département',
-    'Sous-Préfecture','Village','Code Parcelle','Superficie (ha)','Étape',
-    'Date Réalisation','Agent CE','Observations'];
-  const exemple = ['096-003-120080','Konan','KOUASSI','CAVALLY','GUIGLO',
-    'NIZAHON','Béhébo','','2.45','RDC','24/06/2026','DIBY NDA YAO ARNAUD',''];
-  const esc = v => '"'+String(v||'').replace(/"/g,'""')+'"';
-  const csv = [headers.map(esc).join(','), exemple.map(esc).join(',')].join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download = 'PRESFOR_Saisie_Terrain_Modele.csv';
-  a.click();
-  showToast('Modèle CSV téléchargé');
-}
-
-function saisieResetForm(){
-  saisieEditingId=null;
-  document.getElementById('saisie-form-title').textContent='Nouvelle saisie quotidienne';
-  document.getElementById('saisie-form').reset();
-  document.getElementById('sf-date').value=new Date().toISOString().split('T')[0];
-  document.getElementById('sf-hdep').value='07:00';document.getElementById('sf-hret').value='17:00';
-  saisieCalcDuree();
-  document.querySelectorAll('#saisie-chips .chip').forEach(c=>c.classList.remove('selected'));
-  document.getElementById('sf-etape').value='';
-  document.getElementById('sf-sp').innerHTML='<option value="">-- Département d\'abord --</option>';
-  document.getElementById('saisie-village-dl').innerHTML='';
-  saisieDosList=[];document.getElementById('saisie-dos-list').innerHTML='';
-  document.querySelectorAll('#saisie-panel-form .ferr').forEach(e=>e.classList.remove('show'));
-  document.querySelectorAll('#saisie-panel-form .fi,#saisie-panel-form .fsel').forEach(e=>e.classList.remove('err'));
-  document.getElementById('saisie-val-sum').classList.remove('show');
-  document.getElementById('saisie-suc').classList.remove('show');
-  document.getElementById('saisie-alert-warn').classList.remove('show');
-  document.getElementById('saisie-alert-ok').classList.remove('show');
-  saisieCounter--;saisieGenRef();
-}
 
 let saisieImportData = [];
 
-function saisieImportExcel(input){
-  const file = input.files[0];
-  if(!file) return;
-  input.value = '';
-  if(typeof XLSX==='undefined'){showToast('Bibliothèque Excel non chargée.');return;}
-  showToast('Lecture du fichier terrain...');
-  const isCsv = file.name.toLowerCase().endsWith('.csv');
-  const reader = new FileReader();
-  reader.onload = function(e){
-    try{
-      const wb   = XLSX.read(e.target.result,{type:'array',cellDates:true});
-      const ws   = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws,{defval:null,raw:false});
-      if(!rows.length){showToast('Fichier vide.');return;}
-      const norm = s => (s||'').toString().toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-        .replace(/[\s_\-\.]/g,'').trim();
-      const getCol = (row,patterns) => {
-        for(const k of Object.keys(row)){
-          if(patterns.some(p=>norm(k).includes(norm(p)))){
-            const v=row[k];
-            return v===null||v===undefined?'':String(v).trim();
-          }
-        }
-        return '';
-      };
-      const fmtDate = v => {
-        if(!v||v==='N/A') return null;
-        if(v instanceof Date) return isNaN(v)?null:v.toISOString().split('T')[0];
-        const s=String(v).trim();
-        if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0,10);
-        const p=s.split(/[\/\-\.]/);
-        if(p.length===3){
-          if(p[2].length===4) return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');
-          if(p[0].length===4) return p[0]+'-'+p[1].padStart(2,'0')+'-'+p[2].padStart(2,'0');
-        }
-        return null;
-      };
-      let nbImportes=0,nbIgnores=0,nbMajM3=0,nbNouveauxM3=0;
-      const dataRows = rows.filter(row=>{
-        const agent=getCol(row,['Agent']);
-        return agent&&agent.length>2&&!agent.startsWith('Liste')&&!agent.startsWith('Ex:');
-      });
-      dataRows.forEach(row=>{
-        const agent      = getCol(row,['Agent']);
-        const fonction   = getCol(row,['Fonction']);
-        const ref_prog   = getCol(row,['Ref','Programme']);
-        const dateStr    = getCol(row,['Date']);
-        const dept       = getCol(row,['Departement','Dept']);
-        const sp         = getCol(row,['SousPrefecture','SP','Sous']);
-        const village    = getCol(row,['Village principal','Village']);
-        const activite   = getCol(row,['Activite']).toUpperCase();
-        const etape      = getCol(row,['Etape']);
-        const num_dossier= getCol(row,['Dossier','Num']);
-        const prenom     = getCol(row,['Prenom']);
-        const nom        = getCol(row,['Nom demandeur','Nom']);
-        const code_parc  = getCol(row,['Code','Parcelle']);
-        const nb_dos_str = getCol(row,['Nb dossier','Nb dos']);
-        const superf_str = getCol(row,['Superficie','Ha','SUPERF']);
-        const nb_vil_str = getCol(row,['Nb village','Nb vil']);
-        const obs        = getCol(row,['Observation','Commentaire']);
-        if(!agent){nbIgnores++;return;}
-        const dateFormatted=fmtDate(dateStr)||new Date().toISOString().split('T')[0];
-        const superficie=parseFloat(superf_str)||0;
-        const nb_dossiers=parseInt(nb_dos_str)||0;
-        const nb_villages=parseInt(nb_vil_str)||0;
-        saisies.push({
-          id:'S2-'+Date.now()+'-'+Math.random().toString(36).substr(2,5),
-          agent,fonction,ref_programme:ref_prog,date:dateFormatted,
-          dept,sp,village,activite,etape,num_dossier,prenom,nom,
-          code_parcelle:code_parc,nb_dossiers,superficie,nb_villages,
-          observations:obs,_src:'import_terrain',
-        });
-        nbImportes++;
-        if(num_dossier&&num_dossier.length>5){
-          const etapeMap={'Demande CF':'DD','RDC':'RDC','Levé et bornage':'CL',
-            'PV de constat de limite':'CL','Ouverture de publicité':'OV',
-            'Clôture de publicité':'CP','Approbation CPCDC':'AP','Validation enquête':'VA'};
-          const etapeCode=etapeMap[etape]||null;
-          const idxAfor=dossiersAFOR.findIndex(d=>d.id===num_dossier);
-          if(idxAfor>=0){
-            const dos=dossiersAFOR[idxAfor];let modif=false;
-            if(etapeCode&&ETAPES_CF.indexOf(etapeCode)>=ETAPES_CF.indexOf(dos.etape||'DD')){
-              dos.etape=etapeCode;dos['date_'+etapeCode]=dateFormatted;modif=true;
-            }
-            if(agent&&!dos.agent){dos.agent=agent;modif=true;}
-            if(modif)nbMajM3++;
-          } else if(prenom||nom){
-            dossiersAFOR.push({id:num_dossier,prenom,nom_demandeur:nom,
-              dept:(dept||'').toUpperCase(),sp,village,agent,code_parcelle:code_parc,
-              superficie_gnss:superficie,type:'CFI',etape:etapeCode||'DD',_src:'saisie_terrain',
-              ['date_'+(etapeCode||'DD')]:dateFormatted});
-            nbNouveauxM3++;
-          }
-        }
-      });
-      saisiesSave();
-      if(nbMajM3>0||nbNouveauxM3>0){aforSaveToFirebase().catch(()=>{});if(typeof gnssRebuildSuperfIndex==='function')gnssRebuildSuperfIndex();}
-      saisieRenderAll();
-      if(typeof dosRenderAll==='function')dosRenderAll();
-      showToast(nbImportes+' saisies importées · M3: '+nbMajM3+' maj, '+nbNouveauxM3+' nouveaux');
-    }catch(err){showToast('Erreur import : '+err.message);console.error(err);}
-  };
-  reader.readAsArrayBuffer(file);
-}
 
-function saisieImportConfirm(skipDoublons, updateMode){
-  const valides = saisieImportData.filter(d => {
-    if(d.errs.length > 0) return false;
-    if(skipDoublons && d.doublon) return false;
-    if(!updateMode && d.doublon === 'exact') return false;
-    return true;
-  });
-  if(!valides.length){showToast('Aucune saisie valide à importer.');return;}
-  let nb=0, updated=0;
-  valides.forEach(({s})=>{
-    if(updateMode && s.doublon_ref){
-      // Remplacer l'existant (doublon base)
-      const idx = saisies.findIndex(x=>x.id===s.doublon_ref);
-      if(idx>=0){ saisies[idx]={...s,created_at:saisies[idx].created_at,updated_at:new Date().toLocaleString('fr-FR')}; updated++; return; }
-    }
-    if(updateMode){
-      // Chercher par agent+date+village pour mettre à jour
-      const idx = saisies.findIndex(x=>
-        x.date===s.date &&
-        x.agent.toLowerCase().trim()===s.agent.toLowerCase().trim() &&
-        x.village.toLowerCase().trim()===s.village.toLowerCase().trim()
-      );
-      if(idx>=0){ saisies[idx]={...s,created_at:saisies[idx].created_at,updated_at:new Date().toLocaleString('fr-FR')}; updated++; return; }
-    }
-    if(!saisies.find(x=>x.id===s.id)){
-      saisies.unshift({...s,created_at:new Date().toLocaleString('fr-FR')});
-      nb++;
-    }
-  });
-  document.getElementById('saisie-import-modal').style.display='none';
-  let msg = '';
-  if(nb > 0) msg += nb + ' saisie(s) ajoutée(s)';
-  if(updated > 0) msg += (msg?', ':'')+updated+' mise(s) à jour';
-  showToast((msg||'Aucune modification') + ' !');
-  saisieImportData=[];
-  saisieRenderAll();
-  dashRenderAll();
-  scheduleSave();
-}
 
-function saisClearAll(){
-  if(!confirm('Réinitialiser ?'))return;
-  saisies=[...SAISIE_SAMPLE];saisieCounter=7;
-  
-  saisieRenderAll();showToast('Réinitialisé.');
-}
 
-function saisieExportCSV(){
-  const h='Référence,Date,Agent,Département,SP,Village,Étape,Dossiers,Départ,Retour,Durée,Km,Incident,Météo,Programme';
-  const rows=saisies.map(s=>[s.id,s.date,s.agent,s.dept,s.sp||'',s.village,s.etape,s.ndos,s.hdep,s.hret,s.duree||'',s.km||'',s.incident||'',s.meteo||'',s.prog_ref||''].map(v=>`"${v}"`).join(','));
-  const csv=[h,...rows].join('\n');
-  const a=document.createElement('a');
-  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
-  a.download='presfor_saisies_cavally.csv';a.click();
-  showToast('Export CSV téléchargé !');
-}
-
-// ═══════════════════════════════════════════
-// SYNCHRONISATION M2 → M3
-// ═══════════════════════════════════════════
-
-function syncSaisieVersDossier(s){
-  // Si la saisie est liée à un dossier explicitement
-  if(s.dossier_ref){
-    const dos = dossiers.find(d=>d.id===s.dossier_ref);
-    if(dos && s.etape && dos.etape!=='Clôturé'){
-      const etapeIdx = DOS_ETAPES.indexOf(s.etape);
-      const currentIdx = DOS_ETAPES.indexOf(dos.etape);
-      if(etapeIdx > currentIdx){
-        dos.historique = dos.historique||[];
-        dos.historique.push({etape:s.etape, date:s.date, agent:s.agent});
-        dos.etape = s.etape;
-        dos.etape_date = s.date;
-        dosSave();
-        console.log('Sync M2→M3: dossier '+dos.ref_officiel+' avancé à '+s.etape);
-      }
-    }
-    return;
-  }
-
-  // Synchronisation automatique par village + agent + activité
-  if(!s.etape || !s.village || !s.agent) return;
-  const candidats = dossiers.filter(d=>
-    d.etape !== 'Clôturé' &&
-    d.village === s.village &&
-    d.agent === s.agent
-  );
-  if(!candidats.length) return;
-  let synced = 0;
-  candidats.forEach(dos=>{
-    // Vérifier si l'étape de la saisie est dans la chaîne de l'activité du dossier
-    const actDef = ACTIVITES[dos.activite];
-    if(!actDef) return;
-    const etapesAct = [...actDef.etapes, 'Clôturé'];
-    const etapeIdx = etapesAct.indexOf(s.etape);
-    const currentIdx = etapesAct.indexOf(dos.etape);
-    if(etapeIdx > 0 && etapeIdx > currentIdx){
-      dos.historique = dos.historique||[];
-      dos.historique.push({etape:s.etape, date:s.date, agent:s.agent, auto:true});
-      dos.etape = s.etape;
-      dos.etape_date = s.date;
-      synced++;
-    }
-  });
-  if(synced>0){
-    dosSave();
-    console.log('Sync auto M2→M3: '+synced+' dossier(s) mis à jour pour '+s.village);
-  }
-}
-
-function syncAll(){
-  // Synchronisation complète de toutes les saisies vers tous les dossiers
-  let total = 0;
-  const saisiesTri = [...saisies].sort((a,b)=>a.date.localeCompare(b.date));
-  saisiesTri.forEach(s => {
-    const avant = JSON.stringify(dossiers.map(d=>d.etape));
-    syncSaisieVersDossier(s);
-    const apres = JSON.stringify(dossiers.map(d=>d.etape));
-    if(avant!==apres) total++;
-  });
-  dosSave();
-  dosRenderAll();
-  if(total>0)
-    showToast(total+' dossier(s) synchronisé(s) depuis les saisies !');
-  else
-    showToast('Tout est déjà synchronisé.');
-}
 
 // ═══════════════════════════════════════════
 // MODULE 3 · DOSSIERS FONCIERS
@@ -3400,88 +1598,11 @@ const DOS_COLORS={'Enquête terrain':{bg:'var(--blue-lt)',tx:'var(--blue-txt)'},
 const DOS_SAMPLE = [];
 // ── Fonctions activités Module 1 ──
 // ── Mise à jour des activités disponibles selon l'agent ──
-function progOnAgentChange(agentNom){
-  const sel = document.getElementById('pf-operation');
-  const activites = getAgentActivites(agentNom);
-  const currentVal = sel.value;
-  // Reconstruire les options
-  sel.innerHTML = '<option value="">-- Sélectionner --</option>';
-  const labels = {
-    'CF':      'CF — Certificat Foncier',
-    'DTV':     'DTV — Délimitation Territoire Villageois',
-    'ISF':     'ISF — Ingénierie Socio Foncière',
-    'CONTRAT': 'CONTRAT — Formalisation Contrat'
-  };
-  activites.forEach(act => {
-    const opt = document.createElement('option');
-    opt.value = act;
-    opt.textContent = labels[act] || act;
-    if(act === currentVal) opt.selected = true;
-    sel.appendChild(opt);
-  });
-  // Mettre à jour les sous-activités et l'unité
-  progUpdateSousEtapes();
-  progUpdateObjUnite();
-}
 
 // ── Mise à jour de l'unité objectif selon l'agent ──
-function progUpdateObjUnite(){
-  // Les deux champs Ha et Dossiers sont toujours visibles
-  const wrapHa  = document.getElementById('wrap-obj-ha');
-  const wrapDos = document.getElementById('wrap-obj-dos');
-  if(wrapHa)  wrapHa.style.display  = '';
-  if(wrapDos) wrapDos.style.display = '';
-}
 
-function progUpdateSousEtapes(){
-  const act = document.getElementById('pf-operation').value;
-  const agentNom = document.getElementById('pf-agent').value;
-  const wrap = document.getElementById('pf-sousetapes-wrap');
-  const list = document.getElementById('pf-sousetapes-list');
-  if(!act){wrap.style.display='none';return;}
 
-  // Prioriser les sous-activités du référentiel agent
-  let etapes = getSousActivites(agentNom, act);
 
-  // Fallback sur ACTIVITES si pas dans le référentiel
-  if(!etapes.length && ACTIVITES[act]){
-    etapes = ACTIVITES[act].etapes || [];
-  }
-
-  if(!etapes.length){wrap.style.display='none';return;}
-
-  const a = ACTIVITES[act] || {couleur:{bg:'var(--accent-lt)',brd:'var(--accent)',tx:'var(--accent)'}};
-  wrap.style.display='block';
-  list.innerHTML = etapes.map(e=>`
-    <label style="display:inline-flex;align-items:center;gap:5px;background:${a.couleur?a.couleur.bg:'#e8f4f8'};border:1px solid ${a.couleur?a.couleur.brd:'#2A6B42'};color:${a.couleur?a.couleur.tx:'#1C4A2E'};padding:4px 10px;border-radius:20px;font-size:11px;cursor:pointer;">
-      <input type="checkbox" value="${e}" style="accent-color:${a.couleur?a.couleur.brd:'#2A6B42'};cursor:pointer;" onchange="progSaveSousEtapes()">
-      ${e}
-    </label>`).join('');
-  list.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.checked=true);
-  progSaveSousEtapes();
-}
-
-function progSaveSousEtapes(){
-  const checked = [...document.querySelectorAll('#pf-sousetapes-list input:checked')].map(cb=>cb.value);
-  document.getElementById('pf-sousetapes').value = JSON.stringify(checked);
-}
-
-function progRestoreSousEtapes(activite, sousetapes){
-  document.getElementById('pf-operation').value = activite;
-  progUpdateSousEtapes(); // génère les checkboxes (toutes cochées par défaut)
-  // Toujours passer par le setTimeout pour écraser l'état par défaut
-  setTimeout(()=>{
-    const boxes = document.querySelectorAll('#pf-sousetapes-list input[type=checkbox]');
-    if(sousetapes && sousetapes.length > 0){
-      // Restaurer exactement l'état enregistré
-      boxes.forEach(cb=>{ cb.checked = sousetapes.includes(cb.value); });
-    } else {
-      // Pas de sous-étapes configurées → décocher tout, l'utilisateur choisit
-      boxes.forEach(cb=>{ cb.checked = false; });
-    }
-    progSaveSousEtapes();
-  }, 80);
-}
 
 // ── Fonctions activités Module 3 ──
 function dosUpdateEtapeChips(){
@@ -4058,222 +2179,7 @@ function dosExportCSV(){
   a.click();
   showToast('Export CSV : ' + data.length + ' lignes');
 }
-function progImportExcel(input){
-  const file=input.files[0];
-  if(!file)return;
-  input.value='';
-  if(typeof XLSX==='undefined'){showToast('Bibliothèque Excel non chargée. Vérifiez votre connexion.');return;}
-  const reader=new FileReader();
-  reader.onload=function(e){
-    try{
-      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      // Lire toutes les lignes brutes pour trouver la ligne d'en-têtes
-      const allRows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-      // Chercher la ligne d'en-têtes (contient "Agent" ou "Date")
-      let headerRow=0;
-      for(let i=0;i<Math.min(10,allRows.length);i++){
-        const r=allRows[i];
-        if(r.some(c=>c&&String(c).toLowerCase().replace(/[\s\*]/g,'').includes('agent'))){
-          headerRow=i; break;
-        }
-      }
-      // Construire les vrais objets en sautant ligne d'indices et exemple
-      const headers=allRows[headerRow];
-      const dataStart=headerRow+3; // sauter indices + exemple
-      const MOTS_INSTRUCTIONS = ['liste déroulante','jj/mm','aaaa','hh:mm','ex :','ex:','exemple','séparer','suite','selon','↑','▼','*','suit le','selon sp','selon dept','pour topo','pour ce'];
-      const estInstruction = (val) => {
-        if(!val) return false;
-        const s = String(val).toLowerCase().trim();
-        return MOTS_INSTRUCTIONS.some(m => s.includes(m));
-      };
-      const rows=allRows.slice(dataStart).filter(r=>{
-        if(!r.some(c=>c!==null&&c!=='')) return false;
-        // Ignorer les lignes d'instruction
-        const premierVal = r.find(c=>c!==null&&c!=='');
-        if(estInstruction(premierVal)) return false;
-        return true;
-      }).map(r=>{
-        const obj={};
-        headers.forEach((h,i)=>{if(h)obj[String(h)]=r[i]!==undefined?r[i]:'';});
-        return obj;
-      });
-      if(!rows.length){showToast('Aucune donnée trouvée. Vérifiez que vous avez rempli à partir de la ligne 7.');return;}
-      progImportData=[];
-      const fmtD=(d)=>{
-        if(!d && d!==0)return'';
-        // Date Excel numérique (nombre de jours depuis 1900)
-        if(typeof d==='number'){
-          const excelDate=new Date(Math.round((d-25569)*86400*1000));
-          return excelDate.toISOString().split('T')[0];
-        }
-        if(d instanceof Date){
-          if(isNaN(d.getTime()))return'';
-          // Vérifier si c'est une date ou une heure (date de base Excel 1899-12-30)
-          const year = d.getFullYear();
-          if(year < 1900 || year === 1899){
-            // C'est une heure, pas une date
-            const h = d.getHours();
-            const m = d.getMinutes();
-            return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
-          }
-          return d.toISOString().split('T')[0];
-        }
-        const s=String(d).trim();
-        if(!s)return'';
-        if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
-        // Format JJ/MM/AAAA
-        const p=s.split(/[\/\-\.]/);
-        if(p.length===3){
-          if(p[2].length===4)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');
-          if(p[0].length===4)return p[0]+'-'+p[1].padStart(2,'0')+'-'+p[2].padStart(2,'0');
-        }
-        // Essayer de parser directement
-        const parsed=new Date(s);
-        if(!isNaN(parsed.getTime()))return parsed.toISOString().split('T')[0];
-        return'';
-      };
-      const get=(row,keys)=>{
-        for(const k of Object.keys(row)){
-          const kn=k.toLowerCase().replace(/[\s_\*\(\)]/g,'').replace(/é/g,'e').replace(/è/g,'e').replace(/ê/g,'e').replace(/à/g,'a').replace(/â/g,'a').replace(/î/g,'i').replace(/ô/g,'o').replace(/û/g,'u').replace(/ç/g,'c');
-          if(keys.some(key=>{
-            const keyn=key.toLowerCase().replace(/[\s_\*\(\)]/g,'').replace(/é/g,'e').replace(/è/g,'e').replace(/ê/g,'e').replace(/à/g,'a').replace(/â/g,'a').replace(/î/g,'i').replace(/ô/g,'o').replace(/û/g,'u').replace(/ç/g,'c');
-            return kn.includes(keyn);
-          })) return String(row[k]||'').trim();
-        }return'';
-      };
-      rows.forEach((row,i)=>{
-        const errs=[];
-        const agent=get(row,['agent','nom','responsable','agentresponsable']);
-        const dept=get(row,['departement','dept','zone','dep']);
-        const objectif=get(row,['objectif','cible','superficie','ha','hectare','objectifha']);
-        const debut_raw=get(row,['debut','datedebut','datedepart','date','datedebut','datededebut']);
-        const debut=fmtD(debut_raw);
-        const fin_raw=get(row,['fin','datefin','datedefin','date_fin','datedefin']);
-        const fin=fmtD(fin_raw);
-        const op=get(row,['activite','operation','type','op','activiteprincipal']);
-        const etape_prog=get(row,['sousactiviteprincipale','sousactivitesprincipale','sousactivite','sousactivites','sousetape','sousetapes','etapeprincipale','etape','step','bornage','enquete']);
-        const obj_dos=parseFloat(get(row,['objectifdossiers','objectif_dossiers','dossiers','nbredossiers','nbdossiers','objectifdossier']))||0;
-        const obj_vil=parseFloat(get(row,['objectifvillages','objectif_villages','villages','nbrevillages','nbvillages','objectifvillage']))||0;
-        const sp_raw=get(row,['sousprefecture','sp','sous_pref','sous-prefecture','sousprefecture','souspref']);
-        // Normaliser SP pour correspondre aux clés GEO ('SP Bloléquin' etc.)
-        const dept_full=dept?(dept.includes('Dép.')?dept:'Dép. '+dept):'';
-        let sp=sp_raw;
-        if(sp_raw && GEO[dept_full]){
-          const spKeys=Object.keys(GEO[dept_full].sp||{});
-          const spMatch=spKeys.find(k=>k.toLowerCase().replace(/\s/g,'').includes(sp_raw.toLowerCase().replace(/\s/g,'').replace(/^sp/,''))||sp_raw.toLowerCase().replace(/\s/g,'').includes(k.toLowerCase().replace(/\s/g,'').replace(/^sp/,'')));
-          if(spMatch) sp=spMatch;
-        }
-        // Lire les villages depuis le fichier (plusieurs noms de colonnes possibles)
-        const villages_raw=get(row,['villages','village','villagescibles','villagecible','villagesciblés','villageciblés','villagescible','localites','localité','localites','lieuxintervention','lieuxdintervention','sitesintervention','zonesintervention','villagesconcernes']);
-        const villages=villages_raw ? villages_raw.split(/[,;\/|\n\r]+/).map(v=>v.trim()).filter(v=>v.length>0) : [];
-        const obs=get(row,['observation','obs','commentaire']);
-        const nb_agents=parseInt(get(row,['nbagents','effectif','nombreagents']))||1;
-        const budget=parseInt(get(row,['budget']))||0;
-        if(!agent)errs.push('Agent manquant');
-        if(!dept)errs.push('Département manquant');
-        // Valider : au moins un objectif selon la fonction
-        const hasObjHa  = objectif && !isNaN(parseFloat(objectif)) && parseFloat(objectif) > 0;
-        const hasObjDos = obj_dos && !isNaN(parseFloat(obj_dos)) && parseFloat(obj_dos) > 0;
-        const hasObjVil = obj_vil && !isNaN(parseFloat(obj_vil)) && parseFloat(obj_vil) > 0;
-        if(!hasObjHa && !hasObjDos && !hasObjVil) errs.push('Objectif manquant');
-        const prog={
-          id:(()=>{
-          // ID basé sur le contenu : évite les collisions entre imports successifs
-          const agSlug=(agent||'').replace(/[^a-zA-Z]/g,'').substring(0,8).toUpperCase();
-          const spSlug=(sp_raw||sp||'').replace(/[^a-zA-Z]/g,'').substring(0,5).toUpperCase();
-          const opSlug=(op||'').replace(/[^a-zA-Z]/g,'').substring(0,4).toUpperCase();
-          const dateSlug=(debut||new Date().toISOString().split('T')[0]).replace(/-/g,'');
-          return 'PROG-'+new Date().getFullYear()+'-'+agSlug+'-'+spSlug+opSlug+dateSlug;
-        })(),
-          periode_type:'Semaine',
-          date_debut:debut||new Date().toISOString().split('T')[0],
-          date_fin:fin||'',
-          dept:dept?(dept.includes('Dép.')?dept:'Dép. '+dept):'',
-          sp, villages, agent, op:op||'Enquête terrain',
-          objectif:parseFloat(objectif)||0,
-          objectif_dos:obj_dos,
-          objectif_vil:obj_vil,
-          etape_prog:etape_prog,
-          nb_agents,budget,obs,statut:(()=>{
-          if(!debut)return'Planifié';
-          const now=new Date().toISOString().split('T')[0];
-          if(debut>now)return'Planifié';
-          if(fin&&fin<now)return'En retard';
-          return'En cours';
-        })(),realise:0,
-          sousetapes: etape_prog ? [etape_prog] : []  // Seule la sous-étape du fichier est cochée
-        };
-        progImportData.push({prog,errs,ligne:i+2});
-      });
-      const total=progImportData.length;
-      const totalErr=progImportData.filter(d=>d.errs.length>0).length;
-      const modal=document.getElementById('prog-import-modal');
-      document.getElementById('prog-import-info').textContent=total+' programme(s) détecté(s). '+(totalErr>0?totalErr+' ligne(s) invalides seront ignorées.':'Toutes les lignes sont valides.');
-      document.getElementById('prog-import-preview').innerHTML=
-        '<table style="width:100%;border-collapse:collapse;font-size:12px;">'+
-        '<thead><tr style="background:var(--surface2)">'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">L.</th>'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Agent</th>'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Département</th>'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Activité</th>'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Étape</th>'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Obj. Ha</th>'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Obj. Dos.</th>'+
-        '<th style="padding:5px 8px;border-bottom:1px solid var(--border)">Statut</th>'+
-        '</tr></thead><tbody>'+
-        progImportData.map(p=>{
-          const ok=p.errs.length===0;
-          return'<tr style="border-bottom:1px solid var(--border);'+(ok?'':'background:var(--red-lt)')+'">'+
-            '<td style="padding:4px 8px;color:var(--text3)">'+p.ligne+'</td>'+
-            '<td style="padding:4px 8px;font-weight:500">'+p.prog.agent+'</td>'+
-            '<td style="padding:4px 8px">'+p.prog.dept+'</td>'+
-            '<td style="padding:4px 8px">'+p.prog.op+'</td>'+
-            '<td style="padding:4px 8px">'+( p.prog.etape_prog||'—')+'</td>'+
-            '<td style="padding:4px 8px;text-align:center">'+( p.prog.objectif||'—')+' ha</td>'+
-            '<td style="padding:4px 8px;text-align:center">'+( p.prog.objectif_dos||'—')+' dos.</td>'+
-            '<td style="padding:4px 8px">'+(p.errs.length>0?'<span style="color:var(--red-txt)">'+p.errs.join(', ')+'</span>':programmes.find(x=>x.agent===p.prog.agent&&x.dept===p.prog.dept&&x.date_debut===p.prog.date_debut)?'<span style="color:var(--amber-txt);font-weight:500">Doublon</span>':'<span style="color:var(--accent);font-weight:500">OK</span>')+'</td>'+
-          '</tr>';
-        }).join('')+'</tbody></table>';
-      if(totalErr>0){
-        document.getElementById('prog-import-errors').style.display='block';
-        document.getElementById('prog-import-errors').textContent=totalErr+' ligne(s) incomplètes seront ignorées.';
-      } else {
-        document.getElementById('prog-import-errors').style.display='none';
-      }
-      modal.style.display='flex';
-    }catch(err){showToast('Erreur lecture : '+err.message);}
-  };
-  reader.readAsArrayBuffer(file);
-}
 
-function progImportConfirm(){
-  const valides=progImportData.filter(d=>d.errs.length===0);
-  if(!valides.length){showToast('Aucun programme valide.');return;}
-  let nb=0, doublons=0;
-  valides.forEach(({prog})=>{
-    // Vérifier doublon : même agent + département + SP + activité + date début
-    const existe=programmes.find(p=>
-      p.agent===prog.agent &&
-      p.dept===prog.dept &&
-      p.sp===prog.sp &&
-      p.op===prog.op &&
-      p.date_debut===prog.date_debut
-    );
-    if(existe){
-      doublons++;
-    } else {
-      programmes.unshift({...prog,created_at:new Date().toLocaleString('fr-FR')});
-      nb++;
-    }
-  });
-  progSave();progRenderAll();
-  document.getElementById('prog-import-modal').style.display='none';
-  let msg=nb+' programme(s) importé(s) !';
-  if(doublons>0) msg+=' '+doublons+' doublon(s) ignoré(s).';
-  showToast(msg);
-  progImportData=[];
-}
 
 function dosImportExcel(input){
   const file=input.files[0];if(!file)return;input.value='';
@@ -4899,11 +2805,9 @@ function agRenderList(){
   const grid = document.getElementById('ag-cards-grid');
   grid.innerHTML = list.map(a=>{
     const c = agFonctionColor(a.fonction);
-    const nbProgs    = programmes.filter(p=>p.agent===a.nom).length;
-    const nbSaisies  = saisies.filter(s=>s.agent===a.nom).length;
     const isGnssAgent = a.fonction === 'Opérateur GNSS';
     const gStats = (isGnssAgent && typeof gnssStatsForAgent==='function') ? gnssStatsForAgent(a.nom) : null;
-    const nbDos      = (isGnssAgent && gStats && gStats.hasColumn) ? gStats.parcelles : saisies.filter(s=>s.agent===a.nom).reduce((sum,s)=>sum+(s.ndos||0),0);
+    const nbDos      = (isGnssAgent && gStats && gStats.hasColumn) ? gStats.parcelles : 0;
     const dosLabel   = isGnssAgent ? 'Parcelles GNSS' : 'Dossiers';
     const nbDossiers = dossiers.filter(d=>d.agent===a.nom).length;
     // Fiches CF : compter depuis dossiersAFOR (noms normalisés à l'import)
@@ -4960,10 +2864,8 @@ function agRenderList(){
         <div style="margin-bottom:3px;">&#128222; ${a.tel}</div>
         <div>${(a.depts||[]).map(d=>`<span style="font-size:10px;background:var(--surface2);padding:1px 6px;border-radius:8px;margin-right:3px;">${d.replace('Dép. ','')}</span>`).join('')}</div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;border-top:1px solid var(--border);padding-top:10px;">
-        <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--accent)">${nbProgs}</div><div style="font-size:9px;color:var(--text3)">Programmes</div></div>
-        <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue)">${nbSaisies}</div><div style="font-size:9px;color:var(--text3)">Saisies</div></div>
-        <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--amber)">${nbDos}</div><div style="font-size:9px;color:var(--text3)">${dosLabel}</div></div>
+      <div style="display:grid;grid-template-columns:${isGnssAgent?'repeat(2,1fr)':'1fr'};gap:4px;border-top:1px solid var(--border);padding-top:10px;">
+        ${isGnssAgent?`<div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--amber)">${nbDos}</div><div style="font-size:9px;color:var(--text3)">${dosLabel}</div></div>`:''}
         <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--teal)">${nbFichesCF}</div><div style="font-size:9px;color:var(--text3)">Dossiers AFOR</div></div>
       </div>
       ${(nbFichesCF>0 || superfTotale>0)?`<div style="padding:6px 14px 10px;display:flex;flex-wrap:wrap;gap:3px;border-top:1px solid var(--border);">
@@ -4984,8 +2886,6 @@ function agOpenFiche(nom){
   const init = a.nom.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
   const today = new Date().toISOString().split('T')[0];
 
-  const mesProgs = programmes.filter(p=>p.agent===nom);
-  const mesSaisies = saisies.filter(s=>s.agent===nom);
   const mesDossiers = dossiers.filter(d=>d.agent===nom);
   const mesAbsences = absences.filter(ab=>ab.agent===nom);
   const isGnssAgent = a.fonction === 'Opérateur GNSS';
@@ -4998,9 +2898,9 @@ function agOpenFiche(nom){
     kpi3Label = 'Parcelles GNSS levées';
     kpi4Label = 'Moy. parcelles/jour';
   } else {
-    totalDos = mesSaisies.reduce((s,x)=>s+(x.ndos||0),0);
-    jours = new Set(mesSaisies.map(s=>s.date)).size;
-    moy = jours>0?Math.round(totalDos/jours):0;
+    totalDos = 0;
+    jours = 0;
+    moy = 0;
     kpi3Label = 'Dossiers saisis';
     kpi4Label = 'Moy./jour';
   }
@@ -5055,8 +2955,7 @@ function agOpenFiche(nom){
       <div style="display:flex;flex-direction:column;gap:12px;">
 
         <!-- KPI rapides -->
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
-          <div class="kpi green"><div class="kpi-l">Programmes</div><div class="kpi-v">${mesProgs.length}</div></div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
           <div class="kpi blue"><div class="kpi-l">Jours terrain</div><div class="kpi-v">${jours}</div></div>
           <div class="kpi amber"><div class="kpi-l">${kpi3Label}</div><div class="kpi-v">${totalDos}</div></div>
           <div class="kpi"><div class="kpi-l">${kpi4Label}</div><div class="kpi-v">${moy}</div></div>
@@ -5065,24 +2964,6 @@ function agOpenFiche(nom){
           <div class="kpi teal"><div class="kpi-l">Superficie GNSS levée</div><div class="kpi-v" style="font-size:16px;">${ficheGnssStats.superficie.toFixed(1)} ha</div></div>
           <div class="kpi"><div class="kpi-l">Villages couverts</div><div class="kpi-v" style="font-size:16px;">${(ficheGnssStats.villages||[]).length}</div></div>
         </div>` : ''}
-
-        <!-- Programmes récents -->
-        <div class="tw">
-          <div style="padding:10px 13px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);background:var(--surface2);border-bottom:1px solid var(--border);">Programmes récents</div>
-          ${mesProgs.length===0?'<div class="empty-state" style="padding:20px"><p>Aucun programme</p></div>':
-          '<table style="width:100%;border-collapse:collapse;font-size:12px;">'+
-          mesProgs.slice(0,5).map(p=>{
-            const objRef=p.objectif>0?p.objectif:(p.objectif_dos>0?p.objectif_dos:(p.objectif_vil||1));
-            const pct=Math.min(100,Math.round((p.realise||0)/objRef*100));
-            const col=pct>=90?'var(--accent)':pct>=60?'var(--amber)':'var(--red)';
-            return`<tr style="border-bottom:1px solid var(--border);">
-              <td style="padding:7px 12px;font-family:'DM Mono',monospace;font-size:11px;">${p.id}</td>
-              <td style="padding:7px 12px;">${p.op||'-'}</td>
-              <td style="padding:7px 12px;">${p.dept||'-'}</td>
-              <td style="padding:7px 12px;"><div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${col};border-radius:3px;"></div></div><span style="font-size:11px;font-weight:600;color:${col}">${pct}%</span></div></td>
-            </tr>`;
-          }).join('')+'</table>'}
-        </div>
 
         <!-- Absences -->
         <div class="tw">
@@ -5169,8 +3050,6 @@ function agOpenFiche(nom){
 // ── Performance comparative ──
 function agRenderPerf(){
   const data = AGENTS_FULL.map(a=>{
-    const mesProgs = programmes.filter(p=>p.agent===a.nom);
-    const mesSaisies = saisies.filter(s=>s.agent===a.nom);
     const mesDossiers = dossiers.filter(d=>d.agent===a.nom);
     const dosCF = mesDossiers.filter(d=>d.activite==='CF').length;
     const isGnss = a.fonction === 'Opérateur GNSS';
@@ -5183,17 +3062,17 @@ function agRenderPerf(){
       moy      = gStats.moyParJour;
       ha       = gStats.superficie;
     } else {
-      totalDos = mesSaisies.reduce((s,x)=>s+(x.ndos||0),0);
-      jours    = new Set(mesSaisies.map(s=>s.date)).size;
-      moy      = jours>0?Math.round(totalDos/jours):0;
+      totalDos = 0;
+      jours    = 0;
+      moy      = 0;
       ha       = null;
     }
-    return {a, nbProgs:mesProgs.length, nbSaisies:mesSaisies.length, totalDos, jours, moy, dosCF, ha, isGnss, gnssSansDonnee: isGnss && !(gStats && gStats.hasColumn)};
+    return {a, totalDos, jours, moy, dosCF, ha, isGnss, gnssSansDonnee: isGnss && !(gStats && gStats.hasColumn)};
   }).sort((x,y)=>y.totalDos-x.totalDos);
 
   const maxDos = data[0]?.totalDos||1;
   const totalAll = data.reduce((s,d)=>s+d.totalDos,0);
-  const actifs = data.filter(d=>d.nbSaisies>0||d.isGnss&&d.totalDos>0).length;
+  const actifs = data.filter(d=>d.totalDos>0).length;
   const meilleur = data[0];
   const totalHaGnss = data.reduce((s,d)=>s+(d.ha||0),0);
 
@@ -5214,8 +3093,6 @@ function agRenderPerf(){
       <td style="padding:9px 12px;text-align:center;font-family:'Syne',sans-serif;font-weight:700;color:${i<3?'var(--accent)':'var(--text3)'};">${i+1}</td>
       <td style="padding:9px 12px;font-weight:600;font-size:13px;">${d.a.nom}</td>
       <td style="padding:9px 12px;"><span style="font-size:10px;padding:2px 7px;border-radius:8px;background:${c.bg};color:${c.tx};border:1px solid ${c.brd}">${d.a.fonction}</span></td>
-      <td style="padding:9px 12px;text-align:center;">${d.nbProgs}</td>
-      <td style="padding:9px 12px;text-align:center;">${d.nbSaisies}</td>
       <td style="padding:9px 12px;">
         <div style="display:flex;align-items:center;gap:8px;">
           <div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;min-width:60px;">
@@ -5291,13 +3168,13 @@ function agDelAbsence(id){
 }
 
 function agExportCSV(){
-  const h='Nom,Fonction,Telephone,Departements,Programmes,Saisies,Dossiers_saisis,Fiches_CF';
+  const h='Nom,Fonction,Telephone,Departements,Parcelles_GNSS,Fiches_CF';
   const l=AGENTS_FULL.map(a=>{
-    const np=programmes.filter(p=>p.agent===a.nom).length;
-    const ns=saisies.filter(s=>s.agent===a.nom).length;
-    const nd=saisies.filter(s=>s.agent===a.nom).reduce((s,x)=>s+(x.ndos||0),0);
+    const isGnss = a.fonction === 'Opérateur GNSS';
+    const gStats = (isGnss && typeof gnssStatsForAgent==='function') ? gnssStatsForAgent(a.nom) : null;
+    const np=(isGnss && gStats && gStats.hasColumn) ? gStats.parcelles : 0;
     const ncf=dossiers.filter(d=>d.agent===a.nom).length;
-    return[a.nom,a.fonction,a.tel,(a.depts||[]).join(';'),np,ns,nd,ncf].map(v=>`"${v}"`).join(',');
+    return[a.nom,a.fonction,a.tel,(a.depts||[]).join(';'),np,ncf].map(v=>`"${v}"`).join(',');
   });
   const csv=[h,...l].join('\n');
   const el=document.createElement('a');
@@ -5373,26 +3250,23 @@ function zvShowPanel(id, btn){
 
 // ── Stats globales ──
 function zvGetVilleStats(village, dept){
-  const mesProgs  = programmes.filter(p=>p.villages&&p.villages.includes(village));
-  const mesSaisies= saisies.filter(s=>s.village===village);
-  const mesDos    = dossiers.filter(d=>d.village===village&&d.dept===dept);
-  const agents    = [...new Set([...mesProgs.map(p=>p.agent),...mesSaisies.map(s=>s.agent)])];
-  return { nbProgs:mesProgs.length, nbSaisies:mesSaisies.length, nbDos:mesDos.length, agents };
+  const mesDos = dossiers.filter(d=>d.village===village&&d.dept===dept);
+  const agents = [...new Set(mesDos.map(d=>d.agent).filter(Boolean))];
+  return { nbDos:mesDos.length, agents };
 }
 
 function zvGetDeptStats(dept){
   const c = ZV_GEO[dept];
   if(!c) return {};
   const allVillages = Object.values(c.sp).flat();
-  let totalProgs=0, totalSaisies=0, totalDos=0, couverts=0, partiels=0;
+  let totalDos=0, couverts=0;
   allVillages.forEach(v=>{
     const s=zvGetVilleStats(v,dept);
-    totalProgs+=s.nbProgs; totalSaisies+=s.nbSaisies; totalDos+=s.nbDos;
+    totalDos+=s.nbDos;
     if(s.nbDos>0) couverts++;
-    else if(s.nbSaisies>0) partiels++;
   });
-  return {allVillages, totalProgs, totalSaisies, totalDos, couverts, partiels,
-          nonTraites: allVillages.length-couverts-partiels,
+  return {allVillages, totalDos, couverts, partiels:0,
+          nonTraites: allVillages.length-couverts,
           pct: allVillages.length>0?Math.round((couverts/allVillages.length)*100):0};
 }
 
@@ -5439,14 +3313,10 @@ function zvRenderOverview(){
         <div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;margin-bottom:14px;">
           <div style="width:${pct}%;height:100%;background:${col};border-radius:4px;transition:width .4s;"></div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;">
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;text-align:center;">
           <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:8px;">
             <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--accent)">${s.couverts||0}</div>
             <div style="font-size:10px;color:var(--text3)">Couverts</div>
-          </div>
-          <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:8px;">
-            <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--amber)">${s.partiels||0}</div>
-            <div style="font-size:10px;color:var(--text3)">Partiels</div>
           </div>
           <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:8px;">
             <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text3)">${s.nonTraites||0}</div>
@@ -5454,8 +3324,6 @@ function zvRenderOverview(){
           </div>
         </div>
         <div style="margin-top:12px;display:flex;justify-content:space-between;font-size:12px;color:var(--text2);border-top:1px solid var(--border);padding-top:10px;">
-          <span>${s.totalProgs||0} programmes</span>
-          <span>${s.totalSaisies||0} saisies</span>
           <span>${s.totalDos||0} dossiers CF</span>
         </div>
       </div>
@@ -5477,9 +3345,8 @@ function zvRenderDept(){
   const info = ZV_GEO[dept];
   if(!info){document.getElementById('zv-dept-detail').innerHTML='';return;}
   const s = zvGetDeptStats(dept);
-  let html2 = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
+  let html2 = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
     <div class="kpi green"><div class="kpi-l">Villages couverts</div><div class="kpi-v">${s.couverts}</div><div class="kpi-s">Dossiers CF ouverts</div></div>
-    <div class="kpi amber"><div class="kpi-l">Partiellement</div><div class="kpi-v">${s.partiels}</div><div class="kpi-s">Saisies sans CF</div></div>
     <div class="kpi"><div class="kpi-l">Non traités</div><div class="kpi-v">${s.nonTraites}</div><div class="kpi-s">Aucune intervention</div></div>
     <div class="kpi blue"><div class="kpi-l">Taux couverture</div><div class="kpi-v">${s.pct}%</div><div class="kpi-s">${s.totalDos} dossiers CF</div></div>
   </div>`;
@@ -5487,21 +3354,17 @@ function zvRenderDept(){
   // Tableau par sous-préfecture
   html2 += Object.entries(info.sp).map(([sp, villages])=>{
     const spDos = villages.reduce((sum,v)=>sum+dossiers.filter(d=>d.village===v&&d.dept===dept).length,0);
-    const spSaisies = villages.reduce((sum,v)=>sum+saisies.filter(s=>s.village===v).length,0);
     return `<div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden;">
       <div style="background:${info.couleur.bg};padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid ${info.couleur.brd};">
         <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:${info.couleur.tx}">${sp}</span>
         <div style="display:flex;gap:12px;font-size:11px;color:${info.couleur.tx};opacity:.8;">
           <span>${villages.length} villages</span>
-          <span>${spSaisies} saisies</span>
           <span>${spDos} dossiers CF</span>
         </div>
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead><tr style="background:var(--surface2);">
           <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);">Village</th>
-          <th style="padding:7px 12px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);">Programmes</th>
-          <th style="padding:7px 12px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);">Saisies</th>
           <th style="padding:7px 12px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);">Dossiers CF</th>
           <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);">Agents</th>
           <th style="padding:7px 12px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);">Statut</th>
@@ -5509,11 +3372,9 @@ function zvRenderDept(){
         <tbody>
           ${villages.map(v=>{
             const vs=zvGetVilleStats(v,dept);
-            const statut=vs.nbDos>0?{l:'Couvert',c:'b-green'}:vs.nbSaisies>0?{l:'Partiel',c:'b-amber'}:{l:'Non traité',c:'b-gray'};
+            const statut=vs.nbDos>0?{l:'Couvert',c:'b-green'}:{l:'Non traité',c:'b-gray'};
             return `<tr style="border-bottom:1px solid var(--border);">
               <td style="padding:7px 12px;font-weight:500">${v}</td>
-              <td style="padding:7px 12px;text-align:center">${vs.nbProgs}</td>
-              <td style="padding:7px 12px;text-align:center">${vs.nbSaisies}</td>
               <td style="padding:7px 12px;text-align:center;font-weight:600;color:var(--accent)">${vs.nbDos}</td>
               <td style="padding:7px 12px;font-size:11px;color:var(--text2)">${vs.agents.slice(0,2).join(', ')}${vs.agents.length>2?'...':''}</td>
               <td style="padding:7px 12px;text-align:center"><span class="badge ${statut.c}">${statut.l}</span></td>
@@ -5539,7 +3400,7 @@ function zvRenderVillages(){
     Object.entries(info.sp).forEach(([sp,villages])=>{
       villages.forEach(v=>{
         const vs=zvGetVilleStats(v,dept);
-        const statut=vs.nbDos>0?'couvert':vs.nbSaisies>0?'partiel':'nontraite';
+        const statut=vs.nbDos>0?'couvert':'nontraite';
         all.push({village:v,dept,sp,statut,vs});
       });
     });
@@ -5550,20 +3411,18 @@ function zvRenderVillages(){
     const md=!fd||r.dept===fd;
     const ms=!fs||r.statut===fs;
     return mq&&md&&ms;
-  }).sort((a,b)=>b.vs.nbDos-a.vs.nbDos||b.vs.nbSaisies-a.vs.nbSaisies||a.village.localeCompare(b.village));
+  }).sort((a,b)=>b.vs.nbDos-a.vs.nbDos||a.village.localeCompare(b.village));
 
   const tbody=document.getElementById('zv-vil-tbody');
   const info2=ZV_GEO;
   tbody.innerHTML=list.map(r=>{
     const dinfo=info2[r.dept];
-    const sc=r.statut==='couvert'?'b-green':r.statut==='partiel'?'b-amber':'b-gray';
-    const sl=r.statut==='couvert'?'Couvert':r.statut==='partiel'?'Partiel':'Non traité';
+    const sc=r.statut==='couvert'?'b-green':'b-gray';
+    const sl=r.statut==='couvert'?'Couvert':'Non traité';
     return`<tr style="border-bottom:1px solid var(--border);">
       <td style="padding:8px 12px;font-weight:500">${r.village}</td>
       <td style="padding:8px 12px;"><span style="font-size:10px;padding:2px 7px;border-radius:8px;background:${dinfo?dinfo.couleur.bg:'var(--surface2)'};color:${dinfo?dinfo.couleur.tx:'var(--text2)'}">${r.dept.replace('Dép. ','')}</span></td>
       <td style="padding:8px 12px;font-size:11px;color:var(--text2)">${r.sp}</td>
-      <td style="padding:8px 12px;text-align:center">${r.vs.nbProgs}</td>
-      <td style="padding:8px 12px;text-align:center">${r.vs.nbSaisies}</td>
       <td style="padding:8px 12px;text-align:center;font-weight:600;color:var(--accent)">${r.vs.nbDos}</td>
       <td style="padding:8px 12px;font-size:11px;color:var(--text2)">${r.vs.agents.slice(0,2).join(', ')||'—'}</td>
       <td style="padding:8px 12px;"><span class="badge ${sc}">${sl}</span></td>
@@ -5607,7 +3466,6 @@ function zvRenderCouverture(){
           </div>
           <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:3px;">
             <span>${s.couverts||0} couverts</span>
-            <span>${s.partiels||0} partiels</span>
             <span>${s.nonTraites||0} non traités</span>
           </div>
         </div>
@@ -5674,12 +3532,12 @@ function zvExportCSV(){
     Object.entries(info.sp).forEach(([sp,villages])=>{
       villages.forEach(v=>{
         const vs=zvGetVilleStats(v,dept);
-        const statut=vs.nbDos>0?'Couvert':vs.nbSaisies>0?'Partiel':'Non traité';
-        rows.push([dept,sp,v,vs.nbProgs,vs.nbSaisies,vs.nbDos,statut,vs.agents.join(';')]);
+        const statut=vs.nbDos>0?'Couvert':'Non traité';
+        rows.push([dept,sp,v,vs.nbDos,statut,vs.agents.join(';')]);
       });
     });
   });
-  const h='Département,Sous-préfecture,Village,Programmes,Saisies,Dossiers_CF,Statut,Agents';
+  const h='Département,Sous-préfecture,Village,Dossiers_CF,Statut,Agents';
   const csv=[h,...rows.map(r=>r.map(v=>`"${v}"`).join(','))].join('\n');
   const a=document.createElement('a');
   a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
@@ -6041,9 +3899,9 @@ function dashInit(){
 function dashRefresh(){ dashRenderAll(); showToast('Tableau de bord actualisé'); }
 function dashRenderAll(){
   dashRenderKPI(); dashRenderAlertes();
-  dashRenderCardSaisies(); dashRenderCardDossiers();
+  dashRenderCardDossiers();
   dashRenderCardDepts(); dashRenderCardActivites();
-  dashRenderCardAgents(); dashRenderCardProgrammes();
+  dashRenderCardAgents();
   dashRenderCardCFEtapes(); dashRenderCardCFAgents(); dashRenderCardCFRetards();
   dashRenderCardGNSS();
 }
@@ -6114,12 +3972,11 @@ function tRow(label, val, tot, color){
 
 // ── KPI pills (sidebar verticale) ──
 function dashRenderKPI(){
-  const today=new Date().toISOString().split('T')[0];
-  const totDos=saisies.reduce((s,x)=>s+(x.ndos||0),0);
-  const totSaisies=saisies.length;
-  const totSup=saisies.reduce((s,x)=>s+(x.superficie||0),0);
-  const agAct=new Set(saisies.filter(s=>s.date===today).map(s=>s.agent)).size;
-  const progEC=programmes.filter(p=>p.statut==='En cours').length;
+  const totDos = (dossiersAFOR||[]).length;
+  const retards = (dossiersAFOR||[]).filter(d=>aforCalcRetard(d).retard).length;
+  const totSup = (gnssData||[]).reduce((s,g)=>s+(g.superficie||0),0);
+  const today = new Date().toISOString().split('T')[0];
+  const absAuj = (absences||[]).filter(a=>a.debut<=today&&a.fin>=today).length;
   const pill=(bg,icon,val,label)=>
     `<div style="background:${bg};color:#fff;padding:10px 12px;border-radius:8px;display:flex;align-items:center;gap:9px;">
       <span style="font-size:18px;flex-shrink:0;">${icon}</span>
@@ -6130,51 +3987,11 @@ function dashRenderKPI(){
     </div>`;
   document.getElementById('dash-kpi-main').innerHTML=
     `<div style="display:flex;flex-direction:column;gap:8px;">`+
-    pill('#1B7A4A','📋',totDos,'Dossiers traités')+
-    pill('#1565C0','📁',totSaisies,'Saisies enregistrées')+
-    pill('#E65100','📅',progEC,'Programmes en cours')+
-    pill('#00796B','👥',agAct,'Agents actifs ce jour')+
-    pill('#F57F17','🗺️',totSup.toFixed(1)+'ha','Superficie traitée')+
+    pill('#1B7A4A','📋',totDos,'Dossiers AFOR')+
+    pill('#C62828','⚠️',retards,'Dossiers en retard')+
+    pill('#F57F17','🗺️',totSup.toFixed(1)+'ha','Superficie GNSS levée')+
+    pill('#00796B','👥',absAuj,"Agents absents aujourd'hui")+
     `</div>`;
-}
-
-// ── Card : Répartition saisies ──
-function dashRenderCardSaisies(){
-  const el = document.getElementById('dash-card-saisies');
-  if(!el) return;
-  const totM2 = saisies.reduce((s,x)=>s+(x.ndos||0),0);
-  const aforTot = dossiersAFOR.length;
-  const grand_total = totM2 + aforTot;
-  // Activités M2
-  const isf   = saisies.filter(s=>s.activite==='ISF').reduce((s,x)=>s+(x.ndos||0),0);
-  const dtv   = saisies.filter(s=>s.activite==='DTV').reduce((s,x)=>s+(x.ndos||0),0);
-  const contr = saisies.filter(s=>s.activite==='CONTRAT').reduce((s,x)=>s+(x.ndos||0),0);
-  const cfi   = dossiersAFOR.filter(d=>d.type==='CFI').length;
-  const cfc   = dossiersAFOR.filter(d=>d.type==='CFC').length;
-  const retards = dossiersAFOR.filter(d=>aforCalcRetard(d).retard).length;
-  const tot1  = grand_total || 1;
-  const rows = [
-    {label:'ISF',          val:isf,  c:'#8B5CF6', src:'M2'},
-    {label:'DTV',          val:dtv,  c:'#F97316', src:'M2'},
-    {label:'Contrat',      val:contr,c:'#3B82F6', src:'M2'},
-    {label:'CF — CFI',     val:cfi,  c:'#22C55E', src:'AFOR'},
-    {label:'CF — CFC',     val:cfc,  c:'#16A34A', src:'AFOR'},
-  ];
-  const segs = rows.map(r=>({val:r.val, c:r.c}));
-  const descHtml = `
-    <div style="font-size:20px;font-weight:700;color:#111827;line-height:1;">${grand_total.toLocaleString('fr-FR')}</div>
-    <div style="font-size:11px;color:#6B7280;margin-bottom:10px;">dossiers au total</div>
-    ${rows.map(r=>{
-      const pct = Math.round(r.val/tot1*100);
-      return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-        <div style="width:8px;height:8px;border-radius:50%;background:${r.c};flex-shrink:0;"></div>
-        <span style="font-size:12px;color:#374151;flex:1;">${r.label}</span>
-        <span style="font-size:12px;font-weight:600;color:#111827;">${r.val}</span>
-        <span style="font-size:11px;color:#9CA3AF;min-width:30px;text-align:right;">${pct}%</span>
-      </div>`;
-    }).join('')}
-    ${retards>0?`<div style="margin-top:8px;font-size:11px;color:#DC2626;font-weight:600;">⚠ ${retards} CF en retard</div>`:''}`;
-  el.innerHTML = pieCard('Répartition des dossiers',"switchModule('saisie')",'Voir M2',descHtml,makePieSVG(segs));
 }
 
 // ── Card : État dossiers fonciers ──
@@ -6226,26 +4043,18 @@ function dashRenderCardDossiers(){  const _g=document.getElementById('dash-card-
 
 function dashRenderCardDepts(){  const _g=document.getElementById('dash-card-depts');if(!_g)return;
   const DEPTS = [
-    {label:'Guiglo',    saisie:'Dép. Guiglo',    afor:'GUIGLO'},
-    {label:'Bloléquin', saisie:'Dép. Bloléquin',  afor:'BLOLEQUIN'},
-    {label:'Taï',       saisie:'Dép. Taï',         afor:'TAI'},
-    {label:'Toulépleu', saisie:'Dép. Toulépleu',  afor:'TOULEPLEU'},
+    {label:'Guiglo',    afor:'GUIGLO'},
+    {label:'Bloléquin', afor:'BLOLEQUIN'},
+    {label:'Taï',       afor:'TAI'},
+    {label:'Toulépleu', afor:'TOULEPLEU'},
   ];
-  const totSaisies = saisies.reduce((s,x)=>s+(x.ndos||0),0)||1;
-  const totAfor = dossiersAFOR.length||1;
   const rows = DEPTS.map(d=>{
-    const s = saisies.filter(x=>x.dept===d.saisie).reduce((s,x)=>s+(x.ndos||0),0);
     const a = dossiersAFOR.filter(x=>x.dept===d.afor).length;
     const r  = dossiersAFOR.filter(x=>x.dept===d.afor&&aforCalcRetard(x).retard).length;
     const ha = (gnssData||[]).filter(g=>gnssNorm(g.dept)===d.afor).reduce((s,g)=>s+g.superficie,0);
-    const total = s + a;
-    const pcts = Math.round(s/totSaisies*100);
-    const pcta = Math.round(a/totAfor*100);
     return `<tr style="border-bottom:1px solid #F9FAFB;">
       <td style="padding:8px 6px 8px 0;font-size:12px;font-weight:600;color:#111827;">${d.label}</td>
-      <td style="padding:8px 6px;text-align:right;font-weight:700;font-size:12px;">${s}</td>
-      <td style="padding:8px 6px;text-align:right;font-weight:700;font-size:12px;color:#0369A1;">${a}</td>
-      <td style="padding:8px 6px;text-align:right;font-weight:700;font-size:13px;color:#111827;">${total}</td>
+      <td style="padding:8px 6px;text-align:right;font-weight:700;font-size:13px;color:#0369A1;">${a}</td>
       <td style="padding:8px 6px;text-align:right;font-size:11px;font-weight:600;color:${r>0?'#DC2626':'#16A34A'};">${r>0?'⚠'+r:'✓'}</td>
       <td style="padding:8px 0;text-align:right;font-size:11px;font-weight:600;color:${ha>0?'#00695C':'#9CA3AF'};">${ha>0?ha.toFixed(0)+' ha':'—'}</td>
     </tr>`;
@@ -6254,9 +4063,7 @@ function dashRenderCardDepts(){  const _g=document.getElementById('dash-card-dep
   `<div style="padding:0 16px 14px;"><table style="width:100%;border-collapse:collapse;font-size:12px;">
     <thead><tr style="border-bottom:2px solid #F3F4F6;">
       <th style="text-align:left;padding:8px 6px 6px 0;font-size:10px;font-weight:600;text-transform:uppercase;color:#6B7280;">Département</th>
-      <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#8B5CF6;">Saisies</th>
       <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#0369A1;">CF</th>
-      <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#111827;">Total</th>
       <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#DC2626;">Retards</th>
       <th style="text-align:right;padding:8px 0 6px 6px;font-size:10px;font-weight:600;color:#00695C;">Ha levés</th>
     </tr></thead>
@@ -6265,16 +4072,10 @@ function dashRenderCardDepts(){  const _g=document.getElementById('dash-card-dep
 }
 
 function dashRenderCardActivites(){  const _g=document.getElementById('dash-card-activites');if(!_g)return;
-  const totM2 = saisies.reduce((s,x)=>s+(x.ndos||0),0);
-  const aforTot = dossiersAFOR.length;
-  const grand = totM2 + aforTot || 1;
-  const haGnssTotal = (gnssData&&gnssData.length) ? gnssData.reduce((s,g)=>s+g.superficie,0) : 0;
+  const grand = dossiersAFOR.length || 1;
   const haGnssCFI = (gnssData&&gnssData.length) ? dossiersAFOR.filter(d=>d.type==='CFI').reduce((s,d)=>{const g=gnssForDossier(d);return s+(g?g.superficie:0);},0) : 0;
   const haGnssCFC = (gnssData&&gnssData.length) ? dossiersAFOR.filter(d=>d.type==='CFC').reduce((s,d)=>{const g=gnssForDossier(d);return s+(g?g.superficie:0);},0) : 0;
   const acts = [
-    {label:'ISF',     val:saisies.filter(s=>s.activite==='ISF').reduce((s,x)=>s+(x.ndos||0),0),    c:'#8B5CF6', ha:0},
-    {label:'DTV',     val:saisies.filter(s=>s.activite==='DTV').reduce((s,x)=>s+(x.ndos||0),0),    c:'#F97316', ha:0},
-    {label:'Contrat', val:saisies.filter(s=>s.activite==='CONTRAT').reduce((s,x)=>s+(x.ndos||0),0),c:'#3B82F6', ha:0},
     {label:'CF — CFI',val:dossiersAFOR.filter(d=>d.type==='CFI').length, c:'#22C55E', ha:haGnssCFI},
     {label:'CF — CFC',val:dossiersAFOR.filter(d=>d.type==='CFC').length, c:'#16A34A', ha:haGnssCFC},
   ];
@@ -6307,28 +4108,20 @@ function dashRenderCardActivites(){  const _g=document.getElementById('dash-card
 }
 
 function dashRenderCardAgents(){  const _g=document.getElementById('dash-card-agents');if(!_g)return;
-  // Fusionner agents M2 + AFOR
+  // Top agents CE — production AFOR
   const agMap = {};
-  // M2 : saisies par agent
-  AGENTS.forEach(a=>{
-    const v = saisies.filter(s=>s.agent===a).reduce((s,x)=>s+(x.ndos||0),0);
-    if(v>0) agMap[a] = {nom:a, m2:v, cf:0, score:null, retards:0};
-  });
-  // AFOR : CE par agent (avec mapping exact)
   if(dossiersAFOR.length>0){
     aforGetAgentsData().forEach(ag=>{
-      // Le nom AFOR est déjà normalisé via aforAgentNom à l'import
       const nomApp = ag.nom; // déjà mappé
-      if(agMap[nomApp]){ agMap[nomApp].cf=ag.total; agMap[nomApp].score=ag.score; agMap[nomApp].retards=ag.retards; }
-      else agMap[nomApp]={nom:nomApp,m2:0,cf:ag.total,score:ag.score,retards:ag.retards};
+      agMap[nomApp]={nom:nomApp,cf:ag.total,score:ag.score,retards:ag.retards};
     });
   }
   const sorted = Object.values(agMap)
-    .sort((a,b)=>(b.m2+b.cf)-(a.m2+a.cf))
+    .sort((a,b)=>b.cf-a.cf)
     .slice(0,8);
   const M=['🥇','🥈','🥉'];
   const rows = sorted.map((d,i)=>{
-    const total = d.m2 + d.cf;
+    const total = d.cf;
     const scoreHtml = d.score!==null
       ? `<td style="padding:7px 0;font-size:11px;font-weight:700;color:${d.score>=60?'#16A34A':'#DC2626'};">${d.score}%</td>`
       : `<td style="padding:7px 0;font-size:11px;color:#D1D5DB;">—</td>`;
@@ -6341,20 +4134,16 @@ function dashRenderCardAgents(){  const _g=document.getElementById('dash-card-ag
       : `<td style="padding:7px 0;text-align:right;font-size:11px;color:#D1D5DB;">—</td>`;
     return `<tr style="border-bottom:1px solid #F9FAFB;">
       <td style="padding:7px 6px 7px 0;font-size:12px;">${M[i]||`<span style="color:#9CA3AF;font-size:11px;">${i+1}.</span>`} ${d.nom.split(' ').slice(0,2).join(' ')}</td>
-      <td style="padding:7px 6px;text-align:right;font-weight:600;font-size:12px;color:#8B5CF6;">${d.m2||'—'}</td>
-      <td style="padding:7px 6px;text-align:right;font-weight:600;font-size:12px;color:#0369A1;">${d.cf||'—'}</td>
       <td style="padding:7px 6px;text-align:right;font-weight:700;font-size:13px;color:#111827;">${total}</td>
       ${scoreHtml}
       ${haHtml}
     </tr>`;
   }).join('');
-  _g.innerHTML = cardHdr('Top agents — production',null,'')+
+  _g.innerHTML = cardHdr('Top agents CE — production',null,'')+
   `<div style="padding:0 16px 14px;"><table style="width:100%;border-collapse:collapse;font-size:12px;">
     <thead><tr style="border-bottom:2px solid #F3F4F6;">
       <th style="text-align:left;padding:8px 6px 6px 0;font-size:10px;font-weight:600;text-transform:uppercase;color:#6B7280;">Agent</th>
-      <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#8B5CF6;">Saisies</th>
-      <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#0369A1;">CF</th>
-      <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#111827;">Total</th>
+      <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#111827;">Dossiers CF</th>
       <th style="text-align:right;padding:8px 6px 6px;font-size:10px;font-weight:600;color:#16A34A;">Score CF</th>
       <th style="text-align:right;padding:8px 0 6px 6px;font-size:10px;font-weight:600;color:#00695C;">Ha levés</th>
     </tr></thead>
@@ -6362,59 +4151,13 @@ function dashRenderCardAgents(){  const _g=document.getElementById('dash-card-ag
   </table></div>`;
 }
 
-function dashRenderCardProgrammes(){
-  const enCours=programmes.filter(p=>p.statut==='En cours'||p.statut==='En retard')
-    .sort((a,b)=>(b.statut==='En retard'?1:0)-(a.statut==='En retard'?1:0)).slice(0,6);
-  const rows=enCours.map(p=>{
-    const real=saisies.filter(s=>s.prog_ref===p.id).reduce((s,x)=>s+(x.ndos||0),0);
-    const pct=p.objectif>0?Math.min(100,Math.round(real/p.objectif*100)):0;
-    const col=pct>=90?'#22C55E':pct>=60?'#F59E0B':'#EF4444';
-    const retard=p.statut==='En retard';
-    return `<tr style="border-bottom:1px solid #F9FAFB;${retard?'background:#FFF7F7':''}">
-      <td style="padding:7px 6px 7px 0;font-family:'DM Mono',monospace;font-size:10px;color:#6B7280;">${p.id}</td>
-      <td style="padding:7px 6px;font-size:12px;font-weight:500;color:#111827;">${p.agent.split(' ').slice(0,2).join(' ')}</td>
-      <td style="padding:7px 6px;font-size:11px;color:#6B7280;">${p.dept.replace('Dép. ','')}</td>
-      <td style="padding:7px 0 7px 8px;min-width:120px;">
-        <div style="display:flex;align-items:center;gap:6px;">
-          <div style="flex:1;height:7px;background:#F3F4F6;border-radius:4px;overflow:hidden;">
-            <div style="width:${pct}%;height:100%;background:${col};border-radius:4px;"></div>
-          </div>
-          <span style="font-size:11px;font-weight:700;color:${col};min-width:28px">${pct}%</span>
-        </div>
-      </td>
-      <td style="padding:7px 0 7px 8px;text-align:center;">
-        <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:${retard?'#FEE2E2':'#DCFCE7'};color:${retard?'#991B1B':'#14532D'}">${p.statut}</span>
-      </td>
-    </tr>`;
-  }).join('');
-  document.getElementById('dash-card-programmes').innerHTML=
-    cardHdr('Programmes en cours',"switchModule('prog')",'Voir tout')+
-    `<div style="padding:0 16px 14px;">
-      ${!enCours.length?'<p style="font-size:12px;color:#9CA3AF;padding:12px 0;text-align:center;">Aucun programme en cours</p>':
-      `<table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <thead><tr style="border-bottom:2px solid #F3F4F6;">
-          <th style="text-align:left;padding:8px 6px 6px 0;font-size:10px;font-weight:600;text-transform:uppercase;color:#6B7280;">Réf.</th>
-          <th style="text-align:left;padding:8px 6px;font-size:10px;font-weight:600;text-transform:uppercase;color:#6B7280;">Agent</th>
-          <th style="text-align:left;padding:8px 6px;font-size:10px;font-weight:600;text-transform:uppercase;color:#6B7280;">Dép.</th>
-          <th style="text-align:left;padding:8px 0 6px 8px;font-size:10px;font-weight:600;text-transform:uppercase;color:#6B7280;min-width:120px">Progression</th>
-          <th style="text-align:center;padding:8px 0 6px 8px;font-size:10px;font-weight:600;text-transform:uppercase;color:#6B7280;">Statut</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>`}
-    </div>`;
-}
-
 // ── Alertes ──
 function dashRenderAlertes(){
   const alertes=[];
   const bloques=dossiers.filter(d=>d.etape!=='Clôturé'&&dosJours(d.etape_date)>30);
   if(bloques.length) alertes.push({msg:`${bloques.length} dossier(s) bloqué(s) depuis +30j`,action:"switchModule('dossier')"});
-  const retard=programmes.filter(p=>p.statut==='En retard');
-  if(retard.length) alertes.push({msg:`${retard.length} programme(s) en retard`,action:"switchModule('prog')"});
-  const il3j=new Date(); il3j.setDate(il3j.getDate()-3);
-  const lim=il3j.toISOString().split('T')[0];
-  const inact=AGENTS.filter(a=>{const l=saisies.filter(s=>s.agent===a).sort((x,y)=>y.date.localeCompare(x.date))[0];return l&&l.date<lim;});
-  if(inact.length) alertes.push({msg:`${inact.length} agent(s) inactif(s) +3 jours`,action:"switchModule('agents')"});
+  const retardAfor=(dossiersAFOR||[]).filter(d=>aforCalcRetard(d).retard);
+  if(retardAfor.length) alertes.push({msg:`${retardAfor.length} dossier(s) AFOR en retard`,action:"switchModule('dossier')"});
   const badge=document.getElementById('dash-alertes-badge');
   const wrap=document.getElementById('dash-alertes-wrap');
   const list=document.getElementById('dash-alertes-list');
@@ -7387,21 +5130,10 @@ function rptGetData(){
   const village=document.getElementById('rpt-village').value;
   const periode=document.getElementById('rpt-periode').value;
 
-  // Filtrer les saisies
-  let mesSaisies=saisies.filter(s=>{
-    const inDate=(!debut||s.date>=debut)&&(!fin||s.date<=fin);
-    const inDept=!dept||s.dept===dept;
-    const inSP=!sp||s.sp===sp;
-    const inVil=!village||s.village===village;
-    return inDate&&inDept&&inSP&&inVil;
-  });
-
-  // Filtrer les programmes
-  let mesProgs=programmes.filter(p=>{
-    const inDate=(!debut||p.date_fin>=debut)&&(!fin||p.date_debut<=fin);
-    const inDept=!dept||p.dept===dept;
-    return inDate&&inDept;
-  });
+  // M1 (programmes) et M2 (saisies quotidiennes) ont été supprimés de l'application ;
+  // ces listes restent vides pour ne pas casser la génération de rapport existante.
+  let mesSaisies=[];
+  let mesProgs=[];
 
   // Filtrer les dossiers
   let mesDos=dossiers.filter(d=>{
@@ -7752,7 +5484,6 @@ function notifGetAlertes(){
   const alertes = [];
   const today = new Date();
   const seuilDos = parseInt(notifConfig.seuilDos || 30);
-  const seuilAgent = parseInt(notifConfig.seuilAgent || 3);
 
   // 1. Dossiers bloqués
   if(notifConfig.chkDos !== false){
@@ -7778,50 +5509,6 @@ function notifGetAlertes(){
           action: "switchModule('dossier')"
         });
       }
-    });
-  }
-
-  // 2. Agents sans saisie
-  if(notifConfig.chkAgents !== false){
-    const dateLimite = new Date();
-    dateLimite.setDate(dateLimite.getDate() - seuilAgent);
-    const limitStr = dateLimite.toISOString().split('T')[0];
-    AGENTS_FULL.forEach(ag => {
-      const dernier = saisies.filter(s => s.agent === ag.nom)
-        .sort((a,b) => b.date.localeCompare(a.date))[0];
-      if(dernier && dernier.date < limitStr){
-        const jours = Math.floor((today - new Date(dernier.date)) / 86400000);
-        alertes.push({
-          id: 'ag_'+ag.nom.replace(/\s/g,''),
-          type: 'warning',
-          titre: 'Agent inactif',
-          msg: ag.nom+' — Dernière saisie il y a '+jours+' jours ('+fmtDate(dernier.date)+')',
-          dept: null, act: null,
-          responsable: null, email_resp: null, whatsapp_resp: null,
-          date: new Date().toISOString(),
-          action: "switchModule('agents')"
-        });
-      }
-    });
-  }
-
-  // 3. Programmes en retard
-  if(notifConfig.chkProgs !== false){
-    programmes.filter(p => p.statut === 'En retard').forEach(p => {
-      const resp = RESPONSABLES.find(r => r.dept === p.dept && r.act === p.op);
-      alertes.push({
-        id: 'prog_'+p.id,
-        type: 'danger',
-        titre: 'Programme en retard',
-        msg: p.id+' — '+p.agent+' · '+p.dept+' · Objectif : '+p.objectif+' ha',
-        dept: p.dept,
-        act: p.op,
-        responsable: resp ? resp.nom : null,
-        email_resp: resp ? resp.email : null,
-        whatsapp_resp: resp ? resp.whatsapp : null,
-        date: new Date().toISOString(),
-        action: "switchModule('prog')"
-      });
     });
   }
 
@@ -7911,10 +5598,7 @@ function notifSettings(){
   const cfg = notifConfig;
   document.getElementById('notif-email').value = cfg.email || SUPERVISEUR.email;
   document.getElementById('notif-seuil-dos').value = cfg.seuilDos || 30;
-  document.getElementById('notif-seuil-agent').value = cfg.seuilAgent || 3;
   document.getElementById('notif-chk-dos').checked = cfg.chkDos !== false;
-  document.getElementById('notif-chk-agents').checked = cfg.chkAgents !== false;
-  document.getElementById('notif-chk-progs').checked = cfg.chkProgs !== false;
   document.getElementById('notif-settings-modal').style.display = 'flex';
   notifPanelOpen = false;
   document.getElementById('notif-panel').style.display = 'none';
@@ -7924,10 +5608,7 @@ function notifSaveSettings(){
   notifConfig = {
     email: document.getElementById('notif-email').value,
     seuilDos: parseInt(document.getElementById('notif-seuil-dos').value) || 30,
-    seuilAgent: parseInt(document.getElementById('notif-seuil-agent').value) || 3,
     chkDos: document.getElementById('notif-chk-dos').checked,
-    chkAgents: document.getElementById('notif-chk-agents').checked,
-    chkProgs: document.getElementById('notif-chk-progs').checked,
   };
   notifSaveConfig();
   document.getElementById('notif-settings-modal').style.display = 'none';
@@ -8089,18 +5770,16 @@ async function serverLoad(){
     const d = await r.json();
 
     if(!d || d.reset){
-      programmes=[]; saisies=[]; dossiers=[]; absences=[];
-      progCounter=0; saisieCounter=0; dosCounter=0;
+      dossiers=[]; absences=[];
+      dosCounter=0;
       lastKnownTs = d ? d.updated_at : null;
       fbInitialized = true; serverAvailable = true;
       updateSyncIndicator('ok');
-      progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
+      dosRenderAll(); dashRenderAll();
       console.log('Firebase vide — application réinitialisée');
       return true;
     }
 
-    programmes = Array.isArray(d.programmes) ? d.programmes : [];
-    saisies    = Array.isArray(d.saisies)    ? d.saisies    : [];
     dossiers   = Array.isArray(d.dossiers)   ? d.dossiers   : [];
     absences   = Array.isArray(d.absences)   ? d.absences   : [];
     if(d.users_db && typeof d.users_db === 'object'){
@@ -8118,16 +5797,14 @@ async function serverLoad(){
     } else {
       users_db = Object.assign({}, remoteUsers, users_db);
     }
-    progCounter    = programmes.length;
-    saisieCounter  = saisies.length;
     dosCounter     = dossiers.length;
     lastKnownTs    = d.updated_at || null;
     fbInitialized  = true;
     serverAvailable = true;
 
     updateSyncIndicator('ok');
-    progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
-    console.log('Firebase chargé:', saisies.length, 'saisies,', programmes.length, 'programmes');
+    dosRenderAll(); dashRenderAll();
+    console.log('Firebase chargé:', dossiers.length, 'dossiers');
     return true;
   } catch(e) {
     console.log('Firebase erreur:', e.message);
@@ -8143,8 +5820,6 @@ const OFFLINE_QUEUE_KEY = 'presfor_offline_queue';
 function saveToOfflineQueue(){
   const snapshot = {
     ts: new Date().toISOString(),
-    saisies:    [...saisies],
-    programmes: [...programmes],
     dossiers:   [...dossiers],
     absences:   [...absences]
   };
@@ -8196,24 +5871,20 @@ async function flushOfflineQueue(){
   showToast('Synchronisation des données hors-ligne...');
   updateSyncIndicator('pending');
   // Fusionner le snapshot hors-ligne avec les données courantes
-  saisies    = mergeById(snapshot.saisies,    saisies);
-  programmes = mergeById(snapshot.programmes, programmes);
   dossiers   = mergeById(snapshot.dossiers,   dossiers);
   absences   = mergeById(snapshot.absences,   absences);
   clearOfflineQueue();
   // serverSave fera un read-merge-write avec Firebase
   await serverSave();
-  progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
+  dosRenderAll(); dashRenderAll();
   showToast('✓ Données hors-ligne synchronisées !');
 }
 
 // ── Bannière de fusion inter-agents ──
-function showMergeBanner(saisiesAdded, progsAdded, dosAdded){
-  const total = saisiesAdded + progsAdded + dosAdded;
+function showMergeBanner(dosAdded){
+  const total = dosAdded;
   if(total === 0) return;
   const parts = [];
-  if(saisiesAdded > 0) parts.push(saisiesAdded + ' saisie' + (saisiesAdded>1?'s':''));
-  if(progsAdded   > 0) parts.push(progsAdded   + ' programme' + (progsAdded>1?'s':''));
   if(dosAdded     > 0) parts.push(dosAdded      + ' dossier' + (dosAdded>1?'s':''));
   const banner = document.getElementById('merge-banner');
   const msg    = document.getElementById('merge-banner-msg');
@@ -8251,9 +5922,7 @@ async function serverSave(){
         const remote = await rGet.json();
         if(remote && !remote.reset && remote.updated_at && remote.updated_at !== lastKnownTs){
           // Un autre agent a sauvegardé entre-temps → fusionner
-          const prevS = saisies.length, prevP = programmes.length, prevD = dossiers.length;
-          programmes = mergeById(programmes, remote.programmes);
-          saisies    = mergeById(saisies,    remote.saisies);
+          const prevD = dossiers.length;
           dossiers   = mergeById(dossiers,   remote.dossiers);
           absences   = mergeById(absences,   remote.absences);
           // Fusionner users_db (les comptes ne se perdent jamais)
@@ -8262,10 +5931,8 @@ async function serverSave(){
           }
           lastKnownTs = remote.updated_at;
           needsUIRefresh = true;
-          const sAdded = saisies.length - prevS;
-          const pAdded = programmes.length - prevP;
           const dAdded = dossiers.length - prevD;
-          if(sAdded + pAdded + dAdded > 0) showMergeBanner(sAdded, pAdded, dAdded);
+          if(dAdded > 0) showMergeBanner(dAdded);
           console.log('Fusion avant sauvegarde — données mergées depuis Firebase');
         }
       }
@@ -8276,7 +5943,7 @@ async function serverSave(){
     const r = await fetch(FIREBASE_URL + '/presfor.json', {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({programmes, saisies, dossiers, absences, updated_at: ts, reset: false}),
+      body: JSON.stringify({dossiers, absences, updated_at: ts, reset: false}),
       signal: AbortSignal.timeout(25000)
     });
     if(r.ok){
@@ -8285,7 +5952,7 @@ async function serverSave(){
       updateSyncIndicator('ok');
       // Rafraîchir l'UI si on a mergé des données tierces
       if(needsUIRefresh){
-        progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
+        dosRenderAll(); dashRenderAll();
       }
     } else { updateSyncIndicator('error'); }
   } catch(e) {
@@ -8301,8 +5968,6 @@ async function serverSave(){
 function scheduleSave(){
   if(!fbInitialized) return;
   try{
-    localStorage.setItem('presfor_backup_programmes',JSON.stringify(programmes));
-    localStorage.setItem('presfor_backup_saisies',JSON.stringify(saisies));
     localStorage.setItem('presfor_backup_dossiers',JSON.stringify(dossiers));
     localStorage.setItem('presfor_backup_ts',new Date().toISOString());
   }catch(e){}
@@ -10139,8 +7804,8 @@ serverLoad().then(ok => {
   authInit();
 });
 
-['pf-agent','sf-agent','df-agent','abs-agent'].forEach(id=>buildAgentOptions(id,false));
-['saisie-f-agent','dos-f-agent'].forEach(id=>buildAgentOptions(id,true));
+['abs-agent'].forEach(id=>buildAgentOptions(id,false));
+['dos-f-agent'].forEach(id=>buildAgentOptions(id,true));
 dashInit();
 switchModule('accueil');
 setTimeout(notifCheck, 3000);
@@ -10148,272 +7813,15 @@ setTimeout(syncPoll, 10000);
 
 
 
-// ═══════════════════════════════════════════
-// MODULE SAISIE QUOTIDIENNE — Terrain CE & GNSS
-// ═══════════════════════════════════════════
 
-// Données saisies (remise à zéro — nouveau format)
-// saisies, saisiesFiltered, saisiesPage, SAISIES_PAGE_SIZE déclarés plus haut
-// Charger depuis localStorage (nouveau format v2)
-try {
-  const savedV2 = localStorage.getItem('presfor_saisies_v2');
-  if(savedV2) saisies = JSON.parse(savedV2);
-} catch(e) {}
 
-function saisiesSave(){
-  try { localStorage.setItem('presfor_saisies_v2', JSON.stringify(saisies)); } catch(e) {}
-  scheduleSave();
-}
 
-function saisieShowPanel(id, btn){
-  document.querySelectorAll('#module-saisie .panel').forEach(p=>p.classList.remove('active'));
-  const panel = document.getElementById('saisie-panel-'+id);
-  if(!panel){ console.error('Panel saisie introuvable: saisie-panel-'+id); return; }
-  panel.classList.add('active');
-  document.querySelectorAll('#sb-saisie .nav-item').forEach(n=>n.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  else {
-    const map = {list:0, stats:1};
-    document.querySelectorAll('#sb-saisie .nav-item')[map[id]??0]?.classList.add('active');
-  }
-  if(id==='stats') saisieRenderStats();
-}
 
-function saisieRenderAll(){
-  saisieRenderKPI();
-  saisieRenderList();
-  saisiePopulateAgents();
-  const nb = document.getElementById('saisie-nb');
-  if(nb) nb.textContent = saisies.length;
-}
 
-function saisiePopulateAgents(){
-  const sel = document.getElementById('saisie-f-agent');
-  if(!sel) return;
-  const agents = [...new Set(saisies.map(s=>s.agent).filter(Boolean))].sort();
-  sel.innerHTML = '<option value="">Tous les agents</option>' +
-    agents.map(a=>`<option value="${a}">${a}</option>`).join('');
-}
 
-function saisieRenderKPI(){
-  const el = document.getElementById('saisie-kpi');
-  if(!el) return;
-  const today = new Date().toISOString().split('T')[0];
-  const ce_mois = new Date(); ce_mois.setDate(1);
-  const mois_str = ce_mois.toISOString().split('T')[0].substring(0,7);
 
-  const total     = saisies.length;
-  const aujourdhui= saisies.filter(s=>s.date===today).length;
-  const ce_mois_n = saisies.filter(s=>(s.date||'').startsWith(mois_str)).length;
-  const agents_actifs = new Set(saisies.map(s=>s.agent).filter(Boolean)).size;
 
-  el.innerHTML = `
-    <div class="kpi blue"><div class="kpi-l">Total saisies</div><div class="kpi-v">${total}</div><div class="kpi-s">${agents_actifs} agent(s)</div></div>
-    <div class="kpi green"><div class="kpi-l">Aujourd'hui</div><div class="kpi-v">${aujourdhui}</div><div class="kpi-s">${today}</div></div>
-    <div class="kpi amber"><div class="kpi-l">Ce mois</div><div class="kpi-v">${ce_mois_n}</div><div class="kpi-s">${mois_str}</div></div>
-    <div class="kpi teal"><div class="kpi-l">Agents actifs</div><div class="kpi-v">${agents_actifs}</div><div class="kpi-s">CE & GNSS</div></div>`;
-}
 
-function saisieRenderList(){
-  const q       = (document.getElementById('saisie-f-text')?.value||'').toLowerCase();
-  const agent   = document.getElementById('saisie-f-agent')?.value||'';
-  const dept    = document.getElementById('saisie-f-dept')?.value||'';
-  const activite= document.getElementById('saisie-f-activite')?.value||'';
-  const etape   = document.getElementById('saisie-f-etape')?.value||'';
-  const date    = document.getElementById('saisie-f-date')?.value||'';
-
-  let liste = [...saisies].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-
-  if(q)       liste = liste.filter(s =>
-    (s.agent||'').toLowerCase().includes(q) ||
-    (s.village||'').toLowerCase().includes(q) ||
-    (s.num_dossier||'').toLowerCase().includes(q) ||
-    (s.nom||'').toLowerCase().includes(q));
-  if(agent)   liste = liste.filter(s=>s.agent===agent);
-  if(dept)    liste = liste.filter(s=>s.dept===dept);
-  if(activite)liste = liste.filter(s=>s.activite===activite);
-  if(etape)   liste = liste.filter(s=>s.etape===etape);
-  if(date)    liste = liste.filter(s=>s.date===date);
-
-  saisiesFiltered = liste;
-  saisiesPage = 0;
-
-  const count = document.getElementById('saisie-count');
-  if(count) count.textContent = liste.length + ' saisie(s)';
-
-  saisieRenderPage();
-}
-
-function saisieRenderPage(){
-  const tbody = document.getElementById('saisie-tbody');
-  if(!tbody) return;
-  const start = saisiesPage * SAISIES_PAGE_SIZE;
-  const page  = saisiesFiltered.slice(start, start+SAISIES_PAGE_SIZE);
-  const fmtD  = v => v ? new Date(v+'T00:00:00').toLocaleDateString('fr-FR') : '—';
-
-  tbody.innerHTML = page.length===0
-    ? '<tr><td colspan="14" style="text-align:center;padding:30px;color:var(--text3);">Aucune saisie</td></tr>'
-    : page.map(s => {
-      const actBg = s.activite==='CF'?'#E3F2FD':s.activite==='DTV'?'#F3E5F5':'#FFF3E0';
-      const actTx = s.activite==='CF'?'#1565C0':s.activite==='DTV'?'#6A1B9A':'#E65100';
-      const canDelete = (currentUser && currentUser.role==='Admin') || !s._src;
-      return `<tr style="border-bottom:1px solid var(--border);">
-        <td style="padding:7px 10px;font-size:11px;white-space:nowrap;">${fmtD(s.date)}</td>
-        <td style="padding:7px 10px;font-size:12px;font-weight:500;">${s.agent||'—'}</td>
-        <td style="padding:7px 10px;font-size:10px;color:var(--text2);">${s.fonction||'—'}</td>
-        <td style="padding:7px 10px;font-size:11px;">${s.dept||'—'}</td>
-        <td style="padding:7px 10px;font-size:11px;color:var(--text2);">${s.sp||'—'}<br><span style="font-size:10px;">${s.village||''}</span></td>
-        <td style="padding:7px 10px;text-align:center;"><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;background:${actBg};color:${actTx};">${s.activite||'—'}</span></td>
-        <td style="padding:7px 10px;font-size:11px;">${s.etape||'—'}</td>
-        <td style="padding:7px 10px;font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);">${s.num_dossier||'—'}</td>
-        <td style="padding:7px 10px;font-size:11px;">${((s.prenom||'')+' '+(s.nom||'')).trim()||'—'}</td>
-        <td style="padding:7px 10px;text-align:center;font-weight:600;">${s.nb_dossiers||'—'}</td>
-        <td style="padding:7px 10px;text-align:center;font-size:11px;color:var(--teal);font-weight:600;">${s.superficie>0?s.superficie.toFixed(2)+' ha':'—'}</td>
-        <td style="padding:7px 10px;font-size:10px;color:var(--text2);">${s.ref_programme||'—'}</td>
-        <td style="padding:7px 10px;font-size:10px;color:var(--text2);">${s.observations||''}</td>
-        <td style="padding:7px 10px;">
-          <div style="display:flex;gap:4px;">
-            <button onclick="saisieShowDetail2('${s.id}')" class="btn-s" style="font-size:10px;padding:2px 7px;">🔍</button>
-            ${canDelete?`<button onclick="saisieDelete2('${s.id}')" class="btn-d" style="font-size:10px;padding:2px 7px;">✕</button>`:''}
-          </div>
-        </td>
-      </tr>`;
-    }).join('');
-
-  // Pagination
-  const total = Math.ceil(saisiesFiltered.length/SAISIES_PAGE_SIZE);
-  const pag = document.getElementById('saisie-pagination');
-  if(pag){
-    pag.innerHTML = '';
-    for(let i=0;i<total;i++){
-      const btn = document.createElement('button');
-      btn.className='btn-s'; btn.textContent=i+1;
-      if(i===saisiesPage) btn.style.background='var(--accent)';
-      btn.onclick=()=>{saisiesPage=i;saisieRenderPage();};
-      pag.appendChild(btn);
-    }
-  }
-}
-
-function saisieDelete2(id){
-  if(!confirm('Supprimer cette saisie ?')) return;
-  saisies = saisies.filter(s=>s.id!==id);
-  saisiesSave();
-  saisieRenderAll();
-  showToast('Saisie supprimée');
-}
-
-function saisieShowDetail2(id){
-  const s = saisies.find(x=>x.id===id);
-  if(!s) return;
-  const fmtD = v => v ? new Date(v+'T00:00:00').toLocaleDateString('fr-FR') : '—';
-  document.getElementById('saisie-detail-title').textContent = s.agent||'Saisie';
-  document.getElementById('saisie-detail-subtitle').textContent = fmtD(s.date)+' · '+s.village;
-  document.getElementById('saisie-detail-content').innerHTML = `
-    <div class="tw" style="padding:20px;max-width:700px;">
-      ${[
-        ['Agent',         s.agent||'—'],
-        ['Fonction',      s.fonction||'—'],
-        ['Date',          fmtD(s.date)],
-        ['Département',   s.dept||'—'],
-        ['Sous-préfecture',s.sp||'—'],
-        ['Village',       s.village||'—'],
-        ['Activité',      s.activite||'—'],
-        ['Étape',         s.etape||'—'],
-        ['N° Dossier',    s.num_dossier||'—'],
-        ['Prénom',        s.prenom||'—'],
-        ['Nom',           s.nom||'—'],
-        ['Code Parcelle', s.code_parcelle||'—'],
-        ['Nb dossiers',   s.nb_dossiers||'—'],
-        ['Superficie',    s.superficie>0?s.superficie.toFixed(2)+' ha':'—'],
-        ['Nb villages',   s.nb_villages||'—'],
-        ['Réf. Programme',s.ref_programme||'—'],
-        ['Observations',  s.observations||'—'],
-      ].map(([l,v])=>`
-        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;">
-          <span style="color:var(--text2);">${l}</span>
-          <span style="font-weight:500;">${v}</span>
-        </div>`).join('')}
-    </div>`;
-  saisieShowPanel('detail');
-}
-
-function saisieRenderStats(){
-  const el = document.getElementById('saisie-stats-content');
-  if(!el) return;
-
-  // Stats par agent
-  const parAgent = {};
-  saisies.forEach(s=>{
-    if(!s.agent) return;
-    if(!parAgent[s.agent]) parAgent[s.agent]={agent:s.agent, fonction:s.fonction||'—', total:0, parActivite:{}, parEtape:{}, superficie:0};
-    const a = parAgent[s.agent];
-    a.total++;
-    a.superficie += s.superficie||0;
-    if(s.activite) a.parActivite[s.activite]=(a.parActivite[s.activite]||0)+1;
-    if(s.etape)    a.parEtape[s.etape]=(a.parEtape[s.etape]||0)+1;
-  });
-
-  const agents = Object.values(parAgent).sort((a,b)=>b.total-a.total);
-  if(!agents.length){
-    el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text3);">Aucune donnée</div>';
-    return;
-  }
-
-  el.innerHTML = `
-    <div class="tw">
-      <table style="font-size:12px;">
-        <thead><tr>
-          <th>Agent</th><th>Fonction</th><th style="text-align:center">Total</th>
-          <th>Activités</th><th>Étapes principales</th>
-          <th style="text-align:center">Superficie</th>
-        </tr></thead>
-        <tbody>
-          ${agents.map(a=>{
-            const actBadges = Object.entries(a.parActivite)
-              .map(([k,v])=>`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#E3F2FD;color:#1565C0;margin-right:3px;">${k}:${v}</span>`).join('');
-            const etapePrincipale = Object.entries(a.parEtape)
-              .sort((x,y)=>y[1]-x[1]).slice(0,2)
-              .map(([k,v])=>`<span style="font-size:10px;color:var(--text2);">${k}(${v})</span>`).join(' · ');
-            return `<tr style="border-bottom:1px solid var(--border);">
-              <td style="padding:8px 10px;font-weight:600;">${a.agent}</td>
-              <td style="padding:8px 10px;font-size:11px;color:var(--text2);">${a.fonction}</td>
-              <td style="padding:8px 10px;text-align:center;font-weight:700;font-size:14px;">${a.total}</td>
-              <td style="padding:8px 10px;">${actBadges}</td>
-              <td style="padding:8px 10px;">${etapePrincipale}</td>
-              <td style="padding:8px 10px;text-align:center;color:var(--teal);font-weight:600;">${a.superficie>0?a.superficie.toFixed(1)+' ha':'—'}</td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>`;
-}
-
-function saisieReset(){
-  if(!confirm('Vider toutes les saisies ? Cette action est irréversible.')) return;
-  saisies = [];
-  saisiesSave();
-  saisieRenderAll();
-  showToast('Saisies réinitialisées');
-}
-
-function saisieExportCSV(){
-  const liste = saisiesFiltered.length ? saisiesFiltered : saisies;
-  const fmtD = v => v ? new Date(v+'T00:00:00').toLocaleDateString('fr-FR') : '';
-  const esc = v => '"'+String(v||'').replace(/"/g,'""')+'"';
-  const hdr = ['Date','Agent','Fonction','Département','SP','Village','Activité','Étape',
-    'N° Dossier','Prénom','Nom','Code Parcelle','Nb dossiers','Superficie (ha)','Réf. Programme','Observations'];
-  const rows = liste.map(s=>[
-    fmtD(s.date),s.agent,s.fonction,s.dept,s.sp,s.village,s.activite,s.etape,
-    s.num_dossier,s.prenom,s.nom,s.code_parcelle,s.nb_dossiers,
-    s.superficie>0?s.superficie.toFixed(2):'',s.ref_programme,s.observations
-  ].map(esc).join(','));
-  const csv=[hdr.map(esc).join(','),...rows].join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download='saisies_terrain_'+new Date().toISOString().split('T')[0]+'.csv';
-  a.click();
-}
 
 
 
