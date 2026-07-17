@@ -5920,15 +5920,20 @@ async function serverSave(){
       const rGet = await fetch(FIREBASE_URL + '/presfor.json', { signal: AbortSignal.timeout(10000) });
       if(rGet.ok){
         const remote = await rGet.json();
+        if(remote){
+          // Fusionner users_db à chaque sauvegarde (les comptes ne doivent jamais se perdre),
+          // que les timestamps correspondent ou non.
+          if(remote.users_db && typeof remote.users_db === 'object'){
+            const remoteUsers = usersFromFirebase(remote.users_db);
+            Object.keys(remoteUsers).forEach(k=>{ if(k.includes('__dot__')) delete remoteUsers[k]; });
+            users_db = Object.assign({}, remoteUsers, users_db);
+          }
+        }
         if(remote && !remote.reset && remote.updated_at && remote.updated_at !== lastKnownTs){
           // Un autre agent a sauvegardé entre-temps → fusionner
           const prevD = dossiers.length;
           dossiers   = mergeById(dossiers,   remote.dossiers);
           absences   = mergeById(absences,   remote.absences);
-          // Fusionner users_db (les comptes ne se perdent jamais)
-          if(remote.users_db && typeof remote.users_db === 'object'){
-            users_db = Object.assign({}, remote.users_db, users_db);
-          }
           lastKnownTs = remote.updated_at;
           needsUIRefresh = true;
           const dAdded = dossiers.length - prevD;
@@ -5938,12 +5943,12 @@ async function serverSave(){
       }
     } catch(eMerge){ console.log('Lecture pré-save ignorée:', eMerge.message); }
 
-    // 2. Écrire l'état fusionné
+    // 2. Écrire l'état fusionné (users_db inclus pour ne jamais perdre les comptes)
     const ts = new Date().toISOString();
     const r = await fetch(FIREBASE_URL + '/presfor.json', {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({dossiers, absences, updated_at: ts, reset: false}),
+      body: JSON.stringify({dossiers, absences, users_db: usersToFirebase(users_db), updated_at: ts, reset: false}),
       signal: AbortSignal.timeout(25000)
     });
     if(r.ok){
