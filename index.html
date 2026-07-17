@@ -1493,8 +1493,6 @@ function switchModule(id){
   m.style.display='flex';m.classList.add('active');
   document.getElementById('tab-'+id).classList.add('active');
   // Rafraîchir le module activé
-  if(id==='saisie'){try{saisieRenderAll();}catch(e){console.error('saisie render:',e);}}
-  if(id==='prog'){try{progRenderAll();}catch(e){console.error('prog render:',e);}}
   if(id==='dossier'){try{dosShowPanel('list');dosRenderAll();}catch(e){console.error('dos render:',e);}}
   if(id==='agents'){try{agRenderAll();}catch(e){console.error('agents render:',e);}}
   if(id==='accueil'){try{dashRenderAll();}catch(e){console.error('dash render:',e);}}
@@ -1503,90 +1501,6 @@ function switchModule(id){
   if(id==='pub'){try{pubInit();}catch(e){console.error('pub render:',e);}}
   setTimeout(()=>{ if(typeof isViewer==='function'&&isViewer()) applyViewerRestrictions(); },200);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  // Charger les dossiers filtrés par agent et village
-  const ag=document.getElementById('sf-agent')?.value;
-  const vl=document.getElementById('sf-village')?.value;
-  saisieLoadDossiers(ag,vl);
-
-
-
-
-
-// ═══════════════════════════════════════════
-// VERROU SAISIES > 7 JOURS
-// ═══════════════════════════════════════════
-const LOCK_DAYS = 7;
-let lockPendingId = null;
-let lockPendingAction = null;
-
-function getLockPassword(){
-  return localStorage.getItem('presfor_lock_pwd') || 'COORD2026';
-}
-
-
-function showLockModal(s, action, id){
-  lockPendingId = id;
-  lockPendingAction = action;
-  const info = document.getElementById('lock-modal-info');
-  if(info) info.textContent = `Saisie du ${fmtDate(s.date)} — ${s.agent} — ${Math.floor((new Date()-new Date(s.date+'T12:00:00'))/86400000)} jours`;
-  document.getElementById('lock-pwd').value = '';
-  document.getElementById('lock-pwd-err').style.display = 'none';
-  document.getElementById('lock-modal').style.display = 'flex';
-  setTimeout(()=>document.getElementById('lock-pwd').focus(), 100);
-}
-
-function lockConfirm(){
-  const pwd = document.getElementById('lock-pwd').value;
-  if(pwd !== getLockPassword()){
-    document.getElementById('lock-pwd-err').style.display = 'block';
-    return;
-  }
-  document.getElementById('lock-modal').style.display = 'none';
-  if(lockPendingAction === 'edit')   saisieEditUnlocked(lockPendingId);
-  if(lockPendingAction === 'delete') saisieDeleteUnlocked(lockPendingId);
-  lockPendingId = null; lockPendingAction = null;
-}
-
-
-
-
-
-
-
-
-let saisieImportData = [];
-
-
-
 
 
 // ═══════════════════════════════════════════
@@ -6440,7 +6354,6 @@ function aforRenderAll(){
   // Met à jour les cards dashboard + badge sidebar
   const nb=document.getElementById('afor-list-nb');
   if(nb) nb.textContent=dossiersAFOR.length;
-  dashRenderCardSaisies();
   dashRenderCardDossiers();
   dashRenderCardDepts();
   dashRenderCardActivites();
@@ -7770,21 +7683,19 @@ function buildAgentOptions(selectId, allOption) {
 }
 
 function peuplerTousAgents() {
-  ['pf-agent','sf-agent','df-agent','abs-agent'].forEach(function(id){ buildAgentOptions(id, false); });
-  ['saisie-f-agent','dos-f-agent'].forEach(function(id){ buildAgentOptions(id, true); });
+  ['abs-agent'].forEach(function(id){ buildAgentOptions(id, false); });
+  ['dos-f-agent'].forEach(function(id){ buildAgentOptions(id, true); });
 }
 
 peuplerTousAgents();
 emailjs.init('pz4y-Ub1sZ5LQ_Fpd');
-progInit();
-saisieInit();
 dosInit();
 agInit();
 zvInit();
 
 serverLoad().then(ok => {
   if(!ok){
-    progRenderAll(); saisieRenderAll(); dosRenderAll(); dashRenderAll();
+    dosRenderAll(); dashRenderAll();
     updateOfflineBanner();
   } else {
     if(getOfflineSnapshot()){ flushOfflineQueue(); }
@@ -7809,8 +7720,6 @@ serverLoad().then(ok => {
   authInit();
 });
 
-['abs-agent'].forEach(id=>buildAgentOptions(id,false));
-['dos-f-agent'].forEach(id=>buildAgentOptions(id,true));
 dashInit();
 switchModule('accueil');
 setTimeout(notifCheck, 3000);
