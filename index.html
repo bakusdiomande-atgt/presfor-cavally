@@ -1749,11 +1749,12 @@ function dosRenderList(){
   dosRenderKPI(hasFilter ? liste : null);
   dosRenderPage();
 
-  // Peupler filtre agents
+  // Peupler filtre agents (en conservant la sélection en cours)
   const agSel = document.getElementById('dos-f-agent');
   if(agSel){
     const agents=[...new Set(tous.map(d=>d.agent||d.agent_ce||'').filter(Boolean))].sort();
     agSel.innerHTML='<option value="">Tous les agents</option>'+agents.map(a=>`<option value="${a}">${a}</option>`).join('');
+    agSel.value = fa;
   }
 }
 
