@@ -3819,7 +3819,7 @@ function dashRenderCartographieDetail(){
   </div>`;
   if(dashLeafletMapBig){ dashLeafletMapBig.remove(); dashLeafletMapBig=null; }
   if(typeof L!=='undefined' && typeof SP_CAVALLY_LATLNG!=='undefined' && SP_CAVALLY_LATLNG.length){
-    dashLeafletMapBig = L.map('dash-leaflet-big', {zoomControl:true, attributionControl:true});
+    dashLeafletMapBig = L.map('dash-leaflet-big', {zoomControl:true, attributionControl:true, scrollWheelZoom:true});
     dashBuildLeafletPolygons(dashLeafletMapBig, document.getElementById('dash-leaflet-legend-big'));
   }
 }
@@ -4049,7 +4049,11 @@ function dashMapTier(pct){
 // ── Carte Leaflet + fond OpenStreetMap ──
 let dashLeafletMapSmall = null, dashLeafletMapBig = null;
 
-function dashBuildLeafletPolygons(map, legendEl){
+// Emprise approximative de la Côte d'Ivoire (en attendant un fichier de contours officiel)
+const CI_BOUNDS = [[4.34,-8.60],[10.74,-2.49]];
+
+function dashBuildLeafletPolygons(map, legendEl, opts){
+  opts = opts || {};
   if(typeof SP_CAVALLY_LATLNG==='undefined' || !SP_CAVALLY_LATLNG.length) return;
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -4067,7 +4071,8 @@ function dashBuildLeafletPolygons(map, legendEl){
     poly.on('mouseout', ()=>poly.setStyle({fillOpacity:0.75}));
     sp.latlngs.forEach(ll=>bounds.push(ll));
   });
-  if(bounds.length) map.fitBounds(bounds, {padding:[10,10]});
+  // Vue initiale : tout le pays, pour resituer le Cavally dans son contexte national
+  map.fitBounds(CI_BOUNDS, {padding:[4,4]});
   if(legendEl){
     const legendItems = [
       {c:'#1B7A4A', l:'≥ 75%'}, {c:'#8BC34A', l:'50% - 75%'},
@@ -4075,7 +4080,16 @@ function dashBuildLeafletPolygons(map, legendEl){
       {c:'#E5E7EB', l:'Non démarré'},
     ];
     legendEl.innerHTML = legendItems.map(it=>`<div style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:${it.c};flex-shrink:0;"></span>${it.l}</div>`).join('');
+    if(!opts.noRecentrer){
+      const btn = document.createElement('button');
+      btn.textContent = '📍 Recentrer sur le Cavally';
+      btn.className = 'btn-s';
+      btn.style.cssText = 'font-size:10px;padding:5px 8px;margin-top:4px;';
+      btn.onclick = ()=> map.fitBounds(bounds, {padding:[10,10]});
+      legendEl.appendChild(btn);
+    }
   }
+  return bounds;
 }
 
 function dashRenderMap(s){
@@ -4093,7 +4107,7 @@ function dashRenderMap(s){
     <div id="dash-leaflet-small" style="flex:1;min-width:0;border-radius:6px;overflow:hidden;"></div>
     <div id="dash-leaflet-legend-small" style="font-size:10px;color:var(--text2);display:flex;flex-direction:column;gap:4px;justify-content:center;flex-shrink:0;"></div>
   </div>`;
-  dashLeafletMapSmall = L.map('dash-leaflet-small', {zoomControl:false, attributionControl:false, scrollWheelZoom:false});
+  dashLeafletMapSmall = L.map('dash-leaflet-small', {zoomControl:true, attributionControl:false, scrollWheelZoom:false, doubleClickZoom:true});
   dashBuildLeafletPolygons(dashLeafletMapSmall, document.getElementById('dash-leaflet-legend-small'));
 }
 
