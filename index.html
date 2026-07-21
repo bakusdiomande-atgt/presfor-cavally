@@ -450,14 +450,23 @@ tbody td{padding:9px 12px;vertical-align:middle;}
   <nav class="tb-modules">
     <button class="tb-mod" onclick="switchModule('accueil')" id="tab-accueil" style="background:var(--accent);color:#fff;">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="margin-right:4px"><path d="M8.354 1.146a.5.5 0 0 0-.708 0l-6 6A.5.5 0 0 0 1.5 7.5v7a.5.5 0 0 0 .5.5h4.5a.5.5 0 0 0 .5-.5v-4h2v4a.5.5 0 0 0 .5.5H14a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.146-.354L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.354 1.146z"/></svg>
-      Accueil
+      Tableau de bord
     </button>
     <button class="tb-mod" onclick="switchModule('dossier')" id="tab-dossier"><span class="mod-num">M3</span>Dossiers fonciers</button>
     <button class="tb-mod" onclick="switchModule('agents')" id="tab-agents"><span class="mod-num">M4</span>Agents &amp; équipes</button>
     <button class="tb-mod" onclick="switchModule('zones')" id="tab-zones"><span class="mod-num">M5</span>Zones &amp; villages</button>
+    <button class="tb-mod" onclick="switchModule('activites')" id="tab-activites">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="margin-right:4px"><path d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V2zm0 5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V7zm0 5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1v-2z"/></svg>
+      Activités</button>
+    <button class="tb-mod" onclick="switchModule('indicateurs')" id="tab-indicateurs">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="margin-right:4px"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zM4.5 12.5A.5.5 0 0 1 4 12V7a.5.5 0 0 1 1 0v5a.5.5 0 0 1-.5.5zm3 0a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 1 0v8a.5.5 0 0 1-.5.5zm3 0a.5.5 0 0 1-.5-.5V8a.5.5 0 0 1 1 0v4a.5.5 0 0 1-.5.5z"/></svg>
+      Indicateurs</button>
     <button class="tb-mod" onclick="switchModule('pub')" id="tab-pub">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="margin-right:4px"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2zm13 2.383-4.708 2.825L15 11.105V5.383zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741zM1 11.105l4.708-2.897L1 5.383v5.722z"/></svg>
       Publicité</button>
+    <button class="tb-mod" onclick="switchModule('cqe')" id="tab-cqe">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="margin-right:4px"><path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/><path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/></svg>
+      CQE</button>
     <button class="tb-mod" onclick="switchModule('rapport')" id="tab-rapport">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="margin-right:4px"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H4zm0 1h8a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/><path d="M4.5 6a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7zm0 2.5a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7zm0 2.5a.5.5 0 0 1 0-1h4a.5.5 0 0 1 0 1h-4z"/></svg>
       Rapports
@@ -1279,6 +1288,59 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     </div>
   </div>
 
+<!-- ══════════════════════════════════════════════
+     MODULE ACTIVITÉS — Les 4 grandes activités PRESFOR
+══════════════════════════════════════════════ -->
+<div id="module-activites" class="module" style="display:none;flex:1;min-width:0;">
+  <nav class="sidebar" id="sb-activites">
+    <div class="sb-sec">
+      <div class="sb-label">Activités</div>
+      <button class="nav-item active" data-act="ISF" onclick="actSelect('ISF',this)">Act. A — ISF</button>
+      <button class="nav-item" data-act="DTV" onclick="actSelect('DTV',this)">Act. B — DTV</button>
+      <button class="nav-item" data-act="CF" onclick="actSelect('CF',this)">Act. C — Certificat foncier</button>
+      <button class="nav-item" data-act="CONTRAT" onclick="actSelect('CONTRAT',this)">Act. D — Contractualisation</button>
+    </div>
+  </nav>
+  <main class="main">
+    <div class="panel active" id="act-panel">
+      <div class="page-head">
+        <div><h2 id="act-title">Act. A — ISF</h2><p id="act-subtitle">Immatriculation / Sécurisation Foncière</p></div>
+      </div>
+      <div class="kpi-bar" id="act-kpi"></div>
+      <div id="act-content"></div>
+    </div>
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MODULE INDICATEURS
+══════════════════════════════════════════════ -->
+<div id="module-indicateurs" class="module" style="display:none;flex:1;min-width:0;">
+  <main class="main" style="width:100%;">
+    <div class="panel active">
+      <div class="page-head">
+        <div><h2>Indicateurs</h2><p>Vue détaillée des indicateurs de performance du projet</p></div>
+      </div>
+      <div id="ind-content"></div>
+    </div>
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MODULE CQE — Contrôle Qualité Enquête
+══════════════════════════════════════════════ -->
+<div id="module-cqe" class="module" style="display:none;flex:1;min-width:0;">
+  <main class="main" style="width:100%;">
+    <div class="panel active">
+      <div class="page-head">
+        <div><h2>CQE — Contrôle Qualité Enquête</h2><p>Suivi qualité des dossiers passés en contrôle</p></div>
+      </div>
+      <div class="kpi-bar" id="cqe-kpi"></div>
+      <div id="cqe-content"></div>
+    </div>
+  </main>
+</div>
+
 </main>
 </div>
 
@@ -1573,6 +1635,9 @@ function switchModule(id){
   if(id==='zones'){try{zvRenderAll();}catch(e){console.error('zones render:',e);}}
   if(id==='rapport'){try{rptInit();}catch(e){console.error('rapport render:',e);}}
   if(id==='pub'){try{pubInit();}catch(e){console.error('pub render:',e);}}
+  if(id==='activites'){try{actRenderAll();}catch(e){console.error('activites render:',e);}}
+  if(id==='indicateurs'){try{indRenderAll();}catch(e){console.error('indicateurs render:',e);}}
+  if(id==='cqe'){try{cqeRenderAll();}catch(e){console.error('cqe render:',e);}}
   setTimeout(()=>{ if(typeof isViewer==='function'&&isViewer()) applyViewerRestrictions(); },200);
 }
 
@@ -4635,6 +4700,161 @@ function pubShowPanel(id, btn){
   if(btn) btn.classList.add('active');
   if(id === 'alertes') pubRenderAlertes();
   if(id === 'stats')   pubRenderStats();
+}
+
+// ═══════════════════════════════════════════
+// MODULE ACTIVITÉS — Les 4 grandes activités PRESFOR
+// ═══════════════════════════════════════════
+const ACT_DEFS = {
+  ISF:     {label:'Act. A — ISF',                  sub:'Immatriculation / Sécurisation Foncière',      color:'var(--blue)'},
+  DTV:     {label:'Act. B — DTV',                  sub:'Délimitation du Terroir Villageois',           color:'var(--amber)'},
+  CF:      {label:'Act. C — Certificat foncier',   sub:'Constat de limites, publicité et validation',  color:'var(--accent)'},
+  CONTRAT: {label:'Act. D — Contractualisation',   sub:'Contrats et conventions locales',              color:'var(--teal)'},
+};
+let actCurrent = 'ISF';
+
+function actSelect(act, btn){
+  actCurrent = act;
+  document.querySelectorAll('#sb-activites .nav-item').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  actRenderAll();
+}
+
+function actRenderAll(){
+  const def = ACT_DEFS[actCurrent];
+  document.getElementById('act-title').textContent = def.label;
+  document.getElementById('act-subtitle').textContent = def.sub;
+
+  if(actCurrent==='CF'){
+    // Act. C dispose de vraies données via le suivi AFOR
+    const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
+    const valides = afor.filter(d=>d.etape==='VA').length;
+    const retards = afor.filter(d=>aforCalcRetard(d).retard).length;
+    const superficie = afor.filter(d=>d.etape==='VA').reduce((s,d)=>{const g=gnssForDossier(d);return s+(g?g.superficie:0);},0);
+    document.getElementById('act-kpi').innerHTML = `
+      <div class="kpi blue"><div class="kpi-l">Dossiers</div><div class="kpi-v">${afor.length.toLocaleString('fr-FR')}</div></div>
+      <div class="kpi green"><div class="kpi-l">Validés</div><div class="kpi-v">${valides.toLocaleString('fr-FR')}</div></div>
+      <div class="kpi red"><div class="kpi-l">En retard</div><div class="kpi-v">${retards.toLocaleString('fr-FR')}</div></div>
+      <div class="kpi teal"><div class="kpi-l">Superficie sécurisée</div><div class="kpi-v" style="font-size:16px;">${superficie.toFixed(1)} ha</div></div>`;
+    const parEtape = {};
+    DOS_ETAPES_CF_ORDER.forEach(e=>parEtape[e]=0);
+    afor.forEach(d=>{ if(parEtape[d.etape]!==undefined) parEtape[d.etape]++; });
+    document.getElementById('act-content').innerHTML = `
+      <div class="tw" style="padding:16px;">
+        <div class="dash-card-title">Répartition par étape</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;">
+          ${DOS_ETAPES_CF_ORDER.map(e=>`<div style="background:var(--surface2);border-radius:var(--radius-sm);padding:10px 16px;min-width:90px;text-align:center;">
+            <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--accent);">${parEtape[e]}</div>
+            <div style="font-size:10px;color:var(--text3);">${e}</div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+  } else {
+    // ISF, DTV, Contractualisation : pas encore de source de données (anciennement suivi via M1/M2, supprimés)
+    document.getElementById('act-kpi').innerHTML = `
+      <div class="kpi"><div class="kpi-l">Dossiers</div><div class="kpi-v">0</div></div>
+      <div class="kpi"><div class="kpi-l">Réalisé</div><div class="kpi-v">0</div></div>
+      <div class="kpi"><div class="kpi-l">En cours</div><div class="kpi-v">0</div></div>
+      <div class="kpi"><div class="kpi-l">Superficie</div><div class="kpi-v" style="font-size:16px;">0 ha</div></div>`;
+    document.getElementById('act-content').innerHTML = `
+      <div class="empty-state">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.2" style="margin-bottom:10px;"><path d="M3 4l6-1.5 6 1.5 6-1.5v15l-6 1.5-6-1.5-6 1.5z"/></svg>
+        <p style="font-size:13px;">Aucune donnée enregistrée pour cette activité pour le moment.</p>
+        <p style="font-size:12px;color:var(--text3);">Le suivi de "${def.label}" sera intégré une fois la source de données disponible.</p>
+      </div>`;
+  }
+}
+const DOS_ETAPES_CF_ORDER = ['DD','RDC','CL','OV','CP','AP','VA'];
+
+// ═══════════════════════════════════════════
+// MODULE INDICATEURS
+// ═══════════════════════════════════════════
+function indRenderAll(){
+  const el = document.getElementById('ind-content');
+  if(!el) return;
+  const zones = ['all','cavally','worodougou'];
+  const rows = zones.map(z=>{
+    const s = dashComputeStats(z);
+    const obj = dashObjectifsForFilter(z);
+    const tauxValidation = s.afor.length>0 ? Math.round(s.nbValides/s.afor.length*100) : 0;
+    const label = z==='all' ? 'Toutes les zones' : PROJECT_ZONES[z].label;
+    return `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:9px 12px;font-weight:600;">${label}</td>
+      <td style="padding:9px 12px;text-align:right;">${s.afor.length.toLocaleString('fr-FR')}</td>
+      <td style="padding:9px 12px;text-align:right;">${s.nbValides.toLocaleString('fr-FR')}</td>
+      <td style="padding:9px 12px;text-align:right;font-weight:700;color:var(--accent);">${tauxValidation}%</td>
+      <td style="padding:9px 12px;text-align:right;">${Math.round(s.superficieValidee).toLocaleString('fr-FR')} ha</td>
+      <td style="padding:9px 12px;text-align:right;color:var(--text2);">${obj.ha.toLocaleString('fr-FR')} ha</td>
+      <td style="padding:9px 12px;text-align:right;">${dashPct(s.superficieValidee,obj.ha)}%</td>
+    </tr>`;
+  }).join('');
+  let villagesCouverts=0, villagesTotal=0;
+  if(typeof ZV_GEO!=='undefined'){
+    Object.keys(ZV_GEO).forEach(dept=>{
+      const st = zvGetDeptStats(dept);
+      villagesCouverts += st.couverts||0;
+      villagesTotal += (st.allVillages||[]).length;
+    });
+  }
+  const tauxCouverture = villagesTotal>0 ? Math.round(villagesCouverts/villagesTotal*100) : 0;
+  el.innerHTML = `
+    <div class="tw" style="margin-bottom:16px;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr style="background:var(--surface2);">
+          <th style="text-align:left;padding:9px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Zone</th>
+          <th style="text-align:right;padding:9px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Dossiers</th>
+          <th style="text-align:right;padding:9px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Validés</th>
+          <th style="text-align:right;padding:9px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Taux validation</th>
+          <th style="text-align:right;padding:9px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Superficie</th>
+          <th style="text-align:right;padding:9px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Objectif</th>
+          <th style="text-align:right;padding:9px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Avancement</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+      <div class="kpi blue"><div class="kpi-l">Couverture villages (Cavally)</div><div class="kpi-v">${tauxCouverture}%</div><div class="kpi-s">${villagesCouverts}/${villagesTotal} villages</div></div>
+      <div class="kpi amber"><div class="kpi-l">Alertes actives</div><div class="kpi-v">${(typeof notifGetAlertes==='function'?notifGetAlertes().length:0)}</div></div>
+      <div class="kpi teal"><div class="kpi-l">Dossiers en contrôle qualité</div><div class="kpi-v">${Object.keys(pubCQ||{}).length}</div></div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════
+// MODULE CQE — Contrôle Qualité Enquête
+// ═══════════════════════════════════════════
+function cqeRenderAll(){
+  const kpiEl = document.getElementById('cqe-kpi');
+  const contentEl = document.getElementById('cqe-content');
+  if(!kpiEl || !contentEl) return;
+  const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
+  const cqIds = Object.keys(pubCQ||{});
+  const aforIds = new Set(afor.map(d=>d.id));
+  const cqDossiers = afor.filter(d=>pubCQ[d.id]);
+  const rejetes = cqDossiers.filter(d=>pubCQ[d.id].rejete);
+  const tauxCouverture = afor.length>0 ? Math.round(cqDossiers.length/afor.length*100) : 0;
+  const tauxRejet = cqDossiers.length>0 ? Math.round(rejetes.length/cqDossiers.length*100) : 0;
+  kpiEl.innerHTML = `
+    <div class="kpi blue"><div class="kpi-l">Dossiers passés en CQ</div><div class="kpi-v">${cqDossiers.length.toLocaleString('fr-FR')}</div><div class="kpi-s">${tauxCouverture}% des dossiers</div></div>
+    <div class="kpi red"><div class="kpi-l">Rejetés</div><div class="kpi-v">${rejetes.length.toLocaleString('fr-FR')}</div><div class="kpi-s">${tauxRejet}% des dossiers CQ</div></div>
+    <div class="kpi green"><div class="kpi-l">Conformes</div><div class="kpi-v">${(cqDossiers.length-rejetes.length).toLocaleString('fr-FR')}</div></div>
+    <div class="kpi"><div class="kpi-l">Non encore contrôlés</div><div class="kpi-v">${(afor.length-cqDossiers.length).toLocaleString('fr-FR')}</div></div>`;
+  if(!cqDossiers.length){
+    contentEl.innerHTML = `<div class="empty-state"><p style="font-size:13px;">Aucun dossier n'est encore passé par le contrôle qualité.</p></div>`;
+    return;
+  }
+  const rows = rejetes.slice(0,30).map(d=>`<tr style="border-bottom:1px solid var(--border);">
+    <td style="padding:8px 12px;font-family:'DM Mono',monospace;font-size:11px;">${d.id}</td>
+    <td style="padding:8px 12px;">${d.prenom||''} ${d.nom_demandeur||''}</td>
+    <td style="padding:8px 12px;color:var(--text2);">${d.village||''}</td>
+    <td style="padding:8px 12px;">${d.agent||'—'}</td>
+  </tr>`).join('');
+  contentEl.innerHTML = `<div class="tw" style="overflow:hidden;">
+    <div style="padding:12px 16px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);">Dossiers rejetés (contrôle qualité)</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">N° Dossier</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Demandeur</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Village</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Agent</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="4" style="padding:16px;text-align:center;color:var(--text3);">Aucun rejet</td></tr>'}</tbody>
+    </table>
+  </div>`;
 }
 
 function pubInit(){
