@@ -426,10 +426,11 @@ tbody td{padding:9px 12px;vertical-align:middle;}
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">PRESFOR <span id="tb-zone-label">· Cavally</span></div>
+    <div class="tb-title">PRESFOR <span id="tb-zone-label">· Cavally + Worodougou</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
-    <option value="cavally">Zone : Cavally (Lot 13)</option>
-    <option value="worodougou">Zone : Worodougou (Lot 4)</option>
+    <option value="all">Toutes les zones (vue d'ensemble)</option>
+    <option value="cavally">Cavally (Lot 13) uniquement</option>
+    <option value="worodougou">Worodougou (Lot 4) uniquement</option>
   </select>
   <div id="notif-bell" onclick="notifToggle()" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:8px;background:rgba(255,255,255,0.1);margin-left:4px;display:flex;align-items:center;">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="white"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.558-1.527-4.765-3.005-4.901z"/></svg>
@@ -482,19 +483,6 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 </header>
 
 <div class="app">
-
-<div id="zone-empty-overlay" style="display:none;position:fixed;top:52px;left:0;right:0;bottom:0;z-index:5000;background:var(--bg);align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:30px;overflow-y:auto;">
-  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.2" style="margin-bottom:12px;"><path d="M3 4l6-1.5 6 1.5 6-1.5v15l-6 1.5-6-1.5-6 1.5z"/><path d="M9 2.5v15M15 4v15"/></svg>
-  <h2 id="zone-empty-title" style="font-family:'Syne',sans-serif;font-size:18px;color:var(--text);margin:0 0 6px;">Zone Worodougou (Lot 4)</h2>
-  <p style="font-size:13px;color:var(--text2);max-width:380px;margin:0 0 4px;">Aucune donnée n'a encore été chargée pour cette zone.</p>
-  <p style="font-size:12px;color:var(--text3);max-width:380px;margin-bottom:18px;">Les dossiers, agents et statistiques s'afficheront ici une fois la zone activée.</p>
-  <div id="zone-empty-map-wrap" style="width:100%;max-width:520px;height:340px;display:none;">
-    <div style="display:flex;gap:8px;width:100%;height:100%;">
-      <div id="zone-empty-leaflet" style="flex:1;min-width:0;border-radius:10px;overflow:hidden;box-shadow:var(--shadow);"></div>
-      <div id="zone-empty-legend" style="font-size:10px;color:var(--text2);display:flex;flex-direction:column;gap:4px;justify-content:center;flex-shrink:0;text-align:left;"></div>
-    </div>
-  </div>
-</div>
 
 <!-- ══════════════════════════════════════════════
      MODULE ACCUEIL · TABLEAU DE BORD
@@ -1385,46 +1373,36 @@ let dosImportData = [];
 let users_db = {}; // Comptes utilisateurs
 let currentUser = null;
 
-// ── Zone active du projet (multi-zone : Cavally / Worodougou) ──
+// ── Filtre de zone du projet (multi-zone : Cavally / Worodougou) ──
+// Par défaut : vue d'ensemble cumulée des deux zones. Le filtrage se fait par département
+// (chaque zone a ses propres départements, sans chevauchement), pas par un champ "zone"
+// explicite — ainsi les vraies données Worodougou s'intégreront automatiquement dès leur import.
 const PROJECT_ZONES = {
-  cavally:    {label:'Cavally',    lot:'Lot 13', hasData:true},
-  worodougou: {label:'Worodougou', lot:'Lot 4',  hasData:false},
+  cavally:    {label:'Cavally',    lot:'Lot 13', depts:['GUIGLO','BLOLEQUIN','TAI','TOULEPLEU']},
+  worodougou: {label:'Worodougou', lot:'Lot 4',  depts:['KANI','SEGUELA']},
 };
-let currentZone = localStorage.getItem('presfor_zone') || 'cavally';
+let dashZoneFilter = localStorage.getItem('presfor_zone_filter') || 'all';
 
-let zoneEmptyLeafletMap = null;
+function dashFilterByZone(list, zoneFilter){
+  zoneFilter = zoneFilter || dashZoneFilter;
+  if(zoneFilter==='all' || !PROJECT_ZONES[zoneFilter]) return list;
+  const depts = PROJECT_ZONES[zoneFilter].depts;
+  return list.filter(d=>depts.includes((d.dept||'').toUpperCase()));
+}
+
 function zoneApplyUI(){
-  const z = PROJECT_ZONES[currentZone] || PROJECT_ZONES.cavally;
   const lbl = document.getElementById('tb-zone-label');
-  if(lbl) lbl.textContent = '· ' + z.label;
+  if(lbl) lbl.textContent = dashZoneFilter==='all' ? '· Cavally + Worodougou' : '· ' + PROJECT_ZONES[dashZoneFilter].label;
   const sel = document.getElementById('zone-selector');
-  if(sel) sel.value = currentZone;
-  const overlay = document.getElementById('zone-empty-overlay');
-  if(overlay) overlay.style.display = z.hasData ? 'none' : 'flex';
-  const title = document.getElementById('zone-empty-title');
-  if(title) title.textContent = 'Zone ' + z.label + ' (' + z.lot + ')';
-  const mapWrap = document.getElementById('zone-empty-map-wrap');
-  if(!z.hasData && mapWrap && typeof dashGetZoneGeo==='function'){
-    const geo = dashGetZoneGeo(currentZone);
-    if(geo.length && typeof L!=='undefined'){
-      mapWrap.style.display='block';
-      if(zoneEmptyLeafletMap){ zoneEmptyLeafletMap.remove(); zoneEmptyLeafletMap=null; }
-      zoneEmptyLeafletMap = L.map('zone-empty-leaflet', {zoomControl:true, attributionControl:false, scrollWheelZoom:false, doubleClickZoom:true});
-      dashBuildLeafletPolygons(zoneEmptyLeafletMap, document.getElementById('zone-empty-legend'), {geo, zoneLabel:z.label, forceEmpty:true});
-    } else {
-      mapWrap.style.display='none';
-    }
-  } else if(mapWrap){
-    mapWrap.style.display='none';
-  }
+  if(sel) sel.value = dashZoneFilter;
+  if(typeof dashRenderAll==='function') dashRenderAll();
 }
 
 function zoneSwitch(id){
-  if(!PROJECT_ZONES[id]) return;
-  currentZone = id;
-  try{ localStorage.setItem('presfor_zone', id); }catch(e){}
+  if(id!=='all' && !PROJECT_ZONES[id]) return;
+  dashZoneFilter = id;
+  try{ localStorage.setItem('presfor_zone_filter', id); }catch(e){}
   zoneApplyUI();
-  showToast('Zone active : ' + PROJECT_ZONES[id].label + (PROJECT_ZONES[id].hasData ? '' : ' — aucune donnée pour le moment'));
 }
 
 // ── Pagination ──
@@ -3867,9 +3845,8 @@ function dashGoTo(id){
 function dashRenderCartographieDetail(){
   const autre=document.getElementById('dash-page-autre');
   const geo = dashGetZoneGeo();
-  const forceEmpty = currentZone!=='cavally';
   const rows = geo.map(sp=>{
-    const st = forceEmpty ? {total:0, valides:0, pct:null} : dashSPStats(sp.name);
+    const st = dashSPStats(sp.name);
     const tier = dashMapTier(st.pct);
     return `<tr style="border-bottom:1px solid var(--border);">
       <td style="padding:7px 12px;"><span style="width:9px;height:9px;border-radius:2px;background:${tier.c};display:inline-block;margin-right:6px;"></span>${sp.name}</td>
@@ -3897,17 +3874,31 @@ function dashRenderCartographieDetail(){
   if(dashLeafletMapBig){ dashLeafletMapBig.remove(); dashLeafletMapBig=null; }
   if(typeof L!=='undefined' && geo.length){
     dashLeafletMapBig = L.map('dash-leaflet-big', {zoomControl:true, attributionControl:true, scrollWheelZoom:true});
-    dashBuildLeafletPolygons(dashLeafletMapBig, document.getElementById('dash-leaflet-legend-big'), {forceEmpty});
+    dashBuildLeafletPolygons(dashLeafletMapBig, document.getElementById('dash-leaflet-legend-big'));
   }
 }
 
 // ── Objectifs (cibles) — configurables, persistés en localStorage ──
-let dashObjectifs = {ha:224000, dossiers:22400, valides:224000};
+let dashObjectifs = {
+  cavally:    {ha:224000, dossiers:22400, valides:224000},
+  worodougou: {ha:0, dossiers:0, valides:0},
+};
 function dashLoadObjectifs(){
   try{
-    const saved = localStorage.getItem('presfor_dash_objectifs');
+    const saved = localStorage.getItem('presfor_dash_objectifs_v2');
     if(saved) dashObjectifs = Object.assign({}, dashObjectifs, JSON.parse(saved));
   }catch(e){}
+}
+function dashObjectifsForFilter(zoneFilter){
+  zoneFilter = zoneFilter || dashZoneFilter;
+  if(zoneFilter==='all'){
+    return {
+      ha: dashObjectifs.cavally.ha + dashObjectifs.worodougou.ha,
+      dossiers: dashObjectifs.cavally.dossiers + dashObjectifs.worodougou.dossiers,
+      valides: dashObjectifs.cavally.valides + dashObjectifs.worodougou.valides,
+    };
+  }
+  return dashObjectifs[zoneFilter] || dashObjectifs.cavally;
 }
 function dashOpenSettings(){
   let modal = document.getElementById('dash-obj-modal');
@@ -3915,11 +3906,16 @@ function dashOpenSettings(){
     modal = document.createElement('div');
     modal.id = 'dash-obj-modal';
     modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:9999;';
-    modal.innerHTML = `<div style="background:var(--surface);border-radius:12px;padding:22px 24px;width:340px;max-width:90vw;">
-      <h3 style="font-family:'Syne',sans-serif;font-size:15px;margin:0 0 14px;">Objectifs du Cavally</h3>
-      <div class="ff"><label class="fl">Superficie cible (ha)</label><input class="fi" type="number" id="dash-obj-ha"></div>
-      <div class="ff" style="margin-top:8px;"><label class="fl">Dossiers traités — cible</label><input class="fi" type="number" id="dash-obj-dossiers"></div>
-      <div class="ff" style="margin-top:8px;"><label class="fl">Dossiers validés — cible</label><input class="fi" type="number" id="dash-obj-valides"></div>
+    modal.innerHTML = `<div style="background:var(--surface);border-radius:12px;padding:22px 24px;width:360px;max-width:90vw;max-height:85vh;overflow-y:auto;">
+      <h3 style="font-family:'Syne',sans-serif;font-size:15px;margin:0 0 14px;">Objectifs par zone</h3>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);margin-bottom:6px;">Cavally (Lot 13)</div>
+      <div class="ff"><label class="fl">Superficie cible (ha)</label><input class="fi" type="number" id="dash-obj-cavally-ha"></div>
+      <div class="ff" style="margin-top:8px;"><label class="fl">Dossiers traités — cible</label><input class="fi" type="number" id="dash-obj-cavally-dossiers"></div>
+      <div class="ff" style="margin-top:8px;"><label class="fl">Dossiers validés — cible</label><input class="fi" type="number" id="dash-obj-cavally-valides"></div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);margin:16px 0 6px;">Worodougou (Lot 4)</div>
+      <div class="ff"><label class="fl">Superficie cible (ha)</label><input class="fi" type="number" id="dash-obj-worodougou-ha"></div>
+      <div class="ff" style="margin-top:8px;"><label class="fl">Dossiers traités — cible</label><input class="fi" type="number" id="dash-obj-worodougou-dossiers"></div>
+      <div class="ff" style="margin-top:8px;"><label class="fl">Dossiers validés — cible</label><input class="fi" type="number" id="dash-obj-worodougou-valides"></div>
       <div style="display:flex;gap:8px;margin-top:16px;">
         <button class="btn-p" onclick="dashSaveObjectifs()">Enregistrer</button>
         <button class="btn-s" onclick="document.getElementById('dash-obj-modal').style.display='none'">Annuler</button>
@@ -3927,29 +3923,44 @@ function dashOpenSettings(){
     </div>`;
     document.body.appendChild(modal);
   }
-  document.getElementById('dash-obj-ha').value = dashObjectifs.ha;
-  document.getElementById('dash-obj-dossiers').value = dashObjectifs.dossiers;
-  document.getElementById('dash-obj-valides').value = dashObjectifs.valides;
+  document.getElementById('dash-obj-cavally-ha').value = dashObjectifs.cavally.ha;
+  document.getElementById('dash-obj-cavally-dossiers').value = dashObjectifs.cavally.dossiers;
+  document.getElementById('dash-obj-cavally-valides').value = dashObjectifs.cavally.valides;
+  document.getElementById('dash-obj-worodougou-ha').value = dashObjectifs.worodougou.ha;
+  document.getElementById('dash-obj-worodougou-dossiers').value = dashObjectifs.worodougou.dossiers;
+  document.getElementById('dash-obj-worodougou-valides').value = dashObjectifs.worodougou.valides;
   modal.style.display='flex';
 }
 function dashSaveObjectifs(){
   dashObjectifs = {
-    ha: parseFloat(document.getElementById('dash-obj-ha').value)||0,
-    dossiers: parseInt(document.getElementById('dash-obj-dossiers').value)||0,
-    valides: parseInt(document.getElementById('dash-obj-valides').value)||0,
+    cavally: {
+      ha: parseFloat(document.getElementById('dash-obj-cavally-ha').value)||0,
+      dossiers: parseInt(document.getElementById('dash-obj-cavally-dossiers').value)||0,
+      valides: parseInt(document.getElementById('dash-obj-cavally-valides').value)||0,
+    },
+    worodougou: {
+      ha: parseFloat(document.getElementById('dash-obj-worodougou-ha').value)||0,
+      dossiers: parseInt(document.getElementById('dash-obj-worodougou-dossiers').value)||0,
+      valides: parseInt(document.getElementById('dash-obj-worodougou-valides').value)||0,
+    },
   };
-  try{ localStorage.setItem('presfor_dash_objectifs', JSON.stringify(dashObjectifs)); }catch(e){}
+  try{ localStorage.setItem('presfor_dash_objectifs_v2', JSON.stringify(dashObjectifs)); }catch(e){}
   document.getElementById('dash-obj-modal').style.display='none';
   dashRenderAll();
   showToast('Objectifs mis à jour.');
 }
 
-// ── Calcul des statistiques réelles ──
-function dashComputeStats(){
-  const afor = dossiersAFOR||[];
+// ── Calcul des statistiques réelles, filtrées par zone (département) ──
+// Note : le Worodougou n'a pas encore de dossiers/GNSS importés — le filtre par département
+// est déjà prêt : dès que des dossiers avec dept KANI/SEGUELA existeront, ils apparaîtront
+// automatiquement dans les totaux (zone 'all' et zone 'worodougou').
+function dashComputeStats(zoneFilter){
+  zoneFilter = zoneFilter || dashZoneFilter;
+  const afor = dashFilterByZone(dossiersAFOR||[], zoneFilter);
   const valides = afor.filter(d=>d.etape==='VA');
   const superficieValidee = valides.reduce((s,d)=>{ const g=gnssForDossier(d); return s+(g?g.superficie:0); },0);
-  const orphansGnss = typeof gnssGetOrphanEntries==='function' ? gnssGetOrphanEntries() : [];
+  const orphansGnssAll = typeof gnssGetOrphanEntries==='function' ? gnssGetOrphanEntries() : [];
+  const orphansGnss = dashFilterByZone(orphansGnssAll, zoneFilter);
   const totalDossiers = afor.length + orphansGnss.length;
   const enCours = afor.filter(d=>['DD','RDC'].includes(d.etape)).length;
   const enquetes = afor.filter(d=>['CL','OV','CP','AP'].includes(d.etape)).length;
@@ -3958,7 +3969,7 @@ function dashComputeStats(){
   return {
     superficieValidee, totalDossiers, nbValides:valides.length,
     enCours, enquetes, rejetes, alertesN,
-    afor, orphansGnss
+    afor, orphansGnss, zoneFilter
   };
 }
 
@@ -4005,12 +4016,13 @@ function dashKpiCard(icon, iconBg, iconColor, label, val, obj, valColor){
 function dashRenderKPI(s){
   const el = document.getElementById('dash-kpi-row');
   if(!el) return;
+  const obj = dashObjectifsForFilter(s.zoneFilter);
   const ic = (path)=>`<svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">${path}</svg>`;
-  const globalPct = Math.round((dashPct(s.superficieValidee,dashObjectifs.ha)+dashPct(s.totalDossiers,dashObjectifs.dossiers)+dashPct(s.nbValides,dashObjectifs.valides))/3);
+  const globalPct = Math.round((dashPct(s.superficieValidee,obj.ha)+dashPct(s.totalDossiers,obj.dossiers)+dashPct(s.nbValides,obj.valides))/3);
   el.innerHTML =
-    dashKpiCard(ic('<path d="M8 1C5 5 3 8 3 10.5a5 5 0 0 0 10 0C13 8 11 5 8 1z"/>'), 'var(--accent-lt)', 'var(--accent)', 'Superficie sécurisée', Math.round(s.superficieValidee)+' ha', dashObjectifs.ha) +
-    dashKpiCard(ic('<rect x="2" y="3" width="12" height="11" rx="1"/><path d="M2 6h12"/>'), 'var(--blue-lt)', 'var(--blue)', 'Dossiers traités', s.totalDossiers, dashObjectifs.dossiers) +
-    dashKpiCard(ic('<path d="M3 8l3.5 3.5L13 4.5"/>'), '#F3EAFB', '#7C3AED', 'Dossiers validés', s.nbValides, dashObjectifs.valides) +
+    dashKpiCard(ic('<path d="M8 1C5 5 3 8 3 10.5a5 5 0 0 0 10 0C13 8 11 5 8 1z"/>'), 'var(--accent-lt)', 'var(--accent)', 'Superficie sécurisée', Math.round(s.superficieValidee)+' ha', obj.ha) +
+    dashKpiCard(ic('<rect x="2" y="3" width="12" height="11" rx="1"/><path d="M2 6h12"/>'), 'var(--blue-lt)', 'var(--blue)', 'Dossiers traités', s.totalDossiers, obj.dossiers) +
+    dashKpiCard(ic('<path d="M3 8l3.5 3.5L13 4.5"/>'), '#F3EAFB', '#7C3AED', 'Dossiers validés', s.nbValides, obj.valides) +
     `<div class="dash-kpi-card">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
         <div class="dash-kpi-icon" style="background:var(--amber-lt);color:var(--amber)">${ic('<circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/>')}</div>
@@ -4050,13 +4062,23 @@ function dashRenderLotChart(s){
   if(!cvs || typeof Chart==='undefined') return;
   const c = dashChartColors();
   if(dashChartLot) dashChartLot.destroy();
+  // Une barre par zone en vue d'ensemble ; une seule barre si filtré sur une zone précise
+  const lots = s.zoneFilter==='all'
+    ? [{id:'cavally', label:'Lot 13 — Cavally'}, {id:'worodougou', label:'Lot 4 — Worodougou'}]
+    : [{id:s.zoneFilter, label:(PROJECT_ZONES[s.zoneFilter]||PROJECT_ZONES.cavally).lot+' — '+(PROJECT_ZONES[s.zoneFilter]||PROJECT_ZONES.cavally).label}];
+  const superficies = lots.map(l=>{
+    if(s.zoneFilter!=='all') return Math.round(s.superficieValidee);
+    const st = dashComputeStats(l.id);
+    return Math.round(st.superficieValidee);
+  });
+  const objectifs = lots.map(l=>dashObjectifsForFilter(l.id).ha);
   dashChartLot = new Chart(cvs, {
     type:'bar',
     data:{
-      labels:['Lot 13 — Cavally'],
+      labels: lots.map(l=>l.label),
       datasets:[
-        {label:'Superficie sécurisée (ha)', data:[Math.round(s.superficieValidee)], backgroundColor:c.accent, borderRadius:4, maxBarThickness:46},
-        {label:'Objectif (ha)', data:[dashObjectifs.ha], backgroundColor:c.border, borderRadius:4, maxBarThickness:46},
+        {label:'Superficie sécurisée (ha)', data:superficies, backgroundColor:c.accent, borderRadius:4, maxBarThickness:46},
+        {label:'Objectif (ha)', data:objectifs, backgroundColor:c.border, borderRadius:4, maxBarThickness:46},
       ]
     },
     options:{
@@ -4130,15 +4152,18 @@ let dashLeafletMapSmall = null, dashLeafletMapBig = null;
 const CI_BOUNDS = [[4.34,-8.60],[10.74,-2.49]];
 
 function dashGetZoneGeo(zoneId){
-  zoneId = zoneId || currentZone;
-  if(zoneId==='worodougou') return (typeof SP_WORODOUGOU_LATLNG!=='undefined') ? SP_WORODOUGOU_LATLNG : [];
-  return (typeof SP_CAVALLY_LATLNG!=='undefined') ? SP_CAVALLY_LATLNG : [];
+  zoneId = zoneId || dashZoneFilter;
+  const cavallyGeo = (typeof SP_CAVALLY_LATLNG!=='undefined') ? SP_CAVALLY_LATLNG : [];
+  const worodougouGeo = (typeof SP_WORODOUGOU_LATLNG!=='undefined') ? SP_WORODOUGOU_LATLNG : [];
+  if(zoneId==='worodougou') return worodougouGeo;
+  if(zoneId==='cavally') return cavallyGeo;
+  return cavallyGeo.concat(worodougouGeo); // 'all' : vue d'ensemble des deux zones
 }
 
 function dashBuildLeafletPolygons(map, legendEl, opts){
   opts = opts || {};
   const geo = opts.geo || dashGetZoneGeo();
-  const zoneLabel = opts.zoneLabel || (PROJECT_ZONES[currentZone]||PROJECT_ZONES.cavally).label;
+  const zoneLabel = opts.zoneLabel || (dashZoneFilter==='all' ? 'toutes les zones' : (PROJECT_ZONES[dashZoneFilter]||PROJECT_ZONES.cavally).label);
   if(!geo.length) return;
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -4146,7 +4171,7 @@ function dashBuildLeafletPolygons(map, legendEl, opts){
   }).addTo(map);
   const bounds = [];
   geo.forEach(sp=>{
-    const st = opts.forceEmpty ? {total:0, valides:0, pct:null} : dashSPStats(sp.name);
+    const st = dashSPStats(sp.name);
     const tier = dashMapTier(st.pct);
     const poly = L.polygon(sp.latlngs, {
       color:'#fff', weight:1.2, fillColor:tier.c, fillOpacity:0.75
@@ -4158,6 +4183,12 @@ function dashBuildLeafletPolygons(map, legendEl, opts){
   });
   // Vue initiale : tout le pays, pour resituer la zone dans son contexte national
   map.fitBounds(CI_BOUNDS, {padding:[4,4]});
+  // Le conteneur vient parfois d'être rendu visible (display:none -> visible) juste avant :
+  // Leaflet peut alors avoir calculé une taille à 0x0. On force un recalcul + recadrage.
+  setTimeout(()=>{
+    map.invalidateSize();
+    map.fitBounds(CI_BOUNDS, {padding:[4,4]});
+  }, 200);
   if(legendEl){
     const legendItems = [
       {c:'#1B7A4A', l:'≥ 75%'}, {c:'#8BC34A', l:'50% - 75%'},
@@ -4170,7 +4201,7 @@ function dashBuildLeafletPolygons(map, legendEl, opts){
       btn.textContent = '📍 Recentrer sur ' + zoneLabel;
       btn.className = 'btn-s';
       btn.style.cssText = 'font-size:10px;padding:5px 8px;margin-top:4px;';
-      btn.onclick = ()=> map.fitBounds(bounds, {padding:[10,10]});
+      btn.onclick = ()=>{ map.invalidateSize(); map.fitBounds(bounds, {padding:[10,10]}); };
       legendEl.appendChild(btn);
     }
   }
@@ -4194,7 +4225,7 @@ function dashRenderMap(s){
     <div id="dash-leaflet-legend-small" style="font-size:10px;color:var(--text2);display:flex;flex-direction:column;gap:4px;justify-content:center;flex-shrink:0;"></div>
   </div>`;
   dashLeafletMapSmall = L.map('dash-leaflet-small', {zoomControl:true, attributionControl:false, scrollWheelZoom:false, doubleClickZoom:true});
-  dashBuildLeafletPolygons(dashLeafletMapSmall, document.getElementById('dash-leaflet-legend-small'), {forceEmpty: currentZone!=='cavally'});
+  dashBuildLeafletPolygons(dashLeafletMapSmall, document.getElementById('dash-leaflet-legend-small'));
 }
 
 function dashRenderEvolution(s){
