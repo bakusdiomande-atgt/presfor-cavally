@@ -426,7 +426,11 @@ tbody td{padding:9px 12px;vertical-align:middle;}
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">PRESFOR <span>· Cavally</span></div>
+    <div class="tb-title">PRESFOR <span id="tb-zone-label">· Cavally</span></div>
+  <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
+    <option value="cavally">Zone : Cavally (Lot 13)</option>
+    <option value="worodougou">Zone : Worodougou (Lot 4)</option>
+  </select>
   <div id="notif-bell" onclick="notifToggle()" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:8px;background:rgba(255,255,255,0.1);margin-left:4px;display:flex;align-items:center;">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="white"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.558-1.527-4.765-3.005-4.901z"/></svg>
     <span id="notif-count" style="display:none;position:absolute;top:-4px;right:-4px;background:#E24B4A;color:#fff;font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;"></span>
@@ -478,6 +482,19 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 </header>
 
 <div class="app">
+
+<div id="zone-empty-overlay" style="display:none;position:fixed;top:52px;left:0;right:0;bottom:0;z-index:5000;background:var(--bg);align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:30px;overflow-y:auto;">
+  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.2" style="margin-bottom:12px;"><path d="M3 4l6-1.5 6 1.5 6-1.5v15l-6 1.5-6-1.5-6 1.5z"/><path d="M9 2.5v15M15 4v15"/></svg>
+  <h2 id="zone-empty-title" style="font-family:'Syne',sans-serif;font-size:18px;color:var(--text);margin:0 0 6px;">Zone Worodougou (Lot 4)</h2>
+  <p style="font-size:13px;color:var(--text2);max-width:380px;margin:0 0 4px;">Aucune donnée n'a encore été chargée pour cette zone.</p>
+  <p style="font-size:12px;color:var(--text3);max-width:380px;margin-bottom:18px;">Les dossiers, agents et statistiques s'afficheront ici une fois la zone activée.</p>
+  <div id="zone-empty-map-wrap" style="width:100%;max-width:520px;height:340px;display:none;">
+    <div style="display:flex;gap:8px;width:100%;height:100%;">
+      <div id="zone-empty-leaflet" style="flex:1;min-width:0;border-radius:10px;overflow:hidden;box-shadow:var(--shadow);"></div>
+      <div id="zone-empty-legend" style="font-size:10px;color:var(--text2);display:flex;flex-direction:column;gap:4px;justify-content:center;flex-shrink:0;text-align:left;"></div>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════════════════════════════════════
      MODULE ACCUEIL · TABLEAU DE BORD
@@ -1367,6 +1384,48 @@ let dosEditingId = null;
 let dosImportData = [];
 let users_db = {}; // Comptes utilisateurs
 let currentUser = null;
+
+// ── Zone active du projet (multi-zone : Cavally / Worodougou) ──
+const PROJECT_ZONES = {
+  cavally:    {label:'Cavally',    lot:'Lot 13', hasData:true},
+  worodougou: {label:'Worodougou', lot:'Lot 4',  hasData:false},
+};
+let currentZone = localStorage.getItem('presfor_zone') || 'cavally';
+
+let zoneEmptyLeafletMap = null;
+function zoneApplyUI(){
+  const z = PROJECT_ZONES[currentZone] || PROJECT_ZONES.cavally;
+  const lbl = document.getElementById('tb-zone-label');
+  if(lbl) lbl.textContent = '· ' + z.label;
+  const sel = document.getElementById('zone-selector');
+  if(sel) sel.value = currentZone;
+  const overlay = document.getElementById('zone-empty-overlay');
+  if(overlay) overlay.style.display = z.hasData ? 'none' : 'flex';
+  const title = document.getElementById('zone-empty-title');
+  if(title) title.textContent = 'Zone ' + z.label + ' (' + z.lot + ')';
+  const mapWrap = document.getElementById('zone-empty-map-wrap');
+  if(!z.hasData && mapWrap && typeof dashGetZoneGeo==='function'){
+    const geo = dashGetZoneGeo(currentZone);
+    if(geo.length && typeof L!=='undefined'){
+      mapWrap.style.display='block';
+      if(zoneEmptyLeafletMap){ zoneEmptyLeafletMap.remove(); zoneEmptyLeafletMap=null; }
+      zoneEmptyLeafletMap = L.map('zone-empty-leaflet', {zoomControl:true, attributionControl:false, scrollWheelZoom:false, doubleClickZoom:true});
+      dashBuildLeafletPolygons(zoneEmptyLeafletMap, document.getElementById('zone-empty-legend'), {geo, zoneLabel:z.label, forceEmpty:true});
+    } else {
+      mapWrap.style.display='none';
+    }
+  } else if(mapWrap){
+    mapWrap.style.display='none';
+  }
+}
+
+function zoneSwitch(id){
+  if(!PROJECT_ZONES[id]) return;
+  currentZone = id;
+  try{ localStorage.setItem('presfor_zone', id); }catch(e){}
+  zoneApplyUI();
+  showToast('Zone active : ' + PROJECT_ZONES[id].label + (PROJECT_ZONES[id].hasData ? '' : ' — aucune donnée pour le moment'));
+}
 
 // ── Pagination ──
 const PAGE_SIZE = 50;
@@ -3162,6 +3221,22 @@ const SP_CAVALLY_LATLNG = [
   {name:"MEO", dept:"TOULEPLEU", latlngs:[[6.57475, -8.34831], [6.54589, -8.32943], [6.54541, -8.29296], [6.52891, -8.2791], [6.51882, -8.28808], [6.50592, -8.28244], [6.49105, -8.25656], [6.47796, -8.24915], [6.46653, -8.25958], [6.44497, -8.2602], [6.43284, -8.26903], [6.42076, -8.26916], [6.4028, -8.25848], [6.38548, -8.25886], [6.33736, -8.27881], [6.33838, -8.28489], [6.3481, -8.28607], [6.34644, -8.3073], [6.35756, -8.31281], [6.36955, -8.33743], [6.37672, -8.34074], [6.36329, -8.35033], [6.35899, -8.38269], [6.34743, -8.38581], [6.35091, -8.39737], [6.3656, -8.40509], [6.36911, -8.41413], [6.38384, -8.38439], [6.39706, -8.39498], [6.41004, -8.39331], [6.42689, -8.40177], [6.42289, -8.40497], [6.43003, -8.41153], [6.43649, -8.40435], [6.43395, -8.39837], [6.4507, -8.38767], [6.44804, -8.37554], [6.4563, -8.37659], [6.46154, -8.3862], [6.47552, -8.37573], [6.47219, -8.36223], [6.48674, -8.36802], [6.49419, -8.35917], [6.51002, -8.359], [6.51511, -8.36561], [6.5204, -8.35753], [6.5238, -8.37059], [6.52663, -8.35352], [6.53409, -8.35728], [6.53838, -8.34743], [6.55, -8.35718], [6.56161, -8.35601], [6.56006, -8.34725], [6.57145, -8.35462], [6.57475, -8.34831]]},
   {name:"NEZOBLY", dept:"TOULEPLEU", latlngs:[[6.63459, -8.46203], [6.6141, -8.45054], [6.60754, -8.43102], [6.5931, -8.44188], [6.57777, -8.43226], [6.56289, -8.43563], [6.56805, -8.44416], [6.54804, -8.47369], [6.57031, -8.50908], [6.5754, -8.52942], [6.60812, -8.53304], [6.61253, -8.52481], [6.59713, -8.51671], [6.59692, -8.50374], [6.61349, -8.50357], [6.61968, -8.49715], [6.61939, -8.49138], [6.61185, -8.48878], [6.6166, -8.48307], [6.62882, -8.48501], [6.63459, -8.46203]]},
 ];
+// ── Contours géographiques (lat/lng WGS84) des sous-préfectures du Worodougou ──
+const SP_WORODOUGOU_LATLNG = [
+  {name:"DJIBROSSO", dept:"KANI", latlngs:[[8.93876, -6.90213], [8.8903, -6.90507], [8.85844, -6.89925], [8.84883, -6.88857], [8.83602, -6.88745], [8.81457, -6.87287], [8.77295, -6.87493], [8.7647, -6.8597], [8.73532, -6.86], [8.70966, -6.84387], [8.70349, -6.84608], [8.70109, -6.83905], [8.69421, -6.84075], [8.673, -6.82114], [8.65127, -6.81172], [8.65173, -6.79709], [8.64375, -6.80087], [8.62401, -6.79356], [8.60125, -6.7942], [8.59524, -6.79135], [8.59848, -6.78294], [8.57558, -6.7743], [8.5706, -6.79284], [8.57448, -6.80269], [8.55143, -6.80704], [8.54608, -6.81956], [8.55249, -6.84244], [8.57224, -6.86004], [8.56532, -6.90897], [8.57178, -7.19257], [8.5598, -7.19989], [8.57323, -7.20679], [8.59043, -7.19699], [8.59201, -7.2052], [8.58664, -7.20461], [8.59474, -7.21548], [8.59549, -7.20251], [8.61409, -7.20307], [8.62447, -7.20748], [8.61843, -7.21705], [8.62322, -7.21947], [8.6447, -7.20802], [8.65425, -7.21592], [8.66884, -7.20893], [8.68601, -7.21407], [8.70672, -7.19972], [8.73157, -7.20475], [8.73873, -7.19237], [8.76464, -7.20197], [8.7801, -7.18528], [8.78991, -7.20232], [8.8059, -7.19046], [8.82471, -7.21003], [8.83331, -7.19705], [8.84409, -7.19528], [8.84433, -7.20865], [8.86882, -7.20964], [8.87724, -7.22385], [8.88458, -7.21936], [8.87852, -7.21372], [8.89588, -7.21772], [8.9186, -7.21154], [8.9331, -7.22795], [8.95359, -7.22452], [8.95431, -7.17715], [8.99252, -7.16986], [9.00413, -7.15277], [8.99872, -7.14657], [9.04606, -7.10893], [9.02934, -7.07121], [8.98083, -7.03944], [8.96804, -7.01843], [8.97339, -6.98575], [8.9648, -6.96157], [8.97416, -6.94383], [8.94471, -6.91801], [8.93876, -6.90213]]},
+  {name:"KANI", dept:"KANI", latlngs:[[8.67757, -6.47031], [8.66488, -6.46538], [8.67312, -6.46045], [8.67104, -6.45251], [8.63893, -6.43915], [8.6311, -6.46141], [8.61309, -6.47093], [8.61494, -6.45755], [8.62904, -6.44004], [8.61526, -6.44061], [8.60034, -6.43041], [8.59218, -6.44246], [8.58308, -6.43491], [8.5757, -6.45121], [8.5646, -6.44277], [8.57031, -6.43448], [8.52601, -6.42013], [8.50229, -6.43556], [8.51436, -6.44498], [8.51223, -6.45311], [8.49025, -6.45633], [8.47593, -6.42578], [8.45178, -6.4289], [8.4432, -6.41334], [8.41623, -6.41044], [8.41898, -6.38595], [8.41062, -6.36231], [8.38887, -6.35133], [8.37861, -6.36195], [8.37524, -6.34019], [8.36428, -6.35416], [8.35755, -6.34332], [8.33012, -6.34595], [8.33184, -6.36832], [8.34765, -6.39748], [8.35182, -6.42868], [8.34043, -6.4513], [8.32197, -6.4671], [8.31519, -6.51211], [8.31542, -6.70867], [8.3271, -6.71134], [8.34853, -6.73502], [8.35127, -6.72438], [8.35932, -6.72715], [8.36143, -6.71728], [8.37258, -6.72746], [8.39186, -6.73208], [8.40395, -6.72741], [8.4179, -6.73757], [8.42144, -6.73191], [8.42414, -6.73625], [8.43509, -6.73337], [8.44445, -6.74138], [8.44911, -6.73265], [8.47701, -6.75118], [8.50366, -6.75103], [8.50982, -6.75687], [8.51425, -6.75199], [8.52246, -6.76039], [8.55692, -6.76647], [8.56897, -6.77908], [8.57682, -6.77404], [8.57623, -6.76335], [8.59432, -6.761], [8.60507, -6.74646], [8.62574, -6.74794], [8.65802, -6.73122], [8.67095, -6.71763], [8.68388, -6.68475], [8.69902, -6.56596], [8.6956, -6.55116], [8.70404, -6.52588], [8.67359, -6.47977], [8.67757, -6.47031]]},
+  {name:"FADIADOUGOU", dept:"KANI", latlngs:[[8.92217, -6.62386], [8.92092, -6.60392], [8.92715, -6.6063], [8.93927, -6.58501], [8.92535, -6.57851], [8.93607, -6.57644], [8.94311, -6.56662], [8.92663, -6.54817], [8.91472, -6.54804], [8.90791, -6.55541], [8.8948, -6.54368], [8.89005, -6.53747], [8.89345, -6.52609], [8.88041, -6.51888], [8.87798, -6.50142], [8.86112, -6.48364], [8.85353, -6.48302], [8.85851, -6.47499], [8.8439, -6.46988], [8.83617, -6.45789], [8.82138, -6.46174], [8.8262, -6.47252], [8.81869, -6.47648], [8.81921, -6.46632], [8.79598, -6.44784], [8.80081, -6.43856], [8.81434, -6.43307], [8.81222, -6.41896], [8.80082, -6.41527], [8.78748, -6.39644], [8.77247, -6.40914], [8.76255, -6.39614], [8.75231, -6.41282], [8.72459, -6.41415], [8.72038, -6.42574], [8.71243, -6.41265], [8.71154, -6.43117], [8.72206, -6.43908], [8.7058, -6.44157], [8.71564, -6.44555], [8.71632, -6.45296], [8.69727, -6.45968], [8.68643, -6.44065], [8.67332, -6.47708], [8.70404, -6.52485], [8.6956, -6.55116], [8.69902, -6.56596], [8.68152, -6.69424], [8.65802, -6.73122], [8.62574, -6.74794], [8.60507, -6.74646], [8.59432, -6.761], [8.57623, -6.76335], [8.57682, -6.77404], [8.58148, -6.78029], [8.59848, -6.78294], [8.59524, -6.79135], [8.60125, -6.7942], [8.62401, -6.79356], [8.64375, -6.80087], [8.65173, -6.79709], [8.65127, -6.81172], [8.72458, -6.85647], [8.74883, -6.85953], [8.78806, -6.84996], [8.8132, -6.81955], [8.82786, -6.81935], [8.83498, -6.80205], [8.84956, -6.78881], [8.86937, -6.79411], [8.8779, -6.79056], [8.8848, -6.73827], [8.89331, -6.72559], [8.8826, -6.70947], [8.88731, -6.69778], [8.88336, -6.67051], [8.89549, -6.66769], [8.92217, -6.62386]]},
+  {name:"DIARABANA", dept:"SEGUELA", latlngs:[[8.31462, -6.56487], [8.30585, -6.56495], [8.27309, -6.53198], [8.18519, -6.57307], [8.17186, -6.57357], [8.16611, -6.58258], [8.15425, -6.57925], [8.14215, -6.58491], [8.13271, -6.59144], [8.12228, -6.61718], [8.0766, -6.61197], [8.04538, -6.61567], [8.04061, -6.61111], [8.06077, -6.58229], [8.06295, -6.53042], [8.07163, -6.51858], [8.05881, -6.50302], [8.06445, -6.49095], [8.05982, -6.4682], [8.06897, -6.45262], [8.06595, -6.43683], [8.04912, -6.41147], [8.00245, -6.46604], [8.00331, -6.47669], [7.99173, -6.49009], [8.00941, -6.4887], [8.01815, -6.50709], [8.0236, -6.55431], [8.03137, -6.56706], [8.02622, -6.57061], [8.02663, -6.58746], [8.00569, -6.60016], [8.03197, -6.61092], [8.03102, -6.65975], [8.0503, -6.66435], [8.05066, -6.67262], [8.0575, -6.67293], [8.05516, -6.67893], [8.06118, -6.68378], [8.04193, -6.71802], [8.05682, -6.73514], [8.07009, -6.72669], [8.08208, -6.73845], [8.0879, -6.72998], [8.09495, -6.73723], [8.09705, -6.72583], [8.12215, -6.72288], [8.12767, -6.72975], [8.13844, -6.71754], [8.14094, -6.7316], [8.1746, -6.75444], [8.18322, -6.74467], [8.19307, -6.75063], [8.19161, -6.76331], [8.19927, -6.76505], [8.22934, -6.76169], [8.23581, -6.75499], [8.23218, -6.7449], [8.25068, -6.73559], [8.28133, -6.73247], [8.28739, -6.7227], [8.29427, -6.72254], [8.29, -6.71066], [8.30322, -6.7038], [8.31542, -6.70867], [8.31462, -6.56487]]},
+  {name:"MORONDO", dept:"KANI", latlngs:[[9.11662, -6.72216], [9.09933, -6.69644], [9.05165, -6.70454], [9.04523, -6.69797], [9.0346, -6.69859], [9.00065, -6.7088], [8.99047, -6.70002], [8.98385, -6.70546], [8.97641, -6.69335], [8.96588, -6.71057], [8.94917, -6.69882], [8.93436, -6.7011], [8.93293, -6.69414], [8.91687, -6.68689], [8.91718, -6.6787], [8.92635, -6.67611], [8.92402, -6.66972], [8.9354, -6.66048], [8.93104, -6.64878], [8.93665, -6.64053], [8.93465, -6.62765], [8.92217, -6.62386], [8.89549, -6.66769], [8.88336, -6.67051], [8.88731, -6.69778], [8.8826, -6.70947], [8.89331, -6.72559], [8.8848, -6.73827], [8.8779, -6.79056], [8.86937, -6.79411], [8.84956, -6.78881], [8.83498, -6.80205], [8.82786, -6.81935], [8.8132, -6.81955], [8.78995, -6.84877], [8.75728, -6.8571], [8.76611, -6.86065], [8.77295, -6.87493], [8.81457, -6.87287], [8.83602, -6.88745], [8.84883, -6.88857], [8.85844, -6.89925], [8.89113, -6.90519], [8.94304, -6.90108], [8.98677, -6.90733], [9.05458, -6.89724], [9.06767, -6.88844], [9.07651, -6.87138], [9.07149, -6.83187], [9.08722, -6.81592], [9.10463, -6.78474], [9.10683, -6.76838], [9.11879, -6.75399], [9.11662, -6.72216]]},
+  {name:"WOROFLA", dept:"SEGUELA", latlngs:[[8.57324, -6.77966], [8.55692, -6.76647], [8.52246, -6.76039], [8.51425, -6.75199], [8.50982, -6.75687], [8.50366, -6.75103], [8.47701, -6.75118], [8.44911, -6.73265], [8.44445, -6.74138], [8.43509, -6.73337], [8.42414, -6.73625], [8.42144, -6.73191], [8.4179, -6.73757], [8.40395, -6.72741], [8.39186, -6.73208], [8.37258, -6.72746], [8.36143, -6.71728], [8.35932, -6.72715], [8.35127, -6.72438], [8.34853, -6.73502], [8.3271, -6.71134], [8.30322, -6.7038], [8.28887, -6.71155], [8.29427, -6.72254], [8.28739, -6.7227], [8.28133, -6.73247], [8.25068, -6.73559], [8.23218, -6.7449], [8.23581, -6.75499], [8.226, -6.76279], [8.19161, -6.76331], [8.19307, -6.75063], [8.18322, -6.74467], [8.17958, -6.75429], [8.17103, -6.75306], [8.14094, -6.7316], [8.13844, -6.71754], [8.12767, -6.72975], [8.12215, -6.72288], [8.09705, -6.72583], [8.09584, -6.73684], [8.0879, -6.72998], [8.0854, -6.7392], [8.07009, -6.72669], [8.05682, -6.73514], [8.04096, -6.72768], [8.04089, -6.74707], [8.02226, -6.76336], [8.01594, -6.79685], [8.01818, -6.81193], [8.02831, -6.82128], [8.02729, -6.84098], [8.06416, -6.95036], [8.05448, -7.05457], [8.06307, -7.07849], [8.08, -7.08978], [8.07682, -7.10382], [8.08276, -7.10468], [8.09521, -7.08523], [8.10801, -7.08002], [8.14585, -7.10681], [8.16474, -7.10376], [8.17422, -7.08653], [8.18328, -7.09812], [8.21937, -7.11592], [8.2333, -7.13324], [8.25233, -7.10868], [8.28744, -7.11765], [8.29883, -7.13517], [8.30647, -7.13099], [8.31165, -7.09995], [8.3227, -7.09783], [8.33778, -7.11313], [8.35139, -7.14289], [8.36449, -7.1412], [8.37302, -7.13032], [8.38328, -7.1483], [8.40783, -7.14493], [8.42695, -7.15059], [8.43365, -7.1652], [8.43559, -7.15765], [8.45139, -7.15839], [8.45438, -7.16739], [8.46447, -7.17129], [8.47327, -7.15862], [8.49903, -7.16088], [8.51995, -7.18528], [8.52599, -7.17755], [8.53562, -7.18623], [8.54264, -7.18015], [8.5598, -7.19989], [8.57033, -7.19463], [8.56532, -6.90897], [8.57224, -6.86004], [8.55249, -6.84244], [8.54608, -6.81956], [8.55143, -6.80704], [8.57448, -6.80269], [8.57324, -6.77966]]},
+  {name:"KAMALO", dept:"SEGUELA", latlngs:[[7.94304, -7.0687], [7.94436, -7.04819], [7.93427, -7.01086], [7.91072, -6.97768], [7.92215, -6.95486], [7.9109, -6.91539], [7.91565, -6.88136], [7.8922, -6.84495], [7.90074, -6.83372], [7.89894, -6.8239], [7.80082, -6.8287], [7.80323, -6.99835], [7.79544, -7.08072], [7.84985, -7.07753], [7.85665, -7.0914], [7.85581, -7.11717], [7.86875, -7.11974], [7.87901, -7.11779], [7.88422, -7.10335], [7.90672, -7.09952], [7.92376, -7.07391], [7.94304, -7.0687]]},
+  {name:"MASSALA", dept:"SEGUELA", latlngs:[[8.11675, -6.30915], [8.01487, -6.29234], [8.00244, -6.28244], [8.00523, -6.27021], [7.97601, -6.24165], [7.93555, -6.25768], [7.91539, -6.25673], [7.89411, -6.24688], [7.87889, -6.25521], [7.84105, -6.25824], [7.82599, -6.25296], [7.81383, -6.25908], [7.79638, -6.25749], [7.78843, -6.26478], [7.77944, -6.25907], [7.77789, -6.33456], [7.77109, -6.36805], [7.73525, -6.46198], [7.76669, -6.53276], [7.81576, -6.55464], [7.87113, -6.54046], [7.93545, -6.54241], [7.96535, -6.53409], [7.96327, -6.5229], [8.00331, -6.47669], [8.00245, -6.46604], [8.06119, -6.39709], [8.11675, -6.30915]]},
+  {name:"SIFIE", dept:"SEGUELA", latlngs:[[8.06416, -6.95036], [8.02729, -6.84098], [8.02831, -6.82128], [8.01715, -6.80887], [8.02104, -6.77732], [8.00586, -6.78511], [7.98593, -6.81816], [7.89851, -6.8232], [7.90074, -6.83372], [7.8922, -6.84495], [7.91565, -6.88136], [7.9109, -6.91539], [7.92215, -6.95486], [7.91072, -6.97768], [7.93427, -7.01086], [7.94436, -7.04819], [7.94304, -7.0687], [7.95856, -7.07711], [7.99408, -7.06871], [8.01481, -7.08728], [8.02239, -7.08919], [8.03629, -7.08055], [8.04475, -7.08559], [8.04529, -7.09532], [8.07682, -7.10382], [8.08, -7.08978], [8.06307, -7.07849], [8.05448, -7.05457], [8.06416, -6.95036]]},
+  {name:"DUALLA", dept:"SEGUELA", latlngs:[[8.27852, -6.39278], [8.27295, -6.37811], [8.26509, -6.37485], [8.26422, -6.36291], [8.24715, -6.34369], [8.23137, -6.34123], [8.22341, -6.3317], [8.1903, -6.31669], [8.13264, -6.30657], [8.11675, -6.30915], [8.04912, -6.41147], [8.06595, -6.43683], [8.06897, -6.45262], [8.05982, -6.4682], [8.06445, -6.49095], [8.05881, -6.50302], [8.07163, -6.51858], [8.06295, -6.53042], [8.06077, -6.58229], [8.04061, -6.61111], [8.04624, -6.61579], [8.0766, -6.61197], [8.12228, -6.61718], [8.14156, -6.57821], [8.13489, -6.55462], [8.16189, -6.5428], [8.15804, -6.5183], [8.18373, -6.42798], [8.1939, -6.43999], [8.21349, -6.44397], [8.27464, -6.40686], [8.27852, -6.39278]]},
+  {name:"SEGUELA", dept:"SEGUELA", latlngs:[[8.05275, -6.69167], [8.06111, -6.6828], [8.05516, -6.67893], [8.05697, -6.67195], [8.05066, -6.67262], [8.05132, -6.66501], [8.03102, -6.65975], [8.03197, -6.61092], [8.00569, -6.60016], [8.02663, -6.58746], [8.02622, -6.57061], [8.03137, -6.56706], [8.0236, -6.55431], [8.01815, -6.50709], [8.00941, -6.4887], [7.99173, -6.49009], [7.96327, -6.5229], [7.96535, -6.53409], [7.95606, -6.53969], [7.87113, -6.54046], [7.81576, -6.55464], [7.76669, -6.53276], [7.80003, -6.61805], [7.80082, -6.8287], [7.98593, -6.81816], [8.00586, -6.78511], [8.02104, -6.77732], [8.02403, -6.76016], [8.04089, -6.74707], [8.04324, -6.71289], [8.05503, -6.70068], [8.05275, -6.69167]]},
+  {name:"BOBI", dept:"SEGUELA", latlngs:[[8.13927, -6.58688], [8.15425, -6.57925], [8.16611, -6.58258], [8.17186, -6.57357], [8.18519, -6.57307], [8.27309, -6.53198], [8.30585, -6.56495], [8.31462, -6.56487], [8.32197, -6.4671], [8.34043, -6.4513], [8.35182, -6.42868], [8.34765, -6.39748], [8.33184, -6.36832], [8.33012, -6.34595], [8.24715, -6.34369], [8.26519, -6.36457], [8.26509, -6.37485], [8.27295, -6.37811], [8.27796, -6.40344], [8.21349, -6.44397], [8.1939, -6.43999], [8.18373, -6.42798], [8.15804, -6.5183], [8.16189, -6.5428], [8.13489, -6.55462], [8.13927, -6.58688]]},
+];
+
 
 const SP_CAVALLY_GEO = [
   {name:"ZEAGLO", dept:"BLOLEQUIN", path:"M322.4,118.7 L337.9,121.4 L341.4,125.7 L333.4,132.4 L327.7,133.1 L323.7,140.0 L323.1,147.1 L326.7,176.2 L341.1,199.8 L337.4,208.3 L339.6,214.7 L338.2,222.3 L345.2,232.4 L345.7,244.9 L341.5,248.8 L341.7,253.9 L334.9,258.7 L329.7,256.9 L326.2,259.2 L320.3,265.1 L317.0,273.4 L309.3,278.9 L305.1,288.0 L294.8,298.5 L294.7,305.6 L298.7,310.3 L295.5,314.3 L291.4,315.9 L289.6,314.5 L288.9,319.7 L286.9,320.3 L284.2,312.6 L282.8,316.0 L278.6,316.2 L272.1,311.0 L271.0,306.4 L276.3,298.6 L277.2,288.2 L279.7,285.0 L282.4,285.6 L282.3,280.0 L287.4,273.7 L285.5,258.9 L283.5,258.0 L287.6,253.9 L286.1,250.1 L289.2,248.1 L289.8,243.1 L284.1,218.6 L274.2,208.0 L273.7,204.2 L276.1,200.7 L285.5,205.9 L290.4,203.2 L291.8,192.9 L298.0,187.9 L298.9,178.8 L295.7,165.8 L306.0,153.5 L306.1,143.9 L312.8,130.4 L311.2,122.9 L315.4,117.9 L319.1,119.0 L320.8,116.7 L322.4,118.7 Z"},
@@ -3781,7 +3856,7 @@ function dashGoTo(id){
   document.getElementById('dash-page-tableau').style.display='none';
   const autre=document.getElementById('dash-page-autre');
   autre.style.display='block';
-  if(id==='cartographie' && typeof SP_CAVALLY_GEO!=='undefined' && SP_CAVALLY_GEO.length){
+  if(id==='cartographie' && dashGetZoneGeo().length){
     dashRenderCartographieDetail();
     return;
   }
@@ -3791,8 +3866,10 @@ function dashGoTo(id){
 
 function dashRenderCartographieDetail(){
   const autre=document.getElementById('dash-page-autre');
-  const rows = SP_CAVALLY_GEO.map(sp=>{
-    const st = dashSPStats(sp.name);
+  const geo = dashGetZoneGeo();
+  const forceEmpty = currentZone!=='cavally';
+  const rows = geo.map(sp=>{
+    const st = forceEmpty ? {total:0, valides:0, pct:null} : dashSPStats(sp.name);
     const tier = dashMapTier(st.pct);
     return `<tr style="border-bottom:1px solid var(--border);">
       <td style="padding:7px 12px;"><span style="width:9px;height:9px;border-radius:2px;background:${tier.c};display:inline-block;margin-right:6px;"></span>${sp.name}</td>
@@ -3818,9 +3895,9 @@ function dashRenderCartographieDetail(){
     </div>
   </div>`;
   if(dashLeafletMapBig){ dashLeafletMapBig.remove(); dashLeafletMapBig=null; }
-  if(typeof L!=='undefined' && typeof SP_CAVALLY_LATLNG!=='undefined' && SP_CAVALLY_LATLNG.length){
+  if(typeof L!=='undefined' && geo.length){
     dashLeafletMapBig = L.map('dash-leaflet-big', {zoomControl:true, attributionControl:true, scrollWheelZoom:true});
-    dashBuildLeafletPolygons(dashLeafletMapBig, document.getElementById('dash-leaflet-legend-big'));
+    dashBuildLeafletPolygons(dashLeafletMapBig, document.getElementById('dash-leaflet-legend-big'), {forceEmpty});
   }
 }
 
@@ -4052,16 +4129,24 @@ let dashLeafletMapSmall = null, dashLeafletMapBig = null;
 // Emprise approximative de la Côte d'Ivoire (en attendant un fichier de contours officiel)
 const CI_BOUNDS = [[4.34,-8.60],[10.74,-2.49]];
 
+function dashGetZoneGeo(zoneId){
+  zoneId = zoneId || currentZone;
+  if(zoneId==='worodougou') return (typeof SP_WORODOUGOU_LATLNG!=='undefined') ? SP_WORODOUGOU_LATLNG : [];
+  return (typeof SP_CAVALLY_LATLNG!=='undefined') ? SP_CAVALLY_LATLNG : [];
+}
+
 function dashBuildLeafletPolygons(map, legendEl, opts){
   opts = opts || {};
-  if(typeof SP_CAVALLY_LATLNG==='undefined' || !SP_CAVALLY_LATLNG.length) return;
+  const geo = opts.geo || dashGetZoneGeo();
+  const zoneLabel = opts.zoneLabel || (PROJECT_ZONES[currentZone]||PROJECT_ZONES.cavally).label;
+  if(!geo.length) return;
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     maxZoom: 17
   }).addTo(map);
   const bounds = [];
-  SP_CAVALLY_LATLNG.forEach(sp=>{
-    const st = dashSPStats(sp.name);
+  geo.forEach(sp=>{
+    const st = opts.forceEmpty ? {total:0, valides:0, pct:null} : dashSPStats(sp.name);
     const tier = dashMapTier(st.pct);
     const poly = L.polygon(sp.latlngs, {
       color:'#fff', weight:1.2, fillColor:tier.c, fillOpacity:0.75
@@ -4071,7 +4156,7 @@ function dashBuildLeafletPolygons(map, legendEl, opts){
     poly.on('mouseout', ()=>poly.setStyle({fillOpacity:0.75}));
     sp.latlngs.forEach(ll=>bounds.push(ll));
   });
-  // Vue initiale : tout le pays, pour resituer le Cavally dans son contexte national
+  // Vue initiale : tout le pays, pour resituer la zone dans son contexte national
   map.fitBounds(CI_BOUNDS, {padding:[4,4]});
   if(legendEl){
     const legendItems = [
@@ -4082,7 +4167,7 @@ function dashBuildLeafletPolygons(map, legendEl, opts){
     legendEl.innerHTML = legendItems.map(it=>`<div style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:${it.c};flex-shrink:0;"></span>${it.l}</div>`).join('');
     if(!opts.noRecentrer){
       const btn = document.createElement('button');
-      btn.textContent = '📍 Recentrer sur le Cavally';
+      btn.textContent = '📍 Recentrer sur ' + zoneLabel;
       btn.className = 'btn-s';
       btn.style.cssText = 'font-size:10px;padding:5px 8px;margin-top:4px;';
       btn.onclick = ()=> map.fitBounds(bounds, {padding:[10,10]});
@@ -4095,7 +4180,8 @@ function dashBuildLeafletPolygons(map, legendEl, opts){
 function dashRenderMap(s){
   const el = document.getElementById('dash-map-zone');
   if(!el) return;
-  if(typeof SP_CAVALLY_LATLNG==='undefined' || !SP_CAVALLY_LATLNG.length || typeof L==='undefined'){
+  const geo = dashGetZoneGeo();
+  if(!geo.length || typeof L==='undefined'){
     el.innerHTML = `<div>
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.3" style="margin-bottom:8px;"><path d="M3 4l6-1.5 6 1.5 6-1.5v15l-6 1.5-6-1.5-6 1.5z"/><path d="M9 2.5v15M15 4v15"/></svg>
       <div>Carte des sous-préfectures en attente<br>du fichier de contours géographiques.</div>
@@ -4108,7 +4194,7 @@ function dashRenderMap(s){
     <div id="dash-leaflet-legend-small" style="font-size:10px;color:var(--text2);display:flex;flex-direction:column;gap:4px;justify-content:center;flex-shrink:0;"></div>
   </div>`;
   dashLeafletMapSmall = L.map('dash-leaflet-small', {zoomControl:true, attributionControl:false, scrollWheelZoom:false, doubleClickZoom:true});
-  dashBuildLeafletPolygons(dashLeafletMapSmall, document.getElementById('dash-leaflet-legend-small'));
+  dashBuildLeafletPolygons(dashLeafletMapSmall, document.getElementById('dash-leaflet-legend-small'), {forceEmpty: currentZone!=='cavally'});
 }
 
 function dashRenderEvolution(s){
@@ -7902,6 +7988,7 @@ serverLoad().then(ok => {
 
 dashInit();
 switchModule('accueil');
+zoneApplyUI();
 setTimeout(notifCheck, 3000);
 setTimeout(syncPoll, 10000);
 
