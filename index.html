@@ -1381,7 +1381,7 @@ const PROJECT_ZONES = {
   cavally:    {label:'Cavally',    lot:'Lot 13', depts:['GUIGLO','BLOLEQUIN','TAI','TOULEPLEU']},
   worodougou: {label:'Worodougou', lot:'Lot 4',  depts:['KANI','SEGUELA']},
 };
-let dashZoneFilter = localStorage.getItem('presfor_zone_filter') || 'all';
+let dashZoneFilter = 'all'; // Toujours démarrer sur la vue d'ensemble (pas de mémorisation entre sessions)
 
 function dashFilterByZone(list, zoneFilter){
   zoneFilter = zoneFilter || dashZoneFilter;
@@ -1401,7 +1401,6 @@ function zoneApplyUI(){
 function zoneSwitch(id){
   if(id!=='all' && !PROJECT_ZONES[id]) return;
   dashZoneFilter = id;
-  try{ localStorage.setItem('presfor_zone_filter', id); }catch(e){}
   zoneApplyUI();
 }
 
