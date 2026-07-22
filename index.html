@@ -1457,7 +1457,12 @@ function zoneApplyUI(){
   if(lbl) lbl.textContent = dashZoneFilter==='all' ? '· Cavally + Worodougou' : '· ' + PROJECT_ZONES[dashZoneFilter].label;
   const sel = document.getElementById('zone-selector');
   if(sel) sel.value = dashZoneFilter;
+  // Rafraîchir tous les modules dont l'affichage dépend de la zone active,
+  // qu'ils soient actuellement visibles ou non (pour être à jour dès qu'on y retourne)
   if(typeof dashRenderAll==='function') dashRenderAll();
+  if(typeof actRenderAll==='function') actRenderAll();
+  if(typeof indRenderAll==='function') indRenderAll();
+  if(typeof cqeRenderAll==='function') cqeRenderAll();
 }
 
 function zoneSwitch(id){
