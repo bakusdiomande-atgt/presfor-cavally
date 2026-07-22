@@ -4713,6 +4713,96 @@ const ACT_DEFS = {
 };
 let actCurrent = 'ISF';
 
+// ── Étapes de suivi par activité (source : liste officielle PRESFOR) ──
+// Pour CF, "etape" fait référence aux étapes AFOR déjà suivies (DD,RDC,CL,OV,CP,AP,VA) ;
+// plusieurs jalons du tableau contractuel correspondent à la même étape AFOR (granularité
+// plus fine côté maître d'ouvrage que ce que le système AFOR distingue aujourd'hui).
+const ACT_STEPS = {
+  ISF: {
+    unite: 'Village',
+    steps: [
+      'Prise de contact avec le corps préfectoral et les villages d\'intervention',
+      'Déclaration d\'ouverture de l\'opération dans le village',
+      'Tenue de la cérémonie d\'ouverture de l\'opération intégrée',
+      'Élaboration du calendrier et présentation des premières activités d\'ISF préalable',
+      'Information, sensibilisation des acteurs villageois et dialogue communautaire',
+      'Mise en circulation des cahiers d\'intention',
+      'Diagnostic du CVGFR et décision éventuelle du Sous-préfet',
+      'Formation des membres du CVGFR',
+      'Enquêtes sur l\'organisation socio-foncière du village et rédaction du ROSOF',
+      'Réunions sous-préfectorales',
+      'Mise en œuvre des activités du dialogue social renforcé',
+      'Mise en œuvre des procédures pour l\'établissement de l\'état-civil',
+      'Rapport sur le déroulement des activités ISF',
+    ]
+  },
+  DTV: {
+    unite: 'Village',
+    steps: [
+      'Constitution de l\'équipe d\'enquête',
+      'Recueil de l\'histoire de la constitution du territoire du village',
+      'Layon ouvert',
+      'Bornage des tronçons de limites du territoire du village',
+      'PV de constat des tronçons de limites du territoire de village',
+      'Tronçon levé',
+      'Territoire bouclé',
+      'Établissement de la carte provisoire du territoire du village',
+      'Annonce de l\'ouverture de publicité',
+      'Ouverture de la publicité',
+      'Clôture de la publicité',
+      'Approbation CVGFR',
+      'Validation',
+      'Établissement de la carte définitive du territoire du village',
+    ]
+  },
+  CF: {
+    unite: 'Dossier',
+    steps: [
+      {label:'Demande', etape:'DD'},
+      {label:'Recensement des droits coutumiers (RDC)', etape:'RDC'},
+      {label:'PV constat de limite (PVCL)', etape:'CL'},
+      {label:'Parcelle levée', gnss:true},
+      {label:'Établissement du plan provisoire', etape:'CL'},
+      {label:'Annonce de la publicité', etape:'OV'},
+      {label:'Ouverture de la publicité', etape:'OV'},
+      {label:'Clôture de la publicité', etape:'CP'},
+      {label:'Approbation', etape:'AP'},
+      {label:'Validation', etape:'VA'},
+      {label:'Établissement du plan définitif', etape:'VA'},
+      {label:'Édition du CF', etape:'VA'},
+    ]
+  },
+  CONTRAT: {
+    unite: 'Contrat',
+    steps: [
+      'Rédaction des contrats',
+    ]
+  },
+};
+const ETAPE_ORDER_CF = {DD:0, RDC:1, CL:2, OV:3, CP:4, AP:5, VA:6};
+
+// ── Objectifs contractuels par étape (éditables, persistés localement) ──
+let actObjectifs = {};
+function actLoadObjectifs(){
+  try{
+    const saved = localStorage.getItem('presfor_act_objectifs');
+    if(saved) actObjectifs = JSON.parse(saved);
+  }catch(e){}
+}
+function actSaveObjectifs(){
+  try{ localStorage.setItem('presfor_act_objectifs', JSON.stringify(actObjectifs)); }catch(e){}
+}
+function actSetObjectif(activite, idx, val){
+  val = parseInt(val)||0;
+  if(!actObjectifs[activite]) actObjectifs[activite]={};
+  actObjectifs[activite][idx] = val;
+  actSaveObjectifs();
+  actRenderAll();
+}
+function actGetObjectif(activite, idx){
+  return (actObjectifs[activite] && actObjectifs[activite][idx]) || 0;
+}
+
 function actSelect(act, btn){
   actCurrent = act;
   document.querySelectorAll('#sb-activites .nav-item').forEach(b=>b.classList.remove('active'));
@@ -4720,10 +4810,62 @@ function actSelect(act, btn){
   actRenderAll();
 }
 
+// ── Calcul des "Réalisés" pour le CF, à partir des vraies données AFOR/GNSS ──
+function actComputeCFRealises(afor){
+  return ACT_STEPS.CF.steps.map(step=>{
+    if(step.gnss){
+      return afor.filter(d=>{ const g=gnssForDossier(d); return g && g.leve; }).length;
+    }
+    const seuil = ETAPE_ORDER_CF[step.etape];
+    return afor.filter(d=>(ETAPE_ORDER_CF[d.etape]!==undefined) && ETAPE_ORDER_CF[d.etape]>=seuil).length;
+  });
+}
+
+function actRenderSuiviTable(activite, labels, realises, unite){
+  const objTotal = ACT_STEPS[activite].steps.length;
+  const rows = labels.map((label,i)=>{
+    const obj = actGetObjectif(activite, i);
+    const real = realises[i]||0;
+    const pct = obj>0 ? Math.min(100, Math.round(real/obj*100)) : 0;
+    const barColor = pct>=90 ? 'var(--accent)' : pct>=50 ? 'var(--blue)' : 'var(--amber)';
+    return `<tr style="border-bottom:1px solid var(--border);${i%2?'background:var(--surface2);':''}">
+      <td style="padding:8px 12px;font-weight:500;max-width:320px;">${label}</td>
+      <td style="padding:8px 12px;color:var(--text2);">${unite}</td>
+      <td style="padding:8px 12px;text-align:center;">
+        <input type="number" value="${obj}" min="0" onchange="actSetObjectif('${activite}',${i},this.value)"
+          style="width:64px;text-align:center;border:1px solid var(--border-med);border-radius:6px;padding:3px 4px;font-size:12px;background:var(--surface);color:var(--text);">
+      </td>
+      <td style="padding:8px 12px;text-align:center;font-weight:600;">${real.toLocaleString('fr-FR')}</td>
+      <td style="padding:8px 12px;min-width:160px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="flex:1;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;">
+            <div style="width:${pct}%;height:100%;background:${barColor};border-radius:4px;"></div>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:${barColor};min-width:32px;text-align:right;">${pct}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  return `<div class="tw" style="overflow:hidden;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr style="background:var(--surface2);border-bottom:2px solid var(--border);">
+        <th style="text-align:left;padding:9px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Tableau de suivi</th>
+        <th style="text-align:left;padding:9px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Unité</th>
+        <th style="text-align:center;padding:9px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Objectif</th>
+        <th style="text-align:center;padding:9px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Réalisés</th>
+        <th style="text-align:left;padding:9px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Taux de réalisation</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
 function actRenderAll(){
   const def = ACT_DEFS[actCurrent];
   document.getElementById('act-title').textContent = def.label;
   document.getElementById('act-subtitle').textContent = def.sub;
+  const stepsDef = ACT_STEPS[actCurrent];
+  const labels = stepsDef.steps.map(s=> typeof s==='string' ? s : s.label);
 
   if(actCurrent==='CF'){
     // Act. C dispose de vraies données via le suivi AFOR
@@ -4736,32 +4878,20 @@ function actRenderAll(){
       <div class="kpi green"><div class="kpi-l">Validés</div><div class="kpi-v">${valides.toLocaleString('fr-FR')}</div></div>
       <div class="kpi red"><div class="kpi-l">En retard</div><div class="kpi-v">${retards.toLocaleString('fr-FR')}</div></div>
       <div class="kpi teal"><div class="kpi-l">Superficie sécurisée</div><div class="kpi-v" style="font-size:16px;">${superficie.toFixed(1)} ha</div></div>`;
-    const parEtape = {};
-    DOS_ETAPES_CF_ORDER.forEach(e=>parEtape[e]=0);
-    afor.forEach(d=>{ if(parEtape[d.etape]!==undefined) parEtape[d.etape]++; });
-    document.getElementById('act-content').innerHTML = `
-      <div class="tw" style="padding:16px;">
-        <div class="dash-card-title">Répartition par étape</div>
-        <div style="display:flex;flex-wrap:wrap;gap:10px;">
-          ${DOS_ETAPES_CF_ORDER.map(e=>`<div style="background:var(--surface2);border-radius:var(--radius-sm);padding:10px 16px;min-width:90px;text-align:center;">
-            <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--accent);">${parEtape[e]}</div>
-            <div style="font-size:10px;color:var(--text3);">${e}</div>
-          </div>`).join('')}
-        </div>
-      </div>`;
+    const realises = actComputeCFRealises(afor);
+    document.getElementById('act-content').innerHTML =
+      actRenderSuiviTable('CF', labels, realises, stepsDef.unite) +
+      `<p style="font-size:11px;color:var(--text3);margin-top:8px;">Les "Réalisés" sont calculés à partir des dossiers AFOR/GNSS déjà atteints à chaque étape ou au-delà. Certains jalons contractuels partagent la même étape de suivi AFOR (granularité actuelle du système).</p>`;
   } else {
-    // ISF, DTV, Contractualisation : pas encore de source de données (anciennement suivi via M1/M2, supprimés)
+    // ISF, DTV, Contractualisation : pas encore de source d'import — Réalisés à 0 en attendant
+    const realises = labels.map(()=>0);
     document.getElementById('act-kpi').innerHTML = `
-      <div class="kpi"><div class="kpi-l">Dossiers</div><div class="kpi-v">0</div></div>
-      <div class="kpi"><div class="kpi-l">Réalisé</div><div class="kpi-v">0</div></div>
-      <div class="kpi"><div class="kpi-l">En cours</div><div class="kpi-v">0</div></div>
-      <div class="kpi"><div class="kpi-l">Superficie</div><div class="kpi-v" style="font-size:16px;">0 ha</div></div>`;
-    document.getElementById('act-content').innerHTML = `
-      <div class="empty-state">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.2" style="margin-bottom:10px;"><path d="M3 4l6-1.5 6 1.5 6-1.5v15l-6 1.5-6-1.5-6 1.5z"/></svg>
-        <p style="font-size:13px;">Aucune donnée enregistrée pour cette activité pour le moment.</p>
-        <p style="font-size:12px;color:var(--text3);">Le suivi de "${def.label}" sera intégré une fois la source de données disponible.</p>
-      </div>`;
+      <div class="kpi"><div class="kpi-l">Étapes suivies</div><div class="kpi-v">${labels.length}</div></div>
+      <div class="kpi"><div class="kpi-l">Réalisé (total)</div><div class="kpi-v">0</div></div>
+      <div class="kpi"><div class="kpi-l">Unité</div><div class="kpi-v" style="font-size:16px;">${stepsDef.unite}</div></div>`;
+    document.getElementById('act-content').innerHTML =
+      actRenderSuiviTable(actCurrent, labels, realises, stepsDef.unite) +
+      `<p style="font-size:11px;color:var(--text3);margin-top:8px;">Aucun import de données n'existe encore pour "${def.label}" — les "Réalisés" resteront à 0 jusqu'à la mise en place d'une source d'import dédiée. Les objectifs sont déjà saisissables.</p>`;
   }
 }
 const DOS_ETAPES_CF_ORDER = ['DD','RDC','CL','OV','CP','AP','VA'];
@@ -8236,6 +8366,7 @@ serverLoad().then(ok => {
   authInit();
 });
 
+actLoadObjectifs();
 dashInit();
 switchModule('accueil');
 zoneApplyUI();
