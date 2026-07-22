@@ -3944,8 +3944,8 @@ function dashRenderCartographieDetail(){
 
 // ── Objectifs (cibles) — configurables, persistés en localStorage ──
 let dashObjectifs = {
-  cavally:    {ha:224000, dossiers:22400, valides:224000},
-  worodougou: {ha:0, dossiers:0, valides:0},
+  cavally:    {ha:224056, dossiers:22400, valides:224000},
+  worodougou: {ha:501258, dossiers:0, valides:0},
 };
 function dashLoadObjectifs(){
   try{
@@ -4781,26 +4781,61 @@ const ACT_STEPS = {
 };
 const ETAPE_ORDER_CF = {DD:0, RDC:1, CL:2, OV:3, CP:4, AP:5, VA:6};
 
-// ── Objectifs contractuels par étape (éditables, persistés localement) ──
-let actObjectifs = {};
+// ── Objectifs contractuels par étape et par zone (éditables, persistés localement) ──
+// Valeurs par défaut fournies par le maître d'ouvrage (par zone) :
+const ACT_DEFAULT_OBJECTIFS = {
+  cavally:    { ISF:139, DTV:31,  CONTRAT:22406, CF_HA:224056, CF_DOSSIER:0 },
+  worodougou: { ISF:214, DTV:101, CONTRAT:50126, CF_HA:501258, CF_DOSSIER:0 },
+};
+let actObjectifs = { cavally:{ISF:{},DTV:{},CF:{},CONTRAT:{}}, worodougou:{ISF:{},DTV:{},CF:{},CONTRAT:{}} };
 function actLoadObjectifs(){
   try{
-    const saved = localStorage.getItem('presfor_act_objectifs');
+    const saved = localStorage.getItem('presfor_act_objectifs_v2');
     if(saved) actObjectifs = JSON.parse(saved);
   }catch(e){}
 }
 function actSaveObjectifs(){
-  try{ localStorage.setItem('presfor_act_objectifs', JSON.stringify(actObjectifs)); }catch(e){}
+  try{ localStorage.setItem('presfor_act_objectifs_v2', JSON.stringify(actObjectifs)); }catch(e){}
+}
+// Objectif pour une zone précise ('cavally' ou 'worodougou'), avec repli sur la valeur par défaut
+function actGetObjectifZone(zone, activite, idx){
+  const saved = actObjectifs[zone] && actObjectifs[zone][activite] && actObjectifs[zone][activite][idx];
+  if(activite==='CF'){
+    return {
+      ha: (saved && saved.ha!==undefined) ? saved.ha : ACT_DEFAULT_OBJECTIFS[zone].CF_HA,
+      dossier: (saved && saved.dossier!==undefined) ? saved.dossier : ACT_DEFAULT_OBJECTIFS[zone].CF_DOSSIER,
+    };
+  }
+  return (saved!==undefined) ? saved : (ACT_DEFAULT_OBJECTIFS[zone][activite]||0);
+}
+// Objectif affiché selon le filtre de zone actif (somme si "Toutes les zones")
+function actGetObjectif(activite, idx){
+  if(dashZoneFilter==='all'){
+    const c = actGetObjectifZone('cavally', activite, idx);
+    const w = actGetObjectifZone('worodougou', activite, idx);
+    if(activite==='CF') return {ha: c.ha+w.ha, dossier: c.dossier+w.dossier};
+    return c + w;
+  }
+  return actGetObjectifZone(dashZoneFilter, activite, idx);
 }
 function actSetObjectif(activite, idx, val){
+  if(dashZoneFilter==='all') return; // lecture seule en vue d'ensemble : sélectionner une zone pour modifier
   val = parseInt(val)||0;
-  if(!actObjectifs[activite]) actObjectifs[activite]={};
-  actObjectifs[activite][idx] = val;
+  if(!actObjectifs[dashZoneFilter][activite]) actObjectifs[dashZoneFilter][activite]={};
+  actObjectifs[dashZoneFilter][activite][idx] = val;
   actSaveObjectifs();
   actRenderAll();
 }
-function actGetObjectif(activite, idx){
-  return (actObjectifs[activite] && actObjectifs[activite][idx]) || 0;
+function actSetObjectifCF(idx, unit, val){
+  if(dashZoneFilter==='all') return;
+  val = parseInt(val)||0;
+  if(!actObjectifs[dashZoneFilter].CF[idx]){
+    const cur = actGetObjectifZone(dashZoneFilter, 'CF', idx);
+    actObjectifs[dashZoneFilter].CF[idx] = {ha:cur.ha, dossier:cur.dossier};
+  }
+  actObjectifs[dashZoneFilter].CF[idx][unit] = val;
+  actSaveObjectifs();
+  actRenderAll();
 }
 
 function actSelect(act, btn){
@@ -4811,18 +4846,23 @@ function actSelect(act, btn){
 }
 
 // ── Calcul des "Réalisés" pour le CF, à partir des vraies données AFOR/GNSS ──
+// Renvoie, pour chaque étape : nombre de dossiers (demandeurs) et superficie GNSS cumulée
 function actComputeCFRealises(afor){
   return ACT_STEPS.CF.steps.map(step=>{
+    let matched;
     if(step.gnss){
-      return afor.filter(d=>{ const g=gnssForDossier(d); return g && g.leve; }).length;
+      matched = afor.filter(d=>{ const g=gnssForDossier(d); return g && g.leve; });
+    } else {
+      const seuil = ETAPE_ORDER_CF[step.etape];
+      matched = afor.filter(d=>(ETAPE_ORDER_CF[d.etape]!==undefined) && ETAPE_ORDER_CF[d.etape]>=seuil);
     }
-    const seuil = ETAPE_ORDER_CF[step.etape];
-    return afor.filter(d=>(ETAPE_ORDER_CF[d.etape]!==undefined) && ETAPE_ORDER_CF[d.etape]>=seuil).length;
+    const ha = matched.reduce((s,d)=>{ const g=gnssForDossier(d); return s+(g?g.superficie:0); }, 0);
+    return { dossier: matched.length, ha: Math.round(ha) };
   });
 }
 
 function actRenderSuiviTable(activite, labels, realises, unite){
-  const objTotal = ACT_STEPS[activite].steps.length;
+  const readOnly = dashZoneFilter==='all';
   const rows = labels.map((label,i)=>{
     const obj = actGetObjectif(activite, i);
     const real = realises[i]||0;
@@ -4834,8 +4874,8 @@ function actRenderSuiviTable(activite, labels, realises, unite){
       </td>
       <td style="padding:8px 12px;color:var(--text2);">${unite}</td>
       <td style="padding:8px 12px;text-align:center;">
-        <input type="number" value="${obj}" min="0" onchange="actSetObjectif('${activite}',${i},this.value)"
-          style="width:64px;text-align:center;border:1px solid var(--border-med);border-radius:6px;padding:3px 4px;font-size:12px;background:var(--surface);color:var(--text);">
+        <input type="number" value="${obj}" min="0" ${readOnly?'disabled':''} onchange="actSetObjectif('${activite}',${i},this.value)"
+          style="width:64px;text-align:center;border:1px solid var(--border-med);border-radius:6px;padding:3px 4px;font-size:12px;background:${readOnly?'var(--surface2)':'var(--surface)'};color:var(--text);">
       </td>
       <td style="padding:8px 12px;text-align:center;font-weight:600;">${real.toLocaleString('fr-FR')}</td>
       <td style="padding:8px 12px;min-width:160px;">
@@ -4849,6 +4889,7 @@ function actRenderSuiviTable(activite, labels, realises, unite){
     </tr>`;
   }).join('');
   return `<div class="tw" style="overflow:hidden;">
+    ${readOnly?'<div style="padding:6px 12px;font-size:11px;color:var(--text3);background:var(--surface2);border-bottom:1px solid var(--border);">Objectifs en lecture seule en vue "Toutes les zones" — sélectionnez Cavally ou Worodougou pour les modifier.</div>':''}
     <table style="width:100%;border-collapse:collapse;font-size:12px;">
       <thead><tr style="background:var(--surface2);border-bottom:2px solid var(--border);">
         <th style="text-align:left;padding:9px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Tableau de suivi</th>
@@ -4861,6 +4902,68 @@ function actRenderSuiviTable(activite, labels, realises, unite){
     </table>
   </div>`;
 }
+
+// ── Tableau de suivi spécifique au CF : double colonne Dossier + Hectare ──
+function actRenderSuiviTableCF(labels, realises){
+  const readOnly = dashZoneFilter==='all';
+  const barFor = (real,obj)=>{
+    const pct = obj>0 ? Math.min(100, Math.round(real/obj*100)) : 0;
+    const barColor = pct>=90 ? 'var(--accent)' : pct>=50 ? 'var(--blue)' : 'var(--amber)';
+    return `<div style="display:flex;align-items:center;gap:6px;">
+      <div style="flex:1;height:7px;background:var(--surface2);border-radius:4px;overflow:hidden;min-width:70px;">
+        <div style="width:${pct}%;height:100%;background:${barColor};border-radius:4px;"></div>
+      </div>
+      <span style="font-size:10px;font-weight:700;color:${barColor};min-width:30px;text-align:right;">${pct}%</span>
+    </div>`;
+  };
+  const rows = labels.map((label,i)=>{
+    const obj = actGetObjectif('CF', i); // {ha, dossier}
+    const real = realises[i]||{dossier:0,ha:0};
+    return `<tr style="border-bottom:1px solid var(--border);${i%2?'background:var(--surface2);':''}">
+      <td style="padding:8px 12px;font-weight:500;max-width:260px;">
+        <a href="javascript:void(0)" onclick="actShowStepDetail('CF',${i})" style="color:var(--blue);text-decoration:none;cursor:pointer;">${label}</a>
+      </td>
+      <td style="padding:8px 12px;text-align:center;color:var(--text2);">
+        <div style="font-size:9px;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">Dossier</div>
+        <input type="number" value="${obj.dossier}" min="0" ${readOnly?'disabled':''} onchange="actSetObjectifCF(${i},'dossier',this.value)"
+          style="width:70px;text-align:center;border:1px solid var(--border-med);border-radius:6px;padding:3px 4px;font-size:12px;background:${readOnly?'var(--surface2)':'var(--surface)'};color:var(--text);">
+      </td>
+      <td style="padding:8px 12px;text-align:center;font-weight:600;">${real.dossier.toLocaleString('fr-FR')}</td>
+      <td style="padding:8px 12px;min-width:130px;">${barFor(real.dossier, obj.dossier)}</td>
+      <td style="padding:8px 12px;text-align:center;color:var(--text2);border-left:1px solid var(--border);">
+        <div style="font-size:9px;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">Hectare</div>
+        <input type="number" value="${obj.ha}" min="0" ${readOnly?'disabled':''} onchange="actSetObjectifCF(${i},'ha',this.value)"
+          style="width:80px;text-align:center;border:1px solid var(--border-med);border-radius:6px;padding:3px 4px;font-size:12px;background:${readOnly?'var(--surface2)':'var(--surface)'};color:var(--text);">
+      </td>
+      <td style="padding:8px 12px;text-align:center;font-weight:600;">${real.ha.toLocaleString('fr-FR')}</td>
+      <td style="padding:8px 12px;min-width:130px;">${barFor(real.ha, obj.ha)}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="tw" style="overflow:hidden;">
+    ${readOnly?'<div style="padding:6px 12px;font-size:11px;color:var(--text3);background:var(--surface2);border-bottom:1px solid var(--border);">Objectifs en lecture seule en vue "Toutes les zones" — sélectionnez Cavally ou Worodougou pour les modifier.</div>':''}
+    <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="background:var(--surface2);">
+          <th rowspan="2" style="text-align:left;padding:9px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);vertical-align:bottom;">Tableau de suivi (CF)</th>
+          <th colspan="3" style="text-align:center;padding:6px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);">Dossier</th>
+          <th colspan="3" style="text-align:center;padding:6px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);border-left:1px solid var(--border);">Hectare</th>
+        </tr>
+        <tr style="background:var(--surface2);border-bottom:2px solid var(--border);">
+          <th style="text-align:center;padding:6px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Objectif</th>
+          <th style="text-align:center;padding:6px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Réalisés</th>
+          <th style="text-align:left;padding:6px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Taux</th>
+          <th style="text-align:center;padding:6px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);border-left:1px solid var(--border);">Objectif</th>
+          <th style="text-align:center;padding:6px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Réalisés</th>
+          <th style="text-align:left;padding:6px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Taux</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+  </div>`;
+}
+
 
 // ── Mapping département → région (pour affichage et filtres) ──
 const REGION_BY_DEPT = {
@@ -5075,8 +5178,8 @@ function actRenderAll(){
       <div class="kpi teal"><div class="kpi-l">Superficie sécurisée</div><div class="kpi-v" style="font-size:16px;">${superficie.toFixed(1)} ha</div></div>`;
     const realises = actComputeCFRealises(afor);
     document.getElementById('act-content').innerHTML =
-      actRenderSuiviTable('CF', labels, realises, stepsDef.unite) +
-      `<p style="font-size:11px;color:var(--text3);margin-top:8px;">Les "Réalisés" sont calculés à partir des dossiers AFOR/GNSS déjà atteints à chaque étape ou au-delà. Certains jalons contractuels partagent la même étape de suivi AFOR (granularité actuelle du système).</p>`;
+      actRenderSuiviTableCF(labels, realises) +
+      `<p style="font-size:11px;color:var(--text3);margin-top:8px;">Les "Réalisés" sont calculés à partir des dossiers AFOR/GNSS déjà atteints à chaque étape ou au-delà (Dossier = nombre de demandeurs ; Hectare = superficie GNSS cumulée de ces dossiers). Certains jalons contractuels partagent la même étape de suivi AFOR (granularité actuelle du système).</p>`;
   } else {
     // ISF, DTV, Contractualisation : pas encore de source d'import — Réalisés à 0 en attendant
     const realises = labels.map(()=>0);
