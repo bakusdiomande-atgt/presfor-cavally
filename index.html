@@ -4862,7 +4862,7 @@ function actRenderSuiviTable(activite, labels, realises, unite){
   </div>`;
 }
 
-// ── Mapping département → région (pour affichage) ──
+// ── Mapping département → région (pour affichage et filtres) ──
 const REGION_BY_DEPT = {
   GUIGLO:'CAVALLY', BLOLEQUIN:'CAVALLY', TAI:'CAVALLY', TOULEPLEU:'CAVALLY',
   KANI:'WORODOUGOU', SEGUELA:'WORODOUGOU',
@@ -4874,31 +4874,75 @@ function actJours(dateStr){
   return Math.floor((new Date() - d) / 86400000);
 }
 
-// ── Détail d'une étape (modal) — le contenu est propre à chaque étape ──
-function actShowStepDetail(activite, stepIdx){
-  let modal = document.getElementById('act-detail-modal');
-  if(!modal){
-    modal = document.createElement('div');
-    modal.id = 'act-detail-modal';
-    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
-    modal.innerHTML = `<div style="background:var(--surface);border-radius:12px;width:100%;max-width:1100px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
-      <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
-        <h3 id="act-detail-title" style="font-family:'Syne',sans-serif;font-size:15px;margin:0;"></h3>
-        <button class="btn-s" onclick="document.getElementById('act-detail-modal').style.display='none'">✕ Fermer</button>
-      </div>
-      <div id="act-detail-body" style="padding:0;overflow-y:auto;flex:1;"></div>
-    </div>`;
-    document.body.appendChild(modal);
-  }
-  const stepsDef = ACT_STEPS[activite];
-  const label = typeof stepsDef.steps[stepIdx]==='string' ? stepsDef.steps[stepIdx] : stepsDef.steps[stepIdx].label;
-  document.getElementById('act-detail-title').textContent = ACT_DEFS[activite].label + ' — ' + label;
-  const body = document.getElementById('act-detail-body');
+// ── État courant du détail d'étape (données brutes + filtres actifs) ──
+let actDetailState = { activite:null, stepIdx:null, data:[], filters:{region:'', dept:'', sp:'', village:''} };
 
-  if(activite==='CF' && stepIdx===0){
-    // Étape "Demande" — liste complète des dossiers (tous ont au moins atteint ce stade)
-    const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
-    const rows = afor.map(d=>{
+function actDetailUniqueSorted(list, keyFn){
+  return [...new Set(list.map(keyFn).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
+}
+
+function actDetailBuildFilterBar(){
+  const data = actDetailState.data;
+  const f = actDetailState.filters;
+  // Options région : déduites des départements présents
+  const regions = actDetailUniqueSorted(data, d=>REGION_BY_DEPT[(d.dept||'').toUpperCase()]||'');
+  // Départements : filtrés par région sélectionnée
+  const depts = actDetailUniqueSorted(
+    data.filter(d=>!f.region || REGION_BY_DEPT[(d.dept||'').toUpperCase()]===f.region),
+    d=>d.dept||''
+  );
+  // Sous-préfectures : filtrées par région + département sélectionnés
+  const sps = actDetailUniqueSorted(
+    data.filter(d=>(!f.region || REGION_BY_DEPT[(d.dept||'').toUpperCase()]===f.region) && (!f.dept || d.dept===f.dept)),
+    d=>d.sp||''
+  );
+  // Villages : filtrés par région + département + sous-préfecture sélectionnés
+  const villages = actDetailUniqueSorted(
+    data.filter(d=>(!f.region || REGION_BY_DEPT[(d.dept||'').toUpperCase()]===f.region) && (!f.dept || d.dept===f.dept) && (!f.sp || d.sp===f.sp)),
+    d=>d.village||''
+  );
+  const opt = (val,label,current)=>`<option value="${val}"${val===current?' selected':''}>${label}</option>`;
+  const sel = (id, current, options, allLabel) => `<select id="${id}" onchange="actDetailFilterChange()" style="font-size:11px;padding:5px 8px;border:1px solid var(--border-med);border-radius:6px;background:var(--surface);color:var(--text);">
+    ${opt('', allLabel, current)}${options.map(o=>opt(o, o, current)).join('')}
+  </select>`;
+  return `<div style="display:flex;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;background:var(--surface2);">
+    ${sel('act-f-region', f.region, regions, 'Toutes régions')}
+    ${sel('act-f-dept', f.dept, depts, 'Tous départements')}
+    ${sel('act-f-sp', f.sp, sps, 'Toutes sous-préfectures')}
+    ${sel('act-f-village', f.village, villages, 'Tous villages')}
+    <button class="btn-s" style="font-size:11px;padding:5px 10px;" onclick="actDetailResetFilters()">✕ Réinitialiser</button>
+  </div>`;
+}
+
+function actDetailFilterChange(){
+  actDetailState.filters = {
+    region: document.getElementById('act-f-region').value,
+    dept: document.getElementById('act-f-dept').value,
+    sp: document.getElementById('act-f-sp').value,
+    village: document.getElementById('act-f-village').value,
+  };
+  actDetailRender();
+}
+function actDetailResetFilters(){
+  actDetailState.filters = {region:'', dept:'', sp:'', village:''};
+  actDetailRender();
+}
+
+function actDetailFilteredData(){
+  const f = actDetailState.filters;
+  return actDetailState.data.filter(d=>
+    (!f.region || REGION_BY_DEPT[(d.dept||'').toUpperCase()]===f.region) &&
+    (!f.dept || d.dept===f.dept) &&
+    (!f.sp || d.sp===f.sp) &&
+    (!f.village || d.village===f.village)
+  );
+}
+
+function actDetailRender(){
+  const body = document.getElementById('act-detail-body');
+  const filtered = actDetailFilteredData();
+  if(actDetailState.activite==='CF' && actDetailState.stepIdx===0){
+    const rows = filtered.map(d=>{
       const jours = actJours(d.date_DD);
       return `<tr style="border-bottom:1px solid var(--border);">
         <td style="padding:7px 10px;font-family:'DM Mono',monospace;font-size:11px;">${d.id||''}</td>
@@ -4914,7 +4958,7 @@ function actShowStepDetail(activite, stepIdx){
         <td style="padding:7px 10px;text-align:right;font-weight:600;${jours!==null&&jours>30?'color:var(--red);':''}">${jours!==null?jours.toLocaleString('fr-FR')+' j':'—'}</td>
       </tr>`;
     }).join('');
-    body.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+    body.innerHTML = actDetailBuildFilterBar() + `<table style="width:100%;border-collapse:collapse;font-size:12px;">
       <thead><tr style="background:var(--surface2);position:sticky;top:0;">
         <th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">N° Dossier</th>
         <th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Région</th>
@@ -4928,15 +4972,46 @@ function actShowStepDetail(activite, stepIdx){
         <th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Superficie déclarée</th>
         <th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Durée</th>
       </tr></thead>
-      <tbody>${rows || '<tr><td colspan="11" style="padding:20px;text-align:center;color:var(--text3);">Aucun dossier</td></tr>'}</tbody>
+      <tbody>${rows || '<tr><td colspan="11" style="padding:20px;text-align:center;color:var(--text3);">Aucun dossier ne correspond aux filtres</td></tr>'}</tbody>
     </table>
-    <p style="font-size:11px;color:var(--text3);padding:10px 16px;">La colonne "Superficie déclarée" n'est pas encore capturée dans l'import AFOR actuel (seule la superficie mesurée au GNSS est disponible ailleurs dans l'application) — elle s'affichera ici dès que cette donnée sera intégrée à l'import.</p>`;
+    <p style="font-size:11px;color:var(--text3);padding:10px 16px;">${filtered.length.toLocaleString('fr-FR')} dossier(s) affiché(s) sur ${actDetailState.data.length.toLocaleString('fr-FR')} au total. La colonne "Superficie déclarée" n'est pas encore capturée dans l'import AFOR actuel (seule la superficie mesurée au GNSS est disponible ailleurs dans l'application) — elle s'affichera ici dès que cette donnée sera intégrée à l'import.</p>`;
   } else {
+    const label = typeof ACT_STEPS[actDetailState.activite].steps[actDetailState.stepIdx]==='string'
+      ? ACT_STEPS[actDetailState.activite].steps[actDetailState.stepIdx]
+      : ACT_STEPS[actDetailState.activite].steps[actDetailState.stepIdx].label;
     body.innerHTML = `<div class="empty-state" style="padding:40px 20px;">
       <p style="font-size:13px;">Le contenu du détail pour "${label}" n'est pas encore défini.</p>
       <p style="font-size:12px;color:var(--text3);">Dites-moi quelles colonnes/informations afficher pour cette étape.</p>
     </div>`;
   }
+}
+
+// ── Détail d'une étape (modal) — le contenu est propre à chaque étape ──
+function actShowStepDetail(activite, stepIdx){
+  let modal = document.getElementById('act-detail-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'act-detail-modal';
+    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
+    modal.innerHTML = `<div style="background:var(--surface);border-radius:12px;width:100%;max-width:1150px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+        <h3 id="act-detail-title" style="font-family:'Syne',sans-serif;font-size:15px;margin:0;"></h3>
+        <button class="btn-s" onclick="document.getElementById('act-detail-modal').style.display='none'">✕ Fermer</button>
+      </div>
+      <div id="act-detail-body" style="padding:0;overflow-y:auto;flex:1;"></div>
+    </div>`;
+    document.body.appendChild(modal);
+  }
+  const stepsDef = ACT_STEPS[activite];
+  const label = typeof stepsDef.steps[stepIdx]==='string' ? stepsDef.steps[stepIdx] : stepsDef.steps[stepIdx].label;
+  document.getElementById('act-detail-title').textContent = ACT_DEFS[activite].label + ' — ' + label;
+
+  actDetailState = {
+    activite, stepIdx,
+    data: (activite==='CF' && stepIdx===0) ? dashFilterByZone(dossiersAFOR||[], dashZoneFilter) : [],
+    filters: {region:'', dept:'', sp:'', village:''}
+  };
+  actDetailRender();
   modal.style.display = 'flex';
 }
 
