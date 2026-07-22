@@ -4996,7 +4996,10 @@ function actShowStepDetail(activite, stepIdx){
     modal.innerHTML = `<div style="background:var(--surface);border-radius:12px;width:100%;max-width:1150px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
       <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
         <h3 id="act-detail-title" style="font-family:'Syne',sans-serif;font-size:15px;margin:0;"></h3>
-        <button class="btn-s" onclick="document.getElementById('act-detail-modal').style.display='none'">✕ Fermer</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-s" onclick="actDetailExportCSV()">↓ Exporter CSV</button>
+          <button class="btn-s" onclick="document.getElementById('act-detail-modal').style.display='none'">✕ Fermer</button>
+        </div>
       </div>
       <div id="act-detail-body" style="padding:0;overflow-y:auto;flex:1;"></div>
     </div>`;
@@ -5013,6 +5016,43 @@ function actShowStepDetail(activite, stepIdx){
   };
   actDetailRender();
   modal.style.display = 'flex';
+}
+
+// ── Export CSV du détail d'étape actuellement affiché (respecte les filtres actifs) ──
+function actDetailExportCSV(){
+  const filtered = actDetailFilteredData();
+  if(!filtered.length){
+    showToast('Aucune ligne à exporter (vérifiez les filtres).');
+    return;
+  }
+  const label = typeof ACT_STEPS[actDetailState.activite].steps[actDetailState.stepIdx]==='string'
+    ? ACT_STEPS[actDetailState.activite].steps[actDetailState.stepIdx]
+    : ACT_STEPS[actDetailState.activite].steps[actDetailState.stepIdx].label;
+
+  let header, rows;
+  if(actDetailState.activite==='CF' && actDetailState.stepIdx===0){
+    header = ['N° Dossier','Région','Département','Sous-préfecture','Village','Demandeur','Code parcelle','Type CF','Date demande','Superficie déclarée','Durée (jours)'];
+    rows = filtered.map(d=>{
+      const jours = actJours(d.date_DD);
+      return [
+        d.id||'', REGION_BY_DEPT[(d.dept||'').toUpperCase()]||'', d.dept||'', d.sp||'', d.village||'',
+        ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim(), d.code_parcelle||'', d.type||'', d.date_DD||'',
+        '', jours!==null?jours:''
+      ];
+    });
+  } else {
+    showToast('Rien à exporter pour cette étape pour le moment.');
+    return;
+  }
+  const csv = '\uFEFF' + [header, ...rows]
+    .map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';'))
+    .join('\r\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  const slug = label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  a.download = 'PRESFOR_'+actDetailState.activite+'_'+slug+'_'+new Date().toISOString().split('T')[0]+'.csv';
+  a.click();
+  showToast(filtered.length + ' ligne(s) exportée(s).');
 }
 
 function actRenderAll(){
