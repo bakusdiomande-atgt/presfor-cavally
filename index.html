@@ -3949,8 +3949,8 @@ function dashRenderCartographieDetail(){
 
 // ── Objectifs (cibles) — configurables, persistés en localStorage ──
 let dashObjectifs = {
-  cavally:    {ha:224056, dossiers:22400, valides:224000},
-  worodougou: {ha:501258, dossiers:0, valides:0},
+  cavally:    {ha:224056, dossiers:22406, valides:224000},
+  worodougou: {ha:501258, dossiers:50126, valides:0},
 };
 function dashLoadObjectifs(){
   try{
@@ -4789,8 +4789,8 @@ const ETAPE_ORDER_CF = {DD:0, RDC:1, CL:2, OV:3, CP:4, AP:5, VA:6};
 // ── Objectifs contractuels par étape et par zone (éditables, persistés localement) ──
 // Valeurs par défaut fournies par le maître d'ouvrage (par zone) :
 const ACT_DEFAULT_OBJECTIFS = {
-  cavally:    { ISF:139, DTV:31,  CONTRAT:22406, CF_HA:224056, CF_DOSSIER:0 },
-  worodougou: { ISF:214, DTV:101, CONTRAT:50126, CF_HA:501258, CF_DOSSIER:0 },
+  cavally:    { ISF:139, DTV:31,  CONTRAT:22406, CF_HA:224056 },
+  worodougou: { ISF:214, DTV:101, CONTRAT:50126, CF_HA:501258 },
 };
 let actObjectifs = { cavally:{ISF:{},DTV:{},CF:{},CONTRAT:{}}, worodougou:{ISF:{},DTV:{},CF:{},CONTRAT:{}} };
 function actLoadObjectifs(){
@@ -4806,9 +4806,11 @@ function actSaveObjectifs(){
 function actGetObjectifZone(zone, activite, idx){
   const saved = actObjectifs[zone] && actObjectifs[zone][activite] && actObjectifs[zone][activite][idx];
   if(activite==='CF'){
+    const haDefault = ACT_DEFAULT_OBJECTIFS[zone].CF_HA;
     return {
-      ha: (saved && saved.ha!==undefined) ? saved.ha : ACT_DEFAULT_OBJECTIFS[zone].CF_HA,
-      dossier: (saved && saved.dossier!==undefined) ? saved.dossier : ACT_DEFAULT_OBJECTIFS[zone].CF_DOSSIER,
+      ha: (saved && saved.ha!==undefined) ? saved.ha : haDefault,
+      // Objectif Dossier par défaut = superficie / 10 ha (superficie moyenne estimée par dossier)
+      dossier: (saved && saved.dossier!==undefined) ? saved.dossier : Math.round(haDefault/10),
     };
   }
   return (saved!==undefined) ? saved : (ACT_DEFAULT_OBJECTIFS[zone][activite]||0);
