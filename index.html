@@ -5101,9 +5101,9 @@ function actDetailRender(){
         <td style="padding:7px 10px;font-family:'DM Mono',monospace;font-size:11px;">${d.code_parcelle||'—'}</td>
         <td style="padding:7px 10px;">${d.type||''}</td>
         <td style="padding:7px 10px;">${dateVal||'—'}</td>
+        ${showCarteProduite ? `<td style="padding:7px 10px;text-align:center;">${carteProduite}</td>` : ''}
         <td style="padding:7px 10px;text-align:right;">${superficie}</td>
         <td style="padding:7px 10px;text-align:right;font-weight:600;${jours!==null&&jours>30?'color:var(--red);':''}">${jours!==null?jours.toLocaleString('fr-FR')+' j':'—'}</td>
-        ${showCarteProduite ? `<td style="padding:7px 10px;text-align:center;">${carteProduite}</td>` : ''}
       </tr>`;
     }).join('');
     const colCount = 11 + (showCarteProduite?1:0);
@@ -5118,9 +5118,9 @@ function actDetailRender(){
         <th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Code parcelle</th>
         <th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Type CF</th>
         <th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">${dateLabel}</th>
+        ${showCarteProduite ? '<th style="text-align:center;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Carte produite</th>' : ''}
         <th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Superficie (GNSS)</th>
         <th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Durée</th>
-        ${showCarteProduite ? '<th style="text-align:center;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Carte produite</th>' : ''}
       </tr></thead>
       <tbody>${rows || '<tr><td colspan="'+colCount+'" style="padding:20px;text-align:center;color:var(--text3);">Aucun dossier ne correspond aux filtres</td></tr>'}</tbody>
     </table>
@@ -5185,21 +5185,22 @@ function actDetailExportCSV(){
     const stepIdx = actDetailState.stepIdx;
     const dateLabel = ACT_CF_STEP_DATE[stepIdx].label;
     const showCarteProduite = (stepIdx===4);
-    header = ['N° Dossier','Région','Département','Sous-préfecture','Village','Demandeur','Code parcelle','Type CF',dateLabel,'Superficie GNSS (ha)','Durée (jours)'];
+    header = ['N° Dossier','Région','Département','Sous-préfecture','Village','Demandeur','Code parcelle','Type CF',dateLabel];
     if(showCarteProduite) header.push('Carte produite');
+    header.push('Superficie GNSS (ha)','Durée (jours)');
     rows = filtered.map(d=>{
       const dateVal = actCFStepDate(d, stepIdx);
       const jours = actJours(dateVal);
       const g = gnssForDossier(d);
       const row = [
         d.id||'', REGION_BY_DEPT[(d.dept||'').toUpperCase()]||'', d.dept||'', d.sp||'', d.village||'',
-        ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim(), d.code_parcelle||'', d.type||'', dateVal||'',
-        g?g.superficie.toFixed(2):'', jours!==null?jours:''
+        ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim(), d.code_parcelle||'', d.type||'', dateVal||''
       ];
       if(showCarteProduite){
         const ok = (ETAPE_ORDER_CF[d.etape]!==undefined && ETAPE_ORDER_CF[d.etape]>=ETAPE_ORDER_CF['OV']) ? 'OK' : '';
         row.push(ok);
       }
+      row.push(g?g.superficie.toFixed(2):'', jours!==null?jours:'');
       return row;
     });
   } else {
