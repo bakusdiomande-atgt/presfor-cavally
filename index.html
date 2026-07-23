@@ -4855,14 +4855,8 @@ function actSelect(act, btn){
 // ── Calcul des "Réalisés" pour le CF, à partir des vraies données AFOR/GNSS ──
 // Renvoie, pour chaque étape : nombre de dossiers (demandeurs) et superficie GNSS cumulée
 function actComputeCFRealises(afor){
-  return ACT_STEPS.CF.steps.map(step=>{
-    let matched;
-    if(step.gnss){
-      matched = afor.filter(d=>{ const g=gnssForDossier(d); return g && g.leve; });
-    } else {
-      const seuil = ETAPE_ORDER_CF[step.etape];
-      matched = afor.filter(d=>(ETAPE_ORDER_CF[d.etape]!==undefined) && ETAPE_ORDER_CF[d.etape]>=seuil);
-    }
+  return ACT_STEPS.CF.steps.map((step,idx)=>{
+    const matched = actCFStepMatch(afor, idx);
     const ha = matched.reduce((s,d)=>{ const g=gnssForDossier(d); return s+(g?g.superficie:0); }, 0);
     return { dossier: matched.length, ha: Math.round(ha) };
   });
@@ -5048,12 +5042,51 @@ function actDetailFilteredData(){
   );
 }
 
+// ── Configuration de la date de référence par étape CF (pour le calcul de durée) ──
+const ACT_CF_STEP_DATE = {
+  0:  {field:'date_DD',  label:'Date demande'},
+  1:  {field:'date_RDC', label:'Date RDC'},
+  2:  {field:'date_CL',  label:'Date constat de limite'},
+  3:  {field:'gnss',     label:'Date de levé'},
+  4:  {field:'date_CL',  label:'Date constat de limite'},
+  5:  {field:'date_OV',  label:'Date annonce publicité'},
+  6:  {field:'date_OV',  label:'Date ouverture publicité'},
+  7:  {field:'date_CP',  label:'Date clôture publicité'},
+  8:  {field:'date_AP',  label:'Date approbation'},
+  9:  {field:'date_VA',  label:'Date validation'},
+  10: {field:'date_VA',  label:'Date validation'},
+  11: {field:'date_VA',  label:'Date validation'},
+};
+function actCFStepDate(d, stepIdx){
+  const cfg = ACT_CF_STEP_DATE[stepIdx];
+  if(cfg.field==='gnss'){
+    const g = gnssForDossier(d);
+    return (g && g.entries && g.entries[0] && g.entries[0].date_leve) || null;
+  }
+  return d[cfg.field] || null;
+}
+
+// ── Dossiers ayant atteint une étape CF donnée (ou au-delà) ──
+function actCFStepMatch(afor, stepIdx){
+  const step = ACT_STEPS.CF.steps[stepIdx];
+  if(step.gnss){
+    return afor.filter(d=>{ const g=gnssForDossier(d); return g && g.leve; });
+  }
+  const seuil = ETAPE_ORDER_CF[step.etape];
+  return afor.filter(d=>(ETAPE_ORDER_CF[d.etape]!==undefined) && ETAPE_ORDER_CF[d.etape]>=seuil);
+}
+
 function actDetailRender(){
   const body = document.getElementById('act-detail-body');
   const filtered = actDetailFilteredData();
-  if(actDetailState.activite==='CF' && actDetailState.stepIdx===0){
+  if(actDetailState.activite==='CF'){
+    const stepIdx = actDetailState.stepIdx;
+    const dateLabel = ACT_CF_STEP_DATE[stepIdx].label;
     const rows = filtered.map(d=>{
-      const jours = actJours(d.date_DD);
+      const dateVal = actCFStepDate(d, stepIdx);
+      const jours = actJours(dateVal);
+      const g = gnssForDossier(d);
+      const superficie = g ? g.superficie.toFixed(2)+' ha' : '—';
       return `<tr style="border-bottom:1px solid var(--border);">
         <td style="padding:7px 10px;font-family:'DM Mono',monospace;font-size:11px;">${d.id||''}</td>
         <td style="padding:7px 10px;">${REGION_BY_DEPT[(d.dept||'').toUpperCase()]||'—'}</td>
@@ -5063,8 +5096,8 @@ function actDetailRender(){
         <td style="padding:7px 10px;">${(d.prenom||'')+' '+(d.nom_demandeur||'')}</td>
         <td style="padding:7px 10px;font-family:'DM Mono',monospace;font-size:11px;">${d.code_parcelle||'—'}</td>
         <td style="padding:7px 10px;">${d.type||''}</td>
-        <td style="padding:7px 10px;">${d.date_DD||'—'}</td>
-        <td style="padding:7px 10px;text-align:right;color:var(--text3);">—</td>
+        <td style="padding:7px 10px;">${dateVal||'—'}</td>
+        <td style="padding:7px 10px;text-align:right;">${superficie}</td>
         <td style="padding:7px 10px;text-align:right;font-weight:600;${jours!==null&&jours>30?'color:var(--red);':''}">${jours!==null?jours.toLocaleString('fr-FR')+' j':'—'}</td>
       </tr>`;
     }).join('');
@@ -5078,13 +5111,13 @@ function actDetailRender(){
         <th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Demandeur</th>
         <th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Code parcelle</th>
         <th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Type CF</th>
-        <th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Date demande</th>
-        <th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Superficie déclarée</th>
+        <th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">${dateLabel}</th>
+        <th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Superficie (GNSS)</th>
         <th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Durée</th>
       </tr></thead>
       <tbody>${rows || '<tr><td colspan="11" style="padding:20px;text-align:center;color:var(--text3);">Aucun dossier ne correspond aux filtres</td></tr>'}</tbody>
     </table>
-    <p style="font-size:11px;color:var(--text3);padding:10px 16px;">${filtered.length.toLocaleString('fr-FR')} dossier(s) affiché(s) sur ${actDetailState.data.length.toLocaleString('fr-FR')} au total. La colonne "Superficie déclarée" n'est pas encore capturée dans l'import AFOR actuel (seule la superficie mesurée au GNSS est disponible ailleurs dans l'application) — elle s'affichera ici dès que cette donnée sera intégrée à l'import.</p>`;
+    <p style="font-size:11px;color:var(--text3);padding:10px 16px;">${filtered.length.toLocaleString('fr-FR')} dossier(s) affiché(s) sur ${actDetailState.data.length.toLocaleString('fr-FR')} au total à cette étape. La durée est calculée entre la "${dateLabel.toLowerCase()}" et aujourd'hui. La superficie GNSS n'apparaît que pour les dossiers déjà levés.</p>`;
   } else {
     const label = typeof ACT_STEPS[actDetailState.activite].steps[actDetailState.stepIdx]==='string'
       ? ACT_STEPS[actDetailState.activite].steps[actDetailState.stepIdx]
@@ -5119,9 +5152,10 @@ function actShowStepDetail(activite, stepIdx){
   const label = typeof stepsDef.steps[stepIdx]==='string' ? stepsDef.steps[stepIdx] : stepsDef.steps[stepIdx].label;
   document.getElementById('act-detail-title').textContent = ACT_DEFS[activite].label + ' — ' + label;
 
+  const aforZone = (activite==='CF') ? dashFilterByZone(dossiersAFOR||[], dashZoneFilter) : [];
   actDetailState = {
     activite, stepIdx,
-    data: (activite==='CF' && stepIdx===0) ? dashFilterByZone(dossiersAFOR||[], dashZoneFilter) : [],
+    data: (activite==='CF') ? actCFStepMatch(aforZone, stepIdx) : [],
     filters: {region:'', dept:'', sp:'', village:''}
   };
   actDetailRender();
@@ -5140,14 +5174,18 @@ function actDetailExportCSV(){
     : ACT_STEPS[actDetailState.activite].steps[actDetailState.stepIdx].label;
 
   let header, rows;
-  if(actDetailState.activite==='CF' && actDetailState.stepIdx===0){
-    header = ['N° Dossier','Région','Département','Sous-préfecture','Village','Demandeur','Code parcelle','Type CF','Date demande','Superficie déclarée','Durée (jours)'];
+  if(actDetailState.activite==='CF'){
+    const stepIdx = actDetailState.stepIdx;
+    const dateLabel = ACT_CF_STEP_DATE[stepIdx].label;
+    header = ['N° Dossier','Région','Département','Sous-préfecture','Village','Demandeur','Code parcelle','Type CF',dateLabel,'Superficie GNSS (ha)','Durée (jours)'];
     rows = filtered.map(d=>{
-      const jours = actJours(d.date_DD);
+      const dateVal = actCFStepDate(d, stepIdx);
+      const jours = actJours(dateVal);
+      const g = gnssForDossier(d);
       return [
         d.id||'', REGION_BY_DEPT[(d.dept||'').toUpperCase()]||'', d.dept||'', d.sp||'', d.village||'',
-        ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim(), d.code_parcelle||'', d.type||'', d.date_DD||'',
-        '', jours!==null?jours:''
+        ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim(), d.code_parcelle||'', d.type||'', dateVal||'',
+        g?g.superficie.toFixed(2):'', jours!==null?jours:''
       ];
     });
   } else {
