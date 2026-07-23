@@ -5076,6 +5076,21 @@ function actCFStepMatch(afor, stepIdx){
   return afor.filter(d=>(ETAPE_ORDER_CF[d.etape]!==undefined) && ETAPE_ORDER_CF[d.etape]>=seuil);
 }
 
+// ── Correspondance pour les LISTES DÉTAILLÉES (par étape) : dossiers exactement à cette étape,
+// pas encore passés à la suivante — contrairement à actCFStepMatch (cumulatif, utilisé pour
+// les "Réalisés" du tableau de suivi, qui doit rester cumulatif) ──
+function actCFStepDetailMatch(afor, stepIdx){
+  const step = ACT_STEPS.CF.steps[stepIdx];
+  if(stepIdx===4){
+    // Cas particulier "Établissement du plan provisoire" : carte produite = publicité ouverte ou au-delà
+    return afor.filter(d => ETAPE_ORDER_CF[d.etape]!==undefined && ETAPE_ORDER_CF[d.etape]>=ETAPE_ORDER_CF['OV']);
+  }
+  if(step.gnss){
+    return afor.filter(d=>{ const g=gnssForDossier(d); return g && g.leve; });
+  }
+  return afor.filter(d => d.etape === step.etape);
+}
+
 function actDetailRender(){
   const body = document.getElementById('act-detail-body');
   const filtered = actDetailFilteredData();
@@ -5160,11 +5175,7 @@ function actShowStepDetail(activite, stepIdx){
   document.getElementById('act-detail-title').textContent = ACT_DEFS[activite].label + ' — ' + label;
 
   const aforZone = (activite==='CF') ? dashFilterByZone(dossiersAFOR||[], dashZoneFilter) : [];
-  let data = (activite==='CF') ? actCFStepMatch(aforZone, stepIdx) : [];
-  // Établissement du plan provisoire : ne garder que les demandeurs ayant effectivement une carte produite
-  if(activite==='CF' && stepIdx===4){
-    data = data.filter(d => ETAPE_ORDER_CF[d.etape]!==undefined && ETAPE_ORDER_CF[d.etape]>=ETAPE_ORDER_CF['OV']);
-  }
+  const data = (activite==='CF') ? actCFStepDetailMatch(aforZone, stepIdx) : [];
   actDetailState = {
     activite, stepIdx,
     data,
