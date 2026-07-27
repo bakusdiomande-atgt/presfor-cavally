@@ -5422,19 +5422,6 @@ function indRenderAll(){
   indOverviewCharts = [];
 
   const zones = ['all','cavally','worodougou'];
-  const globalStats = dashComputeStats('all');
-  const globalObj = dashObjectifsForFilter('all');
-  const tauxValGlobal = globalStats.afor.length>0 ? Math.round(globalStats.nbValides/globalStats.afor.length*100) : 0;
-  const pctHa = dashPct(globalStats.superficieValidee, globalObj.ha);
-  const pctDos = dashPct(globalStats.totalDossiers, globalObj.dossiers);
-
-  // Répartition par type de CF (Individuel / Collectif)
-  const afor = globalStats.afor;
-  const superficieOf = (list)=>list.reduce((s,d)=>{ const g=gnssForDossier(d); return s+(g?g.superficie:0); },0);
-  const supIndiv = Math.round(superficieOf(afor.filter(d=>d.type==='CFI')));
-  const supColl  = Math.round(superficieOf(afor.filter(d=>d.type==='CFC')));
-  const supTypeTotal = supIndiv+supColl;
-  const pctIndiv = supTypeTotal>0 ? Math.round(supIndiv/supTypeTotal*100) : 0;
 
   let villagesCouverts=0, villagesTotal=0;
   if(typeof ZV_GEO!=='undefined'){
@@ -5454,74 +5441,26 @@ function indRenderAll(){
     const pct = dashPct(s.superficieValidee, obj.ha);
     const cvsId = 'ind-ov-zone-'+z;
     return `<div class="tw" style="padding:14px 16px;display:flex;align-items:center;gap:14px;">
-      <div style="width:56px;height:56px;flex-shrink:0;"><canvas id="${cvsId}"></canvas></div>
+      <div style="width:60px;height:60px;flex-shrink:0;"><canvas id="${cvsId}"></canvas></div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:3px;">${label}</div>
-        <div style="font-size:11px;color:var(--text2);">${s.afor.length.toLocaleString('fr-FR')} dossiers dont ${s.nbValides.toLocaleString('fr-FR')} validés (${tauxValidation}%)</div>
-        <div style="font-size:11px;color:var(--text2);">${Math.round(s.superficieValidee).toLocaleString('fr-FR')} / ${obj.ha.toLocaleString('fr-FR')} ha sécurisés</div>
+        <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:4px;">${label}</div>
+        <div style="font-size:12px;color:var(--text2);">${s.afor.length.toLocaleString('fr-FR')} dossiers dont ${s.nbValides.toLocaleString('fr-FR')} validés (${tauxValidation}%)</div>
+        <div style="font-size:12px;color:var(--text2);">${Math.round(s.superficieValidee).toLocaleString('fr-FR')} ha sur ${obj.ha.toLocaleString('fr-FR')} ha objectif</div>
+        <div style="font-size:12px;font-weight:700;color:var(--text);">${pct}% d'avancement</div>
       </div>
     </div>`;
   }).join('');
 
   el.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
-      <div class="tw" style="padding:14px 16px;">
-        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;">Superficie sécurisée</div>
-        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--accent);">${Math.round(globalStats.superficieValidee).toLocaleString('fr-FR')} ha</div>
-        <div style="font-size:11px;color:var(--text3);margin:4px 0 6px;">Objectif : ${globalObj.ha.toLocaleString('fr-FR')} ha</div>
-        <div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;"><div style="width:${Math.min(100,pctHa)}%;height:100%;background:var(--accent);border-radius:3px;"></div></div><span style="font-size:11px;font-weight:700;color:var(--accent);">${pctHa}%</span></div>
-      </div>
-      <div class="tw" style="padding:14px 16px;">
-        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;">Dossiers traités</div>
-        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--blue);">${globalStats.totalDossiers.toLocaleString('fr-FR')}</div>
-        <div style="font-size:11px;color:var(--text3);margin:4px 0 6px;">Objectif : ${globalObj.dossiers.toLocaleString('fr-FR')}</div>
-        <div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;"><div style="width:${Math.min(100,pctDos)}%;height:100%;background:var(--blue);border-radius:3px;"></div></div><span style="font-size:11px;font-weight:700;color:var(--blue);">${pctDos}%</span></div>
-      </div>
-      <div class="tw" style="padding:14px 16px;">
-        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;">Taux de validation global</div>
-        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:#7C3AED;">${tauxValGlobal}%</div>
-        <div style="font-size:11px;color:var(--text3);margin:4px 0 6px;">${globalStats.nbValides.toLocaleString('fr-FR')} / ${globalStats.afor.length.toLocaleString('fr-FR')} dossiers</div>
-        <div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;"><div style="width:${tauxValGlobal}%;height:100%;background:#7C3AED;border-radius:3px;"></div></div><span style="font-size:11px;font-weight:700;color:#7C3AED;">${tauxValGlobal}%</span></div>
-      </div>
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:12px;margin-bottom:16px;">
-      <div class="tw" style="padding:14px 16px;display:flex;align-items:center;gap:14px;">
-        <div style="width:70px;height:70px;flex-shrink:0;"><canvas id="ind-ov-type-cvs"></canvas></div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:4px;">Répartition par type de certificat</div>
-          <div style="font-size:12px;color:var(--text2);">${supTypeTotal.toLocaleString('fr-FR')} ha dont</div>
-          <div style="font-size:12px;color:var(--text2);">${supIndiv.toLocaleString('fr-FR')} ha individuels (${pctIndiv}%)</div>
-          <div style="font-size:12px;color:var(--text2);">${supColl.toLocaleString('fr-FR')} ha collectifs (${100-pctIndiv}%)</div>
-        </div>
-      </div>
-      <div class="tw" style="padding:14px 16px;">
-        <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px;">Répartition par étape</div>
-        <div style="display:flex;flex-direction:column;gap:7px;">
-          ${[['En cours (DD/RDC)',globalStats.enCours,'var(--blue)'],['Enquêtés (CL→AP)',globalStats.enquetes,'var(--amber)'],['Validés',globalStats.nbValides,'var(--accent)'],['Rejetés',globalStats.rejetes,'var(--red)']].map(([lbl,val,col])=>{
-            const p = globalStats.afor.length>0?Math.round(val/globalStats.afor.length*100):0;
-            return `<div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-size:11px;color:var(--text2);width:130px;flex-shrink:0;">${lbl}</span>
-              <div style="flex:1;height:7px;background:var(--surface2);border-radius:4px;overflow:hidden;"><div style="width:${p}%;height:100%;background:${col};border-radius:4px;"></div></div>
-              <span style="font-size:11px;font-weight:700;color:${col};min-width:60px;text-align:right;">${val.toLocaleString('fr-FR')} (${p}%)</span>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
-    </div>
-
-    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px;">Par zone</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
       ${zoneCards}
     </div>
-
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
       <div class="kpi blue"><div class="kpi-l">Couverture villages (Cavally)</div><div class="kpi-v">${tauxCouverture}%</div><div class="kpi-s">${villagesCouverts}/${villagesTotal} villages</div></div>
       <div class="kpi amber"><div class="kpi-l">Alertes actives</div><div class="kpi-v">${(typeof notifGetAlertes==='function'?notifGetAlertes().length:0)}</div></div>
       <div class="kpi teal"><div class="kpi-l">Dossiers en contrôle qualité</div><div class="kpi-v">${Object.keys(pubCQ||{}).length}</div></div>
     </div>`;
 
-  indSmallDonut('ind-ov-type-cvs', pctIndiv, '#0D5C63', '#BBDEFB');
   zones.forEach(z=>{
     const s = dashComputeStats(z);
     const obj = dashObjectifsForFilter(z);
