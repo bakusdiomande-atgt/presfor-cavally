@@ -1327,6 +1327,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
         <button class="dash-tab-btn" data-ind-sec="agents-perf" onclick="indSwitchSection('agents-perf',this)">Agents — Performance</button>
         <button class="dash-tab-btn" data-ind-sec="zones-apercu" onclick="indSwitchSection('zones-apercu',this)">Zones — Vue d'ensemble</button>
         <button class="dash-tab-btn" data-ind-sec="zones-dept" onclick="indSwitchSection('zones-dept',this)">Zones — Par département</button>
+        <button class="dash-tab-btn" data-ind-sec="genre" onclick="indSwitchSection('genre',this)">Genre</button>
       </div>
 
       <div id="ind-section-overview" class="ind-section">
@@ -1387,6 +1388,21 @@ tbody td{padding:9px 12px;vertical-align:middle;}
           </select>
         </div>
         <div id="ind-zv-dept-detail"></div>
+      </div>
+
+      <div id="ind-section-genre" class="ind-section" style="display:none;">
+        <h3 style="font-family:'Syne',sans-serif;font-size:14px;color:var(--accent);margin:0 0 10px;">Certificats fonciers</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+          <div class="tw" id="ind-genre-card-0" style="padding:14px 16px;display:flex;align-items:center;gap:14px;"></div>
+          <div class="tw" id="ind-genre-card-1" style="padding:14px 16px;display:flex;align-items:center;gap:14px;"></div>
+          <div class="tw" id="ind-genre-card-2" style="padding:14px 16px;display:flex;align-items:center;gap:14px;"></div>
+          <div class="tw" id="ind-genre-card-3" style="padding:14px 16px;display:flex;align-items:center;gap:14px;"></div>
+        </div>
+        <h3 style="font-family:'Syne',sans-serif;font-size:14px;color:var(--accent);margin:0 0 10px;">Contrats</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="tw" id="ind-genre-card-4" style="padding:14px 16px;display:flex;align-items:center;gap:14px;"></div>
+          <div class="tw" id="ind-genre-card-5" style="padding:14px 16px;display:flex;align-items:center;gap:14px;"></div>
+        </div>
       </div>
     </div>
   </main>
@@ -1532,6 +1548,7 @@ function zoneApplyUI(){
   if(typeof agRenderKPI==='function'){ agRenderKPI(); agRenderKPI('ind-ag'); }
   if(typeof agRenderList==='function'){ agRenderList(); agRenderList('ind-ag'); }
   if(typeof agRenderPerf==='function'){ agRenderPerf(); agRenderPerf('ind-ag'); }
+  if(typeof indRenderGenre==='function') indRenderGenre();
 }
 
 function zoneSwitch(id){
@@ -5441,6 +5458,7 @@ function indSwitchSection(sectionId, btn){
   else if(sectionId==='agents-perf') agRenderPerf('ind-ag');
   else if(sectionId==='zones-apercu'){ zvRenderKPI('ind-zv'); zvRenderOverview('ind-zv'); }
   else if(sectionId==='zones-dept') zvRenderDept('ind-zv');
+  else if(sectionId==='genre') indRenderGenre();
 }
 
 // Depuis la carte département (vue d'ensemble intégrée), aller directement au détail sans quitter Indicateurs
@@ -5449,6 +5467,75 @@ function indZvGoToDept(dept){
   if(sel) sel.value = dept;
   const btn = document.querySelector('#module-indicateurs [data-ind-sec="zones-dept"]');
   indSwitchSection('zones-dept', btn);
+}
+
+// ── Rubrique Genre : répartition femmes/hommes sur le CF et les contrats ──
+let indGenreCharts = [];
+function indGenreDonut(containerId, icon, titre, total, dontFemmes, unite, pct){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  const cvsId = containerId+'-cvs';
+  el.innerHTML = `
+    <div style="width:52px;height:52px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text3);">${icon}</div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:4px;">${titre}</div>
+      <div style="font-size:12px;color:var(--text2);">${total.toLocaleString('fr-FR')} ${unite} dont</div>
+      <div style="font-size:12px;color:var(--text2);">${dontFemmes.toLocaleString('fr-FR')} à destination des femmes</div>
+      <div style="font-size:12px;font-weight:700;color:var(--text);">${pct}% à destination des femmes</div>
+    </div>
+    <div style="width:64px;height:64px;position:relative;flex-shrink:0;"><canvas id="${cvsId}"></canvas></div>`;
+  if(typeof Chart==='undefined') return;
+  const c = dashChartColors ? dashChartColors() : {accent:'#1C4A2E'};
+  const ctx = document.getElementById(cvsId);
+  const chart = new Chart(ctx, {
+    type:'doughnut',
+    data:{ datasets:[{data:[pct, 100-pct], backgroundColor:['#0D5C63','#BBDEFB'], borderWidth:0}] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%', plugins:{legend:{display:false}, tooltip:{enabled:false}} },
+    plugins:[{
+      id:'centerTxt'+containerId,
+      afterDraw(ch){
+        const {ctx,chartArea:{width,height,left,top}}=ch;
+        ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.font="700 13px 'Syne', sans-serif"; ctx.fillStyle='#0D5C63';
+        ctx.fillText(pct+'%', left+width/2, top+height/2);
+        ctx.restore();
+      }
+    }]
+  });
+  indGenreCharts.push(chart);
+}
+
+function indRenderGenre(){
+  if(!document.getElementById('ind-genre-card-0')) return;
+  indGenreCharts.forEach(c=>c.destroy());
+  indGenreCharts = [];
+
+  const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
+  const iconPerson = '<svg width="26" height="26" viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2 1H6a4 4 0 0 0-4 4v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1a4 4 0 0 0-4-4z"/></svg>';
+  const iconGroup = '<svg width="26" height="26" viewBox="0 0 16 16" fill="currentColor"><path d="M7 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm4.5-1a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM7 9c-2.2 0-4 1.3-4 3v1h8v-1c0-1.7-1.8-3-4-3zm4.5.2c1.6.3 2.5 1.3 2.5 2.3v.5h-2v-.5c0-.8-.2-1.6-.5-2.3z"/></svg>';
+
+  const superficieOf = (list)=>list.reduce((s,d)=>{ const g=gnssForDossier(d); return s+(g?g.superficie:0); },0);
+  const build = (list, containerId, icon, titre, unite)=>{
+    const total = Math.round(superficieOf(list));
+    const femmes = Math.round(superficieOf(list.filter(d=>d.genre==='F')));
+    const pct = total>0 ? Math.round(femmes/total*100) : 0;
+    indGenreDonut(containerId, icon, titre, total, femmes, unite, pct);
+  };
+
+  const cfiEnCours = afor.filter(d=>d.type==='CFI' && d.etape!=='VA');
+  const cfiDelivre  = afor.filter(d=>d.type==='CFI' && d.etape==='VA');
+  const cfcEnCours = afor.filter(d=>d.type==='CFC' && d.etape!=='VA');
+  const cfcDelivre  = afor.filter(d=>d.type==='CFC' && d.etape==='VA');
+
+  build(cfiEnCours, 'ind-genre-card-0', iconPerson, 'Dossiers individuels en cours de traitement', 'Ha');
+  build(cfiDelivre,  'ind-genre-card-1', iconPerson, 'CF individuels délivrés', 'Ha');
+  build(cfcEnCours, 'ind-genre-card-2', iconGroup,  'Dossiers collectifs en cours de traitement', 'Ha');
+  build(cfcDelivre,  'ind-genre-card-3', iconGroup,  'CF collectifs délivrés', 'Ha');
+
+  // Contrats : aucune donnée de contrat n'existe encore dans l'application (activité Contractualisation
+  // limitée pour l'instant à un simple compteur de dossiers) — affiché à 0 en attendant un import dédié.
+  indGenreDonut('ind-genre-card-4', iconPerson, 'Détentrices', 0, 0, 'contrats', 0);
+  indGenreDonut('ind-genre-card-5', iconPerson, 'Exploitantes', 0, 0, 'contrats', 0);
 }
 
 function cqeRenderAll(){
@@ -7213,7 +7300,7 @@ const AFOR_COLS = {
   num:'Numéro de Dossier', prenom:'Prénom', nom:'Nom',
   dept:'Département', sp:'Sous-Préfecture', village:'Village',
   agent:'Nom CE', type:'Type de Certificat', etape:'Étape Actuelle',
-  code_parcelle:'Code Parcelle',
+  code_parcelle:'Code Parcelle', genre:'Genre',
   date_DD:'Date de Création', date_RDC:'Date de RDC',
   date_CL:'Date de Constat de limite',
   date_OV:'Date Ouverture de Publicité',
@@ -7455,6 +7542,7 @@ function aforImportExcel(input){
           agent: aforAgentNom((row[AFOR_COLS.agent]||'').trim()),
           agent_raw: (row[AFOR_COLS.agent]||'').trim(),
           type: (row[AFOR_COLS.type]||'').trim(),
+          genre: (()=>{ const g=(row[AFOR_COLS.genre]||'').trim().toUpperCase(); return g.startsWith('F')?'F':g.startsWith('H')||g.startsWith('M')?'H':''; })(),
           etape,
           date_DD:  fmtD(row[AFOR_COLS.date_DD]),
           date_RDC: fmtD(row[AFOR_COLS.date_RDC]),
