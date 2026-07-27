@@ -1321,7 +1321,73 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       <div class="page-head">
         <div><h2>Indicateurs</h2><p>Vue détaillée des indicateurs de performance du projet</p></div>
       </div>
-      <div id="ind-content"></div>
+      <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;">
+        <button class="dash-tab-btn active" data-ind-sec="overview" onclick="indSwitchSection('overview',this)">Vue d'ensemble</button>
+        <button class="dash-tab-btn" data-ind-sec="agents-liste" onclick="indSwitchSection('agents-liste',this)">Agents — Liste</button>
+        <button class="dash-tab-btn" data-ind-sec="agents-perf" onclick="indSwitchSection('agents-perf',this)">Agents — Performance</button>
+        <button class="dash-tab-btn" data-ind-sec="zones-apercu" onclick="indSwitchSection('zones-apercu',this)">Zones — Vue d'ensemble</button>
+        <button class="dash-tab-btn" data-ind-sec="zones-dept" onclick="indSwitchSection('zones-dept',this)">Zones — Par département</button>
+      </div>
+
+      <div id="ind-section-overview" class="ind-section">
+        <div id="ind-content"></div>
+      </div>
+
+      <div id="ind-section-agents-liste" class="ind-section" style="display:none;">
+        <div class="kpi-bar" id="ind-ag-kpi"></div>
+        <div class="filter-bar">
+          <input type="text" id="ind-ag-srch" placeholder="Nom, fonction..." oninput="agRenderList('ind-ag')">
+          <select id="ind-ag-f-fonction" onchange="agRenderList('ind-ag')">
+            <option value="">Toutes fonctions</option>
+            <option>Commissaire enquêteur</option>
+            <option>Chef d'équipe départemental</option>
+            <option>Opérateur GNSS</option>
+            <option>RR ISF</option>
+            <option>ISF</option>
+            <option>ASF</option>
+          </select>
+          <select id="ind-ag-f-dept" onchange="agRenderList('ind-ag')">
+            <option value="">Tous dép.</option>
+            <option>Dép. Guiglo</option><option>Dép. Bloléquin</option>
+            <option>Dép. Taï</option><option>Dép. Toulépleu</option>
+          </select>
+        </div>
+        <div id="ind-ag-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;"></div>
+      </div>
+
+      <div id="ind-section-agents-perf" class="ind-section" style="display:none;">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+          <button class="btn-s" onclick="gnssExportUnmatchedCSV()" title="Parcelles GNSS sans correspondance parfaite avec la base AFOR">↓ Opérateurs GNSS non reconnus</button>
+        </div>
+        <div class="kpi-bar" id="ind-ag-perf-kpi"></div>
+        <div class="tw"><table>
+          <thead><tr>
+            <th>Rang</th><th>Agent</th><th>Fonction</th>
+            <th title="Dossiers saisis (CE/ISF) ou parcelles levées (Opérateur GNSS)">Dossiers traités</th>
+            <th title="Superficie GNSS levée (colonne NOM_AGENT du fichier GNSS)">Superficie (ha)</th>
+            <th>Dossiers CF</th><th>Jours terrain</th><th>Moy./jour</th><th>Performance</th>
+          </tr></thead>
+          <tbody id="ind-ag-perf-tbody"></tbody>
+        </table></div>
+      </div>
+
+      <div id="ind-section-zones-apercu" class="ind-section" style="display:none;">
+        <div class="kpi-bar" id="ind-zv-kpi"></div>
+        <div id="ind-zv-dept-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;"></div>
+      </div>
+
+      <div id="ind-section-zones-dept" class="ind-section" style="display:none;">
+        <div class="page-head" style="margin-bottom:10px;">
+          <div><h3 style="margin:0;font-family:'Syne',sans-serif;font-size:14px;">Détail par département</h3><p style="margin:2px 0 0;font-size:11px;">Sous-préfectures et villages</p></div>
+          <select class="btn-s" id="ind-zv-dept-sel" onchange="zvRenderDept('ind-zv')" style="padding:7px 12px;font-size:12px;">
+            <option value="Dép. Guiglo">Dép. Guiglo</option>
+            <option value="Dép. Bloléquin">Dép. Bloléquin</option>
+            <option value="Dép. Taï">Dép. Taï</option>
+            <option value="Dép. Toulépleu">Dép. Toulépleu</option>
+          </select>
+        </div>
+        <div id="ind-zv-dept-detail"></div>
+      </div>
     </div>
   </main>
 </div>
@@ -2848,10 +2914,13 @@ function agFonctionColor(f){
 }
 
 // ── Liste cartes ──
-function agRenderList(){
-  const q=(document.getElementById('ag-srch').value||'').toLowerCase();
-  const ff=document.getElementById('ag-f-fonction').value;
-  const fd=document.getElementById('ag-f-dept').value;
+function agRenderList(idPrefix){
+  idPrefix = idPrefix || 'ag';
+  const srchEl = document.getElementById(idPrefix+'-srch');
+  if(!srchEl) return;
+  const q=(srchEl.value||'').toLowerCase();
+  const ff=document.getElementById(idPrefix+'-f-fonction').value;
+  const fd=document.getElementById(idPrefix+'-f-dept').value;
   const today=new Date().toISOString().split('T')[0];
 
   const list = AGENTS_FULL.filter(a=>{
@@ -2861,7 +2930,7 @@ function agRenderList(){
     return mq&&mf&&md;
   });
 
-  const grid = document.getElementById('ag-cards-grid');
+  const grid = document.getElementById(idPrefix+'-cards-grid');
   grid.innerHTML = list.map(a=>{
     const c = agFonctionColor(a.fonction);
     const isGnssAgent = a.fonction === 'Opérateur GNSS';
@@ -3107,7 +3176,11 @@ function agOpenFiche(nom){
 }
 
 // ── Performance comparative ──
-function agRenderPerf(){
+function agRenderPerf(idPrefix){
+  idPrefix = idPrefix || 'ag';
+  const kpiEl = document.getElementById(idPrefix+'-perf-kpi');
+  const tbodyEl = document.getElementById(idPrefix+'-perf-tbody');
+  if(!kpiEl || !tbodyEl) return;
   const data = AGENTS_FULL.map(a=>{
     const mesDossiers = dossiers.filter(d=>d.agent===a.nom);
     const dosCF = mesDossiers.filter(d=>d.activite==='CF').length;
@@ -3135,13 +3208,13 @@ function agRenderPerf(){
   const meilleur = data[0];
   const totalHaGnss = data.reduce((s,d)=>s+(d.ha||0),0);
 
-  document.getElementById('ag-perf-kpi').innerHTML=`
+  kpiEl.innerHTML=`
     <div class="kpi green"><div class="kpi-l">Production totale</div><div class="kpi-v">${totalAll}</div><div class="kpi-s">Tous agents</div></div>
     <div class="kpi blue"><div class="kpi-l">Agents actifs</div><div class="kpi-v">${actifs}</div><div class="kpi-s">Avec production</div></div>
     <div class="kpi amber"><div class="kpi-l">Meilleure perf.</div><div class="kpi-v">${meilleur?.totalDos||0}</div><div class="kpi-s">${meilleur?.a.nom.split(' ')[0]||'—'}</div></div>
     <div class="kpi teal"><div class="kpi-l">Superficie GNSS</div><div class="kpi-v" style="font-size:16px;">${totalHaGnss.toFixed(1)} ha</div><div class="kpi-s">Opérateurs GNSS</div></div>`;
 
-  document.getElementById('ag-perf-tbody').innerHTML = data.map((d,i)=>{
+  tbodyEl.innerHTML = data.map((d,i)=>{
     const c = agFonctionColor(d.a.fonction);
     const pct = maxDos>0?Math.round(d.totalDos/maxDos*100):0;
     const perf = pct>=80?{label:'Excellent',bg:'var(--accent-lt)',tx:'var(--accent-txt)'}:
@@ -3388,7 +3461,10 @@ function zvGetDeptStats(dept){
 }
 
 // ── KPI ──
-function zvRenderKPI(){
+function zvRenderKPI(idPrefix){
+  idPrefix = idPrefix || 'zv';
+  const el = document.getElementById(idPrefix+'-kpi');
+  if(!el) return;
   const depts = Object.keys(ZV_GEO);
   const allV = depts.flatMap(d=>Object.values(ZV_GEO[d].sp).flat());
   const totalV = allV.length;
@@ -3399,7 +3475,7 @@ function zvRenderKPI(){
   }).length;
   const pct = totalV>0?Math.round(couverts/totalV*100):0;
   const totalSP = depts.reduce((s,d)=>s+Object.keys(ZV_GEO[d].sp).length,0);
-  document.getElementById('zv-kpi').innerHTML=`
+  el.innerHTML=`
     <div class="kpi blue"><div class="kpi-l">Départements</div><div class="kpi-v">4</div><div class="kpi-s">Région du Cavally</div></div>
     <div class="kpi"><div class="kpi-l">Sous-préfectures</div><div class="kpi-v">${totalSP}</div><div class="kpi-s">${totalV} villages recensés</div></div>
     <div class="kpi green"><div class="kpi-l">Villages couverts</div><div class="kpi-v">${couverts}</div><div class="kpi-s">Taux : ${pct}%</div></div>
@@ -3407,15 +3483,17 @@ function zvRenderKPI(){
 }
 
 // ── Vue d'ensemble : cartes départements ──
-function zvRenderOverview(){
-  const cards = document.getElementById('zv-dept-cards');
+function zvRenderOverview(idPrefix){
+  idPrefix = idPrefix || 'zv';
+  const cards = document.getElementById(idPrefix+'-dept-cards');
   if(!cards) return;
+  const goFn = idPrefix==='zv' ? 'zvGoToDept' : 'indZvGoToDept';
   cards.innerHTML = Object.entries(ZV_GEO).map(([dept, info])=>{
     const s = zvGetDeptStats(dept);
     const pct = s.pct||0;
     const col = pct>=70?'var(--accent)':pct>=40?'var(--amber)':'var(--red)';
     const nbSP = Object.keys(info.sp).length;
-    return `<div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;cursor:pointer;" onclick="zvGoToDept('${dept}')">
+    return `<div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;cursor:pointer;" onclick="${goFn}('${dept}')">
       <div style="background:${info.couleur.brd};padding:16px 18px;display:flex;justify-content:space-between;align-items:center;">
         <div>
           <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#fff">${dept.replace('Dép. ','')}</div>
@@ -3457,10 +3535,14 @@ function zvGoToDept(dept){
 }
 
 // ── Détail département ──
-function zvRenderDept(){
-  const dept = document.getElementById('zv-dept-sel').value;
+function zvRenderDept(idPrefix){
+  idPrefix = idPrefix || 'zv';
+  const selEl = document.getElementById(idPrefix+'-dept-sel');
+  if(!selEl) return;
+  const dept = selEl.value;
   const info = ZV_GEO[dept];
-  if(!info){document.getElementById('zv-dept-detail').innerHTML='';return;}
+  const detailEl = document.getElementById(idPrefix+'-dept-detail');
+  if(!info){ if(detailEl) detailEl.innerHTML=''; return; }
   const s = zvGetDeptStats(dept);
   let html2 = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
     <div class="kpi green"><div class="kpi-l">Villages couverts</div><div class="kpi-v">${s.couverts}</div><div class="kpi-s">Dossiers CF ouverts</div></div>
@@ -3502,7 +3584,7 @@ function zvRenderDept(){
     </div>`;
   }).join('');
 
-  document.getElementById('zv-dept-detail').innerHTML=html2;
+  if(detailEl) detailEl.innerHTML=html2;
 }
 
 // ── Tous les villages ──
@@ -5326,6 +5408,29 @@ function indRenderAll(){
 // ═══════════════════════════════════════════
 // MODULE CQE — Contrôle Qualité Enquête
 // ═══════════════════════════════════════════
+// ── Sous-onglets Indicateurs : Agents (M4) et Zones (M5) intégrés comme rubriques ──
+function indSwitchSection(sectionId, btn){
+  document.querySelectorAll('#module-indicateurs .ind-section').forEach(s=>s.style.display='none');
+  const target = document.getElementById('ind-section-'+sectionId);
+  if(target) target.style.display='block';
+  document.querySelectorAll('#module-indicateurs .dash-tab-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+
+  if(sectionId==='overview') indRenderAll();
+  else if(sectionId==='agents-liste') agRenderList('ind-ag');
+  else if(sectionId==='agents-perf') agRenderPerf('ind-ag');
+  else if(sectionId==='zones-apercu'){ zvRenderKPI('ind-zv'); zvRenderOverview('ind-zv'); }
+  else if(sectionId==='zones-dept') zvRenderDept('ind-zv');
+}
+
+// Depuis la carte département (vue d'ensemble intégrée), aller directement au détail sans quitter Indicateurs
+function indZvGoToDept(dept){
+  const sel = document.getElementById('ind-zv-dept-sel');
+  if(sel) sel.value = dept;
+  const btn = document.querySelector('#module-indicateurs [data-ind-sec="zones-dept"]');
+  indSwitchSection('zones-dept', btn);
+}
+
 function cqeRenderAll(){
   const kpiEl = document.getElementById('cqe-kpi');
   const contentEl = document.getElementById('cqe-content');
