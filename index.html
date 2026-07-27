@@ -5510,24 +5510,10 @@ function indRenderAll(){
   const pDelivre = panel('Répartition des certificats fonciers délivrés', delivre, 'ind-ov-pie-delivre');
 
   el.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
       ${pEnCours.html}
       ${pDelivre.html}
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
-      <div class="kpi blue"><div class="kpi-l">Couverture villages (Cavally)</div><div class="kpi-v">${(function(){
-        let c=0,t=0;
-        if(typeof ZV_GEO!=='undefined'){ Object.keys(ZV_GEO).forEach(dept=>{ const st=zvGetDeptStats(dept); c+=st.couverts||0; t+=(st.allVillages||[]).length; }); }
-        return t>0?Math.round(c/t*100):0;
-      })()}%</div><div class="kpi-s" id="ind-ov-villages-detail"></div></div>
-      <div class="kpi amber"><div class="kpi-l">Alertes actives</div><div class="kpi-v">${(typeof notifGetAlertes==='function'?notifGetAlertes().length:0)}</div></div>
-      <div class="kpi teal"><div class="kpi-l">Dossiers en contrôle qualité</div><div class="kpi-v">${Object.keys(pubCQ||{}).length}</div></div>
     </div>`;
-
-  let vc=0,vt=0;
-  if(typeof ZV_GEO!=='undefined'){ Object.keys(ZV_GEO).forEach(dept=>{ const st=zvGetDeptStats(dept); vc+=st.couverts||0; vt+=(st.allVillages||[]).length; }); }
-  const villDetailEl = document.getElementById('ind-ov-villages-detail');
-  if(villDetailEl) villDetailEl.textContent = vc+'/'+vt+' villages';
 
   const drawPie = (cvsId, pctIndiv, pctColl)=>{
     if(typeof Chart==='undefined') return;
