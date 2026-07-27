@@ -3038,6 +3038,8 @@ function agRenderList(idPrefix){
 // ── Fiche détaillée ──
 function agOpenFiche(nom){
   try {
+  const modAgents = document.getElementById('module-agents');
+  if(modAgents && !modAgents.classList.contains('active')){ switchModule('agents'); }
   const a = AGENTS_FULL.find(x=>x.nom===nom);
   if(!a){ console.error('Agent non trouvé:', nom); return; }
   const c = agFonctionColor(a.fonction);
