@@ -5421,52 +5421,88 @@ function indRenderAll(){
   indOverviewCharts.forEach(c=>c.destroy());
   indOverviewCharts = [];
 
-  const zones = ['all','cavally','worodougou'];
+  const afor = dashComputeStats(dashZoneFilter).afor;
+  const superficieOf = (list)=>list.reduce((s,d)=>{ const g=gnssForDossier(d); return s+(g?g.superficie:0); },0);
 
-  let villagesCouverts=0, villagesTotal=0;
-  if(typeof ZV_GEO!=='undefined'){
-    Object.keys(ZV_GEO).forEach(dept=>{
-      const st = zvGetDeptStats(dept);
-      villagesCouverts += st.couverts||0;
-      villagesTotal += (st.allVillages||[]).length;
-    });
-  }
-  const tauxCouverture = villagesTotal>0 ? Math.round(villagesCouverts/villagesTotal*100) : 0;
+  const enCours = afor.filter(d=>d.etape!=='VA');
+  const delivre = afor.filter(d=>d.etape==='VA');
 
-  const zoneCards = zones.map(z=>{
-    const s = dashComputeStats(z);
-    const obj = dashObjectifsForFilter(z);
-    const tauxValidation = s.afor.length>0 ? Math.round(s.nbValides/s.afor.length*100) : 0;
-    const label = z==='all' ? 'Toutes les zones' : PROJECT_ZONES[z].label;
-    const pct = dashPct(s.superficieValidee, obj.ha);
-    const cvsId = 'ind-ov-zone-'+z;
-    return `<div class="tw" style="padding:14px 16px;display:flex;align-items:center;gap:14px;">
-      <div style="width:60px;height:60px;flex-shrink:0;"><canvas id="${cvsId}"></canvas></div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:4px;">${label}</div>
-        <div style="font-size:12px;color:var(--text2);">${s.afor.length.toLocaleString('fr-FR')} dossiers dont ${s.nbValides.toLocaleString('fr-FR')} validés (${tauxValidation}%)</div>
-        <div style="font-size:12px;color:var(--text2);">${Math.round(s.superficieValidee).toLocaleString('fr-FR')} ha sur ${obj.ha.toLocaleString('fr-FR')} ha objectif</div>
-        <div style="font-size:12px;font-weight:700;color:var(--text);">${pct}% d'avancement</div>
-      </div>
-    </div>`;
-  }).join('');
+  const panel = (titre, liste, cvsId)=>{
+    const indiv = liste.filter(d=>d.type==='CFI');
+    const coll  = liste.filter(d=>d.type==='CFC');
+    const supIndiv = Math.round(superficieOf(indiv));
+    const supColl  = Math.round(superficieOf(coll));
+    const supTotal = supIndiv+supColl;
+    const pctIndiv = supTotal>0 ? Math.round(supIndiv/supTotal*100) : 0;
+    const pctColl  = 100-pctIndiv;
+    const supMoyenne = liste.length>0 ? (supTotal/liste.length) : 0;
+    return {
+      html: `<div class="tw" style="overflow:hidden;">
+        <div style="background:var(--surface2);padding:10px 16px;border-bottom:1px solid var(--border);">
+          <h3 style="margin:0;font-family:'Syne',sans-serif;font-size:13px;color:var(--blue);">${titre}</h3>
+        </div>
+        <div style="padding:16px;">
+          <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:10px;">Par superficie</div>
+          <div style="display:flex;align-items:center;gap:16px;">
+            <div style="width:90px;height:90px;flex-shrink:0;"><canvas id="${cvsId}"></canvas></div>
+            <div style="font-size:12px;color:var(--text2);line-height:1.7;">
+              <div>${supTotal.toLocaleString('fr-FR')} Ha dont</div>
+              <div>${supIndiv.toLocaleString('fr-FR')} ha de certificat individuels soit ${pctIndiv}%</div>
+              <div>${supColl.toLocaleString('fr-FR')} ha de certificat collectifs soit ${pctColl}%</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 16px;">
+          <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;">
+            <div style="font-size:11px;color:var(--blue);font-weight:700;margin-bottom:4px;">Superficie moyenne</div>
+            <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;">${supMoyenne.toFixed(1)} Hectares</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;">
+            <div style="font-size:11px;color:var(--blue);font-weight:700;margin-bottom:4px;">Superficie totale</div>
+            <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;">${supTotal.toLocaleString('fr-FR')} Hectares</div>
+          </div>
+        </div>
+      </div>`,
+      pctIndiv, pctColl
+    };
+  };
+
+  const pEnCours = panel('Répartition des superficies en cours de traitement', enCours, 'ind-ov-pie-encours');
+  const pDelivre = panel('Répartition des certificats fonciers délivrés', delivre, 'ind-ov-pie-delivre');
 
   el.innerHTML = `
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
-      ${zoneCards}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+      ${pEnCours.html}
+      ${pDelivre.html}
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
-      <div class="kpi blue"><div class="kpi-l">Couverture villages (Cavally)</div><div class="kpi-v">${tauxCouverture}%</div><div class="kpi-s">${villagesCouverts}/${villagesTotal} villages</div></div>
+      <div class="kpi blue"><div class="kpi-l">Couverture villages (Cavally)</div><div class="kpi-v">${(function(){
+        let c=0,t=0;
+        if(typeof ZV_GEO!=='undefined'){ Object.keys(ZV_GEO).forEach(dept=>{ const st=zvGetDeptStats(dept); c+=st.couverts||0; t+=(st.allVillages||[]).length; }); }
+        return t>0?Math.round(c/t*100):0;
+      })()}%</div><div class="kpi-s" id="ind-ov-villages-detail"></div></div>
       <div class="kpi amber"><div class="kpi-l">Alertes actives</div><div class="kpi-v">${(typeof notifGetAlertes==='function'?notifGetAlertes().length:0)}</div></div>
       <div class="kpi teal"><div class="kpi-l">Dossiers en contrôle qualité</div><div class="kpi-v">${Object.keys(pubCQ||{}).length}</div></div>
     </div>`;
 
-  zones.forEach(z=>{
-    const s = dashComputeStats(z);
-    const obj = dashObjectifsForFilter(z);
-    const pct = dashPct(s.superficieValidee, obj.ha);
-    indSmallDonut('ind-ov-zone-'+z, Math.min(100,pct), '#1C4A2E', '#BBDEFB');
-  });
+  let vc=0,vt=0;
+  if(typeof ZV_GEO!=='undefined'){ Object.keys(ZV_GEO).forEach(dept=>{ const st=zvGetDeptStats(dept); vc+=st.couverts||0; vt+=(st.allVillages||[]).length; }); }
+  const villDetailEl = document.getElementById('ind-ov-villages-detail');
+  if(villDetailEl) villDetailEl.textContent = vc+'/'+vt+' villages';
+
+  const drawPie = (cvsId, pctIndiv, pctColl)=>{
+    if(typeof Chart==='undefined') return;
+    const ctx = document.getElementById(cvsId);
+    if(!ctx) return;
+    const chart = new Chart(ctx, {
+      type:'pie',
+      data:{ datasets:[{data:[pctIndiv, pctColl], backgroundColor:['#4C8BF5','#F5A623'], borderWidth:0}] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{enabled:false}} }
+    });
+    indOverviewCharts.push(chart);
+  };
+  drawPie('ind-ov-pie-encours', pEnCours.pctIndiv, pEnCours.pctColl);
+  drawPie('ind-ov-pie-delivre', pDelivre.pctIndiv, pDelivre.pctColl);
 }
 
 // ═══════════════════════════════════════════
