@@ -1529,6 +1529,9 @@ function zoneApplyUI(){
   if(typeof actRenderAll==='function') actRenderAll();
   if(typeof indRenderAll==='function') indRenderAll();
   if(typeof cqeRenderAll==='function') cqeRenderAll();
+  if(typeof agRenderKPI==='function'){ agRenderKPI(); agRenderKPI('ind-ag'); }
+  if(typeof agRenderList==='function'){ agRenderList(); agRenderList('ind-ag'); }
+  if(typeof agRenderPerf==='function'){ agRenderPerf(); agRenderPerf('ind-ag'); }
 }
 
 function zoneSwitch(id){
@@ -2634,37 +2637,37 @@ function dosClearAll(){if(!confirm('Réinitialiser les dossiers ?'))return;dossi
 // ═══════════════════════════════════════════
 // ── Référentiel complet agents PRESFOR Cavally ──
 const AGENTS_FULL = [
-  {nom:'Diby Arnaud',                    tel:'0758739395',  fonction:'Commissaire enquêteur'},
-  {nom:'Kouadio Ahou Estelle',           tel:'0707356623',  fonction:'Commissaire enquêteur'},
-  {nom:'Kouassi Kobina Philippe',        tel:'0140532021',  fonction:'Commissaire enquêteur'},
-  {nom:'Bakayoko Adama',                 tel:'0779210922',  fonction:'Commissaire enquêteur'},
-  {nom:"N'Guessan Armand",              tel:'0708319517',  fonction:'Commissaire enquêteur'},
-  {nom:'Chigbeu Akoue Florent',          tel:'0707831770',  fonction:"Chef d'équipe départemental"},
-  {nom:'Konan Alex',                     tel:'0151630093',  fonction:'Opérateur GNSS'},
-  {nom:'Kone Boike',                     tel:'0172093930',  fonction:'Opérateur GNSS'},
-  {nom:'Fofana Ahoua',                   tel:'0574443707',  fonction:'Opérateur GNSS'},
-  {nom:'Kouadio Ezeckiel',               tel:'0787288228',  fonction:'Opérateur GNSS'},
-  {nom:'Dago Guy Melaine',               tel:'0707970403',  fonction:'Commissaire enquêteur'},
-  {nom:'Tizie Irie Phillipe',            tel:'0101801372',  fonction:'Commissaire enquêteur'},
-  {nom:'Agbonou A. B. C. Beranger',      tel:'0757351147',  fonction:'Commissaire enquêteur'},
-  {nom:'Yeboua Adjia Emmanuela',         tel:'0708136233',  fonction:'Commissaire enquêteur'},
-  {nom:'Aboya Affoua Ines',              tel:'0797583942',  fonction:'Commissaire enquêteur'},
-  {nom:'Gueu Minwodo Siril',             tel:'0720503523',  fonction:'Commissaire enquêteur'},
-  {nom:'Bleu Deaouhande Wilfried',       tel:'0709871683',  fonction:'Commissaire enquêteur'},
-  {nom:'Ettien Aimee Sandrine',          tel:'0788625302',  fonction:'Commissaire enquêteur'},
-  {nom:'Grah Legnond Edgard',            tel:'0767287311',  fonction:'Commissaire enquêteur'},
-  {nom:'Yao Atouman Jean Charles',       tel:'0555100634',  fonction:'Opérateur GNSS'},
-  {nom:'Dje Christian Dominique Konan',  tel:'0720530055',  fonction:'Opérateur GNSS'},
-  {nom:'Fakayode Abdul',                 tel:'0173735246',  fonction:'Opérateur GNSS'},
-  {nom:'Samassi Ismael',                 tel:'0749678794',  fonction:"Chef d'équipe départemental"},
-  {nom:'Kouassi Kouame Gislain',         tel:'0777440514',  fonction:'Opérateur GNSS'},
-  {nom:'Tohoua Eric',                    tel:'0709821745',  fonction:'RR ISF'},
-  {nom:'Ehouman Michael',                tel:'0707337407',  fonction:'ISF'},
-  {nom:'Beugre Raphael',                 tel:'0505095696',  fonction:'ISF'},
-  {nom:'Kodjo Geraud',                   tel:'0777191106',  fonction:'ISF'},
-  {nom:'Kouadio Charles',                tel:'0758083469',  fonction:'ASF'},
-  {nom:"N'Guetta Manouan Marcel",        tel:'0709584472',  fonction:'ASF'},
-  {nom:'Koffi Nathanael',                tel:'0708727114',  fonction:'ASF'},
+  {nom:'Diby Arnaud',                    tel:'0758739395',  fonction:'Commissaire enquêteur', zone:'cavally'},
+  {nom:'Kouadio Ahou Estelle',           tel:'0707356623',  fonction:'Commissaire enquêteur', zone:'cavally'},
+  {nom:'Kouassi Kobina Philippe',        tel:'0140532021',  fonction:'Commissaire enquêteur', zone:'cavally'},
+  {nom:'Bakayoko Adama',                 tel:'0779210922',  fonction:'Commissaire enquêteur', zone:'cavally'},
+  {nom:"N'Guessan Armand",              tel:'0708319517',  fonction:'Commissaire enquêteur', zone:'cavally'},
+  {nom:'Chigbeu Akoue Florent',          tel:'0707831770',  fonction:"Chef d'équipe départemental", zone:'cavally'},
+  {nom:'Konan Alex',                     tel:'0151630093',  fonction:'Opérateur GNSS', zone:'cavally'},
+  {nom:'Kone Boike',                     tel:'0172093930',  fonction:'Opérateur GNSS', zone:'cavally'},
+  {nom:'Fofana Ahoua',                   tel:'0574443707',  fonction:'Opérateur GNSS', zone:'cavally'},
+  {nom:'Kouadio Ezeckiel',               tel:'0787288228',  fonction:'Opérateur GNSS', zone:'cavally'},
+  {nom:'Dago Guy Melaine',               tel:'0707970403',  fonction:'Commissaire enquêteur', zone:'cavally'},
+  {nom:'Tizie Irie Phillipe',            tel:'0101801372',  fonction:'Commissaire enquêteur', zone:'cavally'},
+  {nom:'Agbonou A. B. C. Beranger',      tel:'0757351147',  fonction:'Commissaire enquêteur', zone:'cavally'},
+  {nom:'Yeboua Adjia Emmanuela',         tel:'0708136233',  fonction:'Commissaire enquêteur', zone:'cavally'},
+  {nom:'Aboya Affoua Ines',              tel:'0797583942',  fonction:'Commissaire enquêteur', zone:'cavally'},
+  {nom:'Gueu Minwodo Siril',             tel:'0720503523',  fonction:'Commissaire enquêteur', zone:'cavally'},
+  {nom:'Bleu Deaouhande Wilfried',       tel:'0709871683',  fonction:'Commissaire enquêteur', zone:'cavally'},
+  {nom:'Ettien Aimee Sandrine',          tel:'0788625302',  fonction:'Commissaire enquêteur', zone:'cavally'},
+  {nom:'Grah Legnond Edgard',            tel:'0767287311',  fonction:'Commissaire enquêteur', zone:'cavally'},
+  {nom:'Yao Atouman Jean Charles',       tel:'0555100634',  fonction:'Opérateur GNSS', zone:'cavally'},
+  {nom:'Dje Christian Dominique Konan',  tel:'0720530055',  fonction:'Opérateur GNSS', zone:'cavally'},
+  {nom:'Fakayode Abdul',                 tel:'0173735246',  fonction:'Opérateur GNSS', zone:'cavally'},
+  {nom:'Samassi Ismael',                 tel:'0749678794',  fonction:"Chef d'équipe départemental", zone:'cavally'},
+  {nom:'Kouassi Kouame Gislain',         tel:'0777440514',  fonction:'Opérateur GNSS', zone:'cavally'},
+  {nom:'Tohoua Eric',                    tel:'0709821745',  fonction:'RR ISF', zone:'cavally'},
+  {nom:'Ehouman Michael',                tel:'0707337407',  fonction:'ISF', zone:'cavally'},
+  {nom:'Beugre Raphael',                 tel:'0505095696',  fonction:'ISF', zone:'cavally'},
+  {nom:'Kodjo Geraud',                   tel:'0777191106',  fonction:'ISF', zone:'cavally'},
+  {nom:'Kouadio Charles',                tel:'0758083469',  fonction:'ASF', zone:'cavally'},
+  {nom:"N'Guetta Manouan Marcel",        tel:'0709584472',  fonction:'ASF', zone:'cavally'},
+  {nom:'Koffi Nathanael',                tel:'0708727114',  fonction:'ASF', zone:'cavally'},
 ];
 
 // ── Stats GNSS par opérateur — colonne NOM_AGENT du fichier Excel ──
@@ -2887,16 +2890,19 @@ function agShowPanel(id, btn){
 }
 
 // ── KPI ──
-function agRenderKPI(){
-  const total = AGENTS_FULL.length;
-  const parFonction = {};
-  AGENTS_FULL.forEach(a=>{ parFonction[a.fonction]=(parFonction[a.fonction]||0)+1; });
-  const chefs = AGENTS_FULL.filter(a=>a.fonction.includes("Chef")).length;
-  const gnss  = AGENTS_FULL.filter(a=>a.fonction==='Opérateur GNSS').length;
-  const ce    = AGENTS_FULL.filter(a=>a.fonction==='Commissaire enquêteur').length;
+function agRenderKPI(idPrefix){
+  idPrefix = idPrefix || 'ag';
+  const el = document.getElementById(idPrefix+'-kpi');
+  if(!el) return;
+  const agents = AGENTS_FULL.filter(a=>(dashZoneFilter==='all')||(a.zone===dashZoneFilter)||(!a.zone && dashZoneFilter==='cavally'));
+  const total = agents.length;
+  const chefs = agents.filter(a=>a.fonction.includes("Chef")).length;
+  const gnss  = agents.filter(a=>a.fonction==='Opérateur GNSS').length;
+  const ce    = agents.filter(a=>a.fonction==='Commissaire enquêteur').length;
   const absAuj = absences.filter(a=>{ const t=new Date().toISOString().split('T')[0]; return a.debut<=t&&a.fin>=t; }).length;
-  document.getElementById('ag-kpi').innerHTML=`
-    <div class="kpi blue"><div class="kpi-l">Total agents</div><div class="kpi-v">${total}</div><div class="kpi-s">Région du Cavally</div></div>
+  const zoneLabel = dashZoneFilter==='all' ? 'Cavally + Worodougou' : (PROJECT_ZONES[dashZoneFilter]||PROJECT_ZONES.cavally).label;
+  el.innerHTML=`
+    <div class="kpi blue"><div class="kpi-l">Total agents</div><div class="kpi-v">${total}</div><div class="kpi-s">${zoneLabel}</div></div>
     <div class="kpi green"><div class="kpi-l">Comm. enquêteurs</div><div class="kpi-v">${ce}</div><div class="kpi-s">+ ${chefs} chefs d\'équipe</div></div>
     <div class="kpi"><div class="kpi-l">Opérateurs GNSS</div><div class="kpi-v">${gnss}</div><div class="kpi-s">Terrain</div></div>
     <div class="kpi ${absAuj>0?'amber':''}"><div class="kpi-l">Absents auj.</div><div class="kpi-v">${absAuj}</div><div class="kpi-s">${absAuj>0?'En absence':'Tous disponibles'}</div></div>`;
@@ -2924,10 +2930,11 @@ function agRenderList(idPrefix){
   const today=new Date().toISOString().split('T')[0];
 
   const list = AGENTS_FULL.filter(a=>{
+    const mz=(dashZoneFilter==='all')||(a.zone===dashZoneFilter)||(!a.zone && dashZoneFilter==='cavally');
     const mq=!q||a.nom.toLowerCase().includes(q)||(a.fonction||'').toLowerCase().includes(q);
     const mf=!ff||a.fonction===ff;
     const md=!fd||((a.depts||[])||[]).includes(fd);
-    return mq&&mf&&md;
+    return mz&&mq&&mf&&md;
   });
 
   const grid = document.getElementById(idPrefix+'-cards-grid');
@@ -3181,7 +3188,7 @@ function agRenderPerf(idPrefix){
   const kpiEl = document.getElementById(idPrefix+'-perf-kpi');
   const tbodyEl = document.getElementById(idPrefix+'-perf-tbody');
   if(!kpiEl || !tbodyEl) return;
-  const data = AGENTS_FULL.map(a=>{
+  const data = AGENTS_FULL.filter(a=>(dashZoneFilter==='all')||(a.zone===dashZoneFilter)||(!a.zone && dashZoneFilter==='cavally')).map(a=>{
     const mesDossiers = dossiers.filter(d=>d.agent===a.nom);
     const dosCF = mesDossiers.filter(d=>d.activite==='CF').length;
     const isGnss = a.fonction === 'Opérateur GNSS';
@@ -5417,7 +5424,7 @@ function indSwitchSection(sectionId, btn){
   if(btn) btn.classList.add('active');
 
   if(sectionId==='overview') indRenderAll();
-  else if(sectionId==='agents-liste') agRenderList('ind-ag');
+  else if(sectionId==='agents-liste'){ agRenderKPI('ind-ag'); agRenderList('ind-ag'); }
   else if(sectionId==='agents-perf') agRenderPerf('ind-ag');
   else if(sectionId==='zones-apercu'){ zvRenderKPI('ind-zv'); zvRenderOverview('ind-zv'); }
   else if(sectionId==='zones-dept') zvRenderDept('ind-zv');
