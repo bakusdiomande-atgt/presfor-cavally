@@ -5452,6 +5452,45 @@ function indRenderAll(){
             </div>
           </div>
         </div>
+        <div style="padding:0 16px 16px;">
+          <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px;">Par tranche d'âge</div>
+          <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:14px;">
+            <thead><tr style="background:var(--surface2);">
+              <th style="text-align:left;padding:5px 8px;font-weight:600;color:var(--text2);">Tranche d'âge</th>
+              <th style="text-align:right;padding:5px 8px;font-weight:600;color:var(--text2);">Dossiers</th>
+              <th style="text-align:left;padding:5px 8px 5px 16px;font-weight:600;color:var(--text2);">Taux</th>
+            </tr></thead>
+            <tbody>
+              ${['Moins de 20 ans','de 21 à 30 ans','de 31 à 40 ans','de 41 à 50 ans','plus de 50 ans'].map(tr=>`
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td style="padding:5px 8px;color:var(--text2);">${tr}</td>
+                  <td style="padding:5px 8px;text-align:right;color:var(--text3);">0</td>
+                  <td style="padding:5px 8px 5px 16px;">
+                    <div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;max-width:100px;"><div style="width:0%;height:100%;background:var(--blue);"></div></div><span style="color:var(--text3);font-size:10px;">0%</span></div>
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+          <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px;">Par nationalité</div>
+          <table style="width:100%;border-collapse:collapse;font-size:11px;">
+            <thead><tr style="background:var(--surface2);">
+              <th style="text-align:left;padding:5px 8px;font-weight:600;color:var(--text2);">Nationalité</th>
+              <th style="text-align:right;padding:5px 8px;font-weight:600;color:var(--text2);">Dossiers</th>
+              <th style="text-align:left;padding:5px 8px 5px 16px;font-weight:600;color:var(--text2);">Taux</th>
+            </tr></thead>
+            <tbody>
+              ${['Ivoirien','Burkinabé','Malien','Autres'].map(nat=>`
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td style="padding:5px 8px;color:var(--text2);">${nat}</td>
+                  <td style="padding:5px 8px;text-align:right;color:var(--text3);">0</td>
+                  <td style="padding:5px 8px 5px 16px;">
+                    <div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;max-width:100px;"><div style="width:0%;height:100%;background:var(--blue);"></div></div><span style="color:var(--text3);font-size:10px;">0%</span></div>
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+          <p style="font-size:10px;color:var(--text3);margin:8px 0 0;">Âge et nationalité du demandeur ne sont pas encore capturés dans l'import AFOR — structure prête, en attente d'une source de données.</p>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 16px;">
           <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;">
             <div style="font-size:11px;color:var(--blue);font-weight:700;margin-bottom:4px;">Superficie moyenne</div>
