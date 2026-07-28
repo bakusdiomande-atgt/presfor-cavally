@@ -1327,6 +1327,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
         <button class="dash-tab-btn" data-ind-sec="agents-perf" onclick="indSwitchSection('agents-perf',this)">Agents — Performance</button>
         <button class="dash-tab-btn" data-ind-sec="zones-apercu" onclick="indSwitchSection('zones-apercu',this)">Zones — Vue d'ensemble</button>
         <button class="dash-tab-btn" data-ind-sec="zones-dept" onclick="indSwitchSection('zones-dept',this)">Zones — Par département</button>
+        <button class="dash-tab-btn" data-ind-sec="zones-couverture" onclick="indSwitchSection('zones-couverture',this)">Zones — Couverture</button>
         <button class="dash-tab-btn" data-ind-sec="genre" onclick="indSwitchSection('genre',this)">Genre</button>
       </div>
 
@@ -1388,6 +1389,10 @@ tbody td{padding:9px 12px;vertical-align:middle;}
           </select>
         </div>
         <div id="ind-zv-dept-detail"></div>
+      </div>
+
+      <div id="ind-section-zones-couverture" class="ind-section" style="display:none;">
+        <div id="ind-zv-couv-content"></div>
       </div>
 
       <div id="ind-section-genre" class="ind-section" style="display:none;">
@@ -3702,8 +3707,9 @@ function zvRenderVillages(){
 }
 
 // ── Taux de couverture ──
-function zvRenderCouverture(){
-  const cont=document.getElementById('zv-couv-content');
+function zvRenderCouverture(idPrefix){
+  idPrefix = idPrefix || 'zv';
+  const cont=document.getElementById(idPrefix+'-couv-content');
   if(!cont)return;
 
   // Par département + activité
@@ -5581,6 +5587,7 @@ function indSwitchSection(sectionId, btn){
   else if(sectionId==='agents-perf') agRenderPerf('ind-ag');
   else if(sectionId==='zones-apercu'){ zvRenderKPI('ind-zv'); zvRenderOverview('ind-zv'); }
   else if(sectionId==='zones-dept') zvRenderDept('ind-zv');
+  else if(sectionId==='zones-couverture') zvRenderCouverture('ind-zv');
   else if(sectionId==='genre') indRenderGenre();
 }
 
