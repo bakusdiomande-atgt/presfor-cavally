@@ -453,8 +453,6 @@ tbody td{padding:9px 12px;vertical-align:middle;}
       Tableau de bord
     </button>
     <button class="tb-mod" onclick="switchModule('dossier')" id="tab-dossier"><span class="mod-num">M3</span>Dossiers fonciers</button>
-    <button class="tb-mod" onclick="switchModule('agents')" id="tab-agents"><span class="mod-num">M4</span>Agents &amp; équipes</button>
-    <button class="tb-mod" onclick="switchModule('zones')" id="tab-zones"><span class="mod-num">M5</span>Zones &amp; villages</button>
     <button class="tb-mod" onclick="switchModule('activites')" id="tab-activites">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="margin-right:4px"><path d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V2zm0 5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V7zm0 5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1v-2z"/></svg>
       Activités</button>
@@ -909,221 +907,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     MODULE 4 · AGENTS ET ÉQUIPES
-══════════════════════════════════════════════ -->
-<div id="module-agents" class="module" style="display:none;flex:1;min-width:0;">
-  <nav class="sidebar" id="sb-agents">
-    <div class="sb-sec">
-      <div class="sb-label">Agents</div>
-      <button class="nav-item active" onclick="agShowPanel('list',this)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.294 10 8 10c-2.294 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg>
-        Liste des agents
-        <span class="nav-badge" id="ag-nb">0</span>
-      </button>
-      <button class="nav-item" onclick="agShowPanel('perf',this)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M1 11l4-4 3 3 4-5 3 2V14H1z"/></svg>
-        Performance
-      </button>
-      <button class="nav-item" onclick="agShowPanel('absences',this)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/></svg>
-        Absences
-      </button>
-    </div>
-    <div class="nav-div"></div>
-    <button class="nav-item" onclick="agExportCSV()" style="color:var(--blue-txt)">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
-      Exporter CSV
-    </button>
-    <button class="nav-item" onclick="gnssExportUnmatchedCSV()" style="color:var(--red-txt)" title="Parcelles GNSS dont l'opérateur (NOM_AGENT) n'a été reconnu pour aucun agent">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8.982 1.566a1.13 1.13 0 0 0-1.964 0L.165 13.233c-.457.778.091 1.767.982 1.767h13.706c.891 0 1.439-.99.982-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg>
-      Opérateurs GNSS non reconnus
-    </button>
-  </nav>
-  <main class="main">
 
-    <!-- Liste agents -->
-    <div class="panel active" id="ag-panel-list">
-      <div class="page-head">
-        <div><h2>Agents et équipes</h2><p id="ag-subtitle">27 agents PRESFOR — Région du Cavally</p></div>
-      </div>
-      <div class="kpi-bar" id="ag-kpi"></div>
-      <div class="filter-bar">
-        <input type="text" id="ag-srch" placeholder="Nom, fonction..." oninput="agRenderList()">
-        <select id="ag-f-fonction" onchange="agRenderList()">
-          <option value="">Toutes fonctions</option>
-          <option>Commissaire enquêteur</option>
-          <option>Chef d'équipe départemental</option>
-          <option>Opérateur GNSS</option>
-          <option>RR ISF</option>
-          <option>ISF</option>
-          <option>ASF</option>
-        </select>
-        <select id="ag-f-dept" onchange="agRenderList()">
-          <option value="">Tous dép.</option>
-          <option>Dép. Guiglo</option><option>Dép. Bloléquin</option>
-          <option>Dép. Taï</option><option>Dép. Toulépleu</option>
-        </select>
-      </div>
-      <div id="ag-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;"></div>
-    </div>
-
-    <!-- Fiche agent (modal inline) -->
-    <div class="panel" id="ag-panel-fiche">
-      <div class="page-head">
-        <div><h2 id="ag-fiche-titre" style="display:inline;">Fiche agent</h2> <span id="ag-fiche-zone-badge"></span><p>Profil complet, missions et performance</p></div>
-        <button class="btn-s" onclick="agShowPanel('list')">← Retour à la liste</button>
-      </div>
-      <div id="ag-fiche-content"></div>
-    </div>
-
-    <!-- Performance comparative -->
-    <div class="panel" id="ag-panel-perf">
-      <div class="page-head"><div><h2>Performance comparative</h2><p>Classement et analyse de la production des agents</p></div></div>
-      <div class="kpi-bar" id="ag-perf-kpi"></div>
-      <div class="tw"><table>
-        <thead><tr>
-          <th>Rang</th><th>Agent</th><th>Fonction</th>
-          <th title="Dossiers saisis (CE/ISF) ou parcelles levées (Opérateur GNSS)">Dossiers traités</th>
-          <th title="Superficie GNSS levée (colonne NOM_AGENT du fichier GNSS)">Superficie (ha)</th>
-          <th>Dossiers CF</th><th>Jours terrain</th><th>Moy./jour</th><th>Performance</th>
-        </tr></thead>
-        <tbody id="ag-perf-tbody"></tbody>
-      </table></div>
-    </div>
-
-    <!-- Absences -->
-    <div class="panel" id="ag-panel-absences">
-      <div class="page-head">
-        <div><h2>Suivi des absences</h2><p>Enregistrement et historique des absences par agent</p></div>
-        <button class="btn-p" onclick="agOpenAbsForm()">+ Enregistrer une absence</button>
-      </div>
-      <!-- Formulaire absence -->
-      <div id="ag-abs-form" style="display:none;margin-bottom:16px;">
-        <div class="fc" style="max-width:600px;">
-          <div class="fs-title">Nouvelle absence</div>
-          <div class="fg" style="margin-top:10px;">
-            <div class="ff"><label class="fl">Agent <span class="req">*</span></label><select class="fsel" id="abs-agent"><option value="">-- Sélectionner --</option></select></div>
-            <div class="ff"><label class="fl">Type d'absence <span class="req">*</span></label>
-              <select class="fsel" id="abs-type">
-                <option>Congé annuel</option><option>Maladie</option><option>Mission externe</option>
-                <option>Formation</option><option>Absence injustifiée</option><option>Autre</option>
-              </select>
-            </div>
-            <div class="ff"><label class="fl">Date début <span class="req">*</span></label><input class="fi" type="date" id="abs-debut"></div>
-            <div class="ff"><label class="fl">Date fin <span class="req">*</span></label><input class="fi" type="date" id="abs-fin"></div>
-            <div class="ff full"><label class="fl">Motif / Observations</label><textarea class="fta" id="abs-obs" style="min-height:52px" placeholder="Précisions..."></textarea></div>
-          </div>
-          <div class="fa" style="margin-top:12px;">
-            <button class="btn-p" onclick="agSaveAbsence()">Enregistrer</button>
-            <button class="btn-s" onclick="document.getElementById('ag-abs-form').style.display='none'">Annuler</button>
-          </div>
-        </div>
-      </div>
-      <div class="tw"><table>
-        <thead><tr><th>Agent</th><th>Fonction</th><th>Type</th><th>Début</th><th>Fin</th><th>Jours</th><th>Motif</th><th></th></tr></thead>
-        <tbody id="ag-abs-tbody"></tbody>
-      </table>
-      <div id="ag-abs-empty" class="empty-state" style="display:none"><p>Aucune absence enregistrée.</p></div>
-      </div>
-    </div>
-
-  </main>
-</div>
-
-<!-- ══════════════════════════════════════════════
-     MODULE 5 · ZONES ET VILLAGES
-══════════════════════════════════════════════ -->
-<div id="module-zones" class="module" style="display:none;flex:1;min-width:0;">
-  <nav class="sidebar" id="sb-zones">
-    <div class="sb-sec">
-      <div class="sb-label">Navigation</div>
-      <button class="nav-item active" onclick="zvShowPanel('overview',this)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>
-        Vue d'ensemble
-      </button>
-      <button class="nav-item" onclick="zvShowPanel('dept',this)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H2zm6 2.5a.5.5 0 0 1 .5.5v4.5H11a.5.5 0 0 1 0 1H7.5a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5z"/></svg>
-        Par département
-      </button>
-      <button class="nav-item" onclick="zvShowPanel('villages',this)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4h12v1.5H2zm0 3h12v1.5H2zm0 3h8v1.5H2z"/></svg>
-        Tous les villages
-      </button>
-      <button class="nav-item" onclick="zvShowPanel('couverture',this)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zM4.5 7.5a.5.5 0 0 1 0-1h5.793L8.146 4.354a.5.5 0 1 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.293 7.5H4.5z"/></svg>
-        Taux de couverture
-      </button>
-    </div>
-    <div class="nav-div"></div>
-    <button class="nav-item" onclick="zvExportCSV()" style="color:var(--blue-txt)">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
-      Exporter CSV
-    </button>
-  </nav>
-  <main class="main">
-
-    <!-- Vue d'ensemble -->
-    <div class="panel active" id="zv-panel-overview">
-      <div class="page-head">
-        <div><h2>Zones et villages — Cavally</h2><p>Couverture foncière par département et village</p></div>
-      </div>
-      <div class="kpi-bar" id="zv-kpi"></div>
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;" id="zv-dept-cards"></div>
-    </div>
-
-    <!-- Par département -->
-    <div class="panel" id="zv-panel-dept">
-      <div class="page-head">
-        <div><h2>Détail par département</h2><p>Sous-préfectures et villages</p></div>
-        <select class="btn-s" id="zv-dept-sel" onchange="zvRenderDept()" style="padding:7px 12px;font-size:12px;">
-          <option value="Dép. Guiglo">Dép. Guiglo</option>
-          <option value="Dép. Bloléquin">Dép. Bloléquin</option>
-          <option value="Dép. Taï">Dép. Taï</option>
-          <option value="Dép. Toulépleu">Dép. Toulépleu</option>
-        </select>
-      </div>
-      <div id="zv-dept-detail"></div>
-    </div>
-
-    <!-- Tous les villages -->
-    <div class="panel" id="zv-panel-villages">
-      <div class="page-head">
-        <div><h2>Tous les villages</h2><p>Liste complète avec statut d'intervention</p></div>
-      </div>
-      <div class="filter-bar">
-        <input type="text" id="zv-vil-srch" placeholder="Rechercher un village..." oninput="zvRenderVillages()">
-        <select id="zv-vil-dept" onchange="zvRenderVillages()">
-          <option value="">Tous les départements</option>
-          <option>Dép. Guiglo</option><option>Dép. Bloléquin</option>
-          <option>Dép. Taï</option><option>Dép. Toulépleu</option>
-        </select>
-        <select id="zv-vil-statut" onchange="zvRenderVillages()">
-          <option value="">Tous statuts</option>
-          <option value="couvert">Couverts</option>
-          <option value="nontraite">Non traités</option>
-        </select>
-      </div>
-      <div class="tw"><table>
-        <thead><tr>
-          <th>Village</th><th>Département</th><th>Sous-préfecture</th>
-          <th>Dossiers CF</th>
-          <th>Agents intervenus</th><th>Statut</th>
-        </tr></thead>
-        <tbody id="zv-vil-tbody"></tbody>
-      </table></div>
-    </div>
-
-    <!-- Taux de couverture -->
-    <div class="panel" id="zv-panel-couverture">
-      <div class="page-head">
-        <div><h2>Taux de couverture</h2><p>Avancement par département et activité</p></div>
-      </div>
-      <div id="zv-couv-content"></div>
-    </div>
-
-  
-  </div>
 
 
   <!-- MODULE PUBLICITÉ FONCIÈRE (M6) -->
@@ -1722,13 +1506,13 @@ function switchModule(id){
   document.querySelectorAll('.module').forEach(m=>{m.style.display='none';m.classList.remove('active');});
   document.querySelectorAll('.tb-mod').forEach(b=>b.classList.remove('active'));
   const m=document.getElementById('module-'+id);
+  if(!m){ console.error('Module introuvable:', id); return; }
   m.style.display='flex';m.classList.add('active');
-  document.getElementById('tab-'+id).classList.add('active');
+  const tabBtn = document.getElementById('tab-'+id);
+  if(tabBtn) tabBtn.classList.add('active');
   // Rafraîchir le module activé
   if(id==='dossier'){try{dosShowPanel('list');dosRenderAll();}catch(e){console.error('dos render:',e);}}
-  if(id==='agents'){try{agRenderAll();}catch(e){console.error('agents render:',e);}}
   if(id==='accueil'){try{dashRenderAll();}catch(e){console.error('dash render:',e);}}
-  if(id==='zones'){try{zvRenderAll();}catch(e){console.error('zones render:',e);}}
   if(id==='rapport'){try{rptInit();}catch(e){console.error('rapport render:',e);}}
   if(id==='pub'){try{pubInit();}catch(e){console.error('pub render:',e);}}
   if(id==='activites'){try{actRenderAll();}catch(e){console.error('activites render:',e);}}
@@ -2898,7 +2682,8 @@ function agRenderAll(){
   agRenderList();
   agRenderPerf();
   agRenderAbsences();
-  document.getElementById('ag-nb').textContent = AGENTS_FULL.length;
+  const _agNb = document.getElementById('ag-nb');
+  if(_agNb) _agNb.textContent = AGENTS_FULL.length;
   const _agSub = document.getElementById('ag-subtitle');
   if(_agSub) _agSub.textContent = AGENTS_FULL.length + ' agents PRESFOR — Région du Cavally';
 }
@@ -3043,8 +2828,7 @@ function agRenderList(idPrefix){
 // ── Fiche détaillée ──
 function agOpenFiche(nom){
   try {
-  const modAgents = document.getElementById('module-agents');
-  const wasAgentsActive = modAgents && modAgents.classList.contains('active');
+  agShowFicheModal();
   const a = AGENTS_FULL.find(x=>x.nom===nom);
   if(!a){ console.error('Agent non trouvé:', nom); return; }
   const c = agFonctionColor(a.fonction);
@@ -3212,19 +2996,14 @@ function agOpenFiche(nom){
   }
 
 
-  if(wasAgentsActive){
-    agShowPanel('fiche');
-  } else {
-    agShowFicheModal();
-  }
+  agShowFicheModal();
   } catch(e) {
     console.error('Erreur agOpenFiche:', e);
     alert('Erreur affichage fiche: ' + e.message);
   }
 }
 
-// ── Fiche agent affichée en fenêtre superposée quand on n'est pas déjà dans le module Agents
-// (ex. depuis Indicateurs) : reprend le contenu déjà généré, sans changer de module ──
+// ── Fiche agent affichée en fenêtre superposée (utilisable depuis n'importe quel module) ──
 function agShowFicheModal(){
   let modal = document.getElementById('ag-fiche-modal-overlay');
   if(!modal){
@@ -3234,21 +3013,15 @@ function agShowFicheModal(){
     modal.innerHTML = `<div style="background:var(--surface);border-radius:12px;width:100%;max-width:900px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
       <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
         <div style="display:flex;align-items:center;gap:8px;">
-          <h3 id="ag-fiche-modal-title" style="font-family:'Syne',sans-serif;font-size:15px;margin:0;"></h3>
-          <span id="ag-fiche-modal-zone-badge"></span>
+          <h3 id="ag-fiche-titre" style="font-family:'Syne',sans-serif;font-size:15px;margin:0;"></h3>
+          <span id="ag-fiche-zone-badge"></span>
         </div>
         <button class="btn-s" onclick="document.getElementById('ag-fiche-modal-overlay').style.display='none'">✕ Fermer</button>
       </div>
-      <div id="ag-fiche-modal-body" style="padding:16px 20px;overflow-y:auto;flex:1;"></div>
+      <div id="ag-fiche-content" style="padding:16px 20px;overflow-y:auto;flex:1;"></div>
     </div>`;
     document.body.appendChild(modal);
   }
-  const titleEl = document.getElementById('ag-fiche-titre');
-  const badgeEl = document.getElementById('ag-fiche-zone-badge');
-  const contentEl = document.getElementById('ag-fiche-content');
-  document.getElementById('ag-fiche-modal-title').textContent = titleEl ? titleEl.textContent : '';
-  document.getElementById('ag-fiche-modal-zone-badge').innerHTML = badgeEl ? badgeEl.innerHTML : '';
-  document.getElementById('ag-fiche-modal-body').innerHTML = contentEl ? contentEl.innerHTML : '';
   modal.style.display = 'flex';
 }
 
@@ -3666,7 +3439,9 @@ function zvRenderDept(idPrefix){
 
 // ── Tous les villages ──
 function zvRenderVillages(){
-  const q=(document.getElementById('zv-vil-srch').value||'').toLowerCase();
+  const srchEl=document.getElementById('zv-vil-srch');
+  if(!srchEl) return;
+  const q=(srchEl.value||'').toLowerCase();
   const fd=document.getElementById('zv-vil-dept').value;
   const fs=document.getElementById('zv-vil-statut').value;
 
