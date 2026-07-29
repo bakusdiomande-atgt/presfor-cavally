@@ -1076,44 +1076,49 @@ tbody td{padding:9px 12px;vertical-align:middle;}
      MODULE ACTIVITÉS — Les 4 grandes activités PRESFOR
 ══════════════════════════════════════════════ -->
 <div id="module-activites" class="module" style="display:none;flex:1;min-width:0;">
-  <nav class="sidebar" id="sb-activites">
-    <div class="sb-sec">
-      <div class="sb-label">Activités</div>
-      <button class="nav-item active" data-act="ISF" onclick="actSelect('ISF',this)">Act. A — ISF</button>
-      <button class="nav-item" data-act="DTV" onclick="actSelect('DTV',this)">Act. B — DTV</button>
-      <button class="nav-item" data-act="CF" onclick="actSelect('CF',this)">Act. C — Certificat foncier</button>
-      <button class="nav-item" data-act="CONTRAT" onclick="actSelect('CONTRAT',this)">Act. D — Contractualisation</button>
-    </div>
-  </nav>
-  <main class="main">
-    <div class="panel active" id="act-panel">
-      <div class="page-head">
-        <div><h2 id="act-title">Act. A — ISF</h2><p id="act-subtitle">Immatriculation / Sécurisation Foncière</p></div>
+  <nav style="width:210px;flex-shrink:0;background:var(--accent);padding:18px 12px;display:flex;flex-direction:column;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;">
+    <div style="display:flex;align-items:center;gap:8px;padding:0 6px 18px;">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M12 2C8 6 6 10 6 13a6 6 0 0 0 12 0c0-3-2-7-6-11z"/></svg>
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:#fff;line-height:1.1;">PRESFOR</div>
+        <div style="font-size:9px;color:rgba(255,255,255,0.65);">Renforcement Sécurité Foncière</div>
       </div>
-      <div class="kpi-bar" id="act-kpi"></div>
+    </div>
+    <div id="act-nav" style="display:flex;flex-direction:column;gap:2px;"></div>
+  </nav>
+  <div style="flex:1;min-width:0;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;height:calc(100vh - 52px);">
+    <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;flex-shrink:0;">
+      <h1 id="act-title" style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--text);margin:0;">Act. A — ISF</h1>
+      <p id="act-subtitle" style="font-size:11px;color:var(--text2);margin:1px 0 0;">Immatriculation / Sécurisation Foncière</p>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px 20px;">
+      <div class="kpi-bar" id="act-kpi" style="margin-bottom:14px;"></div>
       <div id="act-content"></div>
     </div>
-  </main>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════════════
      MODULE INDICATEURS
 ══════════════════════════════════════════════ -->
 <div id="module-indicateurs" class="module" style="display:none;flex:1;min-width:0;">
-  <main class="main" style="width:100%;">
-    <div class="panel active">
-      <div class="page-head">
-        <div><h2>Indicateurs</h2><p>Vue détaillée des indicateurs de performance du projet</p></div>
+  <nav style="width:210px;flex-shrink:0;background:var(--accent);padding:18px 12px;display:flex;flex-direction:column;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;">
+    <div style="display:flex;align-items:center;gap:8px;padding:0 6px 18px;">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><path d="M12 2C8 6 6 10 6 13a6 6 0 0 0 12 0c0-3-2-7-6-11z"/></svg>
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:#fff;line-height:1.1;">PRESFOR</div>
+        <div style="font-size:9px;color:rgba(255,255,255,0.65);">Renforcement Sécurité Foncière</div>
       </div>
-      <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;">
-        <button class="dash-tab-btn active" data-ind-sec="overview" onclick="indSwitchSection('overview',this)">Vue d'ensemble</button>
-        <button class="dash-tab-btn" data-ind-sec="agents-liste" onclick="indSwitchSection('agents-liste',this)">Agents — Liste</button>
-        <button class="dash-tab-btn" data-ind-sec="agents-perf" onclick="indSwitchSection('agents-perf',this)">Agents — Performance</button>
-        <button class="dash-tab-btn" data-ind-sec="zones-apercu" onclick="indSwitchSection('zones-apercu',this)">Zones — Vue d'ensemble</button>
-        <button class="dash-tab-btn" data-ind-sec="zones-dept" onclick="indSwitchSection('zones-dept',this)">Zones — Par département</button>
-        <button class="dash-tab-btn" data-ind-sec="zones-couverture" onclick="indSwitchSection('zones-couverture',this)">Zones — Couverture</button>
-        <button class="dash-tab-btn" data-ind-sec="genre" onclick="indSwitchSection('genre',this)">Genre</button>
-      </div>
+    </div>
+    <div id="ind-nav" style="display:flex;flex-direction:column;gap:2px;"></div>
+  </nav>
+  <div style="flex:1;min-width:0;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;height:calc(100vh - 52px);">
+    <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;flex-shrink:0;">
+      <h1 id="ind-title" style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--text);margin:0;">Vue d'ensemble</h1>
+      <p id="ind-subtitle" style="font-size:11px;color:var(--text2);margin:1px 0 0;">Indicateurs de performance du projet</p>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px 20px;">
+
 
       <div id="ind-section-overview" class="ind-section">
         <div id="ind-content"></div>
@@ -1194,7 +1199,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
         </div>
       </div>
     </div>
-  </main>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════════════
@@ -1515,8 +1520,8 @@ function switchModule(id){
   if(id==='accueil'){try{dashRenderAll();}catch(e){console.error('dash render:',e);}}
   if(id==='rapport'){try{rptInit();}catch(e){console.error('rapport render:',e);}}
   if(id==='pub'){try{pubInit();}catch(e){console.error('pub render:',e);}}
-  if(id==='activites'){try{actRenderAll();}catch(e){console.error('activites render:',e);}}
-  if(id==='indicateurs'){try{indRenderAll();}catch(e){console.error('indicateurs render:',e);}}
+  if(id==='activites'){try{actRenderNav();actRenderAll();}catch(e){console.error('activites render:',e);}}
+  if(id==='indicateurs'){try{indRenderNav();indRenderAll();}catch(e){console.error('indicateurs render:',e);}}
   if(id==='cqe'){try{cqeRenderAll();}catch(e){console.error('cqe render:',e);}}
   setTimeout(()=>{ if(typeof isViewer==='function'&&isViewer()) applyViewerRestrictions(); },200);
 }
@@ -4780,10 +4785,26 @@ function actSetObjectifCF(idx, unit, val){
   actRenderAll();
 }
 
+const ACT_NAV_ITEMS = [
+  {id:'ISF',     label:'Act. A — ISF',                icon:'M8 1C5 5 3 8 3 10.5a5 5 0 0 0 10 0C13 8 11 5 8 1z'},
+  {id:'DTV',     label:'Act. B — DTV',                icon:'M2 3l4-1 4 1 4-1v11l-4 1-4-1-4 1z'},
+  {id:'CF',      label:'Act. C — Certificat foncier', icon:'M4 1h6l3 3v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z'},
+  {id:'CONTRAT', label:'Act. D — Contractualisation', icon:'M3 2h10v12H3zm2 3h6v1H5zm0 3h6v1H5zm0 3h4v1H5z'},
+];
+function actRenderNav(){
+  const nav = document.getElementById('act-nav');
+  if(!nav) return;
+  nav.innerHTML = ACT_NAV_ITEMS.map(it=>
+    `<button class="dash-nav-item${it.id===actCurrent?' active':''}" data-act-nav="${it.id}" onclick="actSelect('${it.id}',this)">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="${it.icon}"/></svg>
+      ${it.label}
+    </button>`
+  ).join('');
+}
+
 function actSelect(act, btn){
   actCurrent = act;
-  document.querySelectorAll('#sb-activites .nav-item').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
+  document.querySelectorAll('#act-nav .dash-nav-item').forEach(b=>b.classList.toggle('active', b.dataset.actNav===act));
   actRenderAll();
 }
 
@@ -5340,12 +5361,38 @@ function indRenderAll(){
 // MODULE CQE — Contrôle Qualité Enquête
 // ═══════════════════════════════════════════
 // ── Sous-onglets Indicateurs : Agents (M4) et Zones (M5) intégrés comme rubriques ──
+const IND_NAV_ITEMS = [
+  {id:'overview',         label:"Vue d'ensemble",           sub:'Indicateurs de performance du projet',              icon:'M2 3h12v2H2zm0 4h12v2H2zm0 4h8v2H2z'},
+  {id:'agents-liste',     label:'Agents — Liste',           sub:'Fiches et répartition des agents PRESFOR',          icon:'M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2 1H6a4 4 0 0 0-4 4v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1a4 4 0 0 0-4-4z'},
+  {id:'agents-perf',      label:'Agents — Performance',      sub:'Production comparée des agents et opérateurs',      icon:'M2 14V8m4 6V4m4 10V6m4 8v-4'},
+  {id:'zones-apercu',     label:'Zones — Vue d\'ensemble',   sub:'Couverture par département',                        icon:'M2 3l4-1 4 1 4-1v11l-4 1-4-1-4 1z'},
+  {id:'zones-dept',       label:'Zones — Par département',  sub:'Sous-préfectures et villages',                      icon:'M8 1C5 5 3 8 3 10.5a5 5 0 0 0 10 0C13 8 11 5 8 1z'},
+  {id:'zones-couverture', label:'Zones — Couverture',       sub:'Avancement par département et activité',            icon:'M8 5a3 3 0 1 0 .001 6.001A3 3 0 0 0 8 5z'},
+  {id:'genre',            label:'Genre',                    sub:'Répartition femmes / hommes du CF et des contrats', icon:'M8 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm0 1v6m-2-2h4'},
+];
+function indRenderNav(){
+  const nav = document.getElementById('ind-nav');
+  if(!nav) return;
+  nav.innerHTML = IND_NAV_ITEMS.map(it=>
+    `<button class="dash-nav-item${it.id==='overview'?' active':''}" data-ind-nav="${it.id}" onclick="indSwitchSection('${it.id}',this)">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="${it.icon}"/></svg>
+      ${it.label}
+    </button>`
+  ).join('');
+}
+
 function indSwitchSection(sectionId, btn){
   document.querySelectorAll('#module-indicateurs .ind-section').forEach(s=>s.style.display='none');
   const target = document.getElementById('ind-section-'+sectionId);
   if(target) target.style.display='block';
-  document.querySelectorAll('#module-indicateurs .dash-tab-btn').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
+  document.querySelectorAll('#module-indicateurs .dash-nav-item').forEach(b=>b.classList.toggle('active', b.dataset.indNav===sectionId));
+  const item = IND_NAV_ITEMS.find(it=>it.id===sectionId);
+  if(item){
+    const titleEl = document.getElementById('ind-title');
+    const subEl = document.getElementById('ind-subtitle');
+    if(titleEl) titleEl.textContent = item.label;
+    if(subEl) subEl.textContent = item.sub;
+  }
 
   if(sectionId==='overview') indRenderAll();
   else if(sectionId==='agents-liste'){ agRenderKPI('ind-ag'); agRenderList('ind-ag'); }
@@ -5360,8 +5407,7 @@ function indSwitchSection(sectionId, btn){
 function indZvGoToDept(dept){
   const sel = document.getElementById('ind-zv-dept-sel');
   if(sel) sel.value = dept;
-  const btn = document.querySelector('#module-indicateurs [data-ind-sec="zones-dept"]');
-  indSwitchSection('zones-dept', btn);
+  indSwitchSection('zones-dept');
 }
 
 // ── Rubrique Genre : répartition femmes/hommes sur le CF et les contrats ──
