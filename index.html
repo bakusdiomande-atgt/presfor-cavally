@@ -120,6 +120,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 .prog-fill{height:100%;border-radius:3px;}
 .prog-pct{font-size:11px;font-weight:600;min-width:28px;text-align:right;}
 .empty-state{text-align:center;padding:44px 20px;color:var(--text3);}
+.leaflet-container{background:#DCEEFB;}
 .dash-card-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;}
 .dash-nav-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:var(--radius-sm);cursor:pointer;color:rgba(255,255,255,0.75);font-size:12px;font-family:'Instrument Sans',sans-serif;font-weight:600;border:none;background:transparent;width:100%;text-align:left;transition:all .12s;}
 .dash-nav-item:hover{background:rgba(255,255,255,0.08);color:#fff;}
@@ -4219,6 +4220,9 @@ let dashLeafletMapSmall = null, dashLeafletMapBig = null;
 
 // Emprise approximative de la Côte d'Ivoire (en attendant un fichier de contours officiel)
 const CI_BOUNDS = [[4.34,-8.60],[10.74,-2.49]];
+// Contour national simplifié de la Côte d'Ivoire (source : OpenStreetMap, via johan/world.geo.json),
+// utilisé comme fond de carte à la place des tuiles OSM complètes.
+const CI_OUTLINE = [[4.99448,-2.85613],[4.9843,-3.31108],[5.17981,-4.00882],[5.16826,-4.64992],[4.9937,-5.8345],[4.70509,-6.52877],[4.33829,-7.51894],[4.36457,-7.71216],[5.18816,-7.63537],[5.31334,-7.53972],[5.70735,-7.57015],[6.12619,-7.99369],[6.19303,-8.31135],[6.46756,-8.60288],[6.9118,-8.38545],[7.39521,-8.48545],[7.68604,-8.4393],[7.68718,-8.2807],[8.12333,-8.22179],[8.31644,-8.29905],[8.45545,-8.2035],[8.5757,-7.8321],[9.37622,-8.07911],[9.78953,-8.30962],[10.12902,-8.22934],[10.20654,-8.02994],[10.29738,-7.89959],[10.14724,-7.62276],[10.13899,-6.85051],[10.43081,-6.66646],[10.4113,-6.49397],[10.52406,-6.20522],[10.09636,-6.05045],[10.22255,-5.81693],[10.37074,-5.40434],[10.15271,-4.95465],[9.82198,-4.77988],[9.61083,-4.33025],[9.86234,-3.98045],[9.90033,-3.5119],[9.64246,-2.8275],[8.21963,-2.56219]];
 
 function dashGetZoneGeo(zoneId){
   zoneId = zoneId || dashZoneFilter;
@@ -4234,9 +4238,9 @@ function dashBuildLeafletPolygons(map, legendEl, opts){
   const geo = opts.geo || dashGetZoneGeo();
   const zoneLabel = opts.zoneLabel || (dashZoneFilter==='all' ? 'toutes les zones' : (PROJECT_ZONES[dashZoneFilter]||PROJECT_ZONES.cavally).label);
   if(!geo.length) return;
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 17
+  // Fond de carte : uniquement le contour de la Côte d'Ivoire (pas de tuiles OSM complètes)
+  L.polygon(CI_OUTLINE, {
+    color:'#B0B6AE', weight:1.5, fillColor:'#EDEFEA', fillOpacity:1, interactive:false
   }).addTo(map);
   const bounds = [];
   geo.forEach(sp=>{
