@@ -557,7 +557,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
             <div id="dash-perf-table" style="flex:1;overflow-y:auto;min-height:0;"></div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr;gap:10px;flex:2;min-height:140px;flex-shrink:0;">
+        <div style="display:grid;grid-template-columns:1fr;gap:10px;flex:1;min-height:95px;flex-shrink:0;">
           <div class="tw" style="padding:10px 12px;display:flex;flex-direction:column;min-height:0;">
             <div class="dash-card-title" style="flex-shrink:0;margin-bottom:4px;">Indicateurs clés</div>
             <div id="dash-indicateurs" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;flex:1;min-height:0;"></div>
@@ -4457,10 +4457,10 @@ function dashRenderIndicateurs(s){
   const nbCQ = Object.keys(pubCQ||{}).length;
   const tauxCQ = s.afor.length>0 ? Math.round(nbCQ/s.afor.length*100) : 0;
   const tauxRejetCQ = nbCQ>0 ? Math.round(s.rejetes/nbCQ*100) : 0;
-  const mini=(label,val,obj)=>`<div style="background:var(--surface3);border-radius:var(--radius-sm);padding:10px 12px;">
-    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px;">${label}</div>
-    <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;">${val}</div>
-    <div style="font-size:10px;color:var(--text3);">${obj}</div>
+  const mini=(label,val,obj)=>`<div style="background:var(--surface3);border-radius:var(--radius-sm);padding:7px 10px;">
+    <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px;">${label}</div>
+    <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;">${val}</div>
+    <div style="font-size:9px;color:var(--text3);">${obj}</div>
   </div>`;
   el.innerHTML =
     mini('Taux de validation', tauxValidation+'%', 'Objectif : ≥ 60%') +
