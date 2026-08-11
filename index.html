@@ -3389,8 +3389,14 @@ function zvShowPanel(id, btn){
 }
 
 // ── Stats globales ──
+// Normalise une chaîne pour comparaison robuste (majuscules, sans accents)
+function zvNormStr(s){
+  return (s||'').toString().trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
 function zvGetVilleStats(village, dept){
-  const mesDos = dossiers.filter(d=>d.village===village&&d.dept===dept);
+  const deptNorm = zvNormStr(String(dept).replace(/^Dép\.\s*/,''));
+  const villageNorm = zvNormStr(village);
+  const mesDos = (dossiersAFOR||[]).filter(d => zvNormStr(d.dept)===deptNorm && zvNormStr(d.village)===villageNorm);
   const agents = [...new Set(mesDos.map(d=>d.agent).filter(Boolean))];
   return { nbDos:mesDos.length, agents };
 }
