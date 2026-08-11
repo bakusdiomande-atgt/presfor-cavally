@@ -5115,11 +5115,35 @@ const ACT_CF_STEP_DATE = {
   10: {field:'date_VA',  label:'Date validation'},
   11: {field:'date_VA',  label:'Date validation'},
 };
+// Association étape CF -> fiche tablette + candidats de champ date (la donnée tablette,
+// quand elle existe pour ce dossier, est préférée à la date AFOR globale, plus approximative)
+const ACT_CF_STEP_TABLETTE = {
+  0: {stage:'requests',        dateFields:['requestDate','creationDate']},
+  1: {stage:'minutes',         dateFields:['minutesDate','creationDate']},
+  2: {stage:'observations',    dateFields:['observationDate','creationDate']},
+  4: {stage:'observations',    dateFields:['observationDate','creationDate']},
+  5: {stage:'advertising',     dateFields:['advertisingDate','announcementDate','creationDate']},
+  6: {stage:'openAdvertising', dateFields:['openAdvertisingDate','openingDate','creationDate']},
+  7: {stage:'closeAdvertising',dateFields:['closeAdvertisingDate','closingDate','creationDate']},
+  8: {stage:'existence',       dateFields:['existenceDate','creationDate']},
+  9: {stage:'validation',      dateFields:['validationDate','creationDate']},
+};
 function actCFStepDate(d, stepIdx){
   const cfg = ACT_CF_STEP_DATE[stepIdx];
   if(cfg.field==='gnss'){
     const g = gnssForDossier(d);
     return (g && g.entries && g.entries[0] && g.entries[0].date_leve) || null;
+  }
+  // Préférer la date précise des données tablette si une correspondance existe
+  const tCfg = ACT_CF_STEP_TABLETTE[stepIdx];
+  if(tCfg){
+    const tab = tabMatchForDossier(d);
+    const rec = tab && tab[tCfg.stage];
+    if(rec){
+      for(const f of tCfg.dateFields){
+        if(rec[f]) return String(rec[f]).substring(0,10);
+      }
+    }
   }
   return d[cfg.field] || null;
 }
@@ -5382,6 +5406,39 @@ function indRenderAll(){
   const enCours = afor.filter(d=>d.etape!=='VA');
   const delivre = afor.filter(d=>d.etape==='VA');
 
+  const AGE_BRACKETS = [
+    {label:'Moins de 20 ans', test:a=>a<=20},
+    {label:'de 21 à 30 ans',  test:a=>a>=21&&a<=30},
+    {label:'de 31 à 40 ans',  test:a=>a>=31&&a<=40},
+    {label:'de 41 à 50 ans',  test:a=>a>=41&&a<=50},
+    {label:'plus de 50 ans',  test:a=>a>50},
+  ];
+  // Calcule les répartitions âge/nationalité réelles à partir des correspondances avec les données tablette
+  const computeAgeNat = (liste)=>{
+    let matched = 0;
+    const ageCounts = AGE_BRACKETS.map(()=>0);
+    const natCounts = {};
+    liste.forEach(d=>{
+      const tab = tabMatchForDossier(d);
+      const applicant = tab && tab.requests && tab.requests.applicant;
+      if(!applicant) return;
+      matched++;
+      const age = tabCalcAge(applicant.birthdate);
+      if(age!=null){
+        const idx = AGE_BRACKETS.findIndex(b=>b.test(age));
+        if(idx>=0) ageCounts[idx]++;
+      }
+      const nat = (applicant.nationality||'').trim();
+      if(nat) natCounts[nat] = (natCounts[nat]||0)+1;
+    });
+    // Garder les 3 nationalités les plus fréquentes, regrouper le reste dans "Autres"
+    const natSorted = Object.entries(natCounts).sort((a,b)=>b[1]-a[1]);
+    const natTop = natSorted.slice(0,3);
+    const natAutres = natSorted.slice(3).reduce((s,[,v])=>s+v,0);
+    if(natAutres>0) natTop.push(['Autres', natAutres]);
+    return {matched, total:liste.length, ageCounts, natTop};
+  };
+
   const panel = (titre, liste, cvsId)=>{
     const indiv = liste.filter(d=>d.type==='CFI');
     const coll  = liste.filter(d=>d.type==='CFC');
@@ -5391,6 +5448,7 @@ function indRenderAll(){
     const pctIndiv = supTotal>0 ? Math.round(supIndiv/supTotal*100) : 0;
     const pctColl  = 100-pctIndiv;
     const supMoyenne = liste.length>0 ? (supTotal/liste.length) : 0;
+    const an = computeAgeNat(liste);
     return {
       html: `<div class="tw" style="overflow:hidden;">
         <div style="background:var(--surface2);padding:10px 16px;border-bottom:1px solid var(--border);">
@@ -5416,14 +5474,17 @@ function indRenderAll(){
               <th style="text-align:left;padding:5px 8px 5px 16px;font-weight:600;color:var(--text2);">Taux</th>
             </tr></thead>
             <tbody>
-              ${['Moins de 20 ans','de 21 à 30 ans','de 31 à 40 ans','de 41 à 50 ans','plus de 50 ans'].map(tr=>`
-                <tr style="border-bottom:1px solid var(--border);">
-                  <td style="padding:5px 8px;color:var(--text2);">${tr}</td>
-                  <td style="padding:5px 8px;text-align:right;color:var(--text3);">0</td>
+              ${AGE_BRACKETS.map((b,i)=>{
+                const n = an.ageCounts[i];
+                const p = an.matched>0 ? Math.round(n/an.matched*100) : 0;
+                return `<tr style="border-bottom:1px solid var(--border);">
+                  <td style="padding:5px 8px;color:var(--text2);">${b.label}</td>
+                  <td style="padding:5px 8px;text-align:right;font-weight:600;">${n}</td>
                   <td style="padding:5px 8px 5px 16px;">
-                    <div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;max-width:100px;"><div style="width:0%;height:100%;background:var(--blue);"></div></div><span style="color:var(--text3);font-size:10px;">0%</span></div>
+                    <div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;max-width:100px;"><div style="width:${p}%;height:100%;background:var(--blue);"></div></div><span style="color:var(--text2);font-size:10px;">${p}%</span></div>
                   </td>
-                </tr>`).join('')}
+                </tr>`;
+              }).join('')}
             </tbody>
           </table>
           <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px;">Par nationalité</div>
@@ -5434,17 +5495,19 @@ function indRenderAll(){
               <th style="text-align:left;padding:5px 8px 5px 16px;font-weight:600;color:var(--text2);">Taux</th>
             </tr></thead>
             <tbody>
-              ${['Ivoirien','Burkinabé','Malien','Autres'].map(nat=>`
-                <tr style="border-bottom:1px solid var(--border);">
+              ${an.natTop.length ? an.natTop.map(([nat,n])=>{
+                const p = an.matched>0 ? Math.round(n/an.matched*100) : 0;
+                return `<tr style="border-bottom:1px solid var(--border);">
                   <td style="padding:5px 8px;color:var(--text2);">${nat}</td>
-                  <td style="padding:5px 8px;text-align:right;color:var(--text3);">0</td>
+                  <td style="padding:5px 8px;text-align:right;font-weight:600;">${n}</td>
                   <td style="padding:5px 8px 5px 16px;">
-                    <div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;max-width:100px;"><div style="width:0%;height:100%;background:var(--blue);"></div></div><span style="color:var(--text3);font-size:10px;">0%</span></div>
+                    <div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;max-width:100px;"><div style="width:${p}%;height:100%;background:var(--blue);"></div></div><span style="color:var(--text2);font-size:10px;">${p}%</span></div>
                   </td>
-                </tr>`).join('')}
+                </tr>`;
+              }).join('') : '<tr><td colspan="3" style="padding:8px;text-align:center;color:var(--text3);">Aucune correspondance tablette pour l&#39;instant</td></tr>'}
             </tbody>
           </table>
-          <p style="font-size:10px;color:var(--text3);margin:8px 0 0;">Âge et nationalité du demandeur ne sont pas encore capturés dans l'import AFOR — structure prête, en attente d'une source de données.</p>
+          <p style="font-size:10px;color:var(--text3);margin:8px 0 0;">${an.matched.toLocaleString('fr-FR')} dossier(s) sur ${an.total.toLocaleString('fr-FR')} avec une correspondance dans les données tablette importées.</p>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 16px;">
           <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;">
@@ -8066,6 +8129,27 @@ function gnssImportExcel(input){
       gnssIndexNomVil = {};     // index par nom+village (fallback)
       let nb=0, ignore=0;
 
+      // Normalise une date (objet Date, ISO "YYYY-MM-DD", ou texte "JJ/MM/AAAA"/"MM/JJ/AAAA") en "YYYY-MM-DD"
+      const gnssFmtD = v => {
+        if(!v) return '';
+        if(v instanceof Date) return isNaN(v) ? '' : v.toISOString().substring(0,10);
+        const s = String(v).trim();
+        if(!s) return '';
+        if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0,10);
+        const p = s.split(/[\/\-\.]/);
+        if(p.length===3){
+          if(p[2].length===4){
+            // JJ/MM/AAAA (format le plus courant en Côte d'Ivoire) — si le 1er nombre dépasse 12, c'est forcément un jour
+            const a=parseInt(p[0],10), b=parseInt(p[1],10);
+            const jour = a>12 ? a : (b>12 ? b : a); // par défaut JJ/MM/AAAA
+            const mois = a>12 ? b : (b>12 ? a : b);
+            return p[2]+'-'+String(mois).padStart(2,'0')+'-'+String(jour).padStart(2,'0');
+          }
+          if(p[0].length===4) return p[0]+'-'+p[1].padStart(2,'0')+'-'+p[2].padStart(2,'0');
+        }
+        return '';
+      };
+
       rows.forEach(row=>{
         const nom       = (row['NOM_DEMAND']||'').trim();
         const village   = (row['NOM_VILLAG']||'').trim();
@@ -8075,7 +8159,7 @@ function gnssImportExcel(input){
         const code      = (row['N_DEMCGE']||'').trim();
         const num       = (row['NUM_DEMAND']||'').trim();
         const operateur = (row['NOM_AGENT']||'').trim();
-        const dateLeve  = (row['DATE_CREA']||'').trim();
+        const dateLeve  = gnssFmtD(row['DATE_CREA']);
 
         if((!nom && !code) || superf <= 0){ ignore++; return; }
 
