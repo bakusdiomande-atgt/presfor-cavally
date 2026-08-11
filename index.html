@@ -20,6 +20,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script type="module">
+  import * as zip from "https://cdn.jsdelivr.net/npm/@zip.js/zip.js@2.8.37/index.min.js";
+  window.zip = zip;
+</script>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap');
@@ -1260,6 +1264,35 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 
       </div>
 
+      <div class="tw" style="padding:16px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <div style="width:34px;height:34px;border-radius:8px;background:#EDE7F6;color:#4527A0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="17" height="17" viewBox="0 0 16 16" fill="currentColor"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM4.5 5.5A.5.5 0 0 1 5 5h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5zm0 2.5A.5.5 0 0 1 5 7.5h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5zm0 2.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5z"/></svg>
+          </div>
+          <div>
+            <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;">Données tablette (collecte terrain)</div>
+            <div style="font-size:10px;color:var(--text3);">Enrichit les dossiers AFOR déjà importés — âge, nationalité, superficie déclarée, dates précises par étape</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin-bottom:10px;">
+          <div class="ff">
+            <label class="fl">Nom / identifiant de la tablette</label>
+            <input class="fi" type="text" id="tab-import-nom" placeholder="ex. Tablette Diby Arnaud">
+          </div>
+          <div class="ff">
+            <label class="fl">Mot de passe des archives</label>
+            <input class="fi" type="password" id="tab-import-pwd" placeholder="Mot de passe" style="width:180px;">
+          </div>
+        </div>
+        <div class="ff" style="margin-bottom:10px;">
+          <label class="fl">Les 8 fichiers ZIP exportés (sélection multiple)</label>
+          <input class="fi" type="file" id="tab-import-files" accept=".zip" multiple>
+        </div>
+        <button class="btn-p" onclick="tabImportZips()" style="display:inline-flex;align-items:center;gap:6px;">Importer cette tablette</button>
+        <div id="tab-import-status" style="font-size:11px;color:var(--text2);margin-top:10px;"></div>
+        <div id="tab-import-history" style="margin-top:10px;"></div>
+      </div>
+
       <div class="tw" style="padding:16px;">
         <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;margin-bottom:10px;">Outils complémentaires</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -1584,6 +1617,7 @@ function switchModule(id){
   if(id==='activites'){try{actRenderNav();actRenderAll();}catch(e){console.error('activites render:',e);}}
   if(id==='indicateurs'){try{indRenderNav();indRenderAll();}catch(e){console.error('indicateurs render:',e);}}
   if(id==='cqe'){try{cqeRenderAll();}catch(e){console.error('cqe render:',e);}}
+  if(id==='imports'){try{tabRenderImportHistory();}catch(e){console.error('imports render:',e);}}
   setTimeout(()=>{ if(typeof isViewer==='function'&&isViewer()) applyViewerRestrictions(); },200);
 }
 
@@ -5122,11 +5156,18 @@ function actDetailRender(){
     const stepIdx = actDetailState.stepIdx;
     const dateLabel = ACT_CF_STEP_DATE[stepIdx].label;
     const showCarteProduite = (stepIdx===4); // Établissement du plan provisoire
+    const showSupDeclaree = (stepIdx===0); // Demande
     const rows = filtered.map(d=>{
       const dateVal = actCFStepDate(d, stepIdx);
       const jours = actJours(dateVal);
       const g = gnssForDossier(d);
       const superficie = g ? g.superficie.toFixed(2)+' ha' : '—';
+      let supDeclaree = '—';
+      if(showSupDeclaree){
+        const tab = tabMatchForDossier(d);
+        const area = tab && tab.requests && tab.requests.land && tab.requests.land.estimatedArea;
+        if(area!=null) supDeclaree = Number(area).toFixed(2)+' ha';
+      }
       // "Carte produite" = OK si la publicité du dossier est ouverte (étape OV atteinte ou au-delà), sinon vide
       const carteProduite = (ETAPE_ORDER_CF[d.etape]!==undefined && ETAPE_ORDER_CF[d.etape]>=ETAPE_ORDER_CF['OV'])
         ? '<span style="color:var(--accent);font-weight:700;">OK</span>' : '';
@@ -5141,11 +5182,12 @@ function actDetailRender(){
         <td style="padding:7px 10px;">${d.type||''}</td>
         <td style="padding:7px 10px;">${dateVal||'—'}</td>
         ${showCarteProduite ? `<td style="padding:7px 10px;text-align:center;">${carteProduite}</td>` : ''}
+        ${showSupDeclaree ? `<td style="padding:7px 10px;text-align:right;">${supDeclaree}</td>` : ''}
         <td style="padding:7px 10px;text-align:right;">${superficie}</td>
         <td style="padding:7px 10px;text-align:right;font-weight:600;${jours!==null&&jours>30?'color:var(--red);':''}">${jours!==null?jours.toLocaleString('fr-FR')+' j':'—'}</td>
       </tr>`;
     }).join('');
-    const colCount = 11 + (showCarteProduite?1:0);
+    const colCount = 11 + (showCarteProduite?1:0) + (showSupDeclaree?1:0);
     body.innerHTML = actDetailBuildFilterBar() + `<table style="width:100%;border-collapse:collapse;font-size:12px;">
       <thead><tr style="background:var(--surface2);position:sticky;top:0;">
         <th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">N° Dossier</th>
@@ -5158,12 +5200,13 @@ function actDetailRender(){
         <th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Type CF</th>
         <th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">${dateLabel}</th>
         ${showCarteProduite ? '<th style="text-align:center;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Carte produite</th>' : ''}
+        ${showSupDeclaree ? '<th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Superficie déclarée</th>' : ''}
         <th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Superficie (GNSS)</th>
         <th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--text3);">Durée</th>
       </tr></thead>
       <tbody>${rows || '<tr><td colspan="'+colCount+'" style="padding:20px;text-align:center;color:var(--text3);">Aucun dossier ne correspond aux filtres</td></tr>'}</tbody>
     </table>
-    <p style="font-size:11px;color:var(--text3);padding:10px 16px;">${filtered.length.toLocaleString('fr-FR')} dossier(s) affiché(s) sur ${actDetailState.data.length.toLocaleString('fr-FR')} au total à cette étape. La durée est calculée entre la "${dateLabel.toLowerCase()}" et aujourd'hui. La superficie GNSS n'apparaît que pour les dossiers déjà levés.${showCarteProduite?' "Carte produite" = OK si la publicité du dossier est ouverte.':''}</p>`;
+    <p style="font-size:11px;color:var(--text3);padding:10px 16px;">${filtered.length.toLocaleString('fr-FR')} dossier(s) affiché(s) sur ${actDetailState.data.length.toLocaleString('fr-FR')} au total à cette étape. La durée est calculée entre la "${dateLabel.toLowerCase()}" et aujourd'hui. La superficie GNSS n'apparaît que pour les dossiers déjà levés.${showCarteProduite?' "Carte produite" = OK si la publicité du dossier est ouverte.':''}${showSupDeclaree?' La superficie déclarée provient des données tablette importées (si disponible).':''}</p>`;
   } else {
     const label = typeof ACT_STEPS[actDetailState.activite].steps[actDetailState.stepIdx]==='string'
       ? ACT_STEPS[actDetailState.activite].steps[actDetailState.stepIdx]
@@ -5225,8 +5268,10 @@ function actDetailExportCSV(){
     const stepIdx = actDetailState.stepIdx;
     const dateLabel = ACT_CF_STEP_DATE[stepIdx].label;
     const showCarteProduite = (stepIdx===4);
+    const showSupDeclaree = (stepIdx===0);
     header = ['N° Dossier','Région','Département','Sous-préfecture','Village','Demandeur','Code parcelle','Type CF',dateLabel];
     if(showCarteProduite) header.push('Carte produite');
+    if(showSupDeclaree) header.push('Superficie déclarée (ha)');
     header.push('Superficie GNSS (ha)','Durée (jours)');
     rows = filtered.map(d=>{
       const dateVal = actCFStepDate(d, stepIdx);
@@ -5239,6 +5284,11 @@ function actDetailExportCSV(){
       if(showCarteProduite){
         const ok = (ETAPE_ORDER_CF[d.etape]!==undefined && ETAPE_ORDER_CF[d.etape]>=ETAPE_ORDER_CF['OV']) ? 'OK' : '';
         row.push(ok);
+      }
+      if(showSupDeclaree){
+        const tab = tabMatchForDossier(d);
+        const area = tab && tab.requests && tab.requests.land && tab.requests.land.estimatedArea;
+        row.push(area!=null ? Number(area).toFixed(2) : '');
       }
       row.push(g?g.superficie.toFixed(2):'', jours!==null?jours:'');
       return row;
@@ -8419,6 +8469,169 @@ async function aforLoadFromFirebase(){
 }
 
 // ── Purge complète de la base AFOR sur Firebase (admin uniquement) ──
+// ═══════════════════════════════════════════
+// IMPORT DONNÉES TABLETTE (collecte terrain, ZIP protégés par mot de passe)
+// ═══════════════════════════════════════════
+// Un fichier par étape du parcours CF ; plusieurs tablettes peuvent être importées
+// successivement — les données se cumulent (fusion, sans doublons) plutôt que de s'écraser.
+const TAB_STAGE_DEFS = [
+  {key:'requests',        filePrefix:'01_requests',        codeField:'requestNumber',          label:'Demandes'},
+  {key:'minutes',         filePrefix:'02_minutes',         codeField:'minutesNumber',          label:'Recensement droits coutumiers'},
+  {key:'observations',    filePrefix:'03_observations',    codeField:'codeObservation',        label:'PV constat de limite'},
+  {key:'advertising',     filePrefix:'04_advertising',     codeField:'codeAdvertisement',       label:'Annonce publicité'},
+  {key:'openAdvertising', filePrefix:'05_open_advertising',codeField:'codeOpenAdvertising',    label:'Ouverture publicité'},
+  {key:'closeAdvertising',filePrefix:'06_close_advertising',codeField:'codeCloseOfAdvertising',label:'Clôture publicité'},
+  {key:'existence',       filePrefix:'07_existence',       codeField:'codeExistence',          label:'Existence paisible'},
+  {key:'validation',      filePrefix:'08_validation',      codeField:'codeValidation',         label:'Validation'},
+];
+const TAB_CODE_PREFIXES = ['RDC','PVCL','ADV','OUV','CLO','CEC','VAL'];
+
+let tabletteData = { requests:{}, minutes:{}, observations:{}, advertising:{}, openAdvertising:{}, closeAdvertising:{}, existence:{}, validation:{} };
+let tabletteImports = []; // historique des imports : {nom, date, nbFichiers, nbEnregistrements}
+
+function tabLoadFromStorage(){
+  try{
+    const d = localStorage.getItem('presfor_tablette_data');
+    if(d) tabletteData = JSON.parse(d);
+    const h = localStorage.getItem('presfor_tablette_imports');
+    if(h) tabletteImports = JSON.parse(h);
+  }catch(e){ console.error('tabLoadFromStorage:', e); }
+}
+function tabSaveToStorage(){
+  try{
+    localStorage.setItem('presfor_tablette_data', JSON.stringify(tabletteData));
+    localStorage.setItem('presfor_tablette_imports', JSON.stringify(tabletteImports));
+  }catch(e){ console.error('tabSaveToStorage (quota ?):', e); }
+}
+
+// Normalise un code d'étape ("PVCL094-006-000001") en identifiant commun ("094-006-000001")
+function tabNormCode(code){
+  if(!code) return '';
+  let c = String(code).trim().toUpperCase();
+  for(const p of TAB_CODE_PREFIXES){ if(c.startsWith(p)) { c = c.slice(p.length); break; } }
+  return c;
+}
+
+async function tabImportZips(){
+  const nomTablette = (document.getElementById('tab-import-nom').value||'').trim();
+  const password = document.getElementById('tab-import-pwd').value||'';
+  const filesInput = document.getElementById('tab-import-files');
+  const statusEl = document.getElementById('tab-import-status');
+  const files = Array.from(filesInput.files||[]);
+
+  if(!nomTablette){ statusEl.textContent = 'Merci de donner un nom à cette tablette.'; return; }
+  if(!password){ statusEl.textContent = 'Merci de renseigner le mot de passe des archives.'; return; }
+  if(!files.length){ statusEl.textContent = 'Merci de sélectionner les fichiers ZIP exportés.'; return; }
+  if(typeof zip==='undefined'){ statusEl.textContent = 'Erreur : la bibliothèque de lecture ZIP ne s\'est pas chargée. Rechargez la page.'; return; }
+
+  statusEl.textContent = 'Lecture en cours...';
+  let totalNouveaux = 0, totalMisAJour = 0, fichiersLus = 0;
+  const rapportParEtape = [];
+
+  for(const stage of TAB_STAGE_DEFS){
+    const file = files.find(f => f.name.startsWith(stage.filePrefix));
+    if(!file) continue;
+    try{
+      const reader = new zip.ZipReader(new zip.BlobReader(file), { password });
+      const entries = await reader.getEntries();
+      const jsonEntry = entries.find(e => e.filename.endsWith('.json'));
+      if(!jsonEntry){ rapportParEtape.push(stage.label+' : aucun JSON trouvé dans l\'archive'); continue; }
+      const text = await jsonEntry.getData(new zip.TextWriter());
+      await reader.close();
+      const records = JSON.parse(text);
+      if(!Array.isArray(records)){ rapportParEtape.push(stage.label+' : format inattendu'); continue; }
+
+      let nouveaux=0, majs=0;
+      records.forEach(rec=>{
+        const code = rec[stage.codeField] || rec.id;
+        if(!code) return;
+        const key = String(code);
+        if(!tabletteData[stage.key][key]) nouveaux++; else majs++;
+        tabletteData[stage.key][key] = Object.assign({}, rec, {_tablette: nomTablette, _importedAt: new Date().toISOString()});
+      });
+      totalNouveaux += nouveaux; totalMisAJour += majs; fichiersLus++;
+      rapportParEtape.push(stage.label+' : '+records.length+' enregistrement(s) ('+nouveaux+' nouveaux, '+majs+' mis à jour)');
+    }catch(e){
+      console.error('Erreur import', stage.key, e);
+      rapportParEtape.push(stage.label+' : erreur — mot de passe incorrect ou fichier invalide ?');
+    }
+  }
+
+  if(fichiersLus===0){
+    statusEl.innerHTML = '<span style="color:var(--red);">Aucun fichier reconnu. Vérifiez que les noms de fichiers commencent bien par 01_requests, 02_minutes, etc.</span>';
+    return;
+  }
+
+  tabletteImports.push({
+    nom: nomTablette,
+    date: new Date().toISOString(),
+    nbFichiers: fichiersLus,
+    nbNouveaux: totalNouveaux,
+    nbMisAJour: totalMisAJour
+  });
+  tabSaveToStorage();
+
+  statusEl.innerHTML = `<div style="color:var(--accent);font-weight:600;margin-bottom:4px;">✓ ${fichiersLus} fichier(s) importé(s) pour "${nomTablette}" — ${totalNouveaux} nouveaux, ${totalMisAJour} mis à jour</div>` +
+    '<div style="font-size:10px;color:var(--text3);">'+rapportParEtape.join(' · ')+'</div>';
+  filesInput.value = '';
+  document.getElementById('tab-import-pwd').value = '';
+  tabRenderImportHistory();
+  showToast('Données tablette importées : '+nomTablette);
+}
+
+function tabRenderImportHistory(){
+  const el = document.getElementById('tab-import-history');
+  if(!el) return;
+  if(!tabletteImports.length){ el.innerHTML=''; return; }
+  const rows = tabletteImports.slice().reverse().map(imp=>{
+    const d = new Date(imp.date);
+    return `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:5px 8px;">${imp.nom}</td>
+      <td style="padding:5px 8px;color:var(--text2);">${d.toLocaleDateString('fr-FR')} ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</td>
+      <td style="padding:5px 8px;text-align:right;">${imp.nbFichiers}</td>
+      <td style="padding:5px 8px;text-align:right;color:var(--accent);">${imp.nbNouveaux}</td>
+      <td style="padding:5px 8px;text-align:right;color:var(--blue);">${imp.nbMisAJour}</td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Historique des imports</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;">
+      <thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:5px 8px;">Tablette</th><th style="text-align:left;padding:5px 8px;">Date</th><th style="text-align:right;padding:5px 8px;">Fichiers</th><th style="text-align:right;padding:5px 8px;">Nouveaux</th><th style="text-align:right;padding:5px 8px;">Mis à jour</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ── Correspondance avec un dossier AFOR : cherche parmi toutes les étapes tablette
+// un enregistrement dont le code normalisé correspond au dossier (par id ou code_parcelle) ──
+function tabMatchForDossier(dos){
+  if(!dos) return null;
+  const candidates = [tabNormCode(dos.id), tabNormCode(dos.code_parcelle)].filter(Boolean);
+  const result = {};
+  let found = false;
+  TAB_STAGE_DEFS.forEach(stage=>{
+    const store = tabletteData[stage.key] || {};
+    for(const key in store){
+      if(candidates.includes(tabNormCode(key))){
+        result[stage.key] = store[key];
+        found = true;
+        break;
+      }
+    }
+  });
+  return found ? result : null;
+}
+
+// Âge à partir d'une date de naissance ISO
+function tabCalcAge(birthdateIso){
+  if(!birthdateIso) return null;
+  const bd = new Date(birthdateIso);
+  if(isNaN(bd)) return null;
+  const today = new Date();
+  let age = today.getFullYear() - bd.getFullYear();
+  const m = today.getMonth() - bd.getMonth();
+  if(m<0 || (m===0 && today.getDate()<bd.getDate())) age--;
+  return age;
+}
+
 async function aforWipeFirebase(){
   if(!currentUser || currentUser.role !== 'admin'){ showToast('Accès refusé.'); return; }
   if(!confirm('⚠ Ceci va supprimer TOUTES les données AFOR de Firebase (base partagée par tous les comptes).\n\nCette action est irréversible. Continuer ?')) return;
@@ -8972,6 +9185,7 @@ serverLoad().then(ok => {
   authInit();
 });
 
+tabLoadFromStorage();
 actLoadObjectifs();
 dashInit();
 switchModule('accueil');
