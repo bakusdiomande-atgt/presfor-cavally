@@ -4243,9 +4243,14 @@ function dashBuildLeafletPolygons(map, legendEl, opts){
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     maxZoom: 17
   }).addTo(map);
-  // Contour officiel de la Côte d'Ivoire, superposé aux tuiles (non rempli, juste le tracé)
+  // Contour officiel de la Côte d'Ivoire, mis en avant-plan : le reste de la carte est assombri
+  // (technique du masque inversé — un grand rectangle couvrant le monde, avec le pays en "trou")
+  const worldMask = [[-85,-180],[-85,180],[85,180],[85,-180]];
+  L.polygon([worldMask, CI_OUTLINE], {
+    stroke:false, fillColor:'#1A1A1A', fillOpacity:0.5, interactive:false
+  }).addTo(map);
   L.polygon(CI_OUTLINE, {
-    color:'#1C4A2E', weight:2, fill:false, interactive:false
+    color:'#1C4A2E', weight:2.5, fill:false, interactive:false
   }).addTo(map);
   const bounds = [];
   geo.forEach(sp=>{
