@@ -4028,7 +4028,8 @@ function dashComputeStats(zoneFilter){
   zoneFilter = zoneFilter || dashZoneFilter;
   const afor = dashFilterByZone(dossiersAFOR||[], zoneFilter);
   const valides = afor.filter(d=>d.etape==='VA');
-  const superficieValidee = valides.reduce((s,d)=>{ const g=gnssForDossier(d); return s+(g?g.superficie:0); },0);
+  // Superficie sécurisée = superficie totale levée au GNSS (tous les dossiers avec un levé, pas seulement les validés)
+  const superficieValidee = afor.reduce((s,d)=>{ const g=gnssForDossier(d); return s+(g&&g.leve?g.superficie:0); },0);
   const orphansGnssAll = typeof gnssGetOrphanEntries==='function' ? gnssGetOrphanEntries() : [];
   const orphansGnss = dashFilterByZone(orphansGnssAll, zoneFilter);
   const totalDossiers = afor.length + orphansGnss.length;
@@ -4315,12 +4316,15 @@ function dashRenderEvolution(s){
   const cvs = document.getElementById('dash-chart-evol');
   if(!cvs || typeof Chart==='undefined') return;
   const c = dashChartColors();
-  // Regrouper les dossiers validés par mois réel (date_VA)
+  // Regrouper les dossiers par mois réel de levé GNSS (date_leve)
   const parMois = {};
-  s.afor.filter(d=>d.etape==='VA' && d.date_VA).forEach(d=>{
-    const mois = d.date_VA.substring(0,7); // YYYY-MM
+  s.afor.forEach(d=>{
     const g = gnssForDossier(d);
-    parMois[mois] = (parMois[mois]||0) + (g?g.superficie:0);
+    if(!g || !g.leve) return;
+    const dateLeve = g.entries && g.entries[0] && g.entries[0].date_leve;
+    if(!dateLeve) return;
+    const mois = dateLeve.substring(0,7); // YYYY-MM
+    parMois[mois] = (parMois[mois]||0) + g.superficie;
   });
   const moisTries = Object.keys(parMois).sort();
   const derniers = moisTries.slice(-6);
@@ -4331,7 +4335,7 @@ function dashRenderEvolution(s){
   const monthLabel = m=>{ if(!m) return ''; const [y,mo]=m.split('-'); return ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'][parseInt(mo)-1]; };
   if(dashChartEvol) dashChartEvol.destroy();
   if(!derniers.length){
-    cvs.parentElement.innerHTML = '<div class="empty-state" style="padding:40px 0;"><p style="font-size:12px;">Aucun dossier validé avec date pour le moment.</p></div>';
+    cvs.parentElement.innerHTML = '<div class="empty-state" style="padding:40px 0;"><p style="font-size:12px;">Aucun dossier levé au GNSS avec date pour le moment.</p></div>';
     return;
   }
   dashChartEvol = new Chart(cvs, {
