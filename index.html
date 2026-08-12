@@ -557,7 +557,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
             <div id="dash-perf-table" style="flex:1;overflow-y:auto;min-height:0;"></div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr;gap:10px;flex:1;min-height:95px;flex-shrink:0;">
+        <div style="display:grid;grid-template-columns:1fr;gap:10px;flex:1.4;min-height:125px;flex-shrink:0;">
           <div class="tw" style="padding:10px 12px;display:flex;flex-direction:column;min-height:0;">
             <div class="dash-card-title" style="flex-shrink:0;margin-bottom:4px;">Indicateurs clés</div>
             <div id="dash-indicateurs" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;flex:1;min-height:0;"></div>
@@ -4525,11 +4525,11 @@ function dashRenderIndicateurs(s){
     return dosMois.length>0 ? Math.round(rejMois/dosMois.length*100) : 0;
   });
 
-  const mini=(label,val,obj,cvsId)=>`<div style="background:var(--surface3);border-radius:var(--radius-sm);padding:7px 10px;display:flex;flex-direction:column;">
-    <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px;">${label}</div>
-    <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;">${val}</div>
-    <div style="font-size:9px;color:var(--text3);margin-bottom:3px;">${obj}</div>
-    <div style="flex:1;min-height:22px;position:relative;"><canvas id="${cvsId}"></canvas></div>
+  const mini=(label,val,obj,cvsId)=>`<div style="background:var(--surface3);border-radius:var(--radius-sm);padding:10px 14px;display:flex;flex-direction:column;">
+    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px;">${label}</div>
+    <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;">${val}</div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:6px;">${obj}</div>
+    <div style="flex:1;min-height:34px;position:relative;"><canvas id="${cvsId}"></canvas></div>
   </div>`;
   el.innerHTML =
     mini('Taux de validation', tauxValidation+'%', 'Objectif : ≥ 60%', 'dash-spark-validation') +
