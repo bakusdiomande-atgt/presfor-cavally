@@ -6874,36 +6874,48 @@ function notifSaveConfig(){
 // ── Générer les alertes ──
 function notifGetAlertes(){
   const alertes = [];
-  const today = new Date();
   const seuilDos = parseInt(notifConfig.seuilDos || 30);
 
-  // 1. Dossiers bloqués
+  // 1. Dossiers AFOR en retard (étape actuelle dépassant le délai attendu)
   if(notifConfig.chkDos !== false){
-    dossiers.filter(d => d.etape !== 'Clôturé').forEach(d => {
-      if(!d.etape_date) return;
-      const jours = Math.floor((today - new Date(d.etape_date)) / 86400000);
-      if(jours >= seuilDos){
-        // Trouver le responsable
-        const resp = RESPONSABLES.find(r =>
-          r.dept === d.dept && r.act === d.activite
-        );
+    (dossiersAFOR||[]).forEach(d=>{
+      const r = aforCalcRetard(d);
+      if(r.retard){
         alertes.push({
           id: 'dos_'+d.id,
-          type: 'danger',
-          titre: 'Dossier bloqué',
-          msg: d.ref_officiel+' — '+d.demandeur+' ('+d.village+') · Étape "'+d.etape+'" depuis '+jours+' jours',
+          type: r.jours > r.seuil*2 ? 'danger' : 'warning',
+          titre: 'Dossier en retard',
+          msg: (d.id||'')+' — '+(d.prenom||'')+' '+(d.nom_demandeur||'')+' ('+(d.village||'')+') · Étape "'+d.etape+'" depuis '+r.jours+' jours (seuil : '+r.seuil+'j)',
           dept: d.dept,
-          act: d.activite,
-          responsable: resp ? resp.nom : 'Non défini',
-          email_resp: resp ? resp.email : null,
-          whatsapp_resp: resp ? resp.whatsapp : null,
           date: new Date().toISOString(),
-          action: "switchModule('dossier')"
+          action: "switchModule('activites')"
         });
       }
     });
   }
 
+  // 2. Taux de validation faible par zone (moins de 15% de dossiers validés, avec un minimum de dossiers pour être significatif)
+  if(typeof PROJECT_ZONES!=='undefined'){
+    Object.keys(PROJECT_ZONES).forEach(zoneId=>{
+      const zAfor = dashFilterByZone(dossiersAFOR||[], zoneId);
+      if(zAfor.length < 20) return; // pas assez de dossiers pour que le taux soit significatif
+      const valides = zAfor.filter(d=>d.etape==='VA').length;
+      const taux = Math.round(valides/zAfor.length*100);
+      if(taux < 15){
+        alertes.push({
+          id: 'taux_valid_'+zoneId,
+          type: 'warning',
+          titre: 'Faible taux de validation',
+          msg: PROJECT_ZONES[zoneId].label+' ('+PROJECT_ZONES[zoneId].lot+') — '+taux+'% de dossiers validés sur '+zAfor.length,
+          date: new Date().toISOString(),
+          action: "switchModule('indicateurs')"
+        });
+      }
+    });
+  }
+
+  // Trier : alertes critiques d'abord, puis les plus en retard
+  alertes.sort((a,b)=> (a.type==='danger'?0:1) - (b.type==='danger'?0:1));
   return alertes;
 }
 
