@@ -4418,6 +4418,31 @@ function dashRenderPerfIndiv(){
 
 // ── Détail d'un dossier AFOR précis (ouvert depuis une alerte) — fenêtre superposée,
 // utilisable depuis n'importe quel module sans navigation ──
+// ── Depuis une alerte : ouvrir directement la liste détaillée de l'étape correspondant
+// à l'étape actuelle du dossier, avec la ligne du dossier mise en évidence ──
+function dashGoToDossierInActivites(id){
+  const d = (dossiersAFOR||[]).find(x=>String(x.id)===String(id));
+  if(!d){ showToast('Dossier introuvable.'); return; }
+  let stepIdx = ACT_STEPS.CF.steps.findIndex(s=>s.etape===d.etape);
+  if(stepIdx<0) stepIdx = 0;
+
+  switchModule('activites');
+  actSelect('CF');
+  actShowStepDetail('CF', stepIdx);
+
+  setTimeout(()=>{
+    const row = document.querySelector('#act-detail-body tr[data-dossier-id="'+String(id).replace(/"/g,'&quot;')+'"]');
+    if(row){
+      row.scrollIntoView({block:'center', behavior:'smooth'});
+      row.style.transition = 'background-color 0.3s';
+      row.style.backgroundColor = 'var(--amber-lt)';
+      setTimeout(()=>{ row.style.backgroundColor = ''; }, 2500);
+    } else {
+      showToast('Dossier non visible dans cette liste (filtres actifs ou étape différente).');
+    }
+  }, 200);
+}
+
 function dashShowDossierDetail(id){
   const d = (dossiersAFOR||[]).find(x=>String(x.id)===String(id));
   if(!d){ showToast('Dossier introuvable (peut-être déjà mis à jour depuis).'); return; }
@@ -4457,7 +4482,7 @@ function dashShowDossierDetail(id){
     row('Étape actuelle', d.etape||'—') +
     row('Agent CE', d.agent||'—') +
     row('Superficie GNSS', g ? g.superficie.toFixed(2)+' ha' : '—') +
-    `<div style="margin-top:12px;"><button class="btn-p" style="width:100%;" onclick="document.getElementById('dash-dossier-modal').style.display='none'; switchModule('activites'); actSelect('CF');">Voir dans Activités → Certificat foncier</button></div>`;
+    `<div style="margin-top:12px;"><button class="btn-p" style="width:100%;" onclick="document.getElementById('dash-dossier-modal').style.display='none'; dashGoToDossierInActivites('${String(d.id).replace(/'/g,"\\'")}');">Voir dans Activités → Certificat foncier</button></div>`;
 
   modal.style.display = 'flex';
 }
@@ -5304,7 +5329,7 @@ function actDetailRender(){
       // "Carte produite" = OK si la publicité du dossier est ouverte (étape OV atteinte ou au-delà), sinon vide
       const carteProduite = (ETAPE_ORDER_CF[d.etape]!==undefined && ETAPE_ORDER_CF[d.etape]>=ETAPE_ORDER_CF['OV'])
         ? '<span style="color:var(--accent);font-weight:700;">OK</span>' : '';
-      return `<tr style="border-bottom:1px solid var(--border);">
+      return `<tr data-dossier-id="${String(d.id||'').replace(/"/g,'&quot;')}" style="border-bottom:1px solid var(--border);">
         <td style="padding:7px 10px;font-family:'DM Mono',monospace;font-size:11px;">${d.id||''}</td>
         <td style="padding:7px 10px;">${REGION_BY_DEPT[(d.dept||'').toUpperCase()]||'—'}</td>
         <td style="padding:7px 10px;">${d.dept||''}</td>
