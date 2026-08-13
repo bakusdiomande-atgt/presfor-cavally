@@ -4416,6 +4416,52 @@ function dashRenderPerfIndiv(){
   }
 }
 
+// ── Détail d'un dossier AFOR précis (ouvert depuis une alerte) — fenêtre superposée,
+// utilisable depuis n'importe quel module sans navigation ──
+function dashShowDossierDetail(id){
+  const d = (dossiersAFOR||[]).find(x=>String(x.id)===String(id));
+  if(!d){ showToast('Dossier introuvable (peut-être déjà mis à jour depuis).'); return; }
+
+  let modal = document.getElementById('dash-dossier-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'dash-dossier-modal';
+    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
+    modal.innerHTML = `<div style="background:var(--surface);border-radius:12px;width:100%;max-width:520px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+        <h3 id="dash-dossier-modal-title" style="font-family:'Syne',sans-serif;font-size:15px;margin:0;"></h3>
+        <button class="btn-s" onclick="document.getElementById('dash-dossier-modal').style.display='none'">✕ Fermer</button>
+      </div>
+      <div id="dash-dossier-modal-body" style="padding:16px 20px;overflow-y:auto;flex:1;"></div>
+    </div>`;
+    document.body.appendChild(modal);
+  }
+
+  const r = aforCalcRetard(d);
+  const g = gnssForDossier(d);
+  const region = REGION_BY_DEPT[(d.dept||'').toUpperCase()] || '—';
+  const row = (label,val)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;">
+    <span style="color:var(--text3);">${label}</span><span style="font-weight:600;text-align:right;">${val}</span>
+  </div>`;
+
+  document.getElementById('dash-dossier-modal-title').textContent = 'Dossier '+(d.id||'');
+  document.getElementById('dash-dossier-modal-body').innerHTML =
+    (r.retard ? `<div style="background:var(--red-lt);color:var(--red);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;font-weight:600;margin-bottom:12px;">⛔ En retard depuis ${r.jours} jour(s) à l'étape "${d.etape}" (seuil : ${r.seuil}j)</div>` : '') +
+    row('Demandeur', ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim()||'—') +
+    row('Région', region) +
+    row('Département', d.dept||'—') +
+    row('Sous-préfecture', d.sp||'—') +
+    row('Village', d.village||'—') +
+    row('Code parcelle', d.code_parcelle||'—') +
+    row('Type CF', d.type||'—') +
+    row('Étape actuelle', d.etape||'—') +
+    row('Agent CE', d.agent||'—') +
+    row('Superficie GNSS', g ? g.superficie.toFixed(2)+' ha' : '—') +
+    `<div style="margin-top:12px;"><button class="btn-p" style="width:100%;" onclick="document.getElementById('dash-dossier-modal').style.display='none'; switchModule('activites'); actSelect('CF');">Voir dans Activités → Certificat foncier</button></div>`;
+
+  modal.style.display = 'flex';
+}
+
 function dashRenderAlertesList2(){
   const el = document.getElementById('dash-alertes-list2');
   if(!el) return;
@@ -6888,7 +6934,7 @@ function notifGetAlertes(){
           msg: (d.id||'')+' — '+(d.prenom||'')+' '+(d.nom_demandeur||'')+' ('+(d.village||'')+') · Étape "'+d.etape+'" depuis '+r.jours+' jours (seuil : '+r.seuil+'j)',
           dept: d.dept,
           date: new Date().toISOString(),
-          action: "switchModule('activites')"
+          action: "dashShowDossierDetail('"+String(d.id).replace(/'/g,"\\'")+"')"
         });
       }
     });
