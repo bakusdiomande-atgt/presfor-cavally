@@ -4434,9 +4434,7 @@ function dashGoToDossierInActivites(id){
     const row = document.querySelector('#act-detail-body tr[data-dossier-id="'+String(id).replace(/"/g,'&quot;')+'"]');
     if(row){
       row.scrollIntoView({block:'center', behavior:'smooth'});
-      row.style.transition = 'background-color 0.3s';
       row.style.backgroundColor = 'var(--amber-lt)';
-      setTimeout(()=>{ row.style.backgroundColor = ''; }, 2500);
     } else {
       showToast('Dossier non visible dans cette liste (filtres actifs ou étape différente).');
     }
