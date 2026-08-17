@@ -8319,10 +8319,11 @@ let gnssIndexNomVil = {};
 if(gnssData.length > 0){
   gnssData.forEach(function(g){
     var n = function(s){ if(!s) return ''; return s.toString().trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z0-9]/g,' ').replace(/\s+/g,' ').trim(); };
+    var nSorted = function(s){ var v=n(s); return v ? v.split(' ').filter(Boolean).sort().join(' ') : ''; };
     if(g.n_demcge){ var k1=n(g.n_demcge); if(!gnssIndex[k1]) gnssIndex[k1]=[]; gnssIndex[k1].push(g); }
-    var k2=n(g.nom_demand||'')+'|'+n(g.village||'')+'|'+n(g.sp||'')+'|'+n(g.dept||'');
+    var k2=nSorted(g.nom_demand||'')+'|'+n(g.village||'')+'|'+n(g.sp||'')+'|'+n(g.dept||'');
     if(!gnssIndexFull[k2]) gnssIndexFull[k2]=[]; gnssIndexFull[k2].push(g);
-    var k3=n(g.nom_demand||'')+'|'+n(g.village||'');
+    var k3=nSorted(g.nom_demand||'')+'|'+n(g.village||'');
     if(!gnssIndexNomVil[k3]) gnssIndexNomVil[k3]=[]; gnssIndexNomVil[k3].push(g);
   });
   console.log('Index GNSS reconstruits:', Object.keys(gnssIndex).length, 'codes,', Object.keys(gnssIndexFull).length, 'noms complets');
@@ -8350,12 +8351,12 @@ function gnssKeyCode(code){ return gnssNorm(code); }
 
 // Clé secondaire : NOM_DEMAND + village + SP + département
 function gnssKeyFullName(nom, village, sp, dept){
-  return gnssNorm(nom)+'|'+gnssNorm(village)+'|'+gnssNorm(sp)+'|'+gnssNorm(dept);
+  return gnssNormNameSorted(nom)+'|'+gnssNorm(village)+'|'+gnssNorm(sp)+'|'+gnssNorm(dept);
 }
 
 // Clé minimale : NOM_DEMAND + village (fallback)
 function gnssKeyNomVillage(nom, village){
-  return gnssNorm(nom)+'|'+gnssNorm(village);
+  return gnssNormNameSorted(nom)+'|'+gnssNorm(village);
 }
 
 // ── Import fichier GNSS Excel ──
@@ -9020,9 +9021,9 @@ async function gnssLoadFromFirebase(){
       gnssIndex = {}; gnssIndexFull = {}; gnssIndexNomVil = {};
       gnssData.forEach(g=>{
         if(g.n_demcge){ const k=gnssNorm(g.n_demcge); if(!gnssIndex[k]) gnssIndex[k]=[]; gnssIndex[k].push(g); }
-        const k2=gnssNorm(g.nom_demand||'')+'|'+gnssNorm(g.village||'')+'|'+gnssNorm(g.sp||'')+'|'+gnssNorm(g.dept||'');
+        const k2=gnssKeyFullName(g.nom_demand||'', g.village||'', g.sp||'', g.dept||'');
         if(!gnssIndexFull[k2]) gnssIndexFull[k2]=[]; gnssIndexFull[k2].push(g);
-        const k3=gnssNorm(g.nom_demand||'')+'|'+gnssNorm(g.village||'');
+        const k3=gnssKeyNomVillage(g.nom_demand||'', g.village||'');
         if(!gnssIndexNomVil[k3]) gnssIndexNomVil[k3]=[]; gnssIndexNomVil[k3].push(g);
       });
       try{ localStorage.setItem('presfor_gnss_data', JSON.stringify(gnssData)); localStorage.setItem('presfor_gnss_ts', d.ts); }catch(e){}
