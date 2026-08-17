@@ -7028,23 +7028,33 @@ function notifSaveConfig(){
 // ── Générer les alertes ──
 function notifGetAlertes(){
   const alertes = [];
-  const seuilDos = parseInt(notifConfig.seuilDos || 30);
 
-  // 1. Dossiers AFOR en retard (étape actuelle dépassant le délai attendu)
+  // 1. Dossiers AFOR en retard, regroupés par zone + étape (une alerte par groupe, pas par dossier —
+  // sinon des centaines/milliers de dossiers en retard généreraient autant d'alertes individuelles)
   if(notifConfig.chkDos !== false){
+    const groupes = {}; // clé "zoneId|etape" -> {zoneId, etape, dossiers:[], maxJours}
     (dossiersAFOR||[]).forEach(d=>{
       const r = aforCalcRetard(d);
-      if(r.retard){
-        alertes.push({
-          id: 'dos_'+d.id,
-          type: r.jours > r.seuil*2 ? 'danger' : 'warning',
-          titre: 'Dossier en retard',
-          msg: (d.id||'')+' — '+(d.prenom||'')+' '+(d.nom_demandeur||'')+' ('+(d.village||'')+') · Étape "'+d.etape+'" depuis '+r.jours+' jours (seuil : '+r.seuil+'j)',
-          dept: d.dept,
-          date: new Date().toISOString(),
-          action: "dashShowDossierDetail('"+String(d.id).replace(/'/g,"\\'")+"')"
-        });
-      }
+      if(!r.retard) return;
+      const deptNorm = zvNormStr(d.dept);
+      const zoneId = Object.keys(PROJECT_ZONES||{}).find(z => (PROJECT_ZONES[z].depts||[]).some(dp=>zvNormStr(dp)===deptNorm)) || 'cavally';
+      const cle = zoneId+'|'+d.etape;
+      if(!groupes[cle]) groupes[cle] = {zoneId, etape:d.etape, dossiers:[], maxJours:0, seuil:r.seuil};
+      groupes[cle].dossiers.push(d);
+      if(r.jours > groupes[cle].maxJours) groupes[cle].maxJours = r.jours;
+    });
+    Object.values(groupes).forEach(gr=>{
+      const zoneLabel = (PROJECT_ZONES[gr.zoneId]||{}).label || gr.zoneId;
+      const lot = (PROJECT_ZONES[gr.zoneId]||{}).lot || '';
+      const stepIdx = ACT_STEPS.CF.steps.findIndex(s=>s.etape===gr.etape);
+      alertes.push({
+        id: 'retard_'+gr.zoneId+'_'+gr.etape,
+        type: gr.dossiers.length >= 20 ? 'danger' : 'warning',
+        titre: 'Dossiers en retard',
+        msg: gr.dossiers.length+' dossier(s) en retard à l\'étape "'+gr.etape+'" — '+zoneLabel+(lot?' ('+lot+')':'')+' · jusqu\'à '+gr.maxJours+' jours (seuil : '+gr.seuil+'j)',
+        date: new Date().toISOString(),
+        action: "zoneSwitch('"+gr.zoneId+"'); switchModule('activites'); actSelect('CF'); actShowStepDetail('CF',"+(stepIdx>=0?stepIdx:0)+");"
+      });
     });
   }
 
