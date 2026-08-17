@@ -7029,29 +7029,31 @@ function notifSaveConfig(){
 function notifGetAlertes(){
   const alertes = [];
 
-  // 1. Dossiers AFOR en retard, regroupés par zone + étape (une alerte par groupe, pas par dossier —
-  // sinon des centaines/milliers de dossiers en retard généreraient autant d'alertes individuelles)
+  // 1. Dossiers AFOR en retard, regroupés uniquement par zone (une alerte par zone au maximum —
+  // pas par étape, pour garder un nombre d'alertes toujours restreint et lisible)
   if(notifConfig.chkDos !== false){
-    const groupes = {}; // clé "zoneId|etape" -> {zoneId, etape, dossiers:[], maxJours}
+    const groupes = {}; // clé zoneId -> {zoneId, dossiers:[], maxJours, etapes:Set}
     (dossiersAFOR||[]).forEach(d=>{
       const r = aforCalcRetard(d);
       if(!r.retard) return;
       const deptNorm = zvNormStr(d.dept);
       const zoneId = Object.keys(PROJECT_ZONES||{}).find(z => (PROJECT_ZONES[z].depts||[]).some(dp=>zvNormStr(dp)===deptNorm)) || 'cavally';
-      const cle = zoneId+'|'+d.etape;
-      if(!groupes[cle]) groupes[cle] = {zoneId, etape:d.etape, dossiers:[], maxJours:0, seuil:r.seuil};
-      groupes[cle].dossiers.push(d);
-      if(r.jours > groupes[cle].maxJours) groupes[cle].maxJours = r.jours;
+      if(!groupes[zoneId]) groupes[zoneId] = {zoneId, dossiers:[], maxJours:0, etapes:{}};
+      groupes[zoneId].dossiers.push(d);
+      groupes[zoneId].etapes[d.etape] = (groupes[zoneId].etapes[d.etape]||0)+1;
+      if(r.jours > groupes[zoneId].maxJours) groupes[zoneId].maxJours = r.jours;
     });
     Object.values(groupes).forEach(gr=>{
       const zoneLabel = (PROJECT_ZONES[gr.zoneId]||{}).label || gr.zoneId;
       const lot = (PROJECT_ZONES[gr.zoneId]||{}).lot || '';
-      const stepIdx = ACT_STEPS.CF.steps.findIndex(s=>s.etape===gr.etape);
+      // Étape la plus fréquente parmi les dossiers en retard de cette zone, pour cibler le clic "Voir"
+      const etapeTop = Object.entries(gr.etapes).sort((a,b)=>b[1]-a[1])[0][0];
+      const stepIdx = ACT_STEPS.CF.steps.findIndex(s=>s.etape===etapeTop);
       alertes.push({
-        id: 'retard_'+gr.zoneId+'_'+gr.etape,
-        type: gr.dossiers.length >= 20 ? 'danger' : 'warning',
+        id: 'retard_'+gr.zoneId,
+        type: gr.dossiers.length >= 50 ? 'danger' : 'warning',
         titre: 'Dossiers en retard',
-        msg: gr.dossiers.length+' dossier(s) en retard à l\'étape "'+gr.etape+'" — '+zoneLabel+(lot?' ('+lot+')':'')+' · jusqu\'à '+gr.maxJours+' jours (seuil : '+gr.seuil+'j)',
+        msg: gr.dossiers.length+' dossier(s) en retard — '+zoneLabel+(lot?' ('+lot+')':'')+' · jusqu\'à '+gr.maxJours+' jours',
         date: new Date().toISOString(),
         action: "zoneSwitch('"+gr.zoneId+"'); switchModule('activites'); actSelect('CF'); actShowStepDetail('CF',"+(stepIdx>=0?stepIdx:0)+");"
       });
