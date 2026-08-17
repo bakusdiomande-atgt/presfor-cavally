@@ -8336,6 +8336,15 @@ function gnssNorm(s){
     .replace(/[^A-Z0-9]/g,' ').replace(/\s+/g,' ').trim();
 }
 
+// Normalisation de nom insensible à l'ordre des mots — "KONE DAOUDA" et "DAOUDA KONE"
+// doivent être reconnus comme la même personne (l'ordre Prénom/Nom diffère souvent
+// entre la base AFOR et les exports GNSS terrain).
+function gnssNormNameSorted(s){
+  const n = gnssNorm(s);
+  if(!n) return '';
+  return n.split(' ').filter(Boolean).sort().join(' ');
+}
+
 // Clé de jointure principale : N_DEMCGE (code parcelle)
 function gnssKeyCode(code){ return gnssNorm(code); }
 
@@ -8449,21 +8458,22 @@ function gnssImportExcel(input){
 // ── Trouver les données GNSS pour un dossier AFOR (jointure multi-critères) ──
 function gnssForDossier(dos){
   if(!gnssData.length) return null;
-  const nom = gnssNorm((dos.prenom||'')+' '+(dos.nom||dos.nom_demandeur||''));
+  const nom = gnssNormNameSorted((dos.prenom||'')+' '+(dos.nom||dos.nom_demandeur||''));
   const village = gnssNorm(dos.village||'');
   const sp      = gnssNorm(dos.sp||'');
   const dept    = gnssNorm(dos.dept||'');
   const code    = gnssNorm(dos.code_parcelle||'');
   let entries = null;
 
-  // Critère 1 : Code Parcelle = N_DEMCGE — ET nom du demandeur cohérent.
-  // Une correspondance de code SEUL ne suffit pas : si le nom diffère, ce n'est pas
+  // Critère 1 : Code Parcelle = N_DEMCGE — ET nom du demandeur cohérent (comparaison
+  // insensible à l'ordre des mots : "Prénom Nom" AFOR vs "Nom Prénom" GNSS doivent matcher).
+  // Une correspondance de code SEUL ne suffit pas : si le nom diffère complètement, ce n'est pas
   // une correspondance parfaite. Ces parcelles restent alors non rattachées ici et
   // sont traitées à part (voir gnssGetOrphanEntries) : conservées comme dossiers
   // distincts, sans écraser la superficie de ce dossier AFOR.
   if(code && gnssIndex[code] && gnssIndex[code].length){
     const parCode = gnssIndex[code];
-    const memeNom = nom ? parCode.filter(e => gnssNorm(e.nom_demand) === nom) : [];
+    const memeNom = nom ? parCode.filter(e => gnssNormNameSorted(e.nom_demand) === nom) : [];
     if(memeNom.length) entries = memeNom;
   }
   // Critère 2 : NOM_DEMAND + village + SP + département
