@@ -4060,8 +4060,11 @@ function dashComputeStats(zoneFilter){
   zoneFilter = zoneFilter || dashZoneFilter;
   const afor = dashFilterByZone(dossiersAFOR||[], zoneFilter);
   const valides = afor.filter(d=>d.etape==='VA');
-  // Superficie sécurisée = superficie totale levée au GNSS (tous les dossiers avec un levé, pas seulement les validés)
-  const superficieValidee = afor.reduce((s,d)=>{ const g=gnssForDossier(d); return s+(g&&g.leve?g.superficie:0); },0);
+  // Superficie sécurisée = superficie totale levée au GNSS, tous levés confondus,
+  // qu'ils soient ou non rattachés à un dossier AFOR déjà importé (le rattachement sert
+  // à d'autres indicateurs plus précis, mais ne doit pas empêcher ce total de s'afficher).
+  const gnssZone = dashFilterByZone(gnssData||[], zoneFilter);
+  const superficieValidee = gnssZone.reduce((s,g)=>s+(g.superficie||0),0);
   const orphansGnssAll = typeof gnssGetOrphanEntries==='function' ? gnssGetOrphanEntries() : [];
   const orphansGnss = dashFilterByZone(orphansGnssAll, zoneFilter);
   const totalDossiers = afor.length + orphansGnss.length;
@@ -4348,15 +4351,12 @@ function dashRenderEvolution(s){
   const cvs = document.getElementById('dash-chart-evol');
   if(!cvs || typeof Chart==='undefined') return;
   const c = dashChartColors();
-  // Regrouper les dossiers par mois réel de levé GNSS (date_leve)
+  // Regrouper les levés GNSS par mois réel (date_leve), tous levés confondus (avec ou sans dossier AFOR correspondant)
   const parMois = {};
-  s.afor.forEach(d=>{
-    const g = gnssForDossier(d);
-    if(!g || !g.leve) return;
-    const dateLeve = g.entries && g.entries[0] && g.entries[0].date_leve;
-    if(!dateLeve) return;
-    const mois = dateLeve.substring(0,7); // YYYY-MM
-    parMois[mois] = (parMois[mois]||0) + g.superficie;
+  dashFilterByZone(gnssData||[], s.zoneFilter).forEach(g=>{
+    if(!g.date_leve) return;
+    const mois = g.date_leve.substring(0,7); // YYYY-MM
+    parMois[mois] = (parMois[mois]||0) + (g.superficie||0);
   });
   const moisTries = Object.keys(parMois).sort();
   const derniers = moisTries.slice(-6);
