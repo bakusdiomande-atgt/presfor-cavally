@@ -4059,7 +4059,6 @@ function dashSaveObjectifs(){
 function dashComputeStats(zoneFilter){
   zoneFilter = zoneFilter || dashZoneFilter;
   const afor = dashFilterByZone(dossiersAFOR||[], zoneFilter);
-  const valides = afor.filter(d=>d.etape==='VA');
   // Superficie sécurisée = superficie totale levée au GNSS, tous levés confondus,
   // qu'ils soient ou non rattachés à un dossier AFOR déjà importé (le rattachement sert
   // à d'autres indicateurs plus précis, mais ne doit pas empêcher ce total de s'afficher).
@@ -4068,9 +4067,13 @@ function dashComputeStats(zoneFilter){
   const orphansGnssAll = typeof gnssGetOrphanEntries==='function' ? gnssGetOrphanEntries() : [];
   const orphansGnss = dashFilterByZone(orphansGnssAll, zoneFilter);
   const totalDossiers = afor.length + orphansGnss.length;
-  const enCours = afor.filter(d=>['DD','RDC'].includes(d.etape)).length;
-  const enquetes = afor.filter(d=>['CL','OV','CP','AP'].includes(d.etape)).length;
   const rejetes = afor.filter(d=>pubCQ[d.id] && pubCQ[d.id].rejete).length;
+  const rejeteIds = new Set(afor.filter(d=>pubCQ[d.id] && pubCQ[d.id].rejete).map(d=>d.id));
+  // Un dossier rejeté ne doit compter que dans "Rejetés" — pas aussi dans "En cours"/"Enquêtés"/"Validés"
+  // selon son étape (les deux critères sont indépendants dans les données, d'où le risque de double comptage).
+  const enCours = afor.filter(d=>['DD','RDC'].includes(d.etape) && !rejeteIds.has(d.id)).length;
+  const enquetes = afor.filter(d=>['CL','OV','CP','AP'].includes(d.etape) && !rejeteIds.has(d.id)).length;
+  const valides = afor.filter(d=>d.etape==='VA' && !rejeteIds.has(d.id));
   const alertesN = typeof notifGetAlertes==='function' ? notifGetAlertes().length : afor.filter(d=>aforCalcRetard(d).retard).length;
   return {
     superficieValidee, totalDossiers, nbValides:valides.length,
