@@ -5727,21 +5727,31 @@ function indRenderAll(){
   // ── Taux d'avancement par étape du Certificat foncier (cumulatif) ──
   const cfRealises = actComputeCFRealises(afor);
   const stepColors = ['#2E5FA3','#1C4A2E','#00838F','#00838F','#00838F','#E08E0B','#E08E0B','#E08E0B','#C0392B','#C0392B','#C0392B','#C0392B'];
+  // De "Parcelle levée" à "Établissement du plan définitif" (indices 3 à 10 inclus) : le taux
+  // et l'affichage se basent sur la superficie (ha), pas seulement le nombre de dossiers.
+  const STEPS_SUPERFICIE = [3,4,5,6,7,8,9,10];
   const stepCards = ACT_STEPS.CF.steps.map((step,idx)=>{
     const obj = actGetObjectif('CF', idx);
     const real = cfRealises[idx];
-    const taux = obj.dossier>0 ? Math.round(real.dossier/obj.dossier*100*10)/10 : 0;
+    const useSuperficie = STEPS_SUPERFICIE.includes(idx);
+    const taux = useSuperficie
+      ? (obj.ha>0 ? Math.round(real.ha/obj.ha*100*10)/10 : 0)
+      : (obj.dossier>0 ? Math.round(real.dossier/obj.dossier*100*10)/10 : 0);
     const col = stepColors[idx];
+    const detailLine = useSuperficie
+      ? Math.round(real.ha).toLocaleString('fr-FR')+' ha · '+real.dossier.toLocaleString('fr-FR')+' dossier(s)'
+      : real.dossier.toLocaleString('fr-FR')+' dossier(s)';
     return `<div class="tw" style="padding:14px 16px;border-left:3px solid ${col};cursor:pointer;" onclick="indShowCFStepTrend(${idx})">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div style="font-size:12px;font-weight:700;max-width:75%;">${step.label}</div>
         <div style="font-size:15px;font-weight:700;color:var(--text3);">${idx+1}</div>
       </div>
       <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:${col};margin:4px 0 2px;">${taux}%</div>
-      <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">${real.dossier.toLocaleString('fr-FR')} dossier(s)</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">${detailLine}</div>
       <div style="height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;"><div style="width:${Math.min(100,taux)}%;height:100%;background:${col};"></div></div>
     </div>`;
   }).join('');
+
 
   el.innerHTML = `
     <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px;">Taux d'avancement par étape — Certificat foncier <span style="font-weight:400;text-transform:none;">(cliquer une carte pour voir son évolution)</span></div>
