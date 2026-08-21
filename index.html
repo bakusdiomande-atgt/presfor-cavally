@@ -5730,16 +5730,21 @@ function indRenderAll(){
   // De "Parcelle levée" à "Établissement du plan définitif" (indices 3 à 10 inclus) : le taux
   // et l'affichage se basent sur la superficie (ha), pas seulement le nombre de dossiers.
   const STEPS_SUPERFICIE = [3,4,5,6,7,8,9,10];
+  // Cas particulier "Parcelle levée" (idx 3) : superficie GNSS totale brute (tous les levés,
+  // avec ou sans dossier AFOR correspondant) — cohérent avec "Superficie sécurisée" du Tableau
+  // de bord. Les autres étapes restent basées sur la superficie des seuls dossiers AFOR rattachés.
+  const haLeveeBrute = dashFilterByZone(gnssData||[], dashZoneFilter).reduce((s,g)=>s+(g.superficie||0),0);
   const stepCards = ACT_STEPS.CF.steps.map((step,idx)=>{
     const obj = actGetObjectif('CF', idx);
     const real = cfRealises[idx];
     const useSuperficie = STEPS_SUPERFICIE.includes(idx);
+    const haAffiche = idx===3 ? haLeveeBrute : real.ha;
     const taux = useSuperficie
-      ? (obj.ha>0 ? Math.round(real.ha/obj.ha*100*10)/10 : 0)
+      ? (obj.ha>0 ? Math.round(haAffiche/obj.ha*100*10)/10 : 0)
       : (obj.dossier>0 ? Math.round(real.dossier/obj.dossier*100*10)/10 : 0);
     const col = stepColors[idx];
     const detailLine = useSuperficie
-      ? Math.round(real.ha).toLocaleString('fr-FR')+' ha · '+real.dossier.toLocaleString('fr-FR')+' dossier(s)'
+      ? Math.round(haAffiche).toLocaleString('fr-FR')+' ha · '+real.dossier.toLocaleString('fr-FR')+' dossier(s)'
       : real.dossier.toLocaleString('fr-FR')+' dossier(s)';
     return `<div class="tw" style="padding:14px 16px;border-left:3px solid ${col};cursor:pointer;" onclick="indShowCFStepTrend(${idx})">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
