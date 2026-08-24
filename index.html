@@ -5536,20 +5536,43 @@ function indSmallDonut(cvsId, pct, color1, color2){
 // ── Évolution mensuelle réelle d'une étape CF précise (nombre de dossiers ayant atteint
 // cette étape ce mois-là), affichée en fenêtre superposée depuis une carte de taux d'avancement ──
 let indCFTrendChart = null;
+const STEPS_SUPERFICIE = [3,4,5,6,7,8,9,10];
+
 function indCFStepTrendData(afor, stepIdx){
-  const counts = {};
+  const useSuperficie = STEPS_SUPERFICIE.includes(stepIdx);
+
+  // Cas particulier "Parcelle levée" (idx 3) : superficie GNSS brute par mois de levé,
+  // cohérent avec la carte (total GNSS, rattaché ou non à un dossier AFOR).
+  if(stepIdx===3 && useSuperficie){
+    const totaux = {};
+    dashFilterByZone(gnssData||[], dashZoneFilter).forEach(g=>{
+      if(!g.date_leve) return;
+      const mois = g.date_leve.substring(0,7);
+      totaux[mois] = (totaux[mois]||0) + (g.superficie||0);
+    });
+    const moisTries = Object.keys(totaux).sort();
+    return moisTries.map(m=>({mois:m, val:Math.round(totaux[m]*10)/10}));
+  }
+
+  const totaux = {};
   afor.forEach(d=>{
     const dateVal = actCFStepDate(d, stepIdx);
     if(!dateVal) return;
     const mois = dateVal.substring(0,7);
-    counts[mois] = (counts[mois]||0)+1;
+    if(useSuperficie){
+      const g = gnssForDossier(d);
+      totaux[mois] = (totaux[mois]||0) + (g ? g.superficie : 0);
+    } else {
+      totaux[mois] = (totaux[mois]||0) + 1;
+    }
   });
-  const moisTries = Object.keys(counts).sort();
-  return moisTries.map(m=>({mois:m, val:counts[m]}));
+  const moisTries = Object.keys(totaux).sort();
+  return moisTries.map(m=>({mois:m, val: useSuperficie ? Math.round(totaux[m]*10)/10 : totaux[m]}));
 }
 
 function indShowCFStepTrend(stepIdx){
   const step = ACT_STEPS.CF.steps[stepIdx];
+  const useSuperficie = STEPS_SUPERFICIE.includes(stepIdx);
   const afor = dashComputeStats(dashZoneFilter).afor;
   const data = indCFStepTrendData(afor, stepIdx);
 
@@ -5571,7 +5594,9 @@ function indShowCFStepTrend(stepIdx){
     document.body.appendChild(modal);
   }
   document.getElementById('ind-cf-trend-title').textContent = (stepIdx+1)+' — '+step.label;
-  document.getElementById('ind-cf-trend-sub').textContent = 'Nombre de dossiers ayant atteint cette étape, par mois';
+  document.getElementById('ind-cf-trend-sub').textContent = useSuperficie
+    ? 'Superficie (ha) ayant atteint cette étape, par mois'
+    : 'Nombre de dossiers ayant atteint cette étape, par mois';
   modal.style.display = 'flex';
 
   if(indCFTrendChart) indCFTrendChart.destroy();
@@ -5585,7 +5610,9 @@ function indShowCFStepTrend(stepIdx){
     },
     options:{
       responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false} },
+      plugins:{ legend:{display:false},
+        tooltip:{ callbacks:{ label: ctx => useSuperficie ? ctx.parsed.y.toLocaleString('fr-FR')+' ha' : ctx.parsed.y.toLocaleString('fr-FR')+' dossier(s)' } }
+      },
       scales:{ y:{ beginAtZero:true, ticks:{precision:0} } }
     }
   });
@@ -5728,8 +5755,8 @@ function indRenderAll(){
   const cfRealises = actComputeCFRealises(afor);
   const stepColors = ['#2E5FA3','#1C4A2E','#00838F','#00838F','#00838F','#E08E0B','#E08E0B','#E08E0B','#C0392B','#C0392B','#C0392B','#C0392B'];
   // De "Parcelle levée" à "Établissement du plan définitif" (indices 3 à 10 inclus) : le taux
-  // et l'affichage se basent sur la superficie (ha), pas seulement le nombre de dossiers.
-  const STEPS_SUPERFICIE = [3,4,5,6,7,8,9,10];
+  // et l'affichage se basent sur la superficie (ha), pas seulement le nombre de dossiers
+  // (STEPS_SUPERFICIE est déclarée plus haut, réutilisée aussi par le graphique de tendance).
   // Cas particulier "Parcelle levée" (idx 3) : superficie GNSS totale brute (tous les levés,
   // avec ou sans dossier AFOR correspondant) — cohérent avec "Superficie sécurisée" du Tableau
   // de bord. Les autres étapes restent basées sur la superficie des seuls dossiers AFOR rattachés.
