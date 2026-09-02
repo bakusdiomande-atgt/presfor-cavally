@@ -4163,6 +4163,7 @@ function dashChartColors(){
     teal: cs.getPropertyValue('--teal').trim()||'#0E5C4A',
     text2: cs.getPropertyValue('--text2').trim()||'#5C5A55',
     border: cs.getPropertyValue('--border').trim()||'rgba(0,0,0,0.08)',
+    surface2: cs.getPropertyValue('--surface2').trim()||'#E6E4E0',
   };
 }
 
@@ -4186,8 +4187,8 @@ function dashRenderLotChart(s){
     data:{
       labels: lots.map(l=>l.label),
       datasets:[
-        {label:'Superficie sécurisée (ha)', data:superficies, backgroundColor:c.accent, borderRadius:4, maxBarThickness:46},
-        {label:'Objectif (ha)', data:objectifs, backgroundColor:c.border, borderRadius:4, maxBarThickness:46},
+        {label:'Superficie sécurisée (ha)', data:superficies, backgroundColor:c.accent, borderRadius:4, maxBarThickness:46, categoryPercentage:0.7, barPercentage:0.95},
+        {label:'Objectif (ha)', data:objectifs, backgroundColor:c.surface2, borderColor:'rgba(0,0,0,0.13)', borderWidth:1, borderRadius:4, maxBarThickness:46, categoryPercentage:0.7, barPercentage:0.95},
       ]
     },
     options:{
