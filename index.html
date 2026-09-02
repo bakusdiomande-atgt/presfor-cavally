@@ -6022,13 +6022,11 @@ function cqeRenderAll(){
   });
 
   const rows = filtered.slice(0,200).map(d=>{
-    const motif = motifDossier(d);
     return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="cqeShowDossierDetail('${String(d.id).replace(/'/g,"\\'")}')">
     <td style="padding:8px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--blue);">${d.id}</td>
     <td style="padding:8px 12px;">${d.prenom||''} ${d.nom_demandeur||''}</td>
     <td style="padding:8px 12px;color:var(--text2);">${d.village||''}</td>
     <td style="padding:8px 12px;">${d.agent||'—'}</td>
-    <td style="padding:8px 12px;color:var(--text2);max-width:280px;">${motif || '<span style="color:var(--text3);">Non renseigné</span>'}</td>
   </tr>`;
   }).join('');
   contentEl.innerHTML = motifBreakdownHtml + `<div class="tw" style="overflow:hidden;">
@@ -6050,8 +6048,8 @@ function cqeRenderAll(){
     <div style="padding:8px 16px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);">Dossiers rejetés (contrôle qualité) — ${filtered.length.toLocaleString('fr-FR')} résultat(s)</div>
     <div style="overflow-x:auto;">
     <table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">N° Dossier</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Demandeur</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Village</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Agent</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Motif de rejet</th></tr></thead>
-      <tbody>${rows || '<tr><td colspan="5" style="padding:16px;text-align:center;color:var(--text3);">Aucun résultat pour ces filtres</td></tr>'}</tbody>
+      <thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">N° Dossier</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Demandeur</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Village</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Agent</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="4" style="padding:16px;text-align:center;color:var(--text3);">Aucun résultat pour ces filtres</td></tr>'}</tbody>
     </table>
     </div>
     ${filtered.length>200 ? `<div style="padding:8px 16px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);">${filtered.length.toLocaleString('fr-FR')} résultats au total — 200 premiers affichés (affinez les filtres ou exportez le CSV pour tout voir).</div>` : ''}
