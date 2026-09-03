@@ -7894,7 +7894,13 @@ const AFOR_COLS = {
   date_OV:'Date Ouverture de Publicité',
   date_CP:'Date Clôture de Publicité',
   date_AP:"Date Existence Paisible",
-  date_VA:"Date Validation d'Enquête"
+  date_VA:"Date Validation d'Enquête",
+  statut:'Statut de Validation', niveau:'Niveau Global',
+  superf_cl:'Superficie de Constat de limite',
+  superf_cq1:'Superficie au contrôle 1', superf_cq2:'Superficie au contrôle 2',
+  superf_final:'Superficie au contrôle finale',
+  motif_qc1:'Motif de rejet QC1', motif_qc2:'Motif de rejet QC2',
+  motif_final:'Motif de rejet Validation Finale'
 };
 
 // Mapping normalisé des étapes (fichier → standard)
@@ -8141,6 +8147,35 @@ function aforImportExcel(input){
           date_VA:  fmtD(row[AFOR_COLS.date_VA]),
         };
         imported.push(dos);
+
+        // Contrôle qualité : ces colonnes sont dans le même fichier AFOR, on peuple pubCQ
+        // directement ici, pour que "Dossiers rejetés"/motifs restent synchronisés avec le
+        // dernier import AFOR — sans dépendre d'un fichier de contrôle qualité séparé.
+        const statutCQ = (row[AFOR_COLS.statut]||'').trim();
+        const motifQC1 = (row[AFOR_COLS.motif_qc1]||'').trim();
+        const motifQC2 = (row[AFOR_COLS.motif_qc2]||'').trim();
+        const motifFinal = (row[AFOR_COLS.motif_final]||'').trim();
+        const superfCL = (row[AFOR_COLS.superf_cl]||'').trim();
+        const superfCQ1 = (row[AFOR_COLS.superf_cq1]||'').trim();
+        const superfCQ2 = (row[AFOR_COLS.superf_cq2]||'').trim();
+        const superfFinal = (row[AFOR_COLS.superf_final]||'').trim();
+        const isRejeteAfor = statutCQ.toUpperCase().includes('REJETE') || statutCQ.toUpperCase().includes('REJETÉ');
+        const hasCqData = statutCQ || motifQC1 || motifQC2 || motifFinal;
+        if(hasCqData){
+          const superfCqVal = (superfFinal && superfFinal!=='N/A') ? superfFinal :
+                               (superfCQ1   && superfCQ1!=='N/A')   ? superfCQ1   :
+                               (superfCQ2   && superfCQ2!=='N/A')   ? superfCQ2   :
+                               (superfCL    && superfCL!=='N/A')    ? superfCL    : null;
+          pubCQ[dos.id] = {
+            niveau:       (row[AFOR_COLS.niveau]||'').trim() || null,
+            statut_cq:    statutCQ || null,
+            rejete:       isRejeteAfor,
+            motif_qc1:    (motifQC1 && motifQC1!=='N/A') ? motifQC1 : null,
+            motif_qc2:    (motifQC2 && motifQC2!=='N/A') ? motifQC2 : null,
+            motif_final:  (motifFinal && motifFinal!=='N/A') ? motifFinal : null,
+            superf:       superfCqVal,
+          };
+        }
         nb++;
       });
       // ── Garde-fou : ne rien écraser si aucune ligne n'a pu être reconnue ──
