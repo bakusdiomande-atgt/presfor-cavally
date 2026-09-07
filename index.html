@@ -8130,9 +8130,6 @@ function aforImportExcel(input){
       } else {
         const wb = XLSX.read(e.target.result, {type:'array', cellDates:true, cellNF:false, cellHTML:false});
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const range = XLSX.utils.decode_range(ws['!ref']||'A1');
-        range.e.c = 21;
-        ws['!ref'] = XLSX.utils.encode_range(range);
         rows = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false, blankrows:false}).map(aforCanonicalizeRow);
         console.log('XLSX lu:', rows.length, 'lignes');
       }
