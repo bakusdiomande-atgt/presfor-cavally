@@ -8159,7 +8159,8 @@ function aforImportExcel(input){
         const superfCQ1 = (row[AFOR_COLS.superf_cq1]||'').trim();
         const superfCQ2 = (row[AFOR_COLS.superf_cq2]||'').trim();
         const superfFinal = (row[AFOR_COLS.superf_final]||'').trim();
-        const isRejeteAfor = statutCQ.toUpperCase().includes('REJETE') || statutCQ.toUpperCase().includes('REJETÉ');
+        const isRejeteAfor = statutCQ.toUpperCase().includes('REJETE') || statutCQ.toUpperCase().includes('REJETÉ')
+          || !!(motifQC1 && motifQC1!=='N/A') || !!(motifQC2 && motifQC2!=='N/A') || !!(motifFinal && motifFinal!=='N/A');
         const hasCqData = statutCQ || motifQC1 || motifQC2 || motifFinal;
         if(hasCqData){
           const superfCqVal = (superfFinal && superfFinal!=='N/A') ? superfFinal :
