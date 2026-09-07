@@ -7813,6 +7813,26 @@ function updateSyncIndicator(status){
   el.innerHTML = '<span style="color:'+s.color+';font-size:11px;font-weight:600">'+s.icon+' '+s.txt+'</span>';
 }
 
+// ── Empêcher de quitter/actualiser la page pendant qu'un envoi vers Firebase est en cours
+// (sinon les dernières données importées ne sont pas encore persistées et seront perdues
+// au rechargement) : compteur d'envois actifs + avertissement natif du navigateur.
+let _syncPendingCount = 0;
+function syncPendingStart(){
+  _syncPendingCount++;
+  updateSyncIndicator('pending');
+}
+function syncPendingEnd(){
+  _syncPendingCount = Math.max(0, _syncPendingCount-1);
+  if(_syncPendingCount===0) updateSyncIndicator('ok');
+}
+window.addEventListener('beforeunload', function(e){
+  if(_syncPendingCount>0){
+    e.preventDefault();
+    e.returnValue = 'Une synchronisation est encore en cours — si vous quittez maintenant, les dernières données importées risquent de ne pas être enregistrées.';
+    return e.returnValue;
+  }
+});
+
 function updateNetworkStatus(){
   const online = navigator.onLine;
   try {
@@ -8240,7 +8260,8 @@ function aforImportExcel(input){
       // Sauvegarde Firebase en arrière-plan (partagé avec tous les comptes)
       // Garde-fou : ne jamais synchroniser une base vide (protège contre un import raté qui écraserait Firebase)
       if(dossiersAFOR.length > 0){
-        aforSaveToFirebase().catch(e=>console.warn('AFOR Firebase save:', e.message));
+        syncPendingStart();
+        aforSaveToFirebase().catch(e=>{ console.warn('AFOR Firebase save:', e.message); updateSyncIndicator('error'); }).finally(syncPendingEnd);
       } else {
         console.warn('AFOR: sauvegarde Firebase annulée (0 dossier en mémoire)');
       }
@@ -8697,7 +8718,8 @@ function gnssImportExcel(input){
         localStorage.setItem('presfor_gnss_ts', new Date().toISOString());
         console.log('GNSS sauvegardé local:', gnssData.length, 'parcelles,', Math.round(gnssJson.length/1024), 'ko');
       }catch(ex){ console.warn('localStorage GNSS:', ex.message); }
-      gnssSaveToFirebase().catch(e=>console.warn('GNSS Firebase save:', e.message));
+      syncPendingStart();
+      gnssSaveToFirebase().catch(e=>{ console.warn('GNSS Firebase save:', e.message); updateSyncIndicator('error'); }).finally(syncPendingEnd);
 
       gnssUpdateBtnLabel();
       gnssRenderAll();
