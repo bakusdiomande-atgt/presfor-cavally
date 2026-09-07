@@ -4743,12 +4743,14 @@ function pubSave(){
     localStorage.setItem('presfor_pub_cq', JSON.stringify(pubCQ));
   } catch(e) {}
   // Sauvegarder sur Firebase
+  if(typeof syncPendingStart==='function') syncPendingStart();
   fetch(FIREBASE_URL + '/presfor/pub_data.json', {
     method: 'PUT',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ oppositions: pubOppositions, cq: pubCQ, ts: new Date().toISOString() }),
     signal: AbortSignal.timeout(15000)
-  }).catch(e => console.warn('pubSave Firebase:', e.message));
+  }).catch(e => { console.warn('pubSave Firebase:', e.message); if(typeof updateSyncIndicator==='function') updateSyncIndicator('error'); })
+    .finally(()=>{ if(typeof syncPendingEnd==='function') syncPendingEnd(); });
 }
 
 async function pubLoadFromFirebase(){
@@ -8260,6 +8262,9 @@ function aforImportExcel(input){
       const nbDoublons = aforDeduplicate();
 
       const msg = `Base AFOR actualisée : ${nbNouveaux} nouveaux · ${nbMaj} mis à jour · ${nbInchanges} inchangés · ${conserves.length} conservés · ${nbDoublons} doublons supprimés`;
+      // Persister pubCQ (contrôle qualité), peuplé plus haut depuis les colonnes du même fichier AFOR —
+      // sinon ces données de rejet/motifs ne survivraient qu'en mémoire, perdues au rechargement.
+      pubSave();
       // ── Persister localement ET dans Firebase ──
       try{
         const aforJson = JSON.stringify(dossiersAFOR);
