@@ -5986,16 +5986,26 @@ function cqeRenderAll(){
     const cq = pubCQ[d.id];
     return cq.motif_final || cq.motif_qc2 || cq.motif_qc1 || null;
   };
-  // Répartition des motifs de rejet les plus fréquents (sur l'ensemble des rejets, indépendamment des filtres)
+  // Répartition des motifs de rejet les plus fréquents (sur l'ensemble des rejets, indépendamment des filtres).
+  // Chaque cellule "motif" peut en réalité contenir PLUSIEURS raisons concaténées, une par ligne
+  // (ex. "absence de cvgfr...\r\nabsence de signature...") — on les sépare pour compter chaque
+  // raison individuellement plutôt que de traiter le bloc entier comme une seule valeur unique.
   const motifCounts = {};
   rejetes.forEach(d=>{
     const m = motifDossier(d);
     if(!m) return;
-    motifCounts[m] = (motifCounts[m]||0)+1;
+    const raisons = m.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    const dejaVues = new Set();
+    raisons.forEach(r=>{
+      if(dejaVues.has(r)) return;
+      dejaVues.add(r);
+      motifCounts[r] = (motifCounts[r]||0)+1;
+    });
   });
   const motifTop = Object.entries(motifCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
   const motifBreakdownHtml = motifTop.length ? `<div class="tw" style="padding:14px 16px;margin-bottom:12px;">
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">Motifs de rejet les plus fréquents</div>
+    <p style="font-size:10px;color:var(--text3);margin:0 0 8px;">Un dossier peut cumuler plusieurs raisons — les pourcentages sont calculés par rapport au nombre de dossiers rejetés et peuvent donc dépasser 100% au total.</p>
     <div style="display:flex;flex-direction:column;gap:7px;">
       ${motifTop.map(([motif,n])=>{
         const p = rejetes.length>0 ? Math.round(n/rejetes.length*100) : 0;
