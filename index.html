@@ -9785,22 +9785,21 @@ serverLoad().then(ok => {
     if(getOfflineSnapshot()){ flushOfflineQueue(); }
   }
   // Les données AFOR et GNSS sont déjà restaurées synchronement au chargement
-  // Ici on met juste à jour l'UI (boutons, cards dashboard)
-  // Charger AFOR depuis Firebase si pas en localStorage (autres comptes/appareils)
-  if(dossiersAFOR.length === 0){
-    aforLoadFromFirebase().then(loaded=>{
-      if(loaded){ aforRenderAll(); dosRenderAll(); }
-    });
-  } else {
-    aforRenderAll();
-  }
-  if(gnssData.length === 0){
-    gnssLoadFromFirebase().then(loaded=>{
-      if(loaded){ gnssUpdateBtnLabel(); dashRenderCardGNSS(); dosRenderAll(); }
-    });
-  } else {
-    gnssUpdateBtnLabel(); dashRenderCardGNSS();
-  }
+  // Toujours consulter Firebase au démarrage — aforLoadFromFirebase() compare déjà les horodatages
+  // en interne (remoteTs vs localTs) et ne remplace les données locales que si Firebase est plus
+  // récent. Se limiter au cas "local vide" ratait les cas où le stockage local contient encore une
+  // ancienne version (ex. si le dernier import a réussi sur Firebase mais échoué en local, faute de
+  // place — silencieux sinon).
+  aforRenderAll();
+  aforLoadFromFirebase().then(loaded=>{
+    if(loaded){ aforRenderAll(); dosRenderAll(); }
+  });
+  // Même logique que pour AFOR : toujours consulter Firebase, la fonction compare déjà
+  // les horodatages en interne et ne remplace les données locales que si nécessaire.
+  gnssUpdateBtnLabel(); dashRenderCardGNSS();
+  gnssLoadFromFirebase().then(loaded=>{
+    if(loaded){ gnssUpdateBtnLabel(); dashRenderCardGNSS(); dosRenderAll(); }
+  });
   authInit();
 });
 
