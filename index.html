@@ -5093,9 +5093,23 @@ function actSelect(act, btn){
 // ── Calcul des "Réalisés" pour le CF, à partir des vraies données AFOR/GNSS ──
 // Renvoie, pour chaque étape : nombre de dossiers (demandeurs) et superficie GNSS cumulée
 function actComputeCFRealises(afor){
+  // Total GNSS brut (zone active), partagé par PVCL et Parcelle levée : la donnée terrain existe
+  // indépendamment de l'avancement administratif du dossier (une parcelle peut être levée avant
+  // même que son dossier ait atteint la demande ou le RDC officiellement).
+  const haGnssBrut = dashFilterByZone(gnssData||[], dashZoneFilter).reduce((s,g)=>s+(g.superficie||0),0);
   return ACT_STEPS.CF.steps.map((step,idx)=>{
     const matched = actCFStepMatch(afor, idx);
-    const ha = matched.reduce((s,d)=>{ const g=gnssForDossier(d); return s+(g?g.superficie:0); }, 0);
+    let ha;
+    if(idx===0 || idx===1){
+      // Demande, RDC : superficie déclarée (avant tout levé GNSS)
+      ha = matched.reduce((s,d)=>s+(d.superficie_declaree||0), 0);
+    } else if(idx===2 || idx===3){
+      // PVCL, Parcelle levée : total GNSS brut, indépendamment du rattachement à un dossier
+      ha = haGnssBrut;
+    } else {
+      // Étapes suivantes : superficie des dossiers AFOR effectivement rattachés au GNSS
+      ha = matched.reduce((s,d)=>{ const g=gnssForDossier(d); return s+(g?g.superficie:0); }, 0);
+    }
     return { dossier: matched.length, ha: Math.round(ha) };
   });
 }
@@ -5567,14 +5581,14 @@ function indSmallDonut(cvsId, pct, color1, color2){
 // ── Évolution mensuelle réelle d'une étape CF précise (nombre de dossiers ayant atteint
 // cette étape ce mois-là), affichée en fenêtre superposée depuis une carte de taux d'avancement ──
 let indCFTrendChart = null;
-const STEPS_SUPERFICIE = [3,4,5,6,7,8,9,10];
+const STEPS_SUPERFICIE = [0,1,2,3,4,5,6,7,8,9,10];
 
 function indCFStepTrendData(afor, stepIdx){
   const useSuperficie = STEPS_SUPERFICIE.includes(stepIdx);
 
-  // Cas particulier "Parcelle levée" (idx 3) : superficie GNSS brute par mois de levé,
-  // cohérent avec la carte (total GNSS, rattaché ou non à un dossier AFOR).
-  if(stepIdx===3 && useSuperficie){
+  // PVCL et Parcelle levée (idx 2 et 3) : superficie GNSS brute par mois de levé, cohérent
+  // avec la carte (total GNSS, rattaché ou non à un dossier AFOR).
+  if((stepIdx===2 || stepIdx===3) && useSuperficie){
     const totaux = {};
     dashFilterByZone(gnssData||[], dashZoneFilter).forEach(g=>{
       if(!g.date_leve) return;
@@ -5590,7 +5604,10 @@ function indCFStepTrendData(afor, stepIdx){
     const dateVal = actCFStepDate(d, stepIdx);
     if(!dateVal) return;
     const mois = dateVal.substring(0,7);
-    if(useSuperficie){
+    if(stepIdx===0 || stepIdx===1){
+      // Demande, RDC : superficie déclarée
+      totaux[mois] = (totaux[mois]||0) + (d.superficie_declaree||0);
+    } else if(useSuperficie){
       const g = gnssForDossier(d);
       totaux[mois] = (totaux[mois]||0) + (g ? g.superficie : 0);
     } else {
@@ -5785,18 +5802,15 @@ function indRenderAll(){
   // ── Taux d'avancement par étape du Certificat foncier (cumulatif) ──
   const cfRealises = actComputeCFRealises(afor);
   const stepColors = ['#2E5FA3','#1C4A2E','#00838F','#00838F','#00838F','#E08E0B','#E08E0B','#E08E0B','#C0392B','#C0392B','#C0392B','#C0392B'];
-  // De "Parcelle levée" à "Établissement du plan définitif" (indices 3 à 10 inclus) : le taux
-  // et l'affichage se basent sur la superficie (ha), pas seulement le nombre de dossiers
-  // (STEPS_SUPERFICIE est déclarée plus haut, réutilisée aussi par le graphique de tendance).
-  // Cas particulier "Parcelle levée" (idx 3) : superficie GNSS totale brute (tous les levés,
-  // avec ou sans dossier AFOR correspondant) — cohérent avec "Superficie sécurisée" du Tableau
-  // de bord. Les autres étapes restent basées sur la superficie des seuls dossiers AFOR rattachés.
-  const haLeveeBrute = dashFilterByZone(gnssData||[], dashZoneFilter).reduce((s,g)=>s+(g.superficie||0),0);
+  // Quelles étapes affichent une superficie en plus du nombre de dossiers (STEPS_SUPERFICIE,
+  // déclarée plus haut, réutilisée aussi par le graphique de tendance). La source exacte de
+  // cette superficie (déclarée, GNSS brut, ou GNSS rattaché à un dossier) est déterminée
+  // directement dans actComputeCFRealises selon l'étape — plus besoin de cas particulier ici.
   const stepCards = ACT_STEPS.CF.steps.map((step,idx)=>{
     const obj = actGetObjectif('CF', idx);
     const real = cfRealises[idx];
     const useSuperficie = STEPS_SUPERFICIE.includes(idx);
-    const haAffiche = idx===3 ? haLeveeBrute : real.ha;
+    const haAffiche = real.ha;
     const taux = useSuperficie
       ? (obj.ha>0 ? Math.round(haAffiche/obj.ha*100*10)/10 : 0)
       : (obj.dossier>0 ? Math.round(real.dossier/obj.dossier*100*10)/10 : 0);
@@ -8174,6 +8188,9 @@ function aforImportExcel(input){
           date_CP:  fmtD(row[AFOR_COLS.date_CP]),
           date_AP:  fmtD(row[AFOR_COLS.date_AP]),
           date_VA:  fmtD(row[AFOR_COLS.date_VA]),
+          // Superficie déclarée (colonne "Superficie de Constat de limite") — utilisée pour les
+          // étapes "Demande" et "RDC", avant tout levé GNSS.
+          superficie_declaree: (()=>{ const v=parseFloat((row[AFOR_COLS.superf_cl]||'').toString().replace(',','.')); return isNaN(v)?0:v; })(),
         };
         imported.push(dos);
 
@@ -8279,6 +8296,11 @@ function aforImportExcel(input){
       }
       showToast(msg);
       aforRenderAll();
+      // Rafraîchir aussi Indicateurs et le Tableau de bord, même s'ils ne sont pas le module
+      // actif au moment de l'import — pour que leurs chiffres soient à jour dès qu'on y va.
+      if(typeof dashRenderAll==='function'){ try{ dashRenderAll(); }catch(e){ console.error('dashRenderAll après import AFOR:', e); } }
+      if(typeof indRenderNav==='function'){ try{ indRenderNav(); }catch(e){} }
+      if(typeof indRenderAll==='function'){ try{ indRenderAll(); }catch(e){ console.error('indRenderAll après import AFOR:', e); } }
       if(document.getElementById('dos-panel-list') &&
          document.getElementById('dos-panel-list').classList.contains('active')){
         dosRenderAll();
@@ -8735,6 +8757,9 @@ function gnssImportExcel(input){
 
       gnssUpdateBtnLabel();
       gnssRenderAll();
+      if(typeof dashRenderAll==='function'){ try{ dashRenderAll(); }catch(e){ console.error('dashRenderAll après import GNSS:', e); } }
+      if(typeof indRenderNav==='function'){ try{ indRenderNav(); }catch(e){} }
+      if(typeof indRenderAll==='function'){ try{ indRenderAll(); }catch(e){ console.error('indRenderAll après import GNSS:', e); } }
       showToast(`GNSS chargé : ${nb} parcelles levées · ${gnssGetTotalHa().toFixed(1)} ha`);
     }catch(err){ showToast('Erreur lecture : '+err.message); console.error(err); }
   };
