@@ -5581,7 +5581,12 @@ function indSmallDonut(cvsId, pct, color1, color2){
 // ── Évolution mensuelle réelle d'une étape CF précise (nombre de dossiers ayant atteint
 // cette étape ce mois-là), affichée en fenêtre superposée depuis une carte de taux d'avancement ──
 let indCFTrendChart = null;
+// Étapes qui affichent une superficie en plus du nombre de dossiers
 const STEPS_SUPERFICIE = [0,1,2,3,4,5,6,7,8,9,10];
+// Parmi elles, celles dont le TAUX (%) se calcule sur la superficie plutôt que sur le nombre de
+// dossiers — Demande/RDC affichent la superficie déclarée à titre indicatif, mais leur taux
+// d'avancement reste basé sur le nombre de dossiers (donnée plus fiable à ce stade précoce).
+const STEPS_TAUX_SUPERFICIE = [2,3,4,5,6,7,8,9,10];
 
 function indCFStepTrendData(afor, stepIdx){
   const useSuperficie = STEPS_SUPERFICIE.includes(stepIdx);
@@ -5810,8 +5815,9 @@ function indRenderAll(){
     const obj = actGetObjectif('CF', idx);
     const real = cfRealises[idx];
     const useSuperficie = STEPS_SUPERFICIE.includes(idx);
+    const tauxSurSuperficie = STEPS_TAUX_SUPERFICIE.includes(idx);
     const haAffiche = real.ha;
-    const taux = useSuperficie
+    const taux = tauxSurSuperficie
       ? (obj.ha>0 ? Math.round(haAffiche/obj.ha*100*10)/10 : 0)
       : (obj.dossier>0 ? Math.round(real.dossier/obj.dossier*100*10)/10 : 0);
     const col = stepColors[idx];
