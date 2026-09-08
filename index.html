@@ -5318,7 +5318,11 @@ function actCFStepDate(d, stepIdx){
     const g = gnssForDossier(d);
     return (g && g.entries && g.entries[0] && g.entries[0].date_leve) || null;
   }
-  // Préférer la date précise des données tablette si une correspondance existe
+  // Priorité à la date AFOR (mise à jour à chaque import, donc toujours la plus fraîche).
+  // La date tablette ne sert qu'en repli, quand AFOR n'a pas encore cette date renseignée —
+  // sinon une tablette importée une seule fois, à un instant donné, finirait par "figer" dans
+  // le passé des dossiers pourtant bien plus récents côté AFOR.
+  if(d[cfg.field]) return d[cfg.field];
   const tCfg = ACT_CF_STEP_TABLETTE[stepIdx];
   if(tCfg){
     const tab = tabMatchForDossier(d);
@@ -5329,7 +5333,7 @@ function actCFStepDate(d, stepIdx){
       }
     }
   }
-  return d[cfg.field] || null;
+  return null;
 }
 
 // ── Dossiers ayant atteint une étape CF donnée (ou au-delà) ──
