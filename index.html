@@ -5589,7 +5589,7 @@ const STEPS_SUPERFICIE = [0,1,2,3,4,5,6,7,8,9,10];
 const STEPS_TAUX_SUPERFICIE = [2,3,4,5,6,7,8,9,10];
 
 function indCFStepTrendData(afor, stepIdx){
-  const useSuperficie = STEPS_SUPERFICIE.includes(stepIdx);
+  const useSuperficie = STEPS_TAUX_SUPERFICIE.includes(stepIdx);
 
   // PVCL et Parcelle levée (idx 2 et 3) : superficie GNSS brute par mois de levé, cohérent
   // avec la carte (total GNSS, rattaché ou non à un dossier AFOR).
@@ -5609,13 +5609,11 @@ function indCFStepTrendData(afor, stepIdx){
     const dateVal = actCFStepDate(d, stepIdx);
     if(!dateVal) return;
     const mois = dateVal.substring(0,7);
-    if(stepIdx===0 || stepIdx===1){
-      // Demande, RDC : superficie déclarée
-      totaux[mois] = (totaux[mois]||0) + (d.superficie_declaree||0);
-    } else if(useSuperficie){
+    if(useSuperficie){
       const g = gnssForDossier(d);
       totaux[mois] = (totaux[mois]||0) + (g ? g.superficie : 0);
     } else {
+      // Demande, RDC (et toute autre étape non basée sur la superficie) : nombre de dossiers
       totaux[mois] = (totaux[mois]||0) + 1;
     }
   });
@@ -5625,7 +5623,7 @@ function indCFStepTrendData(afor, stepIdx){
 
 function indShowCFStepTrend(stepIdx){
   const step = ACT_STEPS.CF.steps[stepIdx];
-  const useSuperficie = STEPS_SUPERFICIE.includes(stepIdx);
+  const useSuperficie = STEPS_TAUX_SUPERFICIE.includes(stepIdx);
   const afor = dashComputeStats(dashZoneFilter).afor;
   const data = indCFStepTrendData(afor, stepIdx);
 
