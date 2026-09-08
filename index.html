@@ -5685,6 +5685,16 @@ function indRenderAll(){
   const enCours = afor.filter(d=>d.etape!=='VA');
   const delivre = afor.filter(d=>d.etape==='VA');
 
+  // Écart entre le total GNSS brut (tous les levés) et la portion effectivement rattachée à un
+  // dossier AFOR (seule comptée dans les panneaux "Par superficie" ci-dessous, car il faut le
+  // type individuel/collectif du dossier pour la répartition — une info que le GNSS seul n'a pas).
+  const haGnssTotalBrut = Math.round(dashFilterByZone(gnssData||[], dashZoneFilter).reduce((s,g)=>s+(g.superficie||0),0));
+  const haGnssRattache = Math.round(superficieOf(enCours) + superficieOf(delivre));
+  const haGnssOrphelin = Math.max(0, haGnssTotalBrut - haGnssRattache);
+  const ecartHtml = haGnssOrphelin>0 ? `<div class="tw" style="padding:10px 16px;margin-bottom:12px;background:var(--amber-lt);border-left:3px solid var(--amber);">
+    <span style="font-size:11px;color:var(--amber-txt,#6B3F00);">⚠ Les panneaux "Par superficie" ci-dessous (${haGnssRattache.toLocaleString('fr-FR')} ha) ne comptent que le GNSS rattaché à un dossier AFOR — le type individuel/collectif en dépend. <b>${haGnssOrphelin.toLocaleString('fr-FR')} ha</b> de plus ont été levés au GNSS mais n'ont pas (encore) de dossier AFOR correspondant (total GNSS brut : ${haGnssTotalBrut.toLocaleString('fr-FR')} ha, comme "Superficie sécurisée" du Tableau de bord).</span>
+  </div>` : '';
+
   const AGE_BRACKETS = [
     {label:'Moins de 20 ans', test:a=>a<=20},
     {label:'de 21 à 30 ans',  test:a=>a>=21&&a<=30},
@@ -5843,6 +5853,7 @@ function indRenderAll(){
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;">
       ${stepCards}
     </div>
+    ${ecartHtml}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
       ${pEnCours.html}
       ${pDelivre.html}
