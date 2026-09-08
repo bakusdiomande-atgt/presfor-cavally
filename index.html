@@ -9143,6 +9143,67 @@ const TAB_CODE_PREFIXES = ['RDC','PVCL','ADV','OUV','CLO','CEC','VAL'];
 let tabletteData = { requests:{}, minutes:{}, observations:{}, advertising:{}, openAdvertising:{}, closeAdvertising:{}, existence:{}, validation:{} };
 let tabletteImports = []; // historique des imports : {nom, date, nbFichiers, nbEnregistrements}
 
+// ── Sauvegarde Firebase des données tablette (par lots, une étape à la fois — potentiellement
+// plusieurs milliers d'enregistrements cumulés sur plusieurs tablettes, trop volumineux pour le
+// seul stockage local du navigateur) ──
+async function tabSaveToFirebase(){
+  const ts = new Date().toISOString();
+  const CHUNK = 200;
+  let totalEnregistrements = 0;
+  for(const stage of TAB_STAGE_DEFS){
+    const store = tabletteData[stage.key] || {};
+    const keys = Object.keys(store);
+    totalEnregistrements += keys.length;
+    if(!keys.length) continue;
+    const nbChunks = Math.max(1, Math.ceil(keys.length / CHUNK));
+    for(let i=0, lot=1; i<keys.length; i+=CHUNK, lot++){
+      const sliceKeys = keys.slice(i, i+CHUNK);
+      const obj = {};
+      sliceKeys.forEach(k=>{ obj[k] = store[k]; });
+      const r = await fetch(FIREBASE_URL + '/presfor/tablette/' + stage.key + '/data.json', {
+        method: 'PATCH',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(obj),
+        signal: AbortSignal.timeout(60000)
+      });
+      if(!r.ok) throw new Error('HTTP ' + r.status + ' (tablette ' + stage.key + ', lot ' + lot + '/' + nbChunks + ')');
+    }
+  }
+  // Métadonnées + historique des imports, un seul petit appel
+  const rMeta = await fetch(FIREBASE_URL + '/presfor/tablette/meta.json', {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ ts, count: totalEnregistrements, imports: tabletteImports }),
+    signal: AbortSignal.timeout(15000)
+  });
+  if(!rMeta.ok) throw new Error('HTTP ' + rMeta.status + ' (tablette meta)');
+  console.log('Tablette sauvegardée Firebase:', totalEnregistrements, 'enregistrement(s)');
+}
+
+async function tabLoadFromFirebase(){
+  try{
+    const localTs = localStorage.getItem('presfor_tablette_ts') || '1970-01-01';
+    const rMeta = await fetch(FIREBASE_URL + '/presfor/tablette/meta.json', { signal: AbortSignal.timeout(15000) });
+    if(!rMeta.ok) return false;
+    const meta = await rMeta.json();
+    if(!meta || !meta.ts) return false;
+    if(meta.ts <= localTs && Object.values(tabletteData).some(s=>Object.keys(s||{}).length>0)){
+      return false; // le local est déjà à jour ou plus récent, rien à faire
+    }
+    const nouvelleDonnee = { requests:{}, minutes:{}, observations:{}, advertising:{}, openAdvertising:{}, closeAdvertising:{}, existence:{}, validation:{} };
+    for(const stage of TAB_STAGE_DEFS){
+      const r = await fetch(FIREBASE_URL + '/presfor/tablette/' + stage.key + '/data.json', { signal: AbortSignal.timeout(30000) });
+      if(r.ok){ const d = await r.json(); if(d) nouvelleDonnee[stage.key] = d; }
+    }
+    tabletteData = nouvelleDonnee;
+    if(meta.imports) tabletteImports = meta.imports;
+    localStorage.setItem('presfor_tablette_ts', meta.ts);
+    try{ tabSaveToStorage(); }catch(e){}
+    console.log('Tablette chargée Firebase:', meta.count, 'enregistrement(s)');
+    return true;
+  }catch(e){ console.warn('tabLoadFromFirebase:', e.message); return false; }
+}
+
 function tabLoadFromStorage(){
   try{
     const d = localStorage.getItem('presfor_tablette_data');
@@ -9224,6 +9285,9 @@ async function tabImportZips(){
     nbMisAJour: totalMisAJour
   });
   tabSaveToStorage();
+  localStorage.setItem('presfor_tablette_ts', new Date().toISOString());
+  syncPendingStart();
+  tabSaveToFirebase().catch(e=>{ console.warn('Tablette Firebase save:', e.message); updateSyncIndicator('error'); }).finally(syncPendingEnd);
 
   statusEl.innerHTML = `<div style="color:var(--accent);font-weight:600;margin-bottom:4px;">✓ ${fichiersLus} fichier(s) importé(s) pour "${nomTablette}" — ${totalNouveaux} nouveaux, ${totalMisAJour} mis à jour</div>` +
     '<div style="font-size:10px;color:var(--text3);">'+rapportParEtape.join(' · ')+'</div>';
@@ -9839,6 +9903,12 @@ serverLoad().then(ok => {
 });
 
 tabLoadFromStorage();
+tabLoadFromFirebase().then(loaded=>{
+  if(loaded){
+    tabRenderImportHistory();
+    if(typeof indRenderAll==='function') indRenderAll();
+  }
+});
 actLoadObjectifs();
 dashInit();
 switchModule('accueil');
