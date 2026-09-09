@@ -1292,6 +1292,10 @@ tbody td{padding:9px 12px;vertical-align:middle;}
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
             Parcelles GNSS non rattachées
           </button>
+          <button class="btn-s" onclick="aforExportSansGnssCSV()" title="Exporter les dossiers ayant dépassé l'ouverture de publicité mais sans aucune superficie GNSS" style="display:inline-flex;align-items:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+            Dossiers en publicité sans GNSS
+          </button>
           <button class="btn-s viewer-hidden" id="btn-afor-wipe" onclick="aforWipeFirebase()" title="Purger la base AFOR sur Firebase (admin)" style="display:none;align-items:center;gap:6px;background:#FDECEA;color:#B71C1C;border-color:#B71C1C;">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5ZM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 5.885 16h4.23a2 2 0 0 0 1.994-1.84l.853-10.66H13.5a.5.5 0 0 0 0-1z"/></svg>
             Vider Firebase AFOR
@@ -6007,11 +6011,13 @@ function cqeRenderAll(){
   const rejetes = cqDossiers.filter(d=>pubCQ[d.id].rejete);
   const tauxCouverture = afor.length>0 ? Math.round(cqDossiers.length/afor.length*100) : 0;
   const tauxRejet = cqDossiers.length>0 ? Math.round(rejetes.length/cqDossiers.length*100) : 0;
+  const sansGnssApresPub = aforGetSansGnssApresPublicite();
   kpiEl.innerHTML = `
     <div class="kpi blue"><div class="kpi-l">Dossiers passés en CQ</div><div class="kpi-v">${cqDossiers.length.toLocaleString('fr-FR')}</div><div class="kpi-s">${tauxCouverture}% des dossiers</div></div>
     <div class="kpi red"><div class="kpi-l">Rejetés</div><div class="kpi-v">${rejetes.length.toLocaleString('fr-FR')}</div><div class="kpi-s">${tauxRejet}% des dossiers CQ</div></div>
     <div class="kpi green"><div class="kpi-l">Conformes</div><div class="kpi-v">${(cqDossiers.length-rejetes.length).toLocaleString('fr-FR')}</div></div>
-    <div class="kpi"><div class="kpi-l">Non encore contrôlés</div><div class="kpi-v">${(afor.length-cqDossiers.length).toLocaleString('fr-FR')}</div></div>`;
+    <div class="kpi"><div class="kpi-l">Non encore contrôlés</div><div class="kpi-v">${(afor.length-cqDossiers.length).toLocaleString('fr-FR')}</div></div>
+    <div class="kpi ${sansGnssApresPub.length>0?'amber':''}"><div class="kpi-l">Publicité sans GNSS</div><div class="kpi-v">${sansGnssApresPub.length.toLocaleString('fr-FR')}</div><div class="kpi-s">${sansGnssApresPub.length>0?'À vérifier':'Cohérent'}</div></div>`;
   if(!cqDossiers.length){
     contentEl.innerHTML = `<div class="empty-state"><p style="font-size:13px;">Aucun dossier n'est encore passé par le contrôle qualité.</p></div>`;
     return;
@@ -8995,6 +9001,35 @@ function aforExportDedupCSV(){
 }
 
 // ── Export CSV des parcelles GNSS sans correspondance parfaite (audit rapprochement AFOR/GNSS) ──
+// ── Dossiers ayant dépassé l'ouverture de la publicité (OV, CP, AP, VA) mais sans aucune
+// correspondance GNSS trouvée — anomalie métier : le levé doit normalement précéder la publicité ──
+function aforGetSansGnssApresPublicite(){
+  const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
+  const etapesConcernees = ['OV','CP','AP','VA'];
+  return afor.filter(d => etapesConcernees.includes(d.etape) && !gnssForDossier(d));
+}
+
+function aforExportSansGnssCSV(){
+  const liste = aforGetSansGnssApresPublicite();
+  if(!liste.length){
+    showToast('Aucun dossier en publicité ou au-delà sans superficie GNSS — tout est cohérent.');
+    return;
+  }
+  const header = ['N° Dossier','Demandeur','Département','Sous-Préfecture','Village','Code Parcelle','Agent CE','Étape actuelle'];
+  const rows = liste.map(d => [
+    d.id||'', ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim(), d.dept||'', d.sp||'', d.village||'',
+    d.code_parcelle||'', d.agent||'', d.etape||''
+  ]);
+  const csv = '\uFEFF' + [header, ...rows]
+    .map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';'))
+    .join('\r\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'AFOR_dossiers_publicite_sans_gnss_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+  showToast(liste.length + ' dossier(s) en publicité ou au-delà sans GNSS exporté(s).');
+}
+
 function gnssExportOrphansCSV(){
   const orphans = typeof gnssGetOrphanEntries==='function' ? gnssGetOrphanEntries() : [];
   if(!orphans.length){
