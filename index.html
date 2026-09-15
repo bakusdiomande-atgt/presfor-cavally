@@ -4003,7 +4003,7 @@ function dashRenderCartographieDetail(){
       </table>
     </div>
   </div>`;
-  if(dashLeafletMapBig){ dashLeafletMapBig.remove(); dashLeafletMapBig=null; }
+  if(dashLeafletMapBig){ if(dashLeafletMapBig._presforResizeObserver) dashLeafletMapBig._presforResizeObserver.disconnect(); dashLeafletMapBig.remove(); dashLeafletMapBig=null; }
   if(typeof L!=='undefined' && geo.length){
     dashLeafletMapBig = L.map('dash-leaflet-big', {zoomControl:true, attributionControl:true, scrollWheelZoom:true});
     dashBuildLeafletPolygons(dashLeafletMapBig, document.getElementById('dash-leaflet-legend-big'));
@@ -4338,12 +4338,22 @@ function dashBuildLeafletPolygons(map, legendEl, opts){
   });
   // Vue initiale : tout le pays, pour resituer la zone dans son contexte national
   map.fitBounds(CI_BOUNDS, {padding:[4,4]});
-  // Le conteneur vient parfois d'être rendu visible (display:none -> visible) juste avant :
-  // Leaflet peut alors avoir calculé une taille à 0x0. On force un recalcul + recadrage.
-  setTimeout(()=>{
-    map.invalidateSize();
-    map.fitBounds(CI_BOUNDS, {padding:[4,4]});
-  }, 200);
+  // Le conteneur peut ne pas encore avoir sa taille finale au moment du premier rendu (mise en page
+  // en cours, largeur d'écran variable...) — un délai fixe unique n'est pas fiable dans tous les cas.
+  // ResizeObserver réagit à chaque changement réel de taille du conteneur et recadre en conséquence,
+  // ce qui rend le rendu de la carte cohérent quelle que soit la largeur de la fenêtre.
+  if(typeof ResizeObserver!=='undefined'){
+    let dejaFitte = false;
+    const ro = new ResizeObserver(()=>{
+      map.invalidateSize();
+      if(!dejaFitte){ map.fitBounds(CI_BOUNDS, {padding:[4,4]}); dejaFitte = true; }
+    });
+    ro.observe(map.getContainer());
+    map._presforResizeObserver = ro; // conservé pour être coupé proprement si la carte est retirée
+  } else {
+    // Repli si ResizeObserver n'est pas disponible (navigateur très ancien)
+    setTimeout(()=>{ map.invalidateSize(); map.fitBounds(CI_BOUNDS, {padding:[4,4]}); }, 200);
+  }
   if(legendEl){
     const legendItems = [
       {c:'#1B7A4A', l:'≥ 75%'}, {c:'#8BC34A', l:'50% - 75%'},
@@ -4374,7 +4384,7 @@ function dashRenderMap(s){
     </div>`;
     return;
   }
-  if(dashLeafletMapSmall){ dashLeafletMapSmall.remove(); dashLeafletMapSmall=null; }
+  if(dashLeafletMapSmall){ if(dashLeafletMapSmall._presforResizeObserver) dashLeafletMapSmall._presforResizeObserver.disconnect(); dashLeafletMapSmall.remove(); dashLeafletMapSmall=null; }
   el.innerHTML = `<div style="display:flex;width:100%;height:100%;">
     <div id="dash-leaflet-small" style="flex:1;min-width:0;border-radius:6px;overflow:hidden;"></div>
     <div id="dash-leaflet-legend-small" style="font-size:10px;color:var(--text2);display:flex;flex-direction:column;gap:4px;justify-content:center;flex-shrink:0;width:78px;margin-left:auto;padding-left:8px;"></div>
