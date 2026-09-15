@@ -1107,6 +1107,35 @@ tbody td{padding:9px 12px;vertical-align:middle;}
             <option>Dép. Taï</option><option>Dép. Toulépleu</option>
           </select>
         </div>
+        <div class="tw" style="padding:12px 16px;margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="flex:1;min-width:160px;">
+            <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:3px;">Nom complet</label>
+            <input type="text" id="ag-new-nom" placeholder="Ex : Kouassi Jean" style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:6px 10px;font-size:12px;">
+          </div>
+          <div style="min-width:120px;">
+            <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:3px;">Téléphone</label>
+            <input type="text" id="ag-new-tel" placeholder="07..." style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:6px 10px;font-size:12px;">
+          </div>
+          <div style="min-width:170px;">
+            <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:3px;">Fonction</label>
+            <select id="ag-new-fonction" style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;">
+              <option>Commissaire enquêteur</option>
+              <option>Chef d'équipe départemental</option>
+              <option>Opérateur GNSS</option>
+              <option>RR ISF</option>
+              <option>ISF</option>
+              <option>ASF</option>
+            </select>
+          </div>
+          <div style="min-width:130px;">
+            <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:3px;">Zone</label>
+            <select id="ag-new-zone" style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;">
+              <option value="cavally">Cavally</option>
+              <option value="worodougou">Worodougou</option>
+            </select>
+          </div>
+          <button class="btn-p" onclick="agAjouterAgent()" style="height:31px;">+ Ajouter un agent</button>
+        </div>
         <div id="ind-ag-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;"></div>
       </div>
 
@@ -2538,38 +2567,50 @@ function dosClearAll(){if(!confirm('Réinitialiser les dossiers ?'))return;dossi
 // MODULE 4 · AGENTS ET ÉQUIPES
 // ═══════════════════════════════════════════
 // ── Référentiel complet agents PRESFOR Cavally ──
-const AGENTS_FULL = [
-  {nom:'Diby Arnaud',                    tel:'0758739395',  fonction:'Commissaire enquêteur', zone:'cavally'},
-  {nom:'Kouadio Ahou Estelle',           tel:'0707356623',  fonction:'Commissaire enquêteur', zone:'cavally'},
-  {nom:'Kouassi Kobina Philippe',        tel:'0140532021',  fonction:'Commissaire enquêteur', zone:'cavally'},
-  {nom:'Bakayoko Adama',                 tel:'0779210922',  fonction:'Commissaire enquêteur', zone:'cavally'},
-  {nom:"N'Guessan Armand",              tel:'0708319517',  fonction:'Commissaire enquêteur', zone:'cavally'},
-  {nom:'Chigbeu Akoue Florent',          tel:'0707831770',  fonction:"Chef d'équipe départemental", zone:'cavally'},
-  {nom:'Konan Alex',                     tel:'0151630093',  fonction:'Opérateur GNSS', zone:'cavally'},
-  {nom:'Kone Boike',                     tel:'0172093930',  fonction:'Opérateur GNSS', zone:'cavally'},
-  {nom:'Fofana Ahoua',                   tel:'0574443707',  fonction:'Opérateur GNSS', zone:'cavally'},
-  {nom:'Kouadio Ezeckiel',               tel:'0787288228',  fonction:'Opérateur GNSS', zone:'cavally'},
-  {nom:'Dago Guy Melaine',               tel:'0707970403',  fonction:'Commissaire enquêteur', zone:'cavally'},
-  {nom:'Tizie Irie Phillipe',            tel:'0101801372',  fonction:'Commissaire enquêteur', zone:'cavally'},
-  {nom:'Agbonou A. B. C. Beranger',      tel:'0757351147',  fonction:'Commissaire enquêteur', zone:'cavally'},
-  {nom:'Yeboua Adjia Emmanuela',         tel:'0708136233',  fonction:'Commissaire enquêteur', zone:'cavally'},
-  {nom:'Aboya Affoua Ines',              tel:'0797583942',  fonction:'Commissaire enquêteur', zone:'cavally'},
-  {nom:'Gueu Minwodo Siril',             tel:'0720503523',  fonction:'Commissaire enquêteur', zone:'cavally'},
-  {nom:'Bleu Deaouhande Wilfried',       tel:'0709871683',  fonction:'Commissaire enquêteur', zone:'cavally'},
-  {nom:'Ettien Aimee Sandrine',          tel:'0788625302',  fonction:'Commissaire enquêteur', zone:'cavally'},
-  {nom:'Grah Legnond Edgard',            tel:'0767287311',  fonction:'Commissaire enquêteur', zone:'cavally'},
-  {nom:'Yao Atouman Jean Charles',       tel:'0555100634',  fonction:'Opérateur GNSS', zone:'cavally'},
-  {nom:'Dje Christian Dominique Konan',  tel:'0720530055',  fonction:'Opérateur GNSS', zone:'cavally'},
-  {nom:'Fakayode Abdul',                 tel:'0173735246',  fonction:'Opérateur GNSS', zone:'cavally'},
-  {nom:'Samassi Ismael',                 tel:'0749678794',  fonction:"Chef d'équipe départemental", zone:'cavally'},
-  {nom:'Kouassi Kouame Gislain',         tel:'0777440514',  fonction:'Opérateur GNSS', zone:'cavally'},
-  {nom:'Tohoua Eric',                    tel:'0709821745',  fonction:'RR ISF', zone:'cavally'},
-  {nom:'Ehouman Michael',                tel:'0707337407',  fonction:'ISF', zone:'cavally'},
-  {nom:'Beugre Raphael',                 tel:'0505095696',  fonction:'ISF', zone:'cavally'},
-  {nom:'Kodjo Geraud',                   tel:'0777191106',  fonction:'ISF', zone:'cavally'},
-  {nom:'Kouadio Charles',                tel:'0758083469',  fonction:'ASF', zone:'cavally'},
-  {nom:"N'Guetta Manouan Marcel",        tel:'0709584472',  fonction:'ASF', zone:'cavally'},
-  {nom:'Koffi Nathanael',                tel:'0708727114',  fonction:'ASF', zone:'cavally'},
+// AGENTS_FULL est modifiable en cours d'exécution (ajout/départ d'agent depuis l'interface
+// "Agents — Liste") et persisté (localStorage + Firebase, voir agentsSaveToStorage/Firebase plus bas).
+// dateDepart:null = agent actif ; une date = agent parti (reste visible, avec badge, dans les listes
+// et continue d'être reconnu dans les imports pour ses dossiers déjà traités).
+let AGENTS_FULL = [
+  {nom:'Diby Arnaud',                    tel:'0758739395',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:'Kouadio Ahou Estelle',           tel:'0707356623',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:'Kouassi Kobina Philippe',        tel:'0140532021',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:'Bakayoko Adama',                 tel:'0779210922',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:"N'Guessan Armand",              tel:'0708319517',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:'Chigbeu Akoue Florent',          tel:'0707831770',  fonction:"Chef d'équipe départemental", zone:'cavally', dateDepart:null},
+  {nom:'Konan Alex',                     tel:'0151630093',  fonction:'Opérateur GNSS', zone:'cavally', dateDepart:null},
+  {nom:'Kone Boike',                     tel:'0172093930',  fonction:'Opérateur GNSS', zone:'cavally', dateDepart:null},
+  {nom:'Fofana Ahoua',                   tel:'0574443707',  fonction:'Opérateur GNSS', zone:'cavally', dateDepart:null},
+  {nom:'Kouadio Ezeckiel',               tel:'0787288228',  fonction:'Opérateur GNSS', zone:'cavally', dateDepart:null},
+  {nom:'Dago Guy Melaine',               tel:'0707970403',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:'Tizie Irie Phillipe',            tel:'0101801372',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:'Agbonou A. B. C. Beranger',      tel:'0757351147',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:'Yeboua Adjia Emmanuela',         tel:'0708136233',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:'Aboya Affoua Ines',              tel:'0797583942',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:'Gueu Minwodo Siril',             tel:'0720503523',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:'Bleu Deaouhande Wilfried',       tel:'0709871683',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:'Ettien Aimee Sandrine',          tel:'0788625302',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:'Grah Legnond Edgard',            tel:'0767287311',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:'Yao Atouman Jean Charles',       tel:'0555100634',  fonction:'Opérateur GNSS', zone:'cavally', dateDepart:null},
+  {nom:'Dje Christian Dominique Konan',  tel:'0720530055',  fonction:'Opérateur GNSS', zone:'cavally', dateDepart:null},
+  {nom:'Fakayode Abdul',                 tel:'0173735246',  fonction:'Opérateur GNSS', zone:'cavally', dateDepart:null},
+  {nom:'Samassi Ismael',                 tel:'0749678794',  fonction:"Chef d'équipe départemental", zone:'cavally', dateDepart:null},
+  {nom:'Kouassi Kouame Gislain',         tel:'0777440514',  fonction:'Opérateur GNSS', zone:'cavally', dateDepart:null},
+  {nom:'Tohoua Eric',                    tel:'0709821745',  fonction:'RR ISF', zone:'cavally', dateDepart:null},
+  {nom:'Ehouman Michael',                tel:'0707337407',  fonction:'ISF', zone:'cavally', dateDepart:null},
+  {nom:'Beugre Raphael',                 tel:'0505095696',  fonction:'ISF', zone:'cavally', dateDepart:null},
+  {nom:'Kodjo Geraud',                   tel:'0777191106',  fonction:'ISF', zone:'cavally', dateDepart:null},
+  {nom:'Kouadio Charles',                tel:'0758083469',  fonction:'ASF', zone:'cavally', dateDepart:null},
+  {nom:"N'Guetta Manouan Marcel",        tel:'0709584472',  fonction:'ASF', zone:'cavally', dateDepart:null},
+  {nom:'Koffi Nathanael',                tel:'0708727114',  fonction:'ASF', zone:'cavally', dateDepart:null},
+  // Agents connus côté import AFOR (colonne "Nom CE") mais absents de la liste d'origine —
+  // ajoutés ici pour que la liste des agents et la reconnaissance des imports soient cohérentes.
+  {nom:'Angbonou Augustin Brou Cedric',  tel:'',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:'Bio Michel Franck Olivier',      tel:'',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:'Djahi Gapea',                    tel:'',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:'Sidibe Ibrahima',                tel:'',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:'Kouame Armand Yao',              tel:'',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
+  {nom:'Oauttara Mariam',                tel:'',  fonction:'Commissaire enquêteur', zone:'cavally', dateDepart:null},
 ];
 
 // ── Stats GNSS par opérateur — colonne NOM_AGENT du fichier Excel ──
@@ -2762,7 +2803,101 @@ function getSousActivites(nomAgent, activite){
 
 let absences = [];
 
+// ── Persistance de la liste des agents (localStorage + Firebase) — même schéma que AFOR/GNSS/tablette :
+// toujours consulter Firebase au démarrage, comparer les horodatages, ne jamais se fier uniquement au
+// stockage local qui peut être périmé sur un autre appareil.
+function agentsSaveToStorage(){
+  try{ localStorage.setItem('presfor_agents_data', JSON.stringify(AGENTS_FULL)); }catch(e){}
+}
+async function agentsSaveToFirebase(){
+  const ts = new Date().toISOString();
+  localStorage.setItem('presfor_agents_ts', ts);
+  const r = await fetch(FIREBASE_URL + '/presfor/agents.json', {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ ts, list: AGENTS_FULL }),
+    signal: AbortSignal.timeout(20000)
+  });
+  if(!r.ok) throw new Error('HTTP ' + r.status + ' (agents)');
+}
+async function agentsLoadFromFirebase(){
+  try{
+    const localTs = localStorage.getItem('presfor_agents_ts') || '1970-01-01';
+    const r = await fetch(FIREBASE_URL + '/presfor/agents.json', { signal: AbortSignal.timeout(15000) });
+    if(!r.ok) return false;
+    const d = await r.json();
+    if(!d || !d.ts || !Array.isArray(d.list)) return false;
+    if(d.ts <= localTs && AGENTS_FULL.length>0) return false;
+    AGENTS_FULL = d.list;
+    localStorage.setItem('presfor_agents_ts', d.ts);
+    agentsSaveToStorage();
+    return true;
+  }catch(e){ console.warn('agentsLoadFromFirebase:', e.message); return false; }
+}
+function agentsLoadFromStorage(){
+  try{
+    const s = localStorage.getItem('presfor_agents_data');
+    if(s){ const list = JSON.parse(s); if(Array.isArray(list) && list.length) AGENTS_FULL = list; }
+  }catch(e){}
+}
+function agentsPersist(){
+  agentsSaveToStorage();
+  syncPendingStart();
+  agentsSaveToFirebase().catch(e=>{ console.warn('agents Firebase save:', e.message); updateSyncIndicator('error'); }).finally(syncPendingEnd);
+}
+
+// ── Ajouter un agent depuis le formulaire "Agents — Liste" ──
+// Rafraîchit l'affichage des agents sur les deux préfixes possibles ('ag' et 'ind-ag') — nécessaire
+// car agRenderAll() seul ne cible que 'ag', qui n'est pas forcément l'interface visible à l'écran.
+function agRenderTousPrefixes(){
+  if(typeof agRenderKPI==='function'){ agRenderKPI(); agRenderKPI('ind-ag'); }
+  if(typeof agRenderList==='function'){ agRenderList(); agRenderList('ind-ag'); }
+  if(typeof agRenderPerf==='function'){ agRenderPerf(); agRenderPerf('ind-ag'); }
+}
+
+function agAjouterAgent(){
+  const nomEl = document.getElementById('ag-new-nom');
+  const telEl = document.getElementById('ag-new-tel');
+  const fonctionEl = document.getElementById('ag-new-fonction');
+  const zoneEl = document.getElementById('ag-new-zone');
+  const nom = (nomEl.value||'').trim();
+  if(!nom){ showToast('Le nom est obligatoire.'); return; }
+  if(AGENTS_FULL.some(a=>a.nom.trim().toUpperCase()===nom.toUpperCase())){
+    showToast('Un agent avec ce nom existe déjà.'); return;
+  }
+  AGENTS_FULL.push({ nom, tel:(telEl.value||'').trim(), fonction: fonctionEl.value, zone: zoneEl.value, dateDepart: null });
+  agentsPersist();
+  nomEl.value=''; telEl.value='';
+  agRenderTousPrefixes();
+  showToast('Agent ajouté : '+nom);
+}
+
+// ── Marquer un agent comme parti (reste visible avec un badge, historique conservé) ──
+function agMarquerParti(nom){
+  const a = AGENTS_FULL.find(x=>x.nom===nom);
+  if(!a) return;
+  const dateStr = prompt('Date de départ de '+nom+' (AAAA-MM-JJ) :', new Date().toISOString().split('T')[0]);
+  if(!dateStr) return;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)){ showToast('Format de date invalide (attendu AAAA-MM-JJ).'); return; }
+  a.dateDepart = dateStr;
+  agentsPersist();
+  agRenderTousPrefixes();
+  showToast(nom+' marqué comme parti le '+dateStr);
+}
+
+// ── Réactiver un agent marqué parti par erreur, ou qui revient sur le projet ──
+function agReactiver(nom){
+  const a = AGENTS_FULL.find(x=>x.nom===nom);
+  if(!a) return;
+  a.dateDepart = null;
+  agentsPersist();
+  agRenderTousPrefixes();
+  showToast(nom+' réactivé.');
+}
+
 function agInit(){
+  agentsLoadFromStorage();
+  agentsLoadFromFirebase().then(loaded=>{ if(loaded) agRenderTousPrefixes(); });
   try{
     const s = localStorage.getItem('presfor_absences');
     if(s) absences = JSON.parse(s)||[];
@@ -2862,7 +2997,7 @@ function agRenderList(idPrefix){
       }
     });
     // Aussi chercher dans AGENTS_CE_CANONIQUES pour les correspondances
-    (AGENTS_CE_CANONIQUES||[]).forEach(canon => {
+    (getAgentsCECanoniques()||[]).forEach(canon => {
       if(normAg(canon) === normAg(agNomCourt)){
         agNoms.add(normAg(canon));
         // Ajouter toutes les variantes de ce nom canonique
@@ -2892,7 +3027,7 @@ function agRenderList(idPrefix){
     const zoneLabel = agZone==='worodougou' ? 'Worodougou' : 'Cavally';
     const zoneColor = agZone==='worodougou' ? {bg:'#FFF3E0',tx:'#E65100'} : {bg:'#E8F5E9',tx:'#1B5E20'};
 
-    return `<div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;border-top:3px solid ${c.brd};cursor:pointer;transition:box-shadow .15s;" onclick="agOpenFiche('${a.nom.replace(/'/g,"\\'")}')">
+    return `<div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;border-top:3px solid ${c.brd};cursor:pointer;transition:box-shadow .15s;${a.dateDepart?'opacity:.7;':''}" onclick="agOpenFiche('${a.nom.replace(/'/g,"\\'")}')">
       <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
         <div style="width:42px;height:42px;border-radius:50%;background:${c.bg};border:2px solid ${c.brd};display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:${c.tx};flex-shrink:0;">${init}</div>
         <div style="flex:1;min-width:0;">
@@ -2904,6 +3039,7 @@ function agRenderList(idPrefix){
         </div>
         ${absent?'<span style="font-size:10px;background:var(--amber-lt);color:var(--amber-txt);padding:2px 7px;border-radius:10px;font-weight:600;">Absent</span>':''}
       </div>
+      ${a.dateDepart ? `<div style="font-size:10px;background:var(--surface2);color:var(--text3);padding:4px 8px;border-radius:6px;margin-bottom:8px;">Parti le ${fmtDate(a.dateDepart)} · <a href="#" onclick="event.stopPropagation();agReactiver('${a.nom.replace(/'/g,"\\'")}')" style="color:var(--blue);">réactiver</a></div>` : ''}
       <div style="font-size:11px;color:var(--text2);margin-bottom:10px;">
         <div style="margin-bottom:3px;">&#128222; ${a.tel}</div>
         <div>${(a.depts||[]).map(d=>`<span style="font-size:10px;background:var(--surface2);padding:1px 6px;border-radius:8px;margin-right:3px;">${d.replace('Dép. ','')}</span>`).join('')}</div>
@@ -2917,6 +3053,7 @@ function agRenderList(idPrefix){
         ${superfTotale>0?'<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:#E0F2F1;color:#00695C;font-weight:700;">'+superfTotale.toFixed(1)+' ha</span>':''}
         ${isGnssAgent && gStats && !gStats.hasColumn?'<span style="font-size:9px;color:var(--red-txt)">aucune donnée GNSS trouvée</span>':''}
       </div>`:''}
+      ${!a.dateDepart ? `<div style="padding:8px 0 0;border-top:1px solid var(--border);margin-top:8px;"><button class="btn-s" style="width:100%;font-size:10px;" onclick="event.stopPropagation();agMarquerParti('${a.nom.replace(/'/g,"\\'")}')">Marquer comme parti</button></div>` : ''}
     </div>`;
   }).join('');
 }
@@ -3049,7 +3186,7 @@ function agOpenFiche(nom){
       agNomsSet.add(normAgent(mapped));
     }
   });
-  (AGENTS_CE_CANONIQUES||[]).forEach(canon => {
+  (getAgentsCECanoniques()||[]).forEach(canon => {
     if(normAgent(canon)===normAgent(nom)){
       agNomsSet.add(normAgent(canon));
       Object.entries(AFOR_AGENT_MAP||{}).forEach(([raw,mapped])=>{
@@ -3169,7 +3306,7 @@ function agRenderPerf(idPrefix){
                          {label:'Faible',bg:'var(--surface2)',tx:'var(--text2)'};
     return`<tr style="border-bottom:1px solid var(--border);">
       <td style="padding:9px 12px;text-align:center;font-family:'Syne',sans-serif;font-weight:700;color:${i<3?'var(--accent)':'var(--text3)'};">${i+1}</td>
-      <td style="padding:9px 12px;font-weight:600;font-size:13px;">${d.a.nom} <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;background:${(d.a.zone||'cavally')==='worodougou'?'#FFF3E0':'#E8F5E9'};color:${(d.a.zone||'cavally')==='worodougou'?'#E65100':'#1B5E20'};">${(d.a.zone||'cavally')==='worodougou'?'Worodougou':'Cavally'}</span></td>
+      <td style="padding:9px 12px;font-weight:600;font-size:13px;">${d.a.nom} <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;background:${(d.a.zone||'cavally')==='worodougou'?'#FFF3E0':'#E8F5E9'};color:${(d.a.zone||'cavally')==='worodougou'?'#E65100':'#1B5E20'};">${(d.a.zone||'cavally')==='worodougou'?'Worodougou':'Cavally'}</span>${d.a.dateDepart?' <span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:8px;background:var(--surface2);color:var(--text3);">Parti le '+fmtDate(d.a.dateDepart)+'</span>':''}</td>
       <td style="padding:9px 12px;"><span style="font-size:10px;padding:2px 7px;border-radius:8px;background:${c.bg};color:${c.tx};border:1px solid ${c.brd}">${d.a.fonction}</span></td>
       <td style="padding:9px 12px;">
         <div style="display:flex;align-items:center;gap:8px;">
@@ -8062,7 +8199,12 @@ const AFOR_AGENT_MAP = {
 };
 
 // Noms canoniques des 13 agents CE (référence absolue)
-const AGENTS_CE_CANONIQUES = [
+// Dérivée de AGENTS_FULL (source unique) — inclut aussi les agents partis, pour que leurs
+// dossiers déjà traités restent correctement reconnus lors des imports.
+function getAgentsCECanoniques(){
+  return AGENTS_FULL.filter(a=>a.fonction==='Commissaire enquêteur').map(a=>a.nom.toUpperCase());
+}
+const AGENTS_CE_CANONIQUES_OBSOLETE_NE_PAS_UTILISER = [
   'ABOYA Affoua Inès',
   'ANGBONOU AUGUSTIN BROU CEDRIC',
   'BAKAYOKO ADAMA',
@@ -8382,7 +8524,7 @@ function aforGetAgentsData(){
 
   // Index de normalisation des 13 noms canoniques
   const canonNormes = {};
-  AGENTS_CE_CANONIQUES.forEach(c => { canonNormes[normA(c)] = c; });
+  getAgentsCECanoniques().forEach(c => { canonNormes[normA(c)] = c; });
   // Ajouter les variantes depuis AFOR_AGENT_MAP
   Object.entries(AFOR_AGENT_MAP).forEach(([raw, canon]) => {
     canonNormes[normA(raw)]   = canon;
@@ -8419,7 +8561,7 @@ function aforGetAgentsData(){
   });
 
   // S'assurer que les 13 agents apparaissent même avec 0 dossier
-  AGENTS_CE_CANONIQUES.forEach(c => {
+  getAgentsCECanoniques().forEach(c => {
     if(!agents[c]) agents[c] = {nom:c, total:0, retards:0, parEtape:{}, tempsDD_RDC:[], tempsRDC_CL:[], tempsCL_OV:[]};
   });
 
