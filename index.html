@@ -4458,7 +4458,7 @@ function dashRenderPerfIndiv(){
     const data = gnssAgents.map(a=>{
       const st = typeof gnssStatsForAgent==='function' ? gnssStatsForAgent(a.nom) : null;
       return {nom:a.nom, parcelles: st&&st.hasColumn?st.parcelles:0, ha: st&&st.hasColumn?st.superficie:0};
-    }).sort((a,b)=>b.parcelles-a.parcelles);
+    }).sort((a,b)=>b.ha-a.ha);
     el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
       <thead><tr style="border-bottom:1px solid var(--border);"><th style="text-align:left;padding:7px 12px;font-size:10px;color:var(--text3);text-transform:uppercase;">Opérateur GNSS</th><th style="text-align:right;padding:7px 12px;font-size:10px;color:var(--text3);text-transform:uppercase;">Parcelles</th><th style="text-align:right;padding:7px 12px;font-size:10px;color:var(--text3);text-transform:uppercase;">Ha levés</th></tr></thead>
       <tbody>${data.map(a=>`<tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 12px;">${a.nom}</td><td style="padding:7px 12px;text-align:right;font-weight:600;">${a.parcelles}</td><td style="padding:7px 12px;text-align:right;font-weight:700;color:var(--teal)">${a.ha.toFixed(1)}</td></tr>`).join('')||'<tr><td colspan="3" style="padding:16px;text-align:center;color:var(--text3);">Aucune donnée</td></tr>'}</tbody>
