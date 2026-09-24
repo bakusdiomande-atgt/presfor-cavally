@@ -6215,27 +6215,41 @@ function cqeRenderAll(){
   </div>` : '';
 
   // Filtres (persistés dans cqeFilterState pour survivre aux ré-affichages)
+  const vueCorriges = cqeFilterState.vue === 'corriges';
   const q = (cqeFilterState.q||'').toLowerCase();
   const fDept = cqeFilterState.dept||'';
   const fAgent = cqeFilterState.agent||'';
-  const depts = [...new Set(rejetes.map(d=>d.dept).filter(Boolean))].sort();
-  const agents = [...new Set(rejetes.map(d=>d.agent).filter(Boolean))].sort();
-  const filtered = rejetes.filter(d=>{
+  const fAssigne = cqeFilterState.assigne||'';
+  const sourceListe = vueCorriges ? corriges : rejetes;
+  const depts = [...new Set(sourceListe.map(d=>d.dept).filter(Boolean))].sort();
+  const agentsListe = [...new Set(sourceListe.map(d=>d.agent).filter(Boolean))].sort();
+  const controleurs = getControleursQualite();
+  const filtered = sourceListe.filter(d=>{
     const mq = !q || String(d.id).toLowerCase().includes(q) || ((d.prenom||'')+' '+(d.nom_demandeur||'')).toLowerCase().includes(q) || (d.village||'').toLowerCase().includes(q);
     const mDept = !fDept || d.dept===fDept;
     const mAgent = !fAgent || d.agent===fAgent;
-    return mq && mDept && mAgent;
+    const mAssigne = vueCorriges || !fAssigne || (fAssigne==='__non_assigne__' ? !pubCQ[d.id].assigne_a : (pubCQ[d.id].assigne_a||'')===fAssigne);
+    return mq && mDept && mAgent && mAssigne;
   });
 
   const rows = filtered.slice(0,200).map(d=>{
+    const cq = pubCQ[d.id];
+    const derniereColonne = vueCorriges
+      ? `<td style="padding:8px 12px;color:var(--text2);">${cq.corrige_par||'—'} <span style="color:var(--text3);">· ${fmtDate(cq.date_correction)}</span></td>`
+      : `<td style="padding:8px 12px;color:var(--text2);">${cq.assigne_a||'<span style="color:var(--text3);">Non assigné</span>'}</td>`;
     return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="cqeShowDossierDetail('${String(d.id).replace(/'/g,"\\'")}')">
     <td style="padding:8px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--blue);">${d.id}</td>
     <td style="padding:8px 12px;">${d.prenom||''} ${d.nom_demandeur||''}</td>
     <td style="padding:8px 12px;color:var(--text2);">${d.village||''}</td>
     <td style="padding:8px 12px;">${d.agent||'—'}</td>
+    ${derniereColonne}
   </tr>`;
   }).join('');
   contentEl.innerHTML = motifBreakdownHtml + `<div class="tw" style="overflow:hidden;">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:6px;">
+      <button class="btn-s ${!vueCorriges?'active':''}" style="${!vueCorriges?'background:var(--red-lt);color:var(--red);border-color:var(--red);':''}" onclick="cqeSetFilter('vue','rejetes')">Rejetés (${rejetes.length})</button>
+      <button class="btn-s ${vueCorriges?'active':''}" style="${vueCorriges?'background:var(--accent-lt);color:var(--accent);border-color:var(--accent);':''}" onclick="cqeSetFilter('vue','corriges')">Corrigés (${corriges.length})</button>
+    </div>
     <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
       <input type="text" id="cqe-f-q" placeholder="Rechercher (n° dossier, nom, village)" value="${(cqeFilterState.q||'').replace(/"/g,'&quot;')}" oninput="cqeSetFilter('q',this.value)" style="flex:1;min-width:180px;border:1px solid var(--border-med);border-radius:6px;padding:6px 10px;font-size:12px;">
       <select onchange="cqeSetFilter('dept',this.value)" style="border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;">
@@ -6244,22 +6258,32 @@ function cqeRenderAll(){
       </select>
       <select onchange="cqeSetFilter('agent',this.value)" style="border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;">
         <option value="">Tous agents</option>
-        ${agents.map(a=>`<option value="${a}" ${fAgent===a?'selected':''}>${a}</option>`).join('')}
+        ${agentsListe.map(a=>`<option value="${a}" ${fAgent===a?'selected':''}>${a}</option>`).join('')}
       </select>
+      ${!vueCorriges ? `<select onchange="cqeSetFilter('assigne',this.value)" style="border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;">
+        <option value="">Tous les contrôleurs</option>
+        <option value="__non_assigne__" ${fAssigne==='__non_assigne__'?'selected':''}>Non assigné</option>
+        ${controleurs.map(c=>`<option value="${c}" ${fAssigne===c?'selected':''}>${c}</option>`).join('')}
+      </select>` : ''}
       <button class="btn-s" onclick="cqeExportCSV()" style="display:inline-flex;align-items:center;gap:5px;">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
         Exporter CSV
       </button>
     </div>
-    <div style="padding:8px 16px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);">Dossiers rejetés (contrôle qualité) — ${filtered.length.toLocaleString('fr-FR')} résultat(s)</div>
+    <div style="padding:8px 16px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);">${vueCorriges?'Dossiers corrigés':'Dossiers rejetés'} (contrôle qualité) — ${filtered.length.toLocaleString('fr-FR')} résultat(s)</div>
     <div style="overflow-x:auto;">
     <table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">N° Dossier</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Demandeur</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Village</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Agent</th></tr></thead>
-      <tbody>${rows || '<tr><td colspan="4" style="padding:16px;text-align:center;color:var(--text3);">Aucun résultat pour ces filtres</td></tr>'}</tbody>
+      <thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">N° Dossier</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Demandeur</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Village</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Agent</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">${vueCorriges?'Corrigé par':'Assigné à'}</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="5" style="padding:16px;text-align:center;color:var(--text3);">Aucun résultat pour ces filtres</td></tr>'}</tbody>
     </table>
     </div>
     ${filtered.length>200 ? `<div style="padding:8px 16px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);">${filtered.length.toLocaleString('fr-FR')} résultats au total — 200 premiers affichés (affinez les filtres ou exportez le CSV pour tout voir).</div>` : ''}
   </div>`;
+}
+
+// ── Liste des noms des comptes "Contrôleur qualité" (pour l'assignation) ──
+function getControleursQualite(){
+  return Object.values(users_db||{}).filter(u=>u.role==='cqe').map(u=>u.nom.split('—')[0].trim()).sort();
 }
 
 let cqeFilterState = {};
@@ -6272,24 +6296,33 @@ function cqeSetFilter(key, val){
 
 function cqeExportCSV(){
   const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
-  const rejetes = afor.filter(d=>pubCQ[d.id] && pubCQ[d.id].rejete && !pubCQ[d.id].corrige);
+  const vueCorriges = cqeFilterState.vue === 'corriges';
+  const source = afor.filter(d=>pubCQ[d.id] && pubCQ[d.id].rejete && (vueCorriges ? pubCQ[d.id].corrige : !pubCQ[d.id].corrige));
   const motifDossier = d => { const cq=pubCQ[d.id]; return cq.motif_final || cq.motif_qc2 || cq.motif_qc1 || ''; };
   const q = (cqeFilterState.q||'').toLowerCase();
   const fDept = cqeFilterState.dept||'';
   const fAgent = cqeFilterState.agent||'';
-  const filtered = rejetes.filter(d=>{
+  const fAssigne = cqeFilterState.assigne||'';
+  const filtered = source.filter(d=>{
     const mq = !q || String(d.id).toLowerCase().includes(q) || ((d.prenom||'')+' '+(d.nom_demandeur||'')).toLowerCase().includes(q) || (d.village||'').toLowerCase().includes(q);
     const mDept = !fDept || d.dept===fDept;
     const mAgent = !fAgent || d.agent===fAgent;
-    return mq && mDept && mAgent;
+    const mAssigne = vueCorriges || !fAssigne || (fAssigne==='__non_assigne__' ? !pubCQ[d.id].assigne_a : (pubCQ[d.id].assigne_a||'')===fAssigne);
+    return mq && mDept && mAgent && mAssigne;
   });
   if(!filtered.length){ showToast('Rien à exporter pour ces filtres.'); return; }
-  const header = ['N° Dossier','Demandeur','Département','Sous-préfecture','Village','Agent','Motif de rejet'];
-  const rows = filtered.map(d=>[d.id||'', ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim(), d.dept||'', d.sp||'', d.village||'', d.agent||'', motifDossier(d)]);
+  const header = vueCorriges
+    ? ['N° Dossier','Demandeur','Département','Sous-préfecture','Village','Agent','Motif de rejet initial','Corrigé par','Date de correction']
+    : ['N° Dossier','Demandeur','Département','Sous-préfecture','Village','Agent','Motif de rejet','Assigné à'];
+  const rows = filtered.map(d=>{
+    const cq = pubCQ[d.id];
+    const base = [d.id||'', ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim(), d.dept||'', d.sp||'', d.village||'', d.agent||'', motifDossier(d)];
+    return vueCorriges ? [...base, cq.corrige_par||'', fmtDate(cq.date_correction)] : [...base, cq.assigne_a||''];
+  });
   const csv = '\uFEFF' + [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = 'PRESFOR_CQE_rejets_'+new Date().toISOString().split('T')[0]+'.csv';
+  a.download = 'PRESFOR_CQE_'+(vueCorriges?'corriges':'rejets')+'_'+new Date().toISOString().split('T')[0]+'.csv';
   a.click();
 }
 
@@ -6341,6 +6374,17 @@ function cqeShowDossierDetail(id){
     row('Agent responsable', d.agent||'—') +
     row('Niveau global', cq.niveau||'—') +
     row('Superficie (contrôle)', cq.superf ? Number(cq.superf).toFixed(2)+' ha' : '—') +
+    (cq.rejete && !estCorrige ? (()=>{
+      const controleurs = getControleursQualite();
+      return `<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;">
+        <div style="color:var(--text3);margin-bottom:5px;">Assigné à</div>
+        <select onchange="cqeAssigner('${String(d.id).replace(/'/g,"\\'")}', this.value)" style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:5px 8px;font-size:12px;">
+          <option value="">— Non assigné —</option>
+          ${controleurs.map(c=>`<option value="${c}" ${cq.assigne_a===c?'selected':''}>${c}</option>`).join('')}
+          ${(cq.assigne_a && !controleurs.includes(cq.assigne_a)) ? `<option value="${cq.assigne_a}" selected>${cq.assigne_a}</option>` : ''}
+        </select>
+      </div>`;
+    })() : '') +
     (cq.motif_qc1 ? row('Motif rejet QC1', cq.motif_qc1) : '') +
     (cq.motif_qc2 ? row('Motif rejet QC2', cq.motif_qc2) : '') +
     (cq.motif_final ? row('Motif rejet validation finale', cq.motif_final) : '') +
@@ -6378,6 +6422,16 @@ function cqeAnnulerCorrection(id){
   cqeRenderAll();
   cqeShowDossierDetail(id);
   showToast('Correction annulée pour le dossier '+id+' — remis en rejeté.');
+}
+
+// ── Assigner un dossier rejeté (encore non corrigé) à un contrôleur qualité pour suivi ──
+function cqeAssigner(id, nom){
+  const cq = pubCQ[id];
+  if(!cq) return;
+  cq.assigne_a = nom || null;
+  pubSave();
+  cqeRenderAll();
+  showToast(nom ? 'Dossier '+id+' assigné à '+nom+'.' : 'Dossier '+id+' désassigné.');
 }
 
 function pubInit(){
