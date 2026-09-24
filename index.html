@@ -254,6 +254,9 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 .admin-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9000;display:none;align-items:center;justify-content:center;}
 .admin-overlay.show{display:flex;}
 .admin-card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:28px 32px;width:100%;max-width:700px;max-height:88vh;overflow-y:auto;}
+/* Contrôleur qualité : lecture seule partout (comme CE/GNSS), sauf dans CQE (voir isViewer()
+   et les fonctions cqeMarquerCorrige/cqeAnnulerCorrection, qui ne sont pas soumises à .viewer-hidden) */
+body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
@@ -327,6 +330,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
             <option value="agent">Agent PRESFOR</option>
             <option value="ce">Commissaire Enquêteur (CE) — Visuel</option>
             <option value="gnss">Opérateur GNSS — Visuel</option>
+            <option value="cqe">Contrôleur qualité — Accès CQE uniquement</option>
             <option value="admin">Administrateur</option>
           </select>
         </div>
@@ -6155,14 +6159,18 @@ function cqeRenderAll(){
   const cqIds = Object.keys(pubCQ||{});
   const aforIds = new Set(afor.map(d=>d.id));
   const cqDossiers = afor.filter(d=>pubCQ[d.id]);
-  const rejetes = cqDossiers.filter(d=>pubCQ[d.id].rejete);
+  const rejetesInitial = cqDossiers.filter(d=>pubCQ[d.id].rejete);
+  const corriges = rejetesInitial.filter(d=>pubCQ[d.id].corrige);
+  // Un dossier rejeté puis corrigé manuellement par le contrôleur qualité sort de "Rejetés"
+  // et vient compléter "Conformes" — voir cqeMarquerCorrige().
+  const rejetes = rejetesInitial.filter(d=>!pubCQ[d.id].corrige);
   const tauxCouverture = afor.length>0 ? Math.round(cqDossiers.length/afor.length*100) : 0;
   const tauxRejet = cqDossiers.length>0 ? Math.round(rejetes.length/cqDossiers.length*100) : 0;
   const sansGnssApresPub = aforGetSansGnssApresPublicite();
   kpiEl.innerHTML = `
     <div class="kpi blue"><div class="kpi-l">Dossiers passés en CQ</div><div class="kpi-v">${cqDossiers.length.toLocaleString('fr-FR')}</div><div class="kpi-s">${tauxCouverture}% des dossiers</div></div>
     <div class="kpi red"><div class="kpi-l">Rejetés</div><div class="kpi-v">${rejetes.length.toLocaleString('fr-FR')}</div><div class="kpi-s">${tauxRejet}% des dossiers CQ</div></div>
-    <div class="kpi green"><div class="kpi-l">Conformes</div><div class="kpi-v">${(cqDossiers.length-rejetes.length).toLocaleString('fr-FR')}</div></div>
+    <div class="kpi green"><div class="kpi-l">Conformes</div><div class="kpi-v">${(cqDossiers.length-rejetes.length).toLocaleString('fr-FR')}</div><div class="kpi-s">${corriges.length>0?'dont '+corriges.length+' corrigé(s)':''}</div></div>
     <div class="kpi"><div class="kpi-l">Non encore contrôlés</div><div class="kpi-v">${(afor.length-cqDossiers.length).toLocaleString('fr-FR')}</div></div>
     <div class="kpi ${sansGnssApresPub.length>0?'amber':''}"><div class="kpi-l">Publicité sans GNSS</div><div class="kpi-v">${sansGnssApresPub.length.toLocaleString('fr-FR')}</div><div class="kpi-s">${sansGnssApresPub.length>0?'À vérifier':'Cohérent'}</div></div>`;
   if(!cqDossiers.length){
@@ -6264,7 +6272,7 @@ function cqeSetFilter(key, val){
 
 function cqeExportCSV(){
   const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
-  const rejetes = afor.filter(d=>pubCQ[d.id] && pubCQ[d.id].rejete);
+  const rejetes = afor.filter(d=>pubCQ[d.id] && pubCQ[d.id].rejete && !pubCQ[d.id].corrige);
   const motifDossier = d => { const cq=pubCQ[d.id]; return cq.motif_final || cq.motif_qc2 || cq.motif_qc1 || ''; };
   const q = (cqeFilterState.q||'').toLowerCase();
   const fDept = cqeFilterState.dept||'';
@@ -6312,9 +6320,15 @@ function cqeShowDossierDetail(id){
   const region = REGION_BY_DEPT[(d.dept||'').toUpperCase()] || '—';
 
   document.getElementById('cqe-dossier-modal-title').textContent = 'Dossier '+(d.id||'');
+  const estCorrige = cq.rejete && cq.corrige;
+  const statutBandeau = estCorrige
+    ? {bg:'var(--accent-lt)', color:'var(--accent)', txt:'✓ Corrigé et validé le '+fmtDate(cq.date_correction)+(cq.corrige_par?' par '+cq.corrige_par:'')}
+    : cq.rejete
+      ? {bg:'var(--red-lt)', color:'var(--red)', txt:'⛔ Rejeté'}
+      : {bg:'var(--accent-lt)', color:'var(--accent)', txt:'✓ Conforme'};
   document.getElementById('cqe-dossier-modal-body').innerHTML =
-    `<div style="background:${cq.rejete?'var(--red-lt)':'var(--accent-lt)'};color:${cq.rejete?'var(--red)':'var(--accent)'};border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;font-weight:600;margin-bottom:12px;">
-      ${cq.rejete?'⛔ Rejeté':'✓ Conforme'}${cq.statut_cq?' — statut source : "'+cq.statut_cq+'"':''}
+    `<div style="background:${statutBandeau.bg};color:${statutBandeau.color};border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;font-weight:600;margin-bottom:12px;">
+      ${statutBandeau.txt}${cq.statut_cq?' — statut source : "'+cq.statut_cq+'"':''}
     </div>` +
     row('Demandeur', ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim()||'—') +
     row('Région', region) +
@@ -6330,9 +6344,40 @@ function cqeShowDossierDetail(id){
     (cq.motif_qc1 ? row('Motif rejet QC1', cq.motif_qc1) : '') +
     (cq.motif_qc2 ? row('Motif rejet QC2', cq.motif_qc2) : '') +
     (cq.motif_final ? row('Motif rejet validation finale', cq.motif_final) : '') +
-    `<div style="margin-top:12px;"><button class="btn-p" style="width:100%;" onclick="document.getElementById('cqe-dossier-modal').style.display='none'; dashGoToDossierInActivites('${String(d.id).replace(/'/g,"\\'")}');">Voir dans Activités → Certificat foncier</button></div>`;
+    (cq.rejete ? (estCorrige
+      ? `<div style="margin-top:12px;"><button class="btn-s" style="width:100%;" onclick="cqeAnnulerCorrection('${String(d.id).replace(/'/g,"\\'")}')">Annuler la correction (remettre en rejeté)</button></div>`
+      : `<div style="margin-top:12px;"><button class="btn-p" style="width:100%;background:var(--accent);" onclick="cqeMarquerCorrige('${String(d.id).replace(/'/g,"\\'")}')">✓ Marquer comme corrigé et validé</button></div>`
+    ) : '') +
+    `<div style="margin-top:8px;"><button class="btn-s" style="width:100%;" onclick="document.getElementById('cqe-dossier-modal').style.display='none'; dashGoToDossierInActivites('${String(d.id).replace(/'/g,"\\'")}');">Voir dans Activités → Certificat foncier</button></div>`;
 
   modal.style.display = 'flex';
+}
+
+// ── Marquer un dossier rejeté comme corrigé et validé par le contrôleur qualité :
+// il sort de "Rejetés" et vient compléter "Conformes". ──
+function cqeMarquerCorrige(id){
+  const cq = pubCQ[id];
+  if(!cq || !cq.rejete) return;
+  cq.corrige = true;
+  cq.date_correction = new Date().toISOString().split('T')[0];
+  cq.corrige_par = (currentUser && currentUser.nom) ? currentUser.nom.split('—')[0].trim() : null;
+  pubSave();
+  cqeRenderAll();
+  cqeShowDossierDetail(id);
+  showToast('Dossier '+id+' marqué corrigé et validé.');
+}
+
+// ── Revenir en arrière si une correction a été enregistrée par erreur ──
+function cqeAnnulerCorrection(id){
+  const cq = pubCQ[id];
+  if(!cq) return;
+  cq.corrige = false;
+  cq.date_correction = null;
+  cq.corrige_par = null;
+  pubSave();
+  cqeRenderAll();
+  cqeShowDossierDetail(id);
+  showToast('Correction annulée pour le dossier '+id+' — remis en rejeté.');
 }
 
 function pubInit(){
@@ -9797,24 +9842,28 @@ function authLogout(){
 function authApplyUI(){
   const role = currentUser?.role || '';
   const isAdmin  = role === 'admin';
-  const isViewer = role === 'ce' || role === 'gnss';
+  const isViewer = role === 'ce' || role === 'gnss' || role === 'cqe';
   const isAgent  = role === 'agent';
   const ui = document.getElementById('tb-user-info');
 
   // Appliquer la classe de rôle sur le body
-  document.body.classList.remove('role-admin','role-agent','role-ce','role-gnss','role-viewer');
+  document.body.classList.remove('role-admin','role-agent','role-ce','role-gnss','role-cqe','role-viewer');
   if(role) document.body.classList.add('role-'+role);
   if(isViewer) document.body.classList.add('role-viewer');
 
   if(currentUser){
     ui.style.display = 'flex';
     document.getElementById('tb-user-name').textContent = currentUser.nom.split('—')[0].trim().split(' ').slice(0,2).join(' ');
-    const roleLabel = isAdmin?'Admin':role==='ce'?'CE':role==='gnss'?'GNSS':'Agent';
+    const roleLabel = isAdmin?'Admin':role==='ce'?'CE':role==='gnss'?'GNSS':role==='cqe'?'Contrôle qualité':'Agent';
     document.getElementById('tb-user-role').textContent = roleLabel;
     document.getElementById('tb-logout-btn').style.display = 'block';
     document.getElementById('tb-admin-btn').style.display = isAdmin ? 'block' : 'none';
     const wipeBtn = document.getElementById('btn-afor-wipe');
     if(wipeBtn) wipeBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+    // Contrôleur qualité : seul module accessible, on y bascule directement (le reste de la
+    // navigation est masqué par CSS, mais un module resté ouvert d'une session précédente
+    // doit quand même être remplacé par CQE).
+    if(role==='cqe') switchModule('cqe');
   } else {
     ui.style.display = 'none';
     document.getElementById('tb-logout-btn').style.display = 'none';
