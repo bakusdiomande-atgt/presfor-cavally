@@ -269,7 +269,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
       <div>
         <div class="auth-logo-title">PRESFOR · Cavally</div>
         <div class="auth-logo-sub">Plateforme de suivi foncier — Groupement CAG</div>
-      <div style="font-size:10px;color:#2A6B42;font-weight:700;margin-top:4px;">v4.0 — 01/10/2026</div>
+      <div style="font-size:10px;color:#2A6B42;font-weight:700;margin-top:4px;">v4.1 — 01/10/2026</div>
       </div>
     </div>
     <div class="auth-field">
@@ -1212,7 +1212,8 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
       <div class="btn-row ratt-noprint">
         <button class="btn-s" onclick="rattRenderAll(true)">↻ Actualiser</button>
         <button class="btn-s" onclick="rattExportXLSX()">↓ Feuille de route Excel</button>
-        <button class="btn-p" onclick="rattPrint()">Imprimer / PDF</button>
+        <button class="btn-s" onclick="rattPrint()">Imprimer</button>
+        <button class="btn-p" onclick="rattExportPDF()">↓ Télécharger PDF</button>
       </div>
     </div>
     <div id="ratt-content"></div>
@@ -10680,6 +10681,200 @@ function rattExportXLSX(){
   const zone = R.zone==='all' ? 'toutes_zones' : R.zone;
   XLSX.writeFile(wb, 'PRESFOR_rattrapage_'+zone+'_'+new Date().toISOString().split('T')[0]+'.xlsx');
   showToast('Feuille de route Excel téléchargée');
+}
+
+// ── Export PDF direct (téléchargement d'un fichier .pdf, sans passer par l'impression) ──
+// Les bibliothèques jsPDF + autoTable ne sont chargées qu'au premier export.
+function rattLoadScript(src){
+  return new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = ()=>reject(new Error('Chargement impossible : '+src));
+    document.head.appendChild(s);
+  });
+}
+async function rattEnsurePdfLibs(){
+  if(!(window.jspdf && window.jspdf.jsPDF)) await rattLoadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  const probe = new window.jspdf.jsPDF();
+  if(typeof probe.autoTable !== 'function') await rattLoadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+}
+// Les polices standard du PDF ne couvrent que l'alphabet latin : on remplace les autres caractères
+function rattPdfTxt(v){
+  if(v==null) return '';
+  return String(v)
+    .replace(/[   ]/g,' ')
+    .replace(/[‘’]/g,"'").replace(/[“”]/g,'"')
+    .replace(/[–—]/g,'-').replace(/→/g,'->').replace(/…/g,'...')
+    .replace(/œ/g,'oe').replace(/Œ/g,'OE').replace(/≥/g,'>=').replace(/≤/g,'<=')
+    .replace(/[^\x00-\xFF]/g,'');
+}
+
+async function rattExportPDF(){
+  if(!rattLast){ showToast('Générez d\'abord l\'analyse.'); return; }
+  showToast('Préparation du PDF...');
+  try{ await rattEnsurePdfLibs(); }
+  catch(e){ showToast('Bibliothèque PDF indisponible (connexion internet requise). Utilisez « Imprimer ».'); return; }
+
+  const R = rattLast, C = R.cadence, B = R.buckets;
+  const T = rattPdfTxt;
+  const doc = new window.jspdf.jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
+  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 12;
+  const VERT = [28,74,46], GRIS = [92,90,85], OR = [245,166,35];
+  const zoneLabel = R.zone==='all' ? 'Cavally + Worodougou' : (PROJECT_ZONES[R.zone]||{}).label+' ('+(PROJECT_ZONES[R.zone]||{}).lot+')';
+  const dateStr = new Date().toLocaleDateString('fr-FR');
+  const tableStyle = { fontSize:8, cellPadding:1.8, textColor:[26,25,22], lineColor:[220,220,220], lineWidth:0.1 };
+  const headStyle  = { fillColor:VERT, textColor:255, fontStyle:'bold', fontSize:8 };
+
+  // ── En-tête ──
+  doc.setFillColor(...VERT); doc.rect(0,0,W,24,'F');
+  doc.setFillColor(...OR); doc.rect(0,24,W,1.2,'F');
+  doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(16);
+  doc.text(T('PRESFOR · Analyse de rattrapage'), M, 11);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text(T('Zone : '+zoneLabel+'  ·  '+rattFmt(R.afor.length)+' dossiers AFOR  ·  '+rattFmt(R.nbParcelles)+' parcelles GNSS'), M, 18);
+  doc.text(T('Groupement CAG  ·  généré le '+dateStr), W-M, 11, {align:'right'});
+  if(currentUser && currentUser.nom) doc.text(T('par '+currentUser.nom.split('—')[0].trim()), W-M, 18, {align:'right'});
+
+  // ── Indicateurs clés ──
+  const rapides = RATT_BUCKETS.filter(b=>b.rapide);
+  const nbRapide = rapides.reduce((s,b)=>s+B[b.id].n,0);
+  const haRapide = rapides.reduce((s,b)=>s+B[b.id].haGnss,0);
+  const ratio = (C.haOpJour && C.haOpJourActuel) ? C.haOpJour/C.haOpJourActuel : null;
+  const kpis = [
+    ['Validé CSPGFR', rattFmt(R.haValide)+' ha', rattFmt(C.objHa>0?R.haValide/C.objHa*100:0,1)+' % de '+rattFmt(C.objHa)+' ha', [184,48,37]],
+    ['Stock mobilisable sans terrain', rattFmt(nbRapide)+' dossiers', rattFmt(haRapide)+' ha GNSS', [181,112,10]],
+    ['Cadence GNSS nécessaire', (C.haOpJour!=null?rattFmt(C.haOpJour,1):'-')+' ha', 'par opérateur et par jour', [26,75,110]],
+    ['Rythme actuel', (C.haOpJourActuel!=null?rattFmt(C.haOpJourActuel,1):'-')+' ha', ratio==null?'par opérateur et par jour':(ratio>1?'à accélérer x'+rattFmt(ratio,1):'au-dessus de la cible'), VERT],
+  ];
+  const kw = (W-2*M-3*4)/4; let y = 30;
+  kpis.forEach((k,i)=>{
+    const x = M + i*(kw+4);
+    doc.setDrawColor(220); doc.setFillColor(248,247,244); doc.roundedRect(x,y,kw,20,1.5,1.5,'FD');
+    doc.setFillColor(...k[3]); doc.rect(x,y,1.2,20,'F');
+    doc.setFontSize(7); doc.setTextColor(...GRIS); doc.setFont('helvetica','bold');
+    doc.text(T(k[0].toUpperCase()), x+4, y+5);
+    doc.setFontSize(14); doc.setTextColor(...k[3]); doc.text(T(k[1]), x+4, y+12.5);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...GRIS); doc.text(T(k[2]), x+4, y+17.5);
+  });
+  y += 27;
+
+  const titre = (txt, sous)=>{
+    if(y > H-30){ doc.addPage(); y = M+4; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(...VERT); doc.text(T(txt), M, y);
+    if(sous){ doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...GRIS); doc.text(T(sous), M, y+4); y += 4; }
+    y += 3;
+  };
+
+  // ── 1. Files d'attente ──
+  titre('1 · Où sont bloqués les dossiers', 'Chaque dossier est compté une seule fois, à l\'étape où il attend.');
+  doc.autoTable({
+    startY:y, margin:{left:M,right:M}, styles:tableStyle, headStyles:headStyle,
+    head:[[ 'File d\'attente','Dossiers','Ha GNSS','Attente médiane','Action','Responsable' ].map(T)],
+    body: RATT_BUCKETS.filter(b=>B[b.id].n>0 || b.id!=='autre').map(b=>{
+      const X=B[b.id];
+      return [b.label+(b.rapide?'  (gain rapide)':''), rattFmt(X.n), X.haGnss?rattFmt(X.haGnss):'-', X.medJours!=null?rattFmt(X.medJours)+' j':'-', b.action, b.qui].map(T);
+    }),
+    columnStyles:{1:{halign:'right',fontStyle:'bold'},2:{halign:'right'},3:{halign:'right'},0:{cellWidth:70},4:{cellWidth:80}},
+    didParseCell:(d)=>{ if(d.section==='body' && /gain rapide/.test(d.row.raw[0])) d.cell.styles.fillColor=[251,240,220]; },
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  // ── 2. Villages prioritaires ──
+  const topVill = R.villages.filter(v=>v.rapide>0 || v.terrain>0).slice(0,25);
+  titre('2 · Villages prioritaires', 'Classés par nombre de dossiers débloquables sans retour terrain. Liste complète dans la feuille de route Excel.');
+  doc.autoTable({
+    startY:y, margin:{left:M,right:M}, styles:tableStyle, headStyles:headStyle,
+    head:[['Village','Sous-préfecture','Département','Attente CSPGFR','Attente CVGFR','Pub. à clôturer','Pub. à lancer','Levé sans PVCL','Terrain à faire','Ha débloquables'].map(T)],
+    body: topVill.map(v=>[v.village||'-', v.sp, v.dept, v.counts.attente_cspgfr||'', v.counts.attente_cvgfr||'', v.counts.pub_a_cloturer||'', v.counts.attente_pub||'', v.counts.leve_sans_pvcl||'', ((v.counts.pvcl_leve_a_faire||0)+(v.counts.rdc_a_faire||0))||'', v.haRapide?rattFmt(v.haRapide):'-'].map(T)),
+    columnStyles:{3:{halign:'right'},4:{halign:'right'},5:{halign:'right'},6:{halign:'right'},7:{halign:'right'},8:{halign:'right'},9:{halign:'right',fontStyle:'bold'}},
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  // ── 3. Fiabilité des données ──
+  titre('3 · Fiabilité des données');
+  doc.autoTable({
+    startY:y, margin:{left:M,right:M}, styles:tableStyle, headStyles:headStyle,
+    head:[['Indicateur','Valeur'].map(T)],
+    body:[
+      ['Superficie moyenne d\'une parcelle levée', (R.moyParcelle!=null?rattFmt(R.moyParcelle,2)+' ha':'-')+'  (médiane '+(R.medParcelle!=null?rattFmt(R.medParcelle,2)+' ha':'-')+')'],
+      ['Total levé au GNSS', rattFmt(R.haGnssBrut)+' ha · '+rattFmt(R.nbParcelles)+' parcelles'],
+      ['Dont rattaché à un dossier AFOR', rattFmt(R.haRattaches)+' ha'+(R.haGnssBrut>0?' ('+rattFmt(R.haRattaches/R.haGnssBrut*100)+' %)':'')],
+    ].map(r=>r.map(T)),
+    columnStyles:{0:{cellWidth:90,fontStyle:'bold'}},
+  });
+  y = doc.lastAutoTable.finalY + 3;
+  if(R.alertes.length){
+    const coul = {danger:[250,235,234], warn:[251,240,220], info:[229,238,245]};
+    doc.autoTable({
+      startY:y, margin:{left:M,right:M}, styles:tableStyle, headStyles:{...headStyle, fillColor:[181,112,10]},
+      head:[['Alerte','Détail'].map(T)],
+      body: R.alertes.map(a=>[a.titre, a.txt].map(T)),
+      columnStyles:{0:{cellWidth:60,fontStyle:'bold'}},
+      didParseCell:(d)=>{ if(d.section==='body') d.cell.styles.fillColor = coul[R.alertes[d.row.index].niv]; },
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  } else y += 5;
+
+  // ── 4. Cadence ──
+  const parcellesJour = (C.haOpJour!=null && R.moyParcelle) ? C.haOpJour/R.moyParcelle : null;
+  const opsNecessaires = (C.haOpJour!=null && C.haOpJourActuel) ? Math.ceil(C.ops*C.haOpJour/C.haOpJourActuel) : null;
+  titre('4 · Cadence nécessaire pour tenir l\'objectif', 'Hypothèses : '+C.ops+' opérateurs GNSS, '+rattParams.joursMois+' jours ouvrés par mois, levés terminés fin S'+rattParams.semestreFinLeves+'.');
+  const halfW = (W-2*M-6)/2;
+  const cad1 = [
+    ['Objectif de la zone', rattFmt(C.objHa)+' ha'],
+    ['Reste à lever', rattFmt(C.resteLever)+' ha'],
+    ['Fin des levés (fin S'+rattParams.semestreFinLeves+')', C.finLeves.toLocaleDateString('fr-FR')+' · '+rattFmt(C.moisRestantsLeves,1)+' mois'],
+    ['Ha à lever par semaine (équipe)', rattFmt(C.haSemaine)+' ha'],
+    ['Ha par opérateur et par jour', (C.haOpJour!=null?rattFmt(C.haOpJour,1):'-')+' ha'],
+    ['Parcelles par opérateur et par jour', parcellesJour!=null?rattFmt(parcellesJour,1):'-'],
+  ];
+  const cad2 = [
+    ['Dernier levé enregistré', C.dernierLeve?fmtDate(C.dernierLeve):'-'],
+    ['Rythme réel (8 semaines)', C.haSemaineActuel!=null?rattFmt(C.haSemaineActuel)+' ha / semaine':'-'],
+    ['Rythme réel par opérateur', C.haOpJourActuel!=null?rattFmt(C.haOpJourActuel,1)+' ha / jour':'-'],
+    ['Opérateurs nécessaires au rythme actuel', opsNecessaires!=null?rattFmt(opsNecessaires):'-'],
+    ['Reste à faire valider (fin S7)', rattFmt(C.resteValider)+' ha'],
+    ['Validations CSPGFR nécessaires par mois', C.haValiderMois!=null?rattFmt(C.haValiderMois)+' ha':'-'],
+  ];
+  const yCad = y;
+  [cad1, cad2].forEach((body,i)=>{
+    doc.autoTable({
+      startY:yCad, margin:{left:M+i*(halfW+6)}, tableWidth:halfW, styles:tableStyle, theme:'plain',
+      body: body.map(r=>r.map(T)),
+      columnStyles:{0:{textColor:GRIS},1:{halign:'right',fontStyle:'bold'}},
+      didDrawCell:(d)=>{ doc.setDrawColor(230); doc.line(d.cell.x, d.cell.y+d.cell.height, d.cell.x+d.cell.width, d.cell.y+d.cell.height); },
+    });
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  // ── 5. Graphiques ──
+  const c1 = document.getElementById('ratt-chart-leve'), c2 = document.getElementById('ratt-chart-etapes');
+  if(c1 && c2){
+    const gh = 62;
+    if(y + gh + 10 > H-10){ doc.addPage(); y = M+4; }
+    titre('5 · Suivi hebdomadaire (12 dernières semaines)');
+    const gw = (W-2*M-6)/2;
+    [[c1,'Hectares levés par semaine, comparés à la cible'],[c2,'Dossiers ayant franchi chaque étape']].forEach(([cv,lbl],i)=>{
+      const x = M + i*(gw+6);
+      doc.setFontSize(7.5); doc.setTextColor(...GRIS); doc.setFont('helvetica','normal'); doc.text(T(lbl), x, y);
+      try{
+        const ratioImg = cv.height/cv.width;
+        const h = Math.min(gh, gw*ratioImg);
+        doc.addImage(cv.toDataURL('image/png'), 'PNG', x, y+2, gw, h);
+      }catch(e){}
+    });
+  }
+
+  // ── Pied de page ──
+  const nb = doc.getNumberOfPages();
+  for(let i=1;i<=nb;i++){
+    doc.setPage(i);
+    doc.setFontSize(7); doc.setTextColor(150); doc.setFont('helvetica','normal');
+    doc.text(T('PRESFOR · Région du Cavally · Analyse de rattrapage du '+dateStr), M, H-5);
+    doc.text(T('Page '+i+' / '+nb), W-M, H-5, {align:'right'});
+  }
+  const zone = R.zone==='all' ? 'toutes_zones' : R.zone;
+  doc.save('PRESFOR_rattrapage_'+zone+'_'+new Date().toISOString().split('T')[0]+'.pdf');
+  showToast('Rapport PDF téléchargé');
 }
 
 // ── Version imprimable / PDF ──
