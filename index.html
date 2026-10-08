@@ -4923,6 +4923,20 @@ async function pubLoadFromFirebase(){
 }
 
 // Calculer les infos publicité d'un dossier AFOR
+let _pubGnssIdx = null, _pubGnssIdxRef = null, _pubGnssIdxLen = -1;
+function pubGnssNameIndex(normN){
+  if(_pubGnssIdx && _pubGnssIdxRef === gnssData && _pubGnssIdxLen === (gnssData||[]).length) return _pubGnssIdx;
+  const m = new Map();
+  (gnssData||[]).forEach(g=>{
+    const k = normN(g.nom_demand || '');
+    if(!k) return;
+    let l = m.get(k); if(!l){ l = []; m.set(k,l); }
+    l.push({g, sp: normN(g.sp||''), vil: normN(g.village||'')});
+  });
+  _pubGnssIdx = m; _pubGnssIdxRef = gnssData; _pubGnssIdxLen = (gnssData||[]).length;
+  return m;
+}
+
 function pubCalcDossier(d){
   // Dates : depuis dossiersAFOR OU depuis pubCQ (fichier importé dans module Publicité)
   const cqData    = pubCQ[d.id] || {};
@@ -4989,35 +5003,22 @@ function pubCalcDossier(d){
   const v1   = (nomN + ' ' + prN).trim();  // NOM PRENOM
   const v2   = (prN  + ' ' + nomN).trim(); // PRENOM NOM
 
+  // Index GNSS par nom normalisé (construit une seule fois) : évite de refiltrer toute la base GNSS
+  // (des milliers de parcelles) pour chaque dossier — c'était la cause de la lenteur de l'onglet.
+  const idx = pubGnssNameIndex(normN);
+  const cands = [];
+  if(v1){
+    const l1 = idx.get(v1); if(l1) cands.push(...l1);
+    if(v2 !== v1){ const l2 = idx.get(v2); if(l2) cands.push(...l2); }
+  }
   let gnssParcelles = [];
-
   // Critère principal : nom+prénom + SP + village (les 4 ensemble)
-  if(v1 && spN && villN){
-    gnssParcelles = (gnssData||[]).filter(g => {
-      const gn = normN(g.nom_demand || '');
-      if(gn !== v1 && gn !== v2) return false;
-      const gsp  = normN(g.sp      || '');
-      const gvil = normN(g.village || '');
-      return gsp === spN && gvil === villN;
-    });
-  }
-
+  if(v1 && spN && villN) gnssParcelles = cands.filter(c => c.sp === spN && c.vil === villN);
   // Fallback 1 : nom+prénom + village (sans SP)
-  if(!gnssParcelles.length && v1 && villN){
-    gnssParcelles = (gnssData||[]).filter(g => {
-      const gn = normN(g.nom_demand || '');
-      if(gn !== v1 && gn !== v2) return false;
-      return normN(g.village || '') === villN;
-    });
-  }
-
+  if(!gnssParcelles.length && v1 && villN) gnssParcelles = cands.filter(c => c.vil === villN);
   // Fallback 2 : nom+prénom seul
-  if(!gnssParcelles.length && v1){
-    gnssParcelles = (gnssData||[]).filter(g => {
-      const gn = normN(g.nom_demand || '');
-      return gn === v1 || gn === v2;
-    });
-  }
+  if(!gnssParcelles.length && v1) gnssParcelles = cands;
+  gnssParcelles = gnssParcelles.map(c => c.g);
 
   const gnssTotal = gnssParcelles.reduce((s,g) => s+(g.superficie||0), 0);
 
