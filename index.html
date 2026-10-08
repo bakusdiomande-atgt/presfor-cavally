@@ -5951,7 +5951,7 @@ function indRenderAll(){
               }).join('') : '<tr><td colspan="3" style="padding:8px;text-align:center;color:var(--text3);">Aucune correspondance tablette pour l&#39;instant</td></tr>'}
             </tbody>
           </table>
-          <p style="font-size:10px;color:var(--text3);margin:8px 0 0;">${an.matched.toLocaleString('fr-FR')} dossier(s) sur ${an.total.toLocaleString('fr-FR')} avec une correspondance dans les données tablette importées (${Object.keys(tabletteData.requests||{}).length.toLocaleString('fr-FR')} demande(s) tablette en mémoire).</p>
+          <p style="font-size:10px;color:var(--text3);margin:8px 0 0;">${an.matched.toLocaleString('fr-FR')} dossier(s) sur ${an.total.toLocaleString('fr-FR')} avec une correspondance dans les données tablette importées (${Object.keys(tabletteData.requests||{}).length.toLocaleString('fr-FR')} demande(s) tablette en mémoire).</p>${Object.keys(tabletteData.requests||{}).length===0?`<p style="font-size:10px;color:var(--red);margin:4px 0 0;">⚠ Aucune donnée tablette en mémoire — Firebase : ${tabFbStatus}. Réimportez les ZIP tablette (ils seront de nouveau sauvegardés).</p>`:''}
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 16px;">
           <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;">
@@ -9477,13 +9477,14 @@ async function tabSaveToFirebase(){
   console.log('Tablette sauvegardée Firebase:', totalEnregistrements, 'enregistrement(s)');
 }
 
+let tabFbStatus = 'non tenté';
 async function tabLoadFromFirebase(){
   try{
     const localTs = localStorage.getItem('presfor_tablette_ts') || '1970-01-01';
     const rMeta = await fetch(FIREBASE_URL + '/presfor/tablette/meta.json', { signal: AbortSignal.timeout(15000) });
-    if(!rMeta.ok) return false;
+    if(!rMeta.ok){ tabFbStatus = 'Firebase a refusé la lecture (HTTP '+rMeta.status+') — vérifiez les règles de la base pour /presfor/tablette'; return false; }
     const meta = await rMeta.json();
-    if(!meta || !meta.ts) return false;
+    if(!meta || !meta.ts){ tabFbStatus = 'aucune donnée tablette sur Firebase (la sauvegarde d\'un import précédent a échoué ou n\'a jamais eu lieu)'; return false; }
     if(meta.ts <= localTs && Object.values(tabletteData).some(s=>Object.keys(s||{}).length>0)){
       return false; // le local est déjà à jour ou plus récent, rien à faire
     }
@@ -9492,13 +9493,13 @@ async function tabLoadFromFirebase(){
       const r = await fetch(FIREBASE_URL + '/presfor/tablette/' + stage.key + '/data.json', { signal: AbortSignal.timeout(30000) });
       if(r.ok){ const d = await r.json(); if(d) nouvelleDonnee[stage.key] = d; }
     }
-    tabletteData = nouvelleDonnee; tabInvalidateIndex();
+    tabletteData = nouvelleDonnee; tabInvalidateIndex(); tabFbStatus='chargé depuis Firebase';
     if(meta.imports) tabletteImports = meta.imports;
     localStorage.setItem('presfor_tablette_ts', meta.ts);
     try{ tabSaveToStorage(); }catch(e){}
     console.log('Tablette chargée Firebase:', meta.count, 'enregistrement(s)');
     return true;
-  }catch(e){ console.warn('tabLoadFromFirebase:', e.message); return false; }
+  }catch(e){ tabFbStatus = 'erreur réseau : '+e.message; console.warn('tabLoadFromFirebase:', e.message); return false; }
 }
 
 function tabLoadFromStorage(){
@@ -9586,7 +9587,7 @@ async function tabImportZips(){
   tabSaveToStorage();
   localStorage.setItem('presfor_tablette_ts', new Date().toISOString());
   syncPendingStart();
-  tabSaveToFirebase().catch(e=>{ console.warn('Tablette Firebase save:', e.message); updateSyncIndicator('error'); }).finally(syncPendingEnd);
+  tabSaveToFirebase().catch(e=>{ console.warn('Tablette Firebase save:', e.message); updateSyncIndicator('error'); showToast('⚠ Données tablette NON sauvegardées sur Firebase : '+e.message+' — elles seront perdues au rechargement.'); }).finally(syncPendingEnd);
 
   statusEl.innerHTML = `<div style="color:var(--accent);font-weight:600;margin-bottom:4px;">✓ ${fichiersLus} fichier(s) importé(s) pour "${nomTablette}" — ${totalNouveaux} nouveaux, ${totalMisAJour} mis à jour</div>` +
     '<div style="font-size:10px;color:var(--text3);">'+rapportParEtape.join(' · ')+'</div>';
