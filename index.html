@@ -8526,6 +8526,12 @@ function aforImportExcel(input){
           if(etapeAvance || dateMaj){
             // Étape avancée ou nouvelles dates : mettre à jour en conservant les données non-CF
             nouveau._ancienneEtape = ancien.etape;
+            // Ne jamais reculer : si le nouveau fichier est moins avancé, garder l'étape la plus avancée
+            if(ETAPES_CF.indexOf(nouveau.etape) < ETAPES_CF.indexOf(ancien.etape)) nouveau.etape = ancien.etape;
+            // Garder les dates connues si le nouveau fichier ne les renseigne pas + champs hors fichier
+            Object.keys(ancien).forEach(k=>{
+              if(nouveau[k]===undefined || (nouveau[k]===null && ancien[k]) ) nouveau[k] = ancien[k];
+            });
             nbMaj++;
           } else {
             // Aucun changement : conserver l'ancien enregistrement intégralement
@@ -8956,6 +8962,7 @@ function gnssImportExcel(input){
       const rows = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false});
       if(!rows.length){ showToast('Fichier vide.'); return; }
 
+      const gnssAncien = Array.isArray(gnssData) ? gnssData : [];
       gnssData = [];
       gnssIndex = {};           // index par code parcelle (N_DEMCGE)
       gnssIndexFull = {};       // index par nom+village+sp+dept
@@ -9020,6 +9027,24 @@ function gnssImportExcel(input){
         gnssIndexNomVil[k3].push(entry);
         nb++;
       });
+
+      // ── Fusion avec l'existant : les parcelles déjà connues absentes du nouveau fichier sont
+      // conservées (import partiel, ex. un seul agent) ; celles présentes dans les deux sont mises à jour
+      // par le nouveau fichier (même code parcelle, ou même nom+village+sp+dept+superficie) ──
+      const gnssKeyOf = e => (e.n_demcge ? 'C:'+gnssKeyCode(e.n_demcge)
+        : 'N:'+gnssKeyFullName(e.nom_demand, e.village, e.sp, e.dept)+'|'+Math.round((e.superficie||0)*100));
+      const nouvellesCles = new Set(gnssData.map(gnssKeyOf));
+      let nbConservees = 0;
+      gnssAncien.forEach(e=>{
+        if(nouvellesCles.has(gnssKeyOf(e))) return;
+        e._matched = false;
+        gnssData.push(e); nbConservees++;
+        if(e.n_demcge){ const k1=gnssKeyCode(e.n_demcge); (gnssIndex[k1]=gnssIndex[k1]||[]).push(e); }
+        const k2=gnssKeyFullName(e.nom_demand,e.village,e.sp,e.dept); (gnssIndexFull[k2]=gnssIndexFull[k2]||[]).push(e);
+        const k3=gnssKeyNomVillage(e.nom_demand,e.village); (gnssIndexNomVil[k3]=gnssIndexNomVil[k3]||[]).push(e);
+      });
+      console.log('GNSS fusion:', nb, 'du fichier,', nbConservees, 'conservées de la base existante,', gnssData.length, 'au total');
+      showToast('GNSS : '+nb+' parcelles lues · '+nbConservees+' conservées de la base existante · '+gnssData.length+' au total');
 
       // ── Sauvegarder localement ET Firebase ──
       try{
@@ -9526,6 +9551,16 @@ function tabNormCode(code){
   return c;
 }
 
+// Rang d'un enregistrement tablette : étape la plus avancée (demandes) puis date de dernière modification
+const TAB_STEP_ORDER = ['DD','RDC','CL','OV','CP','AP','VA'];
+function tabRecordRank(rec, stageKey){
+  if(!rec) return 0;
+  let stepRank = 0;
+  if(stageKey==='requests') stepRank = Math.max(0, TAB_STEP_ORDER.indexOf(String(rec.step||'').toUpperCase())) + 1;
+  const dates = ['updateDate','synchroDate','activeDate','creationDate','requestDate'].map(f=>Date.parse(rec[f])||0);
+  return stepRank*1e14 + Math.max(0,...dates)/1000;
+}
+
 async function tabImportZips(){
   const nomTablette = (document.getElementById('tab-import-nom').value||'').trim();
   const password = document.getElementById('tab-import-pwd').value||'';
@@ -9555,16 +9590,18 @@ async function tabImportZips(){
       const records = JSON.parse(text);
       if(!Array.isArray(records)){ rapportParEtape.push(stage.label+' : format inattendu'); continue; }
 
-      let nouveaux=0, majs=0;
+      let nouveaux=0, majs=0, conserves=0;
       records.forEach(rec=>{
         const code = rec[stage.codeField] || rec.id;
         if(!code) return;
         const key = String(code);
         if(!tabletteData[stage.key][key]) nouveaux++; else majs++;
+        const exist = tabletteData[stage.key][key];
+        if(exist && tabRecordRank(exist, stage.key) > tabRecordRank(rec, stage.key)){ conserves++; return; } // l'existant est plus avancé/récent
         tabletteData[stage.key][key] = Object.assign({}, rec, {_tablette: nomTablette, _importedAt: new Date().toISOString()});
       });
       totalNouveaux += nouveaux; totalMisAJour += majs; fichiersLus++;
-      rapportParEtape.push(stage.label+' : '+records.length+' enregistrement(s) ('+nouveaux+' nouveaux, '+majs+' mis à jour)');
+      rapportParEtape.push(stage.label+' : '+records.length+' enregistrement(s) ('+nouveaux+' nouveaux, '+majs+' mis à jour'+(conserves?', '+conserves+' déjà plus récents conservés':'')+')');
     }catch(e){
       console.error('Erreur import', stage.key, e);
       rapportParEtape.push(stage.label+' : erreur — mot de passe incorrect ou fichier invalide ?');
