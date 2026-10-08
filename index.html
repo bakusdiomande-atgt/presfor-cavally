@@ -1217,6 +1217,41 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
 <!-- ══════════════════════════════════════════════
      MODULE IMPORTS — Alimentation des données (AFOR, GNSS, mises à jour)
 ══════════════════════════════════════════════ -->
+<div id="module-rapport" class="module" style="display:none;flex:1;min-width:0;">
+  <div style="flex:1;overflow-y:auto;padding:20px;">
+    <div class="page-head"><div><h2>Rapports d'activités</h2><p>Rapport généré automatiquement à partir des données AFOR, GNSS, tablettes et CQE</p></div></div>
+    <div class="tw" style="padding:16px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:end;">
+        <label style="font-size:11px;color:var(--text2);">Type de rapport
+          <select id="rpt-periode" onchange="rptUpdateDates()" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-top:3px;">
+            <option value="semaine">Hebdomadaire</option><option value="mois">Mensuel</option><option value="trimestre">Trimestriel</option><option value="custom">Période personnalisée</option>
+          </select></label>
+        <label style="font-size:11px;color:var(--text2);">Du
+          <input id="rpt-debut" type="date" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-top:3px;"></label>
+        <label style="font-size:11px;color:var(--text2);">Au
+          <input id="rpt-fin" type="date" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-top:3px;"></label>
+        <label style="font-size:11px;color:var(--text2);">Département
+          <select id="rpt-dept" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-top:3px;">
+            <option value="">Tous</option><option>GUIGLO</option><option>BLOLEQUIN</option><option>TAI</option><option>TOULEPLEU</option>
+          </select></label>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px;">
+        <label style="font-size:11px;color:var(--text2);">Faits marquants / succès (un par ligne, facultatif)
+          <textarea id="rpt-succes" rows="3" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-top:3px;font-family:inherit;"></textarea></label>
+        <label style="font-size:11px;color:var(--text2);">Difficultés rencontrées (une par ligne, facultatif)
+          <textarea id="rpt-difficultes" rows="3" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-top:3px;font-family:inherit;"></textarea></label>
+        <label style="font-size:11px;color:var(--text2);">Soutien demandé / perspectives (une par ligne, facultatif)
+          <textarea id="rpt-soutien" rows="3" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-top:3px;font-family:inherit;"></textarea></label>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button class="btn-p" onclick="rptGenerer()">Générer le rapport</button>
+        <button class="btn-s" id="rpt-btn-pdf" onclick="rptExportPDF()" style="display:none;">Imprimer / PDF</button>
+      </div>
+    </div>
+    <div id="rpt-apercu" class="tw" style="display:none;padding:0;overflow:hidden;background:#fff;"><div id="rpt-contenu"></div></div>
+  </div>
+</div>
+
 <div id="module-imports" class="module" style="display:none;flex:1;min-width:0;">
   <nav style="width:210px;flex-shrink:0;background:var(--accent);padding:18px 12px;display:flex;flex-direction:column;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;">
     <div style="display:flex;align-items:center;gap:8px;padding:0 6px 18px;">
@@ -7119,379 +7154,187 @@ function pubExportCSV(){
 // MODULE RAPPORT
 // ═══════════════════════════════════════════
 
-function rptInit(){
-  try {
-    const today = new Date();
-    const d = document.getElementById('rpt-debut');
-    const f = document.getElementById('rpt-fin');
-    if(!d || !f) return;
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - today.getDay() + 1);
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    d.value = monday.toISOString().split('T')[0];
-    f.value = sunday.toISOString().split('T')[0];
-  } catch(e) { console.error('rptInit:', e); }
-}
+function rptISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
 function rptUpdateDates(){
-  const type = document.getElementById('rpt-periode').value;
+  const type = (document.getElementById('rpt-periode')||{}).value;
   const today = new Date();
   let debut, fin;
   if(type==='semaine'){
-    const monday = new Date(today);
-    monday.setDate(today.getDate()-today.getDay()+1);
-    const sunday = new Date(monday); sunday.setDate(monday.getDate()+6);
-    debut=monday; fin=sunday;
+    const dow = (today.getDay()+6)%7; // lundi = 0
+    debut = new Date(today); debut.setDate(today.getDate()-dow);
+    fin = new Date(debut); fin.setDate(debut.getDate()+6);
   } else if(type==='mois'){
-    debut=new Date(today.getFullYear(),today.getMonth(),1);
-    fin=new Date(today.getFullYear(),today.getMonth()+1,0);
-  } else if(type==='mission'){
-    debut=new Date(today); debut.setDate(today.getDate()-1);
-    fin=new Date(today);
-  } else {
-    return;
-  }
-  document.getElementById('rpt-debut').value=debut.toISOString().split('T')[0];
-  document.getElementById('rpt-fin').value=fin.toISOString().split('T')[0];
+    debut = new Date(today.getFullYear(), today.getMonth(), 1);
+    fin = new Date(today.getFullYear(), today.getMonth()+1, 0);
+  } else if(type==='trimestre'){
+    const q = Math.floor(today.getMonth()/3)*3;
+    debut = new Date(today.getFullYear(), q, 1);
+    fin = new Date(today.getFullYear(), q+3, 0);
+  } else return;
+  document.getElementById('rpt-debut').value = rptISO(debut);
+  document.getElementById('rpt-fin').value = rptISO(fin);
 }
 
-function rptUpdateSP(){
-  const dept=document.getElementById('rpt-dept').value;
-  const spSel=document.getElementById('rpt-sp');
-  const vilSel=document.getElementById('rpt-village');
-  spSel.innerHTML='<option value="">Toutes les SP</option>';
-  vilSel.innerHTML='<option value="">Tous les villages</option>';
-  if(dept&&GEO[dept]){
-    Object.keys(GEO[dept].sp).forEach(sp=>{
-      spSel.innerHTML+=`<option value="${sp}">${sp}</option>`;
-    });
-  }
+function rptInit(){
+  try{
+    const d = document.getElementById('rpt-debut');
+    if(d && !d.value) rptUpdateDates();
+  }catch(e){ console.error('rptInit:', e); }
 }
 
-function rptUpdateVillages(){
-  const dept=document.getElementById('rpt-dept').value;
-  const sp=document.getElementById('rpt-sp').value;
-  const vilSel=document.getElementById('rpt-village');
-  vilSel.innerHTML='<option value="">Tous les villages</option>';
-  if(dept&&sp&&GEO[dept]&&GEO[dept].sp[sp]){
-    GEO[dept].sp[sp].forEach(v=>{
-      vilSel.innerHTML+=`<option value="${v}">${v}</option>`;
-    });
-  }
+function rptNormDept(x){
+  return (x||'').toString().replace('Dép. ','').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z]/g,'');
 }
+const RPT_DEPTS = ['GUIGLO','BLOLEQUIN','TAI','TOULEPLEU'];
+const RPT_ETAPES = [
+  {k:'DD',  l:'Demandes enregistrées'},
+  {k:'RDC', l:'Recensements des droits coutumiers'},
+  {k:'CL',  l:'PV de constat de limites'},
+  {k:'OV',  l:'Ouvertures de publicité'},
+  {k:'CP',  l:'Clôtures de publicité'},
+  {k:'AP',  l:'Approbations'},
+  {k:'VA',  l:'Certificats fonciers délivrés'},
+];
 
+// Collecte les chiffres de la période [debut, fin] (dates ISO, bornes incluses)
 function rptGetData(){
-  const debut=document.getElementById('rpt-debut').value;
-  const fin=document.getElementById('rpt-fin').value;
-  const dept=document.getElementById('rpt-dept').value;
-  const sp=document.getElementById('rpt-sp').value;
-  const village=document.getElementById('rpt-village').value;
-  const periode=document.getElementById('rpt-periode').value;
+  const debut = document.getElementById('rpt-debut').value;
+  const fin = document.getElementById('rpt-fin').value;
+  const dept = document.getElementById('rpt-dept').value;
+  const periode = document.getElementById('rpt-periode').value;
+  const inP = v => !!v && v >= debut && v <= fin;
+  const avant = v => !!v && v <= fin; // cumul à la fin de période
 
-  // M1 (programmes) et M2 (saisies quotidiennes) ont été supprimés de l'application ;
-  // ces listes restent vides pour ne pas casser la génération de rapport existante.
-  let mesSaisies=[];
-  let mesProgs=[];
+  const afor = (dossiersAFOR||[]).filter(d=>!dept || rptNormDept(d.dept)===dept);
+  const gnss = (gnssData||[]).filter(g=>!dept || rptNormDept(g.dept)===dept);
 
-  // Filtrer les dossiers
-  let mesDos=dossiers.filter(d=>{
-    const inDept=!dept||d.dept===dept;
-    const inVil=!village||d.village===village;
-    return inDept&&inVil;
+  const etapes = RPT_ETAPES.map(e=>{
+    const k = 'date_'+e.k;
+    return {...e, periode: afor.filter(d=>inP(d[k])).length, cumul: afor.filter(d=>avant(d[k])).length};
   });
 
-  // Stats
-  const totalDos=mesSaisies.reduce((s,x)=>s+(x.ndos||0),0);
-  const totalSup=mesSaisies.reduce((s,x)=>s+(x.superficie||0),0);
-  const agentsActifs=[...new Set(mesSaisies.map(s=>s.agent))];
-  const villages=[...new Set(mesSaisies.map(s=>s.village))].filter(Boolean);
-  const incidents=mesSaisies.filter(s=>s.incident&&s.incident.trim()!=='');
+  const gnssPer = gnss.filter(g=>inP(g.date_leve));
+  const gnssCumul = gnss.filter(g=>!g.date_leve || avant(g.date_leve));
+  const sum = l => l.reduce((s,g)=>s+(g.superficie||0),0);
 
-  // Avancement par activité
-  const avancement={};
-  Object.keys(ACTIVITES).forEach(act=>{
-    const dosDact=mesDos.filter(d=>d.activite===act);
-    const clos=dosDact.filter(d=>d.etape==='Clôturé').length;
-    const etapesCount={};
-    dosDact.forEach(d=>{
-      etapesCount[d.etape]=(etapesCount[d.etape]||0)+1;
-    });
-    avancement[act]={total:dosDact.length,clos,encours:dosDact.length-clos,etapesCount,
-      sup:dosDact.reduce((s,d)=>s+(d.superficie||0),0)};
+  const depts = (dept?[dept]:RPT_DEPTS).map(dp=>{
+    const a = (dossiersAFOR||[]).filter(d=>rptNormDept(d.dept)===dp);
+    const g = (gnssData||[]).filter(x=>rptNormDept(x.dept)===dp);
+    return {
+      dept: dp,
+      dd: a.filter(d=>inP(d.date_DD)).length,
+      rdc: a.filter(d=>inP(d.date_RDC)).length,
+      cl: a.filter(d=>inP(d.date_CL)).length,
+      ov: a.filter(d=>inP(d.date_OV)).length,
+      cp: a.filter(d=>inP(d.date_CP)).length,
+      va: a.filter(d=>inP(d.date_VA)).length,
+      ha: sum(g.filter(x=>inP(x.date_leve))),
+      totalDos: a.length,
+    };
   });
 
-  return {debut,fin,dept,sp,village,periode,mesSaisies,mesProgs,mesDos,
-    totalDos,totalSup,agentsActifs,villages,incidents,avancement};
+  // Agents CE : dossiers créés ; opérateurs GNSS : superficie levée sur la période
+  const ceMap = {};
+  afor.filter(d=>inP(d.date_DD)).forEach(d=>{ const n=d.agent||'(non renseigné)'; ceMap[n]=(ceMap[n]||0)+1; });
+  const gnMap = {};
+  gnssPer.forEach(g=>{ const n=g.operateur||'(non renseigné)'; gnMap[n]=gnMap[n]||{ha:0,n:0}; gnMap[n].ha+=(g.superficie||0); gnMap[n].n++; });
+  const agentsCE = Object.entries(ceMap).sort((a,b)=>b[1]-a[1]);
+  const agentsGNSS = Object.entries(gnMap).sort((a,b)=>b[1].ha-a[1].ha);
+
+  // Contrôle qualité (état actuel)
+  const cqDos = afor.filter(d=>pubCQ && pubCQ[d.id]);
+  const rejetesInit = cqDos.filter(d=>pubCQ[d.id].rejete);
+  const corriges = rejetesInit.filter(d=>pubCQ[d.id].corrige);
+  const rejetes = rejetesInit.filter(d=>!pubCQ[d.id].corrige);
+
+  // Tablettes : demandes disponibles
+  const nbTablette = Object.keys((tabletteData&&tabletteData.requests)||{}).length;
+
+  return {debut,fin,dept,periode,etapes,
+    gnssPer:{n:gnssPer.length, ha:sum(gnssPer)}, gnssCumul:{n:gnssCumul.length, ha:sum(gnssCumul)},
+    depts, agentsCE, agentsGNSS,
+    cq:{total:cqDos.length, rejetes:rejetes.length, corriges:corriges.length},
+    totalDos:afor.length, nbTablette};
 }
 
 function rptGenerer(){
-  const d=rptGetData();
-  const succes=document.getElementById('rpt-succes').value;
-  const difficultes=document.getElementById('rpt-difficultes').value;
-  const soutien=document.getElementById('rpt-soutien').value;
+  const debutV = document.getElementById('rpt-debut').value, finV = document.getElementById('rpt-fin').value;
+  if(!debutV || !finV){ showToast('Renseignez la période du rapport.'); return; }
+  if(debutV > finV){ showToast('La date de début est postérieure à la date de fin.'); return; }
+  if(!(dossiersAFOR||[]).length && !(gnssData||[]).length){ showToast('Aucune donnée AFOR/GNSS en mémoire : importez-les avant de générer le rapport.'); return; }
+  const d = rptGetData();
+  const lignes = id => (document.getElementById(id).value||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  const fr = n => Math.round(n).toLocaleString('fr-FR');
+  const fmtD = iso => { const [y,m,j]=iso.split('-'); return j+'/'+m+'/'+y; };
+  const types = {semaine:'Rapport hebdomadaire',mois:'Rapport mensuel',trimestre:'Rapport trimestriel',custom:'Rapport de période'};
+  const titre = types[d.periode]||'Rapport';
+  const zone = d.dept ? 'Département de '+d.dept.charAt(0)+d.dept.slice(1).toLowerCase() : 'Région du Cavally';
+  const today = new Date().toLocaleDateString('fr-FR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const th = 'padding:6px 8px;text-align:left;background:#EEF3EF;font-size:11px;border-bottom:1px solid #ccc;';
+  const thr = th.replace('text-align:left','text-align:right');
+  const td = 'padding:5px 8px;border-bottom:1px solid #eee;font-size:11px;';
+  const tdr = td+'text-align:right;';
 
-  // Titre période
-  const types={'semaine':'Rapport hebdomadaire','mois':'Rapport mensuel',
-    'mission':'Rapport de mission','custom':'Rapport de période'};
-  const titreType=types[d.periode]||'Rapport';
-  const zoneTxt=d.village||d.sp||d.dept||'Région du Cavally';
-  const today=new Date().toLocaleDateString('fr-FR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  // Faits marquants automatiques
+  const faits = [];
+  const get = k => d.etapes.find(e=>e.k===k);
+  if(get('DD').periode) faits.push(fr(get('DD').periode)+' nouvelle(s) demande(s) enregistrée(s)');
+  if(get('RDC').periode) faits.push(fr(get('RDC').periode)+' recensement(s) des droits coutumiers réalisé(s)');
+  if(d.gnssPer.n) faits.push(fr(d.gnssPer.n)+' parcelle(s) levée(s) au GNSS, soit '+fr(d.gnssPer.ha)+' ha');
+  if(get('OV').periode) faits.push(fr(get('OV').periode)+' publicité(s) ouverte(s) et '+fr(get('CP').periode)+' clôturée(s)');
+  if(get('VA').periode) faits.push(fr(get('VA').periode)+' certificat(s) foncier(s) délivré(s)');
+  faits.push(...lignes('rpt-succes'));
+  const difficultes = [];
+  if(d.cq.rejetes) difficultes.push(fr(d.cq.rejetes)+' dossier(s) actuellement rejeté(s) au contrôle qualité en attente de correction');
+  difficultes.push(...lignes('rpt-difficultes'));
+  const soutien = lignes('rpt-soutien');
+  const li = arr => arr.length ? '<ul style="margin:4px 0 0 18px;padding:0;">'+arr.map(x=>'<li>'+x.replace(/</g,'&lt;')+'</li>').join('')+'</ul>' : '<p style="color:#888;margin:4px 0 0;">Rien à signaler.</p>';
+  const h2 = t => '<h3 style="font-size:13px;color:#1C4A2E;border-bottom:2px solid #F5A623;padding-bottom:3px;margin:20px 0 8px;">'+t+'</h3>';
 
-  // Succès automatiques (missions terminées, dossiers clôturés)
-  const sucAutoList=[];
-  if(d.mesProgs.filter(p=>p.statut==='Terminé').length>0)
-    sucAutoList.push(`${d.mesProgs.filter(p=>p.statut==='Terminé').length} programme(s) terminé(s) avec succès`);
-  if(d.mesDos.filter(d=>d.etape==='Clôturé').length>0)
-    sucAutoList.push(`${d.mesDos.filter(d=>d.etape==='Clôturé').length} dossier(s) foncier(s) clôturé(s)`);
-  if(d.agentsActifs.length>0)
-    sucAutoList.push(`${d.agentsActifs.length} agent(s) actif(s) sur la période`);
-  if(succes) sucAutoList.push(...succes.split('\n').filter(s=>s.trim()));
+  const etapesRows = d.etapes.map(e=>'<tr><td style="'+td+'">'+e.l+'</td><td style="'+tdr+'font-weight:700;">'+fr(e.periode)+'</td><td style="'+tdr+'">'+fr(e.cumul)+'</td></tr>').join('');
+  const deptRows = d.depts.map(x=>'<tr><td style="'+td+'">'+x.dept+'</td><td style="'+tdr+'">'+fr(x.dd)+'</td><td style="'+tdr+'">'+fr(x.rdc)+'</td><td style="'+tdr+'">'+fr(x.cl)+'</td><td style="'+tdr+'">'+fr(x.ov)+'</td><td style="'+tdr+'">'+fr(x.cp)+'</td><td style="'+tdr+'">'+fr(x.va)+'</td><td style="'+tdr+'font-weight:700;">'+fr(x.ha)+'</td></tr>').join('');
+  const ceRows = d.agentsCE.slice(0,15).map(([n,v])=>'<tr><td style="'+td+'">'+n+'</td><td style="'+tdr+'">'+fr(v)+'</td></tr>').join('') || '<tr><td colspan="2" style="'+td+'color:#888;">Aucun dossier enregistré sur la période</td></tr>';
+  const gnRows = d.agentsGNSS.slice(0,15).map(([n,v])=>'<tr><td style="'+td+'">'+n+'</td><td style="'+tdr+'">'+fr(v.n)+'</td><td style="'+tdr+'font-weight:700;">'+fr(v.ha)+'</td></tr>').join('') || '<tr><td colspan="3" style="'+td+'color:#888;">Aucun levé GNSS sur la période</td></tr>';
 
-  // Difficultés automatiques depuis incidents
-  const difAutoList=[...new Set(d.incidents.map(s=>s.incident))];
-  if(difficultes) difAutoList.push(...difficultes.split('\n').filter(s=>s.trim()));
-
-  const actColors={ISF:'#7F77DD',CF:'#2A6B42',DTV:'#D97706',CONTRAT:'#2563EB'};
-
-  const html2=`
-  <div id="rapport-preview" style="font-family:'Arial',sans-serif;font-size:12px;line-height:1.6;color:#1a1a1a;">
-
-    <!-- EN-TÊTE OFFICIEL -->
-    <div style="background:#1C4A2E;padding:0;overflow:hidden;">
-
-      <!-- Bandeau République -->
-      <div style="background:#fff;padding:8px 32px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #F5A623;">
-        <div style="font-size:10px;color:#1C4A2E;font-weight:600;letter-spacing:.08em;text-transform:uppercase;">République de Côte d'Ivoire</div>
-        <div style="font-size:10px;color:#555;font-style:italic;">Ministère de l'Agriculture et du Développement Rural</div>
-        <div style="font-size:10px;color:#1C4A2E;font-weight:600;letter-spacing:.08em;text-transform:uppercase;">Projet PRESFOR</div>
-      </div>
-
-      <!-- Corps principal de l'en-tête -->
-      <div style="padding:24px 32px 20px;display:flex;justify-content:space-between;align-items:flex-start;">
-
-        <!-- Gauche : Identité CAG + rapport -->
-        <div style="flex:1;">
-          <!-- Badge CAG -->
-          <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);border-radius:6px;padding:6px 14px;margin-bottom:14px;">
-            <div style="width:28px;height:28px;background:#F5A623;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#1C4A2E;">CAG</div>
-            <div>
-              <div style="color:#F5A623;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;">Groupement CAG</div>
-              <div style="color:rgba(255,255,255,0.7);font-size:9px;">Responsable de la rédaction</div>
-            </div>
-          </div>
-
-          <div style="color:rgba(255,255,255,0.6);font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px;">Rapport d'activités terrain</div>
-          <div style="color:#fff;font-size:22px;font-weight:700;margin-bottom:4px;line-height:1.2;">PRESFOR <span style="color:#F5A623;">·</span> Région du Cavally</div>
-          <div style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500;margin-bottom:10px;">${titreType}</div>
-
-          <div style="display:flex;gap:16px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:5px;">
-              <div style="width:6px;height:6px;background:#F5A623;border-radius:50%;"></div>
-              <span style="color:rgba(255,255,255,0.75);font-size:11px;">Zone : <strong style="color:#fff;">${zoneTxt}</strong></span>
-            </div>
-            <div style="display:flex;align-items:center;gap:5px;">
-              <div style="width:6px;height:6px;background:#F5A623;border-radius:50%;"></div>
-              <span style="color:rgba(255,255,255,0.75);font-size:11px;">Du <strong style="color:#fff;">${fmtDate(d.debut)}</strong> au <strong style="color:#fff;">${fmtDate(d.fin)}</strong></span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Droite : Date et infos -->
-        <div style="text-align:right;min-width:160px;">
-          <div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:12px 16px;border:1px solid rgba(255,255,255,0.15);">
-            <div style="color:#F5A623;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Généré le</div>
-            <div style="color:#fff;font-size:11px;">${today}</div>
-            <div style="border-top:1px solid rgba(255,255,255,0.15);margin:8px 0;"></div>
-            <div style="color:rgba(255,255,255,0.6);font-size:10px;">Sécurisation Foncière</div>
-            <div style="color:rgba(255,255,255,0.6);font-size:10px;">Côte d'Ivoire</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Barre de stats rapides -->
-      <div style="background:rgba(0,0,0,0.2);padding:10px 32px;display:flex;gap:0;border-top:1px solid rgba(255,255,255,0.1);">
-        <div style="flex:1;text-align:center;border-right:1px solid rgba(255,255,255,0.1);padding:4px 0;">
-          <div style="color:#F5A623;font-size:16px;font-weight:700;">${d.totalDos}</div>
-          <div style="color:rgba(255,255,255,0.6);font-size:9px;text-transform:uppercase;letter-spacing:.05em;">Dossiers traités</div>
-        </div>
-        <div style="flex:1;text-align:center;border-right:1px solid rgba(255,255,255,0.1);padding:4px 0;">
-          <div style="color:#F5A623;font-size:16px;font-weight:700;">${d.totalSup.toFixed(1)} ha</div>
-          <div style="color:rgba(255,255,255,0.6);font-size:9px;text-transform:uppercase;letter-spacing:.05em;">Superficie couverte</div>
-        </div>
-        <div style="flex:1;text-align:center;border-right:1px solid rgba(255,255,255,0.1);padding:4px 0;">
-          <div style="color:#F5A623;font-size:16px;font-weight:700;">${d.agentsActifs.length}</div>
-          <div style="color:rgba(255,255,255,0.6);font-size:9px;text-transform:uppercase;letter-spacing:.05em;">Agents actifs</div>
-        </div>
-        <div style="flex:1;text-align:center;padding:4px 0;">
-          <div style="color:#F5A623;font-size:16px;font-weight:700;">${d.villages.length}</div>
-          <div style="color:rgba(255,255,255,0.6);font-size:9px;text-transform:uppercase;letter-spacing:.05em;">Villages couverts</div>
-        </div>
-      </div>
+  const html = `<div id="rapport-preview" style="font-family:Arial,sans-serif;font-size:12px;line-height:1.55;color:#1a1a1a;">
+    <div style="background:#1C4A2E;color:#fff;padding:22px 30px;">
+      <div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.75;">Groupement CAG — Projet PRESFOR — Lot 13 Cavally</div>
+      <div style="font-size:22px;font-weight:700;margin:6px 0 2px;">${titre}</div>
+      <div style="font-size:13px;opacity:.9;">${zone} · du ${fmtD(d.debut)} au ${fmtD(d.fin)}</div>
     </div>
-
-    <div style="padding:24px 32px;">
-
-
-
-      <!-- AVANCEMENT PAR ACTIVITÉ -->
-      <div style="margin-bottom:22px;">
-        <div style="font-size:14px;font-weight:700;color:#1C4A2E;border-bottom:2px solid #1C4A2E;padding-bottom:6px;margin-bottom:14px;">
-          État d'avancement des activités
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          ${Object.entries(d.avancement).map(([act,v])=>{
-            const pct=v.total>0?Math.round(v.clos/v.total*100):0;
-            const col=actColors[act]||'#555';
-            const actDef=ACTIVITES[act];
-            const etapesListe=Object.entries(v.etapesCount)
-              .sort((a,b)=>b[1]-a[1])
-              .slice(0,3)
-              .map(([e,n])=>`<span style="font-size:10px;background:#f0f0f0;padding:1px 6px;border-radius:10px;margin-right:4px;">${e} (${n})</span>`)
-              .join('');
-            return`<div style="border:1px solid #e0e0e0;border-radius:8px;padding:14px;border-top:3px solid ${col};">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <div style="font-size:13px;font-weight:700;color:${col};">${act}</div>
-                <div style="font-size:10px;color:#777;">${v.total} dossier(s) · ${v.sup.toFixed(1)} ha</div>
-              </div>
-              <div style="font-size:11px;color:#555;margin-bottom:6px;">${actDef?actDef.label.split('—')[1].trim():act}</div>
-              <div style="height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;margin-bottom:6px;">
-                <div style="width:${pct}%;height:100%;background:${col};border-radius:4px;"></div>
-              </div>
-              <div style="display:flex;justify-content:space-between;font-size:10px;color:#777;">
-                <span>${v.clos} clôturé(s)</span>
-                <span style="font-weight:700;color:${col};">${pct}% clôturé</span>
-              </div>
-              ${etapesListe?`<div style="margin-top:8px;">Étapes actives : ${etapesListe}</div>`:''}
-            </div>`;
-          }).join('')}
-        </div>
+    <div style="padding:6px 30px 24px;">
+      ${h2('1. Faits marquants')}${li(faits)}
+      ${h2('2. Avancement des étapes du certificat foncier')}
+      <table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${th}">Étape</th><th style="${thr}">Sur la période</th><th style="${thr}">Cumul à fin de période</th></tr></thead><tbody>${etapesRows}</tbody></table>
+      <p style="font-size:10px;color:#666;margin:6px 0 0;">Basé sur les dates d'étape de la base AFOR (${fr(d.totalDos)} dossiers). Superficie levée au GNSS sur la période : <b>${fr(d.gnssPer.ha)} ha</b> (${fr(d.gnssPer.n)} parcelles) · cumul : <b>${fr(d.gnssCumul.ha)} ha</b> (${fr(d.gnssCumul.n)} parcelles).</p>
+      ${h2('3. Situation par département')}
+      <table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${th}">Département</th><th style="${thr}">Demandes</th><th style="${thr}">RDC</th><th style="${thr}">PVCL</th><th style="${thr}">Ouv. pub.</th><th style="${thr}">Clôt. pub.</th><th style="${thr}">CF délivrés</th><th style="${thr}">ha levés</th></tr></thead><tbody>${deptRows}</tbody></table>
+      ${h2('4. Performance des agents sur la période')}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div><div style="font-weight:700;font-size:11px;margin-bottom:4px;">Chargés d'enquête — dossiers enregistrés</div><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${th}">Agent</th><th style="${thr}">Dossiers</th></tr></thead><tbody>${ceRows}</tbody></table></div>
+        <div><div style="font-weight:700;font-size:11px;margin-bottom:4px;">Opérateurs GNSS — superficie levée</div><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${th}">Opérateur</th><th style="${thr}">Parcelles</th><th style="${thr}">ha</th></tr></thead><tbody>${gnRows}</tbody></table></div>
       </div>
-
-      <!-- DÉTAIL DES SAISIES PAR AGENT -->
-      ${d.agentsActifs.length>0?`
-      <div style="margin-bottom:22px;">
-        <div style="font-size:14px;font-weight:700;color:#1C4A2E;border-bottom:2px solid #1C4A2E;padding-bottom:6px;margin-bottom:14px;">
-          Production par agent
-        </div>
-        <table style="width:100%;border-collapse:collapse;font-size:11px;">
-          <thead>
-            <tr style="background:#F0F7F2;">
-              <th style="padding:8px 10px;text-align:left;border:1px solid #ddd;">Agent</th>
-              <th style="padding:8px 10px;text-align:center;border:1px solid #ddd;">Saisies</th>
-              <th style="padding:8px 10px;text-align:center;border:1px solid #ddd;">Dossiers</th>
-              <th style="padding:8px 10px;text-align:center;border:1px solid #ddd;">Superficie (ha)</th>
-              <th style="padding:8px 10px;text-align:left;border:1px solid #ddd;">Villages</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${d.agentsActifs.map((ag,i)=>{
-              const ms=d.mesSaisies.filter(s=>s.agent===ag);
-              const nd=ms.reduce((s,x)=>s+(x.ndos||0),0);
-              const sup=ms.reduce((s,x)=>s+(x.superficie||0),0);
-              const vils=[...new Set(ms.map(s=>s.village))].join(', ');
-              return`<tr style="background:${i%2===0?'#fff':'#fafafa'};">
-                <td style="padding:7px 10px;border:1px solid #ddd;font-weight:500;">${ag}</td>
-                <td style="padding:7px 10px;text-align:center;border:1px solid #ddd;">${ms.length}</td>
-                <td style="padding:7px 10px;text-align:center;border:1px solid #ddd;font-weight:600;color:#2A6B42;">${nd}</td>
-                <td style="padding:7px 10px;text-align:center;border:1px solid #ddd;">${sup.toFixed(1)}</td>
-                <td style="padding:7px 10px;border:1px solid #ddd;font-size:10px;color:#555;">${vils}</td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>`:''}
-
-      <!-- SUCCÈS -->
-      ${sucAutoList.length>0?`
-      <div style="margin-bottom:22px;">
-        <div style="font-size:14px;font-weight:700;color:#1C4A2E;border-bottom:2px solid #1C4A2E;padding-bottom:6px;margin-bottom:12px;">
-          Succès de la période
-        </div>
-        <ul style="margin:0;padding-left:18px;">
-          ${sucAutoList.map(s=>`<li style="margin-bottom:6px;color:#1a1a1a;">${s}</li>`).join('')}
-        </ul>
-      </div>`:''}
-
-      <!-- DIFFICULTÉS -->
-      ${difAutoList.length>0?`
-      <div style="margin-bottom:22px;">
-        <div style="font-size:14px;font-weight:700;color:#C04828;border-bottom:2px solid #C04828;padding-bottom:6px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
-          <span style="width:18px;height:18px;background:#C04828;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;">!</span>
-          Difficultés rencontrées
-        </div>
-        ${difAutoList.length>0?`
-        <ul style="margin:0;padding-left:0;list-style:none;">
-          ${difAutoList.map(s=>`<li style="margin-bottom:8px;color:#1a1a1a;padding:8px 12px;background:#FFF5F5;border-left:3px solid #C04828;border-radius:0 4px 4px 0;">${s}</li>`).join('')}
-        </ul>`:`
-        <div style="padding:12px 16px;background:#FFF5F5;border-radius:6px;border:1px dashed #E8A8A0;color:#888;font-style:italic;font-size:12px;">
-          Aucune difficulté signalée — renseignez le champ ci-dessus si nécessaire.
-        </div>`}
-      </div>`:''}
-
-      <!-- SOUTIEN CORPS SOUS-PRÉFECTORAL -->
-      <div style="margin-bottom:22px;">
-        <div style="font-size:14px;font-weight:700;color:#1C4A2E;border-bottom:2px solid #1C4A2E;padding-bottom:6px;margin-bottom:12px;">
-          Soutien attendu du corps sous-préfectoral
-        </div>
-        ${soutien?`<ul style="margin:0;padding-left:18px;">${soutien.split('\n').filter(s=>s.trim()).map(s=>`<li style="margin-bottom:6px;">${s}</li>`).join('')}</ul>`:
-        `<ul style="margin:0;padding-left:18px;">
-          <li style="margin-bottom:6px;">Facilitation de l'accès aux villages et appui à la mobilisation des populations</li>
-          <li style="margin-bottom:6px;">Mise à disposition d'une salle pour les réunions de sensibilisation</li>
-          <li style="margin-bottom:6px;">Appui à la résolution des conflits fonciers inter-villageois</li>
-          <li style="margin-bottom:6px;">Présence lors des cérémonies d'ouverture des opérations PRESFOR</li>
-        </ul>`}
+      ${h2('5. Contrôle qualité (situation actuelle)')}
+      <p style="margin:0;">${fr(d.cq.total)} dossier(s) passé(s) en contrôle qualité · <b>${fr(d.cq.rejetes)}</b> rejeté(s) en attente de correction · ${fr(d.cq.corriges)} rejet(s) corrigé(s) et validé(s).</p>
+      ${h2('6. Difficultés rencontrées')}${li(difficultes)}
+      ${h2('7. Soutien demandé / perspectives')}${li(soutien)}
+      <div style="border-top:1px solid #ddd;margin-top:22px;padding-top:10px;display:flex;justify-content:space-between;font-size:10px;color:#888;">
+        <span>PRESFOR Cavally — document généré automatiquement</span><span>${today}</span>
       </div>
-
-      <!-- PERSPECTIVES -->
-      <div style="margin-bottom:22px;">
-        <div style="font-size:14px;font-weight:700;color:#1C4A2E;border-bottom:2px solid #1C4A2E;padding-bottom:6px;margin-bottom:12px;">
-          Perspectives
-        </div>
-        <ul style="margin:0;padding-left:18px;">
-          ${d.mesProgs.filter(p=>p.statut==='En cours'||p.statut==='Planifié').slice(0,4).map(p=>`<li style="margin-bottom:6px;">Poursuite de l'opération <b>${p.id}</b> — ${p.op||p.activite||'activité'} à ${p.dept.replace('Dép. ','')} (objectif : ${p.objectif} ha)</li>`).join('')}
-          ${d.mesProgs.filter(p=>p.statut==='En cours'||p.statut==='Planifié').length===0?'<li>Planification des prochaines missions en cours</li>':''}
-        </ul>
-      </div>
-
-      <!-- PIED DE PAGE -->
-      <div style="border-top:1px solid #ddd;padding-top:14px;margin-top:10px;display:flex;justify-content:space-between;font-size:10px;color:#888;">
-        <span>PRESFOR Cavally — Document généré automatiquement</span>
-        <span>Date : ${today}</span>
-      </div>
-
-    </div>
-  </div>`;
-
-  document.getElementById('rpt-contenu').innerHTML=html2;
-  document.getElementById('rpt-apercu').style.display='block';
-  document.getElementById('rpt-btn-pdf').style.display='inline-flex';
-  showToast('Rapport généré !');
+    </div></div>`;
+  document.getElementById('rpt-contenu').innerHTML = html;
+  document.getElementById('rpt-apercu').style.display = 'block';
+  document.getElementById('rpt-btn-pdf').style.display = 'inline-flex';
+  showToast('Rapport généré');
 }
 
 function rptExportPDF(){
-  const el=document.getElementById('rapport-preview');
-  if(!el){showToast('Générez d\'abord le rapport.');return;}
-  const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
-  <title>Rapport PRESFOR Cavally</title>
-  <style>
-    body{margin:0;font-family:Arial,sans-serif;font-size:12px;}
-    @media print{body{margin:0;}@page{margin:15mm;}}
-  
-/* ── Rôles viewer : masquer via CSS (sélecteurs de classe fiables) ── */
-body.role-viewer .viewer-hidden { display: none !important; }
-body.role-viewer .btn-xs        { display: none !important; }
-body.role-viewer .btn-xs-red    { display: none !important; }
-body.role-viewer .btn-d         { display: none !important; }
-
-/* Badge rôle dans la topbar */
-#tb-user-role { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; }
-body.role-ce   #tb-user-role { background:#E0F2F1;color:#00695C; }
-body.role-gnss #tb-user-role { background:#F3E8FF;color:#6D28D9; }
-
-</style>
-  </head><body>${el.innerHTML}</body></html>`);
+  const el = document.getElementById('rapport-preview');
+  if(!el){ showToast('Générez d\'abord le rapport.'); return; }
+  const w = window.open('','_blank');
+  if(!w){ showToast('Autorisez les fenêtres pop-up pour imprimer le rapport.'); return; }
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rapport PRESFOR Cavally</title><style>body{margin:0;font-family:Arial,sans-serif;font-size:12px;}@media print{@page{margin:12mm;}body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}</style></head><body>'+el.outerHTML+'</body></html>');
   w.document.close();
   setTimeout(()=>w.print(),500);
   showToast('Fenêtre d\'impression ouverte — choisissez "Enregistrer en PDF"');
