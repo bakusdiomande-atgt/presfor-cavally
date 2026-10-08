@@ -269,7 +269,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
       <div>
         <div class="auth-logo-title">PRESFOR · Cavally</div>
         <div class="auth-logo-sub">Plateforme de suivi foncier — Groupement CAG</div>
-      <div style="font-size:10px;color:#2A6B42;font-weight:700;margin-top:4px;">v4.1 — 01/10/2026</div>
+      <div style="font-size:10px;color:#2A6B42;font-weight:700;margin-top:4px;">v3.9 — 09/06/2026</div>
       </div>
     </div>
     <div class="auth-field">
@@ -1200,27 +1200,6 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
 </div>
 
 <!-- ══════════════════════════════════════════════
-     MODULE RAPPORTS — Analyse de rattrapage
-══════════════════════════════════════════════ -->
-<div id="module-rapport" class="module" style="display:none;flex:1;min-width:0;">
-  <main class="main" style="width:100%;">
-    <div class="page-head">
-      <div>
-        <h2>Analyse de rattrapage</h2>
-        <p id="ratt-subtitle">Blocages, qualité des données et cadence nécessaire pour tenir l'objectif</p>
-      </div>
-      <div class="btn-row ratt-noprint">
-        <button class="btn-s" onclick="rattRenderAll(true)">↻ Actualiser</button>
-        <button class="btn-s" onclick="rattExportXLSX()">↓ Feuille de route Excel</button>
-        <button class="btn-s" onclick="rattPrint()">Imprimer</button>
-        <button class="btn-p" onclick="rattExportPDF()">↓ Télécharger PDF</button>
-      </div>
-    </div>
-    <div id="ratt-content"></div>
-  </main>
-</div>
-
-<!-- ══════════════════════════════════════════════
      MODULE CQE — Contrôle Qualité Enquête
 ══════════════════════════════════════════════ -->
 <div id="module-cqe" class="module" style="display:none;flex:1;min-width:0;">
@@ -1487,7 +1466,6 @@ function zoneApplyUI(){
   if(typeof agRenderList==='function'){ agRenderList(); agRenderList('ind-ag'); }
   if(typeof agRenderPerf==='function'){ agRenderPerf(); agRenderPerf('ind-ag'); }
   if(typeof indRenderGenre==='function') indRenderGenre();
-  if(typeof rattRenderAll==='function' && document.getElementById('module-rapport')?.classList.contains('active')) rattRenderAll();
 }
 
 function zoneSwitch(id){
@@ -5973,7 +5951,7 @@ function indRenderAll(){
               }).join('') : '<tr><td colspan="3" style="padding:8px;text-align:center;color:var(--text3);">Aucune correspondance tablette pour l&#39;instant</td></tr>'}
             </tbody>
           </table>
-          <p style="font-size:10px;color:var(--text3);margin:8px 0 0;">${an.matched.toLocaleString('fr-FR')} dossier(s) sur ${an.total.toLocaleString('fr-FR')} avec une correspondance dans les données tablette importées.</p>
+          <p style="font-size:10px;color:var(--text3);margin:8px 0 0;">${an.matched.toLocaleString('fr-FR')} dossier(s) sur ${an.total.toLocaleString('fr-FR')} avec une correspondance dans les données tablette importées (${Object.keys(tabletteData.requests||{}).length.toLocaleString('fr-FR')} demande(s) tablette en mémoire).</p>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 16px;">
           <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;">
@@ -7141,8 +7119,18 @@ function pubExportCSV(){
 // ═══════════════════════════════════════════
 
 function rptInit(){
-  // Le module Rapports affiche désormais l'analyse de rattrapage
-  rattInit();
+  try {
+    const today = new Date();
+    const d = document.getElementById('rpt-debut');
+    const f = document.getElementById('rpt-fin');
+    if(!d || !f) return;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - today.getDay() + 1);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    d.value = monday.toISOString().split('T')[0];
+    f.value = sunday.toISOString().split('T')[0];
+  } catch(e) { console.error('rptInit:', e); }
 }
 
 function rptUpdateDates(){
@@ -9504,7 +9492,7 @@ async function tabLoadFromFirebase(){
       const r = await fetch(FIREBASE_URL + '/presfor/tablette/' + stage.key + '/data.json', { signal: AbortSignal.timeout(30000) });
       if(r.ok){ const d = await r.json(); if(d) nouvelleDonnee[stage.key] = d; }
     }
-    tabletteData = nouvelleDonnee;
+    tabletteData = nouvelleDonnee; tabInvalidateIndex();
     if(meta.imports) tabletteImports = meta.imports;
     localStorage.setItem('presfor_tablette_ts', meta.ts);
     try{ tabSaveToStorage(); }catch(e){}
@@ -9517,6 +9505,7 @@ function tabLoadFromStorage(){
   try{
     const d = localStorage.getItem('presfor_tablette_data');
     if(d) tabletteData = JSON.parse(d);
+    tabInvalidateIndex();
     const h = localStorage.getItem('presfor_tablette_imports');
     if(h) tabletteImports = JSON.parse(h);
   }catch(e){ console.error('tabLoadFromStorage:', e); }
@@ -9593,6 +9582,7 @@ async function tabImportZips(){
     nbNouveaux: totalNouveaux,
     nbMisAJour: totalMisAJour
   });
+  tabInvalidateIndex();
   tabSaveToStorage();
   localStorage.setItem('presfor_tablette_ts', new Date().toISOString());
   syncPendingStart();
@@ -9629,19 +9619,47 @@ function tabRenderImportHistory(){
 
 // ── Correspondance avec un dossier AFOR : cherche parmi toutes les étapes tablette
 // un enregistrement dont le code normalisé correspond au dossier (par id ou code_parcelle) ──
+// Index des données tablette (construit une seule fois, invalidé à chaque import/chargement) :
+// code normalisé → enregistrement, par étape. Évite de reparcourir toutes les clés pour chaque dossier
+// et tolère les variantes de format (espaces, tirets, zéros de tête).
+let _tabIndex = null;
+function tabInvalidateIndex(){ _tabIndex = null; }
+function tabKeyVariants(code){
+  const n = tabNormCode(code);
+  if(!n) return [];
+  const out = [n];
+  const compact = n.replace(/[^A-Z0-9]/g,'');
+  if(compact && compact!==n) out.push(compact);
+  const seg = n.split(/[^A-Z0-9]+/).filter(Boolean);
+  if(seg.length>=3) out.push(seg.map(x=>x.replace(/^0+(?=.)/,'')).join('-'));
+  return out;
+}
+function tabGetIndex(){
+  if(_tabIndex) return _tabIndex;
+  const idx = {};
+  TAB_STAGE_DEFS.forEach(stage=>{
+    const m = idx[stage.key] = new Map();
+    const store = tabletteData[stage.key] || {};
+    for(const key in store){
+      tabKeyVariants(key).forEach(v=>{ if(!m.has(v)) m.set(v, store[key]); });
+    }
+  });
+  _tabIndex = idx;
+  return idx;
+}
 function tabMatchForDossier(dos){
   if(!dos) return null;
-  const candidates = [tabNormCode(dos.id), tabNormCode(dos.code_parcelle)].filter(Boolean);
+  const candidates = [];
+  tabKeyVariants(dos.id).forEach(v=>candidates.push(v));
+  tabKeyVariants(dos.code_parcelle).forEach(v=>candidates.push(v));
+  if(!candidates.length) return null;
+  const idx = tabGetIndex();
   const result = {};
   let found = false;
   TAB_STAGE_DEFS.forEach(stage=>{
-    const store = tabletteData[stage.key] || {};
-    for(const key in store){
-      if(candidates.includes(tabNormCode(key))){
-        result[stage.key] = store[key];
-        found = true;
-        break;
-      }
+    const m = idx[stage.key];
+    for(const c of candidates){
+      if(m.has(c)){ result[stage.key] = m.get(c); found = true; break; }
     }
   });
   return found ? result : null;
@@ -10244,665 +10262,6 @@ setTimeout(syncPoll, 10000);
 
 
 
-</script>
-
-
-<script>
-// ═══════════════════════════════════════════
-// MODULE RAPPORTS · ANALYSE DE RATTRAPAGE
-// Calcule à partir des données déjà chargées (dossiersAFOR, gnssData) :
-// blocages entre étapes, gains rapides, alertes qualité des données,
-// cadence GNSS nécessaire et suivi hebdomadaire. Rien n'est écrit dans Firebase.
-// ═══════════════════════════════════════════
-const RATT_PARAMS_KEY = 'presfor_rattrapage_params_v1';
-const RATT_PROJECT_START = '2025-04-01'; // début S1
-let rattParams = { operateurs:11, joursMois:22, semestre:4, semestreFinLeves:6 };
-let rattCharts = [];
-let rattLast = null;
-
-const RATT_BUCKETS = [
-  {id:'rdc_a_faire',       label:'Demande : RDC à tenir',                    action:'Tenir le recensement des droits coutumiers',          qui:'Terrain (CE)',        famille:'terrain'},
-  {id:'pvcl_leve_a_faire', label:'RDC fait : PVCL et levé à faire',          action:'Tournée combinée PVCL + levé GNSS en une visite',     qui:'Terrain (CE + GNSS)', famille:'terrain'},
-  {id:'leve_sans_pvcl',    label:'Levé GNSS mais PVCL non enregistré',       action:'Vérifier la saisie, sinon tenir le PVCL manquant',    qui:'Terrain / saisie',    famille:'regul', rapide:true},
-  {id:'cl_sans_leve',      label:'PVCL fait mais aucun levé GNSS rattaché',  action:'Lever la parcelle ou corriger le rattachement',       qui:'GNSS / bureau',       famille:'regul'},
-  {id:'attente_pub',       label:'Plan provisoire : publicité à lancer',     action:'Annoncer et ouvrir la publicité par vagues groupées', qui:'Bureau / admin',      famille:'bureau', rapide:true},
-  {id:'pub_en_cours',      label:'Publicité ouverte (dans les délais)',      action:'Suivre la date de clôture',                           qui:'Admin',               famille:'suivi'},
-  {id:'pub_a_cloturer',    label:'Publicité à clôturer (délai dépassé)',     action:'Clôturer la publicité',                               qui:'Admin / CVGFR',       famille:'institution', rapide:true},
-  {id:'attente_cvgfr',     label:'Clôturé : approbation CVGFR attendue',     action:'Programmer les sessions CVGFR par village',           qui:'Institutionnel',      famille:'institution', rapide:true},
-  {id:'attente_cspgfr',    label:'Approuvé : validation CSPGFR attendue',    action:'Obtenir une session CSPGFR et présenter les lots',    qui:'Institutionnel',      famille:'institution', rapide:true},
-  {id:'valide',            label:'Validé (compte pour l\'objectif)',         action:'—',                                                   qui:'—',                   famille:'ok'},
-  {id:'autre',             label:'Étape non reconnue',                       action:'Corriger l\'étape dans la base AFOR',                qui:'Données',             famille:'regul'},
-];
-const RATT_FAMILLE_COLORS = {
-  terrain:'var(--blue)', regul:'var(--amber)', bureau:'#7C3AED',
-  suivi:'var(--text3)', institution:'var(--red)', ok:'var(--accent)'
-};
-
-function rattEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function rattFmt(n, dec){ if(n==null||isNaN(n)) return '—'; return Number(n).toLocaleString('fr-FR',{maximumFractionDigits:dec||0, minimumFractionDigits:dec||0}); }
-function rattMedian(arr){ if(!arr.length) return null; const s=[...arr].sort((a,b)=>a-b); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; }
-function rattAddMonths(dateStr, months){ const d=new Date(dateStr+'T12:00:00'); d.setMonth(d.getMonth()+months); return d; }
-
-function rattLoadParams(){
-  try{ const s=localStorage.getItem(RATT_PARAMS_KEY); if(s) rattParams=Object.assign(rattParams, JSON.parse(s)); }catch(e){}
-}
-function rattSetParam(k, v){
-  const n = parseFloat(String(v).replace(',','.'));
-  if(isNaN(n) || n<=0) return;
-  rattParams[k] = n;
-  try{ localStorage.setItem(RATT_PARAMS_KEY, JSON.stringify(rattParams)); }catch(e){}
-  rattRenderAll();
-}
-
-function rattBucket(d, g){
-  const leve = !!g;
-  switch(d.etape){
-    case 'DD':  return leve ? 'leve_sans_pvcl' : 'rdc_a_faire';
-    case 'RDC': return leve ? 'leve_sans_pvcl' : 'pvcl_leve_a_faire';
-    case 'CL':  return leve ? 'attente_pub' : 'cl_sans_leve';
-    case 'OV': {
-      const j = actJours(d.date_OV);
-      return (j!==null && j>30) ? 'pub_a_cloturer' : 'pub_en_cours';
-    }
-    case 'CP':  return 'attente_cvgfr';
-    case 'AP':  return 'attente_cspgfr';
-    case 'VA':  return 'valide';
-    default:    return 'autre';
-  }
-}
-
-function rattWeekStart(d){
-  const x = new Date(d); x.setHours(0,0,0,0);
-  const day = (x.getDay()+6)%7; x.setDate(x.getDate()-day);
-  return x;
-}
-function rattWeekKey(d){ return rattWeekStart(d).toISOString().substring(0,10); }
-
-function rattCompute(){
-  const zone = dashZoneFilter;
-  const afor = dashFilterByZone(dossiersAFOR||[], zone);
-  const gnssZone = dashFilterByZone(gnssData||[], zone);
-  const today = new Date(); today.setHours(0,0,0,0);
-
-  // ── Classement de chaque dossier dans une "file d'attente" ──
-  const rows = afor.map(d=>{
-    const g = gnssForDossier(d);
-    const dateEtape = d['date_'+d.etape] || null;
-    return {
-      d, g, bucket: rattBucket(d, g),
-      haGnss: g ? g.superficie : 0,
-      haDecl: d.superficie_declaree || 0,
-      dateEtape, jours: actJours(dateEtape),
-    };
-  });
-  const buckets = {};
-  RATT_BUCKETS.forEach(b=>{ buckets[b.id] = {n:0, haGnss:0, haDecl:0, jours:[], rows:[]}; });
-  rows.forEach(r=>{
-    const B = buckets[r.bucket];
-    B.n++; B.haGnss += r.haGnss; B.haDecl += r.haDecl; B.rows.push(r);
-    if(r.jours!==null && r.jours>=0) B.jours.push(r.jours);
-  });
-  RATT_BUCKETS.forEach(b=>{ const B=buckets[b.id]; B.medJours = rattMedian(B.jours); B.rows.sort((a,b2)=>(b2.jours||0)-(a.jours||0)); });
-
-  // ── Villages prioritaires (stock mobilisable rapidement) ──
-  const villMap = {};
-  rows.forEach(r=>{
-    const k = (r.d.dept||'')+'|'+(r.d.sp||'')+'|'+(r.d.village||'');
-    if(!villMap[k]) villMap[k] = {dept:r.d.dept||'', sp:r.d.sp||'', village:r.d.village||'', total:0, counts:{}, haRapide:0};
-    const V = villMap[k];
-    V.total++; V.counts[r.bucket] = (V.counts[r.bucket]||0)+1;
-    if(['attente_cspgfr','attente_cvgfr','pub_a_cloturer','attente_pub'].includes(r.bucket)) V.haRapide += r.haGnss;
-  });
-  const villages = Object.values(villMap).map(V=>{
-    V.rapide = ['attente_cspgfr','attente_cvgfr','pub_a_cloturer','attente_pub'].reduce((s,id)=>s+(V.counts[id]||0),0);
-    V.terrain = ['rdc_a_faire','pvcl_leve_a_faire','leve_sans_pvcl','cl_sans_leve'].reduce((s,id)=>s+(V.counts[id]||0),0);
-    return V;
-  }).sort((a,b)=>b.rapide-a.rapide || b.haRapide-a.haRapide || b.terrain-a.terrain);
-
-  // ── Superficies et taille des parcelles ──
-  const surfGnss = gnssZone.map(g=>g.superficie||0).filter(v=>v>0);
-  const haGnssBrut = surfGnss.reduce((s,v)=>s+v,0);
-  const moyParcelle = surfGnss.length ? haGnssBrut/surfGnss.length : null;
-  const medParcelle = rattMedian(surfGnss);
-  const haRattaches = rows.reduce((s,r)=>s+r.haGnss,0);
-  const haRattachesCL = rows.filter(r=>ETAPE_ORDER_CF[r.d.etape]>=2).reduce((s,r)=>s+r.haGnss,0);
-  const haValide = buckets.valide.haGnss;
-
-  // ── Alertes qualité des données ──
-  const orphelins = dashFilterByZone(typeof gnssGetOrphanEntries==='function' ? gnssGetOrphanEntries() : [], zone);
-  const haOrphelins = orphelins.reduce((s,o)=>s+(o._gnss?.superficie||0),0);
-  const ddrdc = rows.filter(r=>['DD','RDC'].includes(r.d.etape));
-  const ddrdcSansDecl = ddrdc.filter(r=>!r.haDecl).length;
-  const pubSansGnss = typeof aforGetSansGnssApresPublicite==='function' ? aforGetSansGnssApresPublicite().length : 0;
-  const sansDate = rows.filter(r=>!r.dateEtape).length;
-  const dateFuture = rows.filter(r=>r.jours!==null && r.jours<0).length;
-
-  const alertes = [];
-  if(zone==='all') alertes.push({niv:'warn', titre:'Vue « Toutes les zones » active',
-    txt:'Les objectifs et pourcentages additionnent Cavally et Worodougou (soit '+rattFmt(dashObjectifsForFilter('all').ha)+' ha). Pour piloter le Lot 13, sélectionnez « Cavally » dans le sélecteur de zone en haut de l\'écran.'});
-  if(haGnssBrut>0 && Math.abs(haGnssBrut-haRattachesCL)>1) alertes.push({niv:'warn', titre:'Superficie PVCL = superficie levée',
-    txt:'Les cartes « PVCL » et « Parcelle levée » des Indicateurs affichent toutes deux le total GNSS brut ('+rattFmt(haGnssBrut)+' ha). La superficie GNSS des seuls dossiers ayant atteint le PVCL est de '+rattFmt(haRattachesCL)+' ha.'});
-  if(orphelins.length) alertes.push({niv:'warn', titre:'Parcelles levées sans dossier AFOR',
-    txt:rattFmt(orphelins.length)+' parcelle(s), soit '+rattFmt(haOrphelins)+' ha levés au GNSS, ne sont rattachées à aucun dossier AFOR. Ces hectares ne pourront jamais être validés tant que le rattachement n\'est pas fait (export disponible dans Imports → Parcelles GNSS non rattachées).'});
-  if(pubSansGnss) alertes.push({niv:'danger', titre:'Dossiers en publicité sans levé',
-    txt:rattFmt(pubSansGnss)+' dossier(s) ont atteint la publicité ou au-delà sans superficie GNSS. Ils risquent un rejet au contrôle qualité.'});
-  if(ddrdc.length && ddrdcSansDecl/ddrdc.length>0.5) alertes.push({niv:'info', titre:'Superficie déclarée absente',
-    txt:rattFmt(ddrdcSansDecl)+' dossier(s) sur '+rattFmt(ddrdc.length)+' aux étapes Demande/RDC n\'ont pas de superficie déclarée. Les hectares affichés à ces étapes sont donc sous-estimés.'});
-  if(sansDate) alertes.push({niv:'info', titre:'Dates d\'étape manquantes',
-    txt:rattFmt(sansDate)+' dossier(s) n\'ont pas de date pour leur étape actuelle : leur ancienneté et leurs retards ne peuvent pas être calculés.'});
-  if(dateFuture) alertes.push({niv:'warn', titre:'Dates dans le futur',
-    txt:rattFmt(dateFuture)+' dossier(s) ont une date d\'étape postérieure à aujourd\'hui (erreur de saisie probable).'});
-  if(buckets.autre.n) alertes.push({niv:'warn', titre:'Étapes non reconnues',
-    txt:rattFmt(buckets.autre.n)+' dossier(s) ont une étape qui ne correspond à aucune étape du parcours CF.'});
-
-  // ── Cadence nécessaire ──
-  const ops = rattParams.operateurs;
-  const objHa = dashObjectifsForFilter(zone).ha;
-  const resteLever = Math.max(0, objHa - haGnssBrut);
-  const finLeves = rattAddMonths(RATT_PROJECT_START, 6*rattParams.semestreFinLeves);
-  const finProjet = rattAddMonths(RATT_PROJECT_START, 6*7);
-  const moisRestantsLeves = Math.max(0, (finLeves - today)/(86400000*30.44));
-  const moisRestantsProjet = Math.max(0, (finProjet - today)/(86400000*30.44));
-  const joursRestants = moisRestantsLeves * rattParams.joursMois;
-  const haJourEquipe = joursRestants>0 ? resteLever/joursRestants : null;
-  const haOpJour = haJourEquipe!=null ? haJourEquipe/ops : null;
-  const haSemaine = haJourEquipe!=null ? haJourEquipe*rattParams.joursMois*12/52 : null;
-
-  // Rythme réel : 8 semaines se terminant au dernier levé enregistré
-  const datesLeve = gnssZone.map(g=>g.date_leve).filter(Boolean).sort();
-  const dernierLeve = datesLeve.length ? datesLeve[datesLeve.length-1] : null;
-  let haOpJourActuel = null, haSemaineActuel = null, periodeRythme = null;
-  if(dernierLeve){
-    const fin = new Date(dernierLeve+'T12:00:00');
-    const debut = new Date(fin); debut.setDate(debut.getDate()-55);
-    const debutStr = debut.toISOString().substring(0,10);
-    const ha8 = gnssZone.filter(g=>g.date_leve && g.date_leve>=debutStr && g.date_leve<=dernierLeve).reduce((s,g)=>s+(g.superficie||0),0);
-    const joursOuvres8 = rattParams.joursMois*56/30.44;
-    haSemaineActuel = ha8/8;
-    haOpJourActuel = ha8/(ops*joursOuvres8);
-    periodeRythme = {debut:debutStr, fin:dernierLeve};
-  }
-  const resteValider = Math.max(0, objHa - haValide);
-  const haValiderMois = moisRestantsProjet>0 ? resteValider/moisRestantsProjet : null;
-
-  // ── Suivi hebdomadaire (12 dernières semaines) ──
-  const semaines = [];
-  const s0 = rattWeekStart(today);
-  for(let i=11;i>=0;i--){ const w=new Date(s0); w.setDate(w.getDate()-7*i); semaines.push(w.toISOString().substring(0,10)); }
-  const serie = {};
-  semaines.forEach(w=>{ serie[w] = {haLeve:0, CL:0, OV:0, CP:0, AP:0, VA:0}; });
-  gnssZone.forEach(g=>{ if(!g.date_leve) return; const k=rattWeekKey(g.date_leve+'T12:00:00'); if(serie[k]) serie[k].haLeve += g.superficie||0; });
-  afor.forEach(d=>{
-    ['CL','OV','CP','AP','VA'].forEach(e=>{
-      const dt = d['date_'+e]; if(!dt) return;
-      const k = rattWeekKey(dt+'T12:00:00'); if(serie[k]) serie[k][e]++;
-    });
-  });
-
-  return {
-    zone, afor, rows, buckets, villages, alertes,
-    haGnssBrut, haRattaches, haRattachesCL, haValide, moyParcelle, medParcelle, nbParcelles:surfGnss.length,
-    orphelins, haOrphelins,
-    cadence:{ops, objHa, resteLever, finLeves, finProjet, moisRestantsLeves, moisRestantsProjet, joursRestants,
-      haJourEquipe, haOpJour, haSemaine, haOpJourActuel, haSemaineActuel, periodeRythme, dernierLeve,
-      resteValider, haValiderMois},
-    semaines, serie,
-  };
-}
-
-function rattInit(){
-  rattLoadParams();
-  rattRenderAll();
-}
-
-function rattRenderAll(notify){
-  const el = document.getElementById('ratt-content');
-  if(!el) return;
-  rattCharts.forEach(c=>{ try{ c.destroy(); }catch(e){} });
-  rattCharts = [];
-
-  if(!(dossiersAFOR||[]).length){
-    el.innerHTML = '<div class="tw empty-state"><p>Aucune donnée AFOR chargée. Importez la base AFOR (et le fichier GNSS) depuis l\'onglet Imports pour générer l\'analyse.</p></div>';
-    return;
-  }
-  const R = rattCompute();
-  rattLast = R;
-  const B = R.buckets, C = R.cadence;
-  const zoneLabel = R.zone==='all' ? 'Cavally + Worodougou' : (PROJECT_ZONES[R.zone]||{}).label+' ('+(PROJECT_ZONES[R.zone]||{}).lot+')';
-  const sub = document.getElementById('ratt-subtitle');
-  if(sub) sub.textContent = 'Zone : '+zoneLabel+' · '+rattFmt(R.afor.length)+' dossiers AFOR · '+rattFmt(R.nbParcelles)+' parcelles GNSS · généré le '+new Date().toLocaleDateString('fr-FR');
-
-  // ── KPI ──
-  const rapides = RATT_BUCKETS.filter(b=>b.rapide);
-  const nbRapide = rapides.reduce((s,b)=>s+B[b.id].n,0);
-  const haRapide = rapides.reduce((s,b)=>s+B[b.id].haGnss,0);
-  const pctValide = C.objHa>0 ? R.haValide/C.objHa*100 : 0;
-  const ratio = (C.haOpJour && C.haOpJourActuel) ? C.haOpJour/C.haOpJourActuel : null;
-  const kpi = `<div class="kpi-bar" style="grid-template-columns:repeat(4,1fr);">
-    <div class="kpi ${R.haValide>0?'green':'red'}"><div class="kpi-l">Validé CSPGFR (compte pour l'objectif)</div><div class="kpi-v">${rattFmt(R.haValide)} ha</div><div class="kpi-s">${rattFmt(pctValide,1)} % de ${rattFmt(C.objHa)} ha</div></div>
-    <div class="kpi amber"><div class="kpi-l">Stock mobilisable sans terrain</div><div class="kpi-v">${rattFmt(nbRapide)}</div><div class="kpi-s">dossiers · ${rattFmt(haRapide)} ha GNSS</div></div>
-    <div class="kpi blue"><div class="kpi-l">Cadence GNSS nécessaire</div><div class="kpi-v">${C.haOpJour!=null?rattFmt(C.haOpJour,1):'—'}</div><div class="kpi-s">ha / opérateur / jour</div></div>
-    <div class="kpi ${ratio!=null&&ratio>1.2?'red':'green'}"><div class="kpi-l">Rythme actuel</div><div class="kpi-v">${C.haOpJourActuel!=null?rattFmt(C.haOpJourActuel,1):'—'}</div><div class="kpi-s">${ratio==null?'ha / opérateur / jour':(ratio>1?'il faut l\'accélérer ×'+rattFmt(ratio,1):'au-dessus de la cible')}</div></div>
-  </div>`;
-
-  // ── 1. Files d'attente ──
-  const maxN = Math.max(1, ...RATT_BUCKETS.map(b=>B[b.id].n));
-  const filesRows = RATT_BUCKETS.filter(b=>B[b.id].n>0 || b.id!=='autre').map(b=>{
-    const X = B[b.id]; const col = RATT_FAMILLE_COLORS[b.famille];
-    const w = Math.round(X.n/maxN*100);
-    return `<tr style="border-bottom:1px solid var(--border);cursor:${X.n?'pointer':'default'};" ${X.n?`onclick="rattShowBucket('${b.id}')"`:''}>
-      <td style="padding:8px 12px;"><div style="display:flex;align-items:center;gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0;"></span><span style="font-weight:500;">${rattEsc(b.label)}</span>${b.rapide?'<span class="badge b-amber" style="font-size:9px;">gain rapide</span>':''}</div></td>
-      <td style="padding:8px 12px;min-width:160px;"><div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;height:7px;background:var(--surface2);border-radius:4px;overflow:hidden;"><div style="width:${w}%;height:100%;background:${col};"></div></div><span style="font-weight:700;min-width:44px;text-align:right;">${rattFmt(X.n)}</span></div></td>
-      <td style="padding:8px 12px;text-align:right;">${X.haGnss?rattFmt(X.haGnss):'—'}</td>
-      <td style="padding:8px 12px;text-align:right;color:${X.medJours>60?'var(--red)':'var(--text2)'};">${X.medJours!=null?rattFmt(X.medJours)+' j':'—'}</td>
-      <td style="padding:8px 12px;font-size:11px;color:var(--text2);">${rattEsc(b.action)}<div style="font-size:10px;color:var(--text3);">${rattEsc(b.qui)}</div></td>
-    </tr>`;
-  }).join('');
-  const sec1 = `<div class="tw" style="margin-bottom:16px;">
-    <div style="padding:12px 16px;border-bottom:1px solid var(--border);"><div class="dash-card-title" style="margin:0;">1 · Où sont bloqués les dossiers</div><div style="font-size:11px;color:var(--text3);">Chaque dossier est compté une seule fois, à l'étape où il attend. Cliquez une ligne pour voir la liste.</div></div>
-    <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:8px 12px;">File d'attente</th><th style="text-align:left;padding:8px 12px;">Dossiers</th><th style="text-align:right;padding:8px 12px;">Ha GNSS</th><th style="text-align:right;padding:8px 12px;">Attente médiane</th><th style="text-align:left;padding:8px 12px;">Action · responsable</th></tr></thead>
-      <tbody>${filesRows}</tbody>
-    </table></div>
-  </div>`;
-
-  // ── 2. Villages prioritaires ──
-  const topVill = R.villages.filter(v=>v.rapide>0 || v.terrain>0).slice(0,25);
-  const villRows = topVill.map(v=>`<tr style="border-bottom:1px solid var(--border);">
-    <td style="padding:7px 10px;font-weight:500;">${rattEsc(v.village||'—')}</td>
-    <td style="padding:7px 10px;color:var(--text2);">${rattEsc(v.sp||'')}<div style="font-size:10px;color:var(--text3);">${rattEsc(v.dept)}</div></td>
-    <td style="padding:7px 10px;text-align:right;color:var(--red);font-weight:600;">${v.counts.attente_cspgfr||''}</td>
-    <td style="padding:7px 10px;text-align:right;color:var(--red);font-weight:600;">${v.counts.attente_cvgfr||''}</td>
-    <td style="padding:7px 10px;text-align:right;">${v.counts.pub_a_cloturer||''}</td>
-    <td style="padding:7px 10px;text-align:right;color:#7C3AED;font-weight:600;">${v.counts.attente_pub||''}</td>
-    <td style="padding:7px 10px;text-align:right;color:var(--amber);">${v.counts.leve_sans_pvcl||''}</td>
-    <td style="padding:7px 10px;text-align:right;color:var(--blue);">${(v.counts.pvcl_leve_a_faire||0)+(v.counts.rdc_a_faire||0)||''}</td>
-    <td style="padding:7px 10px;text-align:right;font-weight:600;">${v.haRapide?rattFmt(v.haRapide):'—'}</td>
-  </tr>`).join('');
-  const sec2 = `<div class="tw" style="margin-bottom:16px;">
-    <div style="padding:12px 16px;border-bottom:1px solid var(--border);"><div class="dash-card-title" style="margin:0;">2 · Villages prioritaires</div><div style="font-size:11px;color:var(--text3);">Classés par nombre de dossiers débloquables sans retour terrain (sessions et publicité). La liste complète est dans l'export Excel.</div></div>
-    <div style="overflow-x:auto;max-height:520px;overflow-y:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead style="position:sticky;top:0;background:var(--surface2);"><tr>
-        <th style="text-align:left;padding:8px 10px;">Village</th><th style="text-align:left;padding:8px 10px;">Sous-préfecture</th>
-        <th style="text-align:right;padding:8px 10px;" title="Approuvés, en attente du CSPGFR">CSPGFR</th>
-        <th style="text-align:right;padding:8px 10px;" title="Publicité clôturée, en attente du CVGFR">CVGFR</th>
-        <th style="text-align:right;padding:8px 10px;" title="Publicité ouverte depuis plus de 30 jours">Pub. à clôturer</th>
-        <th style="text-align:right;padding:8px 10px;" title="Plan provisoire prêt, publicité à lancer">Pub. à lancer</th>
-        <th style="text-align:right;padding:8px 10px;" title="Levé GNSS sans PVCL enregistré">Levé sans PVCL</th>
-        <th style="text-align:right;padding:8px 10px;" title="Demande ou RDC sans levé">Terrain à faire</th>
-        <th style="text-align:right;padding:8px 10px;">Ha débloquables</th>
-      </tr></thead>
-      <tbody>${villRows || '<tr><td colspan="9" style="padding:16px;text-align:center;color:var(--text3);">Aucun village avec du stock bloqué</td></tr>'}</tbody>
-    </table></div>
-  </div>`;
-
-  // ── 3. Qualité des données ──
-  const nivStyle = {danger:{bg:'var(--red-lt)',c:'var(--red)',i:'⛔'}, warn:{bg:'var(--amber-lt)',c:'var(--amber)',i:'⚠'}, info:{bg:'var(--blue-lt)',c:'var(--blue)',i:'ℹ'}};
-  const sec3 = `<div class="tw" style="margin-bottom:16px;padding:12px 16px;">
-    <div class="dash-card-title">3 · Fiabilité des données</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
-      <div style="background:var(--surface3);border-radius:var(--radius-sm);padding:10px 12px;"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;">Superficie moyenne d'une parcelle levée</div><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;">${R.moyParcelle!=null?rattFmt(R.moyParcelle,2)+' ha':'—'}</div><div style="font-size:11px;color:var(--text2);">médiane : ${R.medParcelle!=null?rattFmt(R.medParcelle,2)+' ha':'—'}</div></div>
-      <div style="background:var(--surface3);border-radius:var(--radius-sm);padding:10px 12px;"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;">Total levé au GNSS</div><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;">${rattFmt(R.haGnssBrut)} ha</div><div style="font-size:11px;color:var(--text2);">${rattFmt(R.nbParcelles)} parcelles</div></div>
-      <div style="background:var(--surface3);border-radius:var(--radius-sm);padding:10px 12px;"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;">Dont rattaché à un dossier AFOR</div><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;">${rattFmt(R.haRattaches)} ha</div><div style="font-size:11px;color:var(--text2);">${R.haGnssBrut>0?rattFmt(R.haRattaches/R.haGnssBrut*100,0)+' % du levé':''}</div></div>
-    </div>
-    ${R.alertes.length ? R.alertes.map(a=>{ const s=nivStyle[a.niv]; return `<div style="display:flex;gap:10px;align-items:flex-start;background:${s.bg};border-left:3px solid ${s.c};border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:9px 12px;margin-bottom:6px;font-size:12px;"><span>${s.i}</span><div><div style="font-weight:700;">${rattEsc(a.titre)}</div><div style="color:var(--text2);">${rattEsc(a.txt)}</div></div></div>`; }).join('') : '<div style="font-size:12px;color:var(--accent);">✓ Aucune anomalie détectée.</div>'}
-  </div>`;
-
-  // ── 4. Cadence ──
-  const inp = (k, val, step)=>`<input type="number" value="${val}" min="1" step="${step||1}" onchange="rattSetParam('${k}',this.value)" style="width:70px;border:1px solid var(--border-med);border-radius:6px;padding:4px 6px;font-size:12px;">`;
-  const parcellesJour = (C.haOpJour!=null && R.moyParcelle) ? C.haOpJour/R.moyParcelle : null;
-  const parcellesJourMed = (C.haOpJour!=null && R.medParcelle) ? C.haOpJour/R.medParcelle : null;
-  const opsNecessaires = (C.haOpJour!=null && C.haOpJourActuel) ? Math.ceil(C.ops*C.haOpJour/C.haOpJourActuel) : null;
-  const sec4 = `<div class="tw" style="margin-bottom:16px;padding:12px 16px;">
-    <div class="dash-card-title">4 · Cadence nécessaire pour tenir l'objectif</div>
-    <div class="ratt-noprint" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--text2);margin-bottom:12px;">
-      <label>Opérateurs GNSS ${inp('operateurs', C.ops)}</label>
-      <label>Jours ouvrés / mois ${inp('joursMois', rattParams.joursMois)}</label>
-      <label>Levés terminés à la fin du semestre ${inp('semestreFinLeves', rattParams.semestreFinLeves)}</label>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-      <table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 0;color:var(--text2);">Objectif de la zone</td><td style="text-align:right;font-weight:600;">${rattFmt(C.objHa)} ha</td></tr>
-        <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 0;color:var(--text2);">Reste à lever</td><td style="text-align:right;font-weight:600;">${rattFmt(C.resteLever)} ha</td></tr>
-        <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 0;color:var(--text2);">Fin des levés (fin S${rattParams.semestreFinLeves})</td><td style="text-align:right;font-weight:600;">${C.finLeves.toLocaleDateString('fr-FR')} · ${rattFmt(C.moisRestantsLeves,1)} mois</td></tr>
-        <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 0;color:var(--text2);">Ha à lever par semaine (équipe)</td><td style="text-align:right;font-weight:700;color:var(--blue);">${rattFmt(C.haSemaine)} ha</td></tr>
-        <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 0;color:var(--text2);">Ha par opérateur et par jour</td><td style="text-align:right;font-weight:700;color:var(--blue);">${C.haOpJour!=null?rattFmt(C.haOpJour,1):'—'} ha</td></tr>
-        <tr><td style="padding:6px 0;color:var(--text2);">Soit en parcelles / opérateur / jour</td><td style="text-align:right;font-weight:600;">${parcellesJour!=null?rattFmt(parcellesJour,1):'—'} <span style="font-weight:400;color:var(--text3);">(moyenne) · ${parcellesJourMed!=null?rattFmt(parcellesJourMed,1):'—'} (médiane)</span></td></tr>
-      </table>
-      <table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 0;color:var(--text2);">Dernier levé enregistré</td><td style="text-align:right;font-weight:600;">${C.dernierLeve?fmtDate(C.dernierLeve):'—'}</td></tr>
-        <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 0;color:var(--text2);">Rythme réel (8 semaines jusqu'au dernier levé)</td><td style="text-align:right;font-weight:600;">${C.haSemaineActuel!=null?rattFmt(C.haSemaineActuel)+' ha / semaine':'—'}</td></tr>
-        <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 0;color:var(--text2);">Rythme réel par opérateur</td><td style="text-align:right;font-weight:600;">${C.haOpJourActuel!=null?rattFmt(C.haOpJourActuel,1)+' ha / jour':'—'}</td></tr>
-        <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 0;color:var(--text2);">Opérateurs nécessaires au rythme actuel</td><td style="text-align:right;font-weight:700;color:${opsNecessaires&&opsNecessaires>C.ops?'var(--red)':'var(--accent)'};">${opsNecessaires!=null?rattFmt(opsNecessaires):'—'}</td></tr>
-        <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 0;color:var(--text2);">Reste à faire valider (fin S7 : ${C.finProjet.toLocaleDateString('fr-FR')})</td><td style="text-align:right;font-weight:600;">${rattFmt(C.resteValider)} ha</td></tr>
-        <tr><td style="padding:6px 0;color:var(--text2);">Validations CSPGFR nécessaires par mois</td><td style="text-align:right;font-weight:700;color:var(--red);">${C.haValiderMois!=null?rattFmt(C.haValiderMois)+' ha':'—'}</td></tr>
-      </table>
-    </div>
-    <p style="font-size:10px;color:var(--text3);margin:10px 0 0;">Hypothèses : début du projet le ${fmtDate(RATT_PROJECT_START)}, semestres de 6 mois, superficie moyenne calculée sur les parcelles GNSS de la zone. Les paramètres sont mémorisés sur ce poste.</p>
-  </div>`;
-
-  // ── 5. Suivi hebdomadaire ──
-  const sec5 = `<div class="tw" style="margin-bottom:16px;padding:12px 16px;">
-    <div class="dash-card-title">5 · Suivi hebdomadaire (12 dernières semaines)</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-      <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px;">Hectares levés par semaine, comparés à la cible</div><div style="height:240px;position:relative;"><canvas id="ratt-chart-leve"></canvas></div></div>
-      <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px;">Dossiers ayant franchi chaque étape</div><div style="height:240px;position:relative;"><canvas id="ratt-chart-etapes"></canvas></div></div>
-    </div>
-  </div>`;
-
-  el.innerHTML = kpi + sec1 + sec2 + sec3 + sec4 + sec5;
-
-  // Graphiques
-  if(typeof Chart!=='undefined'){
-    const c = dashChartColors();
-    const labels = R.semaines.map(w=>{ const d=new Date(w+'T12:00:00'); return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}); });
-    rattCharts.push(new Chart(document.getElementById('ratt-chart-leve'), {
-      data:{ labels, datasets:[
-        {type:'bar', label:'Ha levés', data:R.semaines.map(w=>Math.round(R.serie[w].haLeve)), backgroundColor:c.blue, borderRadius:3},
-        {type:'line', label:'Cible', data:R.semaines.map(()=>C.haSemaine?Math.round(C.haSemaine):null), borderColor:c.red, borderDash:[5,4], pointRadius:0, borderWidth:2},
-      ]},
-      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}}}, scales:{y:{beginAtZero:true}, x:{grid:{display:false}}} }
-    }));
-    const lc = {CL:c.blue, OV:'#7C3AED', CP:c.amber, AP:c.red, VA:c.accent};
-    const ll = {CL:'PVCL', OV:'Publicité ouverte', CP:'Publicité clôturée', AP:'Approbation', VA:'Validation'};
-    rattCharts.push(new Chart(document.getElementById('ratt-chart-etapes'), {
-      type:'line',
-      data:{ labels, datasets:['CL','OV','CP','AP','VA'].map(e=>({label:ll[e], data:R.semaines.map(w=>R.serie[w][e]), borderColor:lc[e], backgroundColor:lc[e], tension:.25, pointRadius:2, borderWidth:2})) },
-      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}}}, scales:{y:{beginAtZero:true,ticks:{precision:0}}, x:{grid:{display:false}}} }
-    }));
-  }
-  if(notify) showToast('Analyse de rattrapage actualisée');
-}
-
-// ── Liste détaillée d'une file d'attente ──
-function rattShowBucket(id){
-  if(!rattLast) return;
-  const def = RATT_BUCKETS.find(b=>b.id===id);
-  const X = rattLast.buckets[id];
-  let modal = document.getElementById('ratt-bucket-modal');
-  if(!modal){
-    modal = document.createElement('div');
-    modal.id = 'ratt-bucket-modal';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
-    modal.onclick = e=>{ if(e.target===modal) modal.style.display='none'; };
-    document.body.appendChild(modal);
-  }
-  const rows = X.rows.slice(0,500).map(r=>`<tr style="border-bottom:1px solid var(--border);">
-    <td style="padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;">${rattEsc(r.d.id)}</td>
-    <td style="padding:6px 10px;">${rattEsc(((r.d.prenom||'')+' '+(r.d.nom_demandeur||'')).trim())}</td>
-    <td style="padding:6px 10px;">${rattEsc(r.d.village||'')}<div style="font-size:10px;color:var(--text3);">${rattEsc(r.d.sp||'')} · ${rattEsc(r.d.dept||'')}</div></td>
-    <td style="padding:6px 10px;">${rattEsc(r.d.agent||'—')}</td>
-    <td style="padding:6px 10px;">${rattEsc(r.d.etape||'')} · ${r.dateEtape?fmtDate(r.dateEtape):'—'}</td>
-    <td style="padding:6px 10px;text-align:right;font-weight:600;color:${r.jours>60?'var(--red)':'var(--text)'};">${r.jours!=null?r.jours+' j':'—'}</td>
-    <td style="padding:6px 10px;text-align:right;">${r.haGnss?rattFmt(r.haGnss,2):'—'}</td>
-  </tr>`).join('');
-  modal.innerHTML = `<div style="background:var(--surface);border-radius:12px;width:100%;max-width:1050px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
-    <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-      <div><h3 style="font-family:'Syne',sans-serif;font-size:15px;margin:0;">${rattEsc(def.label)}</h3><div style="font-size:11px;color:var(--text2);">${rattFmt(X.n)} dossier(s) · ${rattEsc(def.action)} · triés du plus ancien au plus récent</div></div>
-      <button class="btn-s" onclick="document.getElementById('ratt-bucket-modal').style.display='none'">✕ Fermer</button>
-    </div>
-    <div style="overflow:auto;flex:1;"><table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead style="position:sticky;top:0;background:var(--surface2);"><tr><th style="text-align:left;padding:7px 10px;">N° Dossier</th><th style="text-align:left;padding:7px 10px;">Demandeur</th><th style="text-align:left;padding:7px 10px;">Village</th><th style="text-align:left;padding:7px 10px;">Agent CE</th><th style="text-align:left;padding:7px 10px;">Étape · date</th><th style="text-align:right;padding:7px 10px;">Attente</th><th style="text-align:right;padding:7px 10px;">Ha GNSS</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>
-    ${X.n>500?'<div style="padding:8px 20px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);">500 premiers affichés — la liste complète est dans l\'export Excel.</div>':''}
-  </div>`;
-  modal.style.display = 'flex';
-}
-
-// ── Export Excel : une feuille de synthèse + une feuille par file d'attente ──
-function rattExportXLSX(){
-  if(!rattLast){ showToast('Générez d\'abord l\'analyse.'); return; }
-  if(typeof XLSX==='undefined'){ showToast('Bibliothèque Excel non chargée.'); return; }
-  const R = rattLast, wb = XLSX.utils.book_new();
-  const synth = [['File d\'attente','Dossiers','Ha GNSS','Attente médiane (j)','Action','Responsable']];
-  RATT_BUCKETS.forEach(b=>{ const X=R.buckets[b.id]; synth.push([b.label, X.n, Math.round(X.haGnss*100)/100, X.medJours, b.action, b.qui]); });
-  synth.push([]); synth.push(['Alertes qualité des données']);
-  R.alertes.forEach(a=>synth.push([a.titre, a.txt]));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(synth), 'Synthèse');
-
-  const vill = [['Département','Sous-préfecture','Village','Attente CSPGFR','Attente CVGFR','Publicité à clôturer','Publicité à lancer','Levé sans PVCL','PVCL sans levé','RDC fait, PVCL+levé à faire','Demande, RDC à tenir','Ha débloquables']];
-  R.villages.forEach(v=>vill.push([v.dept,v.sp,v.village,v.counts.attente_cspgfr||0,v.counts.attente_cvgfr||0,v.counts.pub_a_cloturer||0,v.counts.attente_pub||0,v.counts.leve_sans_pvcl||0,v.counts.cl_sans_leve||0,v.counts.pvcl_leve_a_faire||0,v.counts.rdc_a_faire||0,Math.round(v.haRapide*100)/100]));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(vill), 'Villages');
-
-  const hdr = ['N° Dossier','Prénom','Nom','Département','Sous-préfecture','Village','Code parcelle','Agent CE','Type','Étape','Date étape','Attente (j)','Levé GNSS','Ha GNSS','Ha déclarée'];
-  const short = {rdc_a_faire:'RDC à tenir', pvcl_leve_a_faire:'PVCL+levé à faire', leve_sans_pvcl:'Levé sans PVCL', cl_sans_leve:'PVCL sans levé', attente_pub:'Publicité à lancer', pub_en_cours:'Publicité en cours', pub_a_cloturer:'Publicité à clôturer', attente_cvgfr:'Attente CVGFR', attente_cspgfr:'Attente CSPGFR', valide:'Validés', autre:'Étape inconnue'};
-  RATT_BUCKETS.forEach(b=>{
-    const X = R.buckets[b.id]; if(!X.n) return;
-    const aoa = [hdr];
-    X.rows.forEach(r=>aoa.push([r.d.id, r.d.prenom||'', r.d.nom_demandeur||'', r.d.dept||'', r.d.sp||'', r.d.village||'', r.d.code_parcelle||'', r.d.agent||'', r.d.type||'', r.d.etape||'', r.dateEtape||'', r.jours, r.g?'Oui':'Non', r.haGnss?Math.round(r.haGnss*100)/100:'', r.haDecl||'']));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), short[b.id].substring(0,31));
-  });
-  if(R.orphelins.length){
-    const aoa = [['Code parcelle','Nom (GNSS)','Département','Sous-préfecture','Village','Ha']];
-    R.orphelins.forEach(o=>aoa.push([o.code_parcelle||'', o.nom_demandeur||'', o.dept||'', o.sp||'', o.village||'', Math.round((o._gnss?.superficie||0)*100)/100]));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'GNSS sans dossier');
-  }
-  const zone = R.zone==='all' ? 'toutes_zones' : R.zone;
-  XLSX.writeFile(wb, 'PRESFOR_rattrapage_'+zone+'_'+new Date().toISOString().split('T')[0]+'.xlsx');
-  showToast('Feuille de route Excel téléchargée');
-}
-
-// ── Export PDF direct (téléchargement d'un fichier .pdf, sans passer par l'impression) ──
-// Les bibliothèques jsPDF + autoTable ne sont chargées qu'au premier export.
-function rattLoadScript(src){
-  return new Promise((resolve, reject)=>{
-    const s = document.createElement('script');
-    s.src = src; s.onload = resolve; s.onerror = ()=>reject(new Error('Chargement impossible : '+src));
-    document.head.appendChild(s);
-  });
-}
-async function rattEnsurePdfLibs(){
-  if(!(window.jspdf && window.jspdf.jsPDF)) await rattLoadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-  const probe = new window.jspdf.jsPDF();
-  if(typeof probe.autoTable !== 'function') await rattLoadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
-}
-// Les polices standard du PDF ne couvrent que l'alphabet latin : on remplace les autres caractères
-function rattPdfTxt(v){
-  if(v==null) return '';
-  return String(v)
-    .replace(/[   ]/g,' ')
-    .replace(/[‘’]/g,"'").replace(/[“”]/g,'"')
-    .replace(/[–—]/g,'-').replace(/→/g,'->').replace(/…/g,'...')
-    .replace(/œ/g,'oe').replace(/Œ/g,'OE').replace(/≥/g,'>=').replace(/≤/g,'<=')
-    .replace(/[^\x00-\xFF]/g,'');
-}
-
-async function rattExportPDF(){
-  if(!rattLast){ showToast('Générez d\'abord l\'analyse.'); return; }
-  showToast('Préparation du PDF...');
-  try{ await rattEnsurePdfLibs(); }
-  catch(e){ showToast('Bibliothèque PDF indisponible (connexion internet requise). Utilisez « Imprimer ».'); return; }
-
-  const R = rattLast, C = R.cadence, B = R.buckets;
-  const T = rattPdfTxt;
-  const doc = new window.jspdf.jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
-  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 12;
-  const VERT = [28,74,46], GRIS = [92,90,85], OR = [245,166,35];
-  const zoneLabel = R.zone==='all' ? 'Cavally + Worodougou' : (PROJECT_ZONES[R.zone]||{}).label+' ('+(PROJECT_ZONES[R.zone]||{}).lot+')';
-  const dateStr = new Date().toLocaleDateString('fr-FR');
-  const tableStyle = { fontSize:8, cellPadding:1.8, textColor:[26,25,22], lineColor:[220,220,220], lineWidth:0.1 };
-  const headStyle  = { fillColor:VERT, textColor:255, fontStyle:'bold', fontSize:8 };
-
-  // ── En-tête ──
-  doc.setFillColor(...VERT); doc.rect(0,0,W,24,'F');
-  doc.setFillColor(...OR); doc.rect(0,24,W,1.2,'F');
-  doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(16);
-  doc.text(T('PRESFOR · Analyse de rattrapage'), M, 11);
-  doc.setFont('helvetica','normal'); doc.setFontSize(9);
-  doc.text(T('Zone : '+zoneLabel+'  ·  '+rattFmt(R.afor.length)+' dossiers AFOR  ·  '+rattFmt(R.nbParcelles)+' parcelles GNSS'), M, 18);
-  doc.text(T('Groupement CAG  ·  généré le '+dateStr), W-M, 11, {align:'right'});
-  if(currentUser && currentUser.nom) doc.text(T('par '+currentUser.nom.split('—')[0].trim()), W-M, 18, {align:'right'});
-
-  // ── Indicateurs clés ──
-  const rapides = RATT_BUCKETS.filter(b=>b.rapide);
-  const nbRapide = rapides.reduce((s,b)=>s+B[b.id].n,0);
-  const haRapide = rapides.reduce((s,b)=>s+B[b.id].haGnss,0);
-  const ratio = (C.haOpJour && C.haOpJourActuel) ? C.haOpJour/C.haOpJourActuel : null;
-  const kpis = [
-    ['Validé CSPGFR', rattFmt(R.haValide)+' ha', rattFmt(C.objHa>0?R.haValide/C.objHa*100:0,1)+' % de '+rattFmt(C.objHa)+' ha', [184,48,37]],
-    ['Stock mobilisable sans terrain', rattFmt(nbRapide)+' dossiers', rattFmt(haRapide)+' ha GNSS', [181,112,10]],
-    ['Cadence GNSS nécessaire', (C.haOpJour!=null?rattFmt(C.haOpJour,1):'-')+' ha', 'par opérateur et par jour', [26,75,110]],
-    ['Rythme actuel', (C.haOpJourActuel!=null?rattFmt(C.haOpJourActuel,1):'-')+' ha', ratio==null?'par opérateur et par jour':(ratio>1?'à accélérer x'+rattFmt(ratio,1):'au-dessus de la cible'), VERT],
-  ];
-  const kw = (W-2*M-3*4)/4; let y = 30;
-  kpis.forEach((k,i)=>{
-    const x = M + i*(kw+4);
-    doc.setDrawColor(220); doc.setFillColor(248,247,244); doc.roundedRect(x,y,kw,20,1.5,1.5,'FD');
-    doc.setFillColor(...k[3]); doc.rect(x,y,1.2,20,'F');
-    doc.setFontSize(7); doc.setTextColor(...GRIS); doc.setFont('helvetica','bold');
-    doc.text(T(k[0].toUpperCase()), x+4, y+5);
-    doc.setFontSize(14); doc.setTextColor(...k[3]); doc.text(T(k[1]), x+4, y+12.5);
-    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...GRIS); doc.text(T(k[2]), x+4, y+17.5);
-  });
-  y += 27;
-
-  const titre = (txt, sous)=>{
-    if(y > H-30){ doc.addPage(); y = M+4; }
-    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(...VERT); doc.text(T(txt), M, y);
-    if(sous){ doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...GRIS); doc.text(T(sous), M, y+4); y += 4; }
-    y += 3;
-  };
-
-  // ── 1. Files d'attente ──
-  titre('1 · Où sont bloqués les dossiers', 'Chaque dossier est compté une seule fois, à l\'étape où il attend.');
-  doc.autoTable({
-    startY:y, margin:{left:M,right:M}, styles:tableStyle, headStyles:headStyle,
-    head:[[ 'File d\'attente','Dossiers','Ha GNSS','Attente médiane','Action','Responsable' ].map(T)],
-    body: RATT_BUCKETS.filter(b=>B[b.id].n>0 || b.id!=='autre').map(b=>{
-      const X=B[b.id];
-      return [b.label+(b.rapide?'  (gain rapide)':''), rattFmt(X.n), X.haGnss?rattFmt(X.haGnss):'-', X.medJours!=null?rattFmt(X.medJours)+' j':'-', b.action, b.qui].map(T);
-    }),
-    columnStyles:{1:{halign:'right',fontStyle:'bold'},2:{halign:'right'},3:{halign:'right'},0:{cellWidth:70},4:{cellWidth:80}},
-    didParseCell:(d)=>{ if(d.section==='body' && /gain rapide/.test(d.row.raw[0])) d.cell.styles.fillColor=[251,240,220]; },
-  });
-  y = doc.lastAutoTable.finalY + 8;
-
-  // ── 2. Villages prioritaires ──
-  const topVill = R.villages.filter(v=>v.rapide>0 || v.terrain>0).slice(0,25);
-  titre('2 · Villages prioritaires', 'Classés par nombre de dossiers débloquables sans retour terrain. Liste complète dans la feuille de route Excel.');
-  doc.autoTable({
-    startY:y, margin:{left:M,right:M}, styles:tableStyle, headStyles:headStyle,
-    head:[['Village','Sous-préfecture','Département','Attente CSPGFR','Attente CVGFR','Pub. à clôturer','Pub. à lancer','Levé sans PVCL','Terrain à faire','Ha débloquables'].map(T)],
-    body: topVill.map(v=>[v.village||'-', v.sp, v.dept, v.counts.attente_cspgfr||'', v.counts.attente_cvgfr||'', v.counts.pub_a_cloturer||'', v.counts.attente_pub||'', v.counts.leve_sans_pvcl||'', ((v.counts.pvcl_leve_a_faire||0)+(v.counts.rdc_a_faire||0))||'', v.haRapide?rattFmt(v.haRapide):'-'].map(T)),
-    columnStyles:{3:{halign:'right'},4:{halign:'right'},5:{halign:'right'},6:{halign:'right'},7:{halign:'right'},8:{halign:'right'},9:{halign:'right',fontStyle:'bold'}},
-  });
-  y = doc.lastAutoTable.finalY + 8;
-
-  // ── 3. Fiabilité des données ──
-  titre('3 · Fiabilité des données');
-  doc.autoTable({
-    startY:y, margin:{left:M,right:M}, styles:tableStyle, headStyles:headStyle,
-    head:[['Indicateur','Valeur'].map(T)],
-    body:[
-      ['Superficie moyenne d\'une parcelle levée', (R.moyParcelle!=null?rattFmt(R.moyParcelle,2)+' ha':'-')+'  (médiane '+(R.medParcelle!=null?rattFmt(R.medParcelle,2)+' ha':'-')+')'],
-      ['Total levé au GNSS', rattFmt(R.haGnssBrut)+' ha · '+rattFmt(R.nbParcelles)+' parcelles'],
-      ['Dont rattaché à un dossier AFOR', rattFmt(R.haRattaches)+' ha'+(R.haGnssBrut>0?' ('+rattFmt(R.haRattaches/R.haGnssBrut*100)+' %)':'')],
-    ].map(r=>r.map(T)),
-    columnStyles:{0:{cellWidth:90,fontStyle:'bold'}},
-  });
-  y = doc.lastAutoTable.finalY + 3;
-  if(R.alertes.length){
-    const coul = {danger:[250,235,234], warn:[251,240,220], info:[229,238,245]};
-    doc.autoTable({
-      startY:y, margin:{left:M,right:M}, styles:tableStyle, headStyles:{...headStyle, fillColor:[181,112,10]},
-      head:[['Alerte','Détail'].map(T)],
-      body: R.alertes.map(a=>[a.titre, a.txt].map(T)),
-      columnStyles:{0:{cellWidth:60,fontStyle:'bold'}},
-      didParseCell:(d)=>{ if(d.section==='body') d.cell.styles.fillColor = coul[R.alertes[d.row.index].niv]; },
-    });
-    y = doc.lastAutoTable.finalY + 8;
-  } else y += 5;
-
-  // ── 4. Cadence ──
-  const parcellesJour = (C.haOpJour!=null && R.moyParcelle) ? C.haOpJour/R.moyParcelle : null;
-  const opsNecessaires = (C.haOpJour!=null && C.haOpJourActuel) ? Math.ceil(C.ops*C.haOpJour/C.haOpJourActuel) : null;
-  titre('4 · Cadence nécessaire pour tenir l\'objectif', 'Hypothèses : '+C.ops+' opérateurs GNSS, '+rattParams.joursMois+' jours ouvrés par mois, levés terminés fin S'+rattParams.semestreFinLeves+'.');
-  const halfW = (W-2*M-6)/2;
-  const cad1 = [
-    ['Objectif de la zone', rattFmt(C.objHa)+' ha'],
-    ['Reste à lever', rattFmt(C.resteLever)+' ha'],
-    ['Fin des levés (fin S'+rattParams.semestreFinLeves+')', C.finLeves.toLocaleDateString('fr-FR')+' · '+rattFmt(C.moisRestantsLeves,1)+' mois'],
-    ['Ha à lever par semaine (équipe)', rattFmt(C.haSemaine)+' ha'],
-    ['Ha par opérateur et par jour', (C.haOpJour!=null?rattFmt(C.haOpJour,1):'-')+' ha'],
-    ['Parcelles par opérateur et par jour', parcellesJour!=null?rattFmt(parcellesJour,1):'-'],
-  ];
-  const cad2 = [
-    ['Dernier levé enregistré', C.dernierLeve?fmtDate(C.dernierLeve):'-'],
-    ['Rythme réel (8 semaines)', C.haSemaineActuel!=null?rattFmt(C.haSemaineActuel)+' ha / semaine':'-'],
-    ['Rythme réel par opérateur', C.haOpJourActuel!=null?rattFmt(C.haOpJourActuel,1)+' ha / jour':'-'],
-    ['Opérateurs nécessaires au rythme actuel', opsNecessaires!=null?rattFmt(opsNecessaires):'-'],
-    ['Reste à faire valider (fin S7)', rattFmt(C.resteValider)+' ha'],
-    ['Validations CSPGFR nécessaires par mois', C.haValiderMois!=null?rattFmt(C.haValiderMois)+' ha':'-'],
-  ];
-  const yCad = y;
-  [cad1, cad2].forEach((body,i)=>{
-    doc.autoTable({
-      startY:yCad, margin:{left:M+i*(halfW+6)}, tableWidth:halfW, styles:tableStyle, theme:'plain',
-      body: body.map(r=>r.map(T)),
-      columnStyles:{0:{textColor:GRIS},1:{halign:'right',fontStyle:'bold'}},
-      didDrawCell:(d)=>{ doc.setDrawColor(230); doc.line(d.cell.x, d.cell.y+d.cell.height, d.cell.x+d.cell.width, d.cell.y+d.cell.height); },
-    });
-  });
-  y = doc.lastAutoTable.finalY + 8;
-
-  // ── 5. Graphiques ──
-  const c1 = document.getElementById('ratt-chart-leve'), c2 = document.getElementById('ratt-chart-etapes');
-  if(c1 && c2){
-    const gh = 62;
-    if(y + gh + 10 > H-10){ doc.addPage(); y = M+4; }
-    titre('5 · Suivi hebdomadaire (12 dernières semaines)');
-    const gw = (W-2*M-6)/2;
-    [[c1,'Hectares levés par semaine, comparés à la cible'],[c2,'Dossiers ayant franchi chaque étape']].forEach(([cv,lbl],i)=>{
-      const x = M + i*(gw+6);
-      doc.setFontSize(7.5); doc.setTextColor(...GRIS); doc.setFont('helvetica','normal'); doc.text(T(lbl), x, y);
-      try{
-        const ratioImg = cv.height/cv.width;
-        const h = Math.min(gh, gw*ratioImg);
-        doc.addImage(cv.toDataURL('image/png'), 'PNG', x, y+2, gw, h);
-      }catch(e){}
-    });
-  }
-
-  // ── Pied de page ──
-  const nb = doc.getNumberOfPages();
-  for(let i=1;i<=nb;i++){
-    doc.setPage(i);
-    doc.setFontSize(7); doc.setTextColor(150); doc.setFont('helvetica','normal');
-    doc.text(T('PRESFOR · Région du Cavally · Analyse de rattrapage du '+dateStr), M, H-5);
-    doc.text(T('Page '+i+' / '+nb), W-M, H-5, {align:'right'});
-  }
-  const zone = R.zone==='all' ? 'toutes_zones' : R.zone;
-  doc.save('PRESFOR_rattrapage_'+zone+'_'+new Date().toISOString().split('T')[0]+'.pdf');
-  showToast('Rapport PDF téléchargé');
-}
-
-// ── Version imprimable / PDF ──
-function rattPrint(){
-  const src = document.getElementById('module-rapport');
-  if(!src || !rattLast){ showToast('Générez d\'abord l\'analyse.'); return; }
-  const clone = src.cloneNode(true);
-  // Remplacer chaque graphique par une image figée
-  const srcCanvases = src.querySelectorAll('canvas');
-  clone.querySelectorAll('canvas').forEach((cv,i)=>{
-    const img = document.createElement('img');
-    try{ img.src = srcCanvases[i].toDataURL('image/png'); }catch(e){}
-    img.style.cssText = 'width:100%;height:100%;object-fit:contain;';
-    cv.replaceWith(img);
-  });
-  clone.querySelectorAll('.ratt-noprint').forEach(e=>e.remove());
-  clone.style.display = 'block';
-  const styles = Array.from(document.querySelectorAll('style')).map(s=>s.outerHTML).join('');
-  const w = window.open('', '_blank');
-  if(!w){ showToast('Autorisez les fenêtres pop-up pour imprimer.'); return; }
-  w.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>PRESFOR — Analyse de rattrapage</title>
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=Instrument+Sans:wght@400;500;600&family=DM+Mono&display=swap" rel="stylesheet">
-    ${styles}
-    <style>body{background:#fff;} .main{padding:12px 18px;} .tw{box-shadow:none;border:1px solid #ddd;break-inside:avoid;} [style*="max-height"]{max-height:none !important;overflow:visible !important;} @page{size:A4 landscape;margin:10mm;}</style>
-    </head><body>${clone.innerHTML}</body></html>`);
-  w.document.close();
-  setTimeout(()=>{ w.focus(); w.print(); }, 700);
-}
 </script>
 
 
