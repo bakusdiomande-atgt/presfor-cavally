@@ -4721,6 +4721,7 @@ function dashShowDossierDetail(id){
     row('Sous-préfecture', d.sp||'—') +
     row('Village', d.village||'—') +
     row('Code parcelle', d.code_parcelle||'—') +
+    aforVoisinsHtml(d) +
     row('Type CF', d.type||'—') +
     row('Étape actuelle', d.etape||'—') +
     row('Agent CE', d.agent||'—') +
@@ -6425,6 +6426,7 @@ function cqeShowDossierDetail(id){
     row('Sous-préfecture', d.sp||'—') +
     row('Village', d.village||'—') +
     row('Code parcelle', d.code_parcelle||'—') +
+    aforVoisinsHtml(d) +
     row('Type CF', d.type||'—') +
     row('Étape actuelle', d.etape||'—') +
     row('Agent responsable', d.agent||'—') +
@@ -6697,7 +6699,9 @@ async function planOpen(id){
   }
   const txt = rec.txt || '';
   const tab = tabMatchForDossier(d);
-  const voisins = ((tab && tab.requests && tab.requests.neighborhood) || []).filter(v=>v && v.nameOfNeighbor);
+  let voisins = aforParseVoisins(d.voisins).map(v=>({position:v.position, nameOfNeighbor:v.nom}));
+  let voisinsSrc = 'base AFOR';
+  if(!voisins.length){ voisins = ((tab && tab.requests && tab.requests.neighborhood) || []).filter(v=>v && v.nameOfNeighbor); voisinsSrc = 'tablette'; }
   const gi = gnssForDossier(d);
   const cq = pubCQ[d.id] || {};
   const haList = [gi?gi.superficie:0, cq.superf?parseFloat(cq.superf):0, d.superficie_declaree||0];
@@ -6754,9 +6758,9 @@ async function planOpen(id){
     line('Demandeur (AFOR)', planEsc(nomDem||'—'))+line('Village / SP', planEsc((d.village||'—')+' / '+(d.sp||'—')))+line('Agent', planEsc(d.agent||'—'))+
     line('Superficie GNSS', gi?gi.superficie.toFixed(2)+' ha':'—')+(cq.superf?line('Superficie contrôle', Number(cq.superf).toFixed(2)+' ha'):'')+(d.superficie_declaree?line('Superficie déclarée', d.superficie_declaree+' ha'):'');
   if(!auto_ok) h += '<div style="margin:10px 0;padding:8px;background:var(--amber-lt);border-radius:6px;">Ce plan ne contient pas de texte lisible (plan scanné ou vectorisé) : comparaison à faire à l\'œil.</div>';
-  h += '<div style="font-weight:700;color:var(--blue);margin:12px 0 4px;">Voisins enregistrés sur tablette'+(voisins.length?'':' — aucun')+'</div>';
+  h += '<div style="font-weight:700;color:var(--blue);margin:12px 0 4px;">Voisins du dossier'+(voisins.length?' ('+voisinsSrc+')':' — aucun')+'</div>';
   h += voisins.length ? voisins.map(v=>line(planEsc(v.position||'—')+' : <b>'+planEsc(v.nameOfNeighbor)+'</b>', auto_ok?icon(planNameStatus(v.nameOfNeighbor, nt)):'<span style="color:var(--text3);">à vérifier</span>')).join('')
-    : '<div style="color:var(--text3);padding:4px 0;">Aucune donnée tablette pour ce dossier (importez les ZIP tablette) — comparez les voisins du plan avec la fiche papier.</div>';
+    : '<div style="color:var(--text3);padding:4px 0;">Aucun voisin enregistré pour ce dossier (ni dans la base AFOR, ni sur tablette) — réimportez la base AFOR ou les ZIP tablette.</div>';
   h += '<div style="font-weight:700;color:var(--blue);margin:12px 0 4px;">Comparaisons automatiques</div>';
   h += line('Nom du demandeur sur le plan', auto_ok?icon(planNameStatus(nomDem, nt)):'—');
   h += line('Superficie du dossier retrouvée sur le plan', auto_ok?({ok:'<span style="color:var(--accent);font-weight:700;">✓ cohérente</span>',ko:'<span style="color:var(--red);font-weight:700;">✗ non retrouvée</span>',na:'—'})[planSurfStatus(txt, haList)]:'—');
@@ -8682,7 +8686,8 @@ const AFOR_COLS = {
   superf_cq1:'Superficie au contrôle 1', superf_cq2:'Superficie au contrôle 2',
   superf_final:'Superficie au contrôle finale',
   motif_qc1:'Motif de rejet QC1', motif_qc2:'Motif de rejet QC2',
-  motif_final:'Motif de rejet Validation Finale'
+  motif_final:'Motif de rejet Validation Finale',
+  voisins:'Détails Voisins', nb_voisins:'Nombre de Voisins'
 };
 
 // Mapping normalisé des étapes (fichier → standard)
@@ -8835,6 +8840,22 @@ function aforCanonicalizeRow(row){
   return out;
 }
 
+// Voisins "Nom (Nord), Nom (Est)…" -> [{nom, position}] (tolère une parenthèse dans un nom)
+function aforParseVoisins(str){
+  if(!str) return [];
+  const parts = String(str).split(/\s*\((Nord|Sud|Est|Ouest)\)\s*,?\s*/i);
+  const out = [];
+  for(let i=0; i+1<parts.length; i+=2){
+    const nom = parts[i].trim(); if(nom) out.push({nom, position: parts[i+1].charAt(0).toUpperCase()+parts[i+1].slice(1).toLowerCase()});
+  }
+  return out;
+}
+function aforVoisinsHtml(d){
+  const v = aforParseVoisins(d && d.voisins);
+  if(!v.length) return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--text3);">Voisins</span><span style="float:right;color:var(--text3);">Non renseignés (réimportez la base AFOR)</span></div>';
+  return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><div style="color:var(--text3);margin-bottom:3px;">Voisins ('+v.length+')</div>'+v.map(x=>'<div style="display:flex;justify-content:space-between;padding:1px 0;"><span style="font-weight:600;">'+String(x.nom).replace(/[<>&]/g,'')+'</span><span style="color:var(--text3);">'+x.position+'</span></div>').join('')+'</div>';
+}
+
 function aforImportExcel(input){
   const file = input.files[0];
   if(!file) return;
@@ -8932,6 +8953,9 @@ function aforImportExcel(input){
           // Superficie déclarée (colonne "Superficie de Constat de limite") — utilisée pour les
           // étapes "Demande" et "RDC", avant tout levé GNSS.
           superficie_declaree: (()=>{ const v=parseFloat((row[AFOR_COLS.superf_cl]||'').toString().replace(',','.')); return isNaN(v)?0:v; })(),
+          // Voisins déclarés au dossier : "Nom (Nord), Nom (Est), …" — servent au contrôle qualité des plans
+          voisins: (row[AFOR_COLS.voisins]||'').toString().replace(/\s+/g,' ').trim() || undefined,
+          nb_voisins: (()=>{ const v=parseInt(row[AFOR_COLS.nb_voisins]); return isNaN(v)?undefined:v; })(),
         };
         imported.push(dos);
 
@@ -8999,7 +9023,9 @@ function aforImportExcel(input){
             });
             nbMaj++;
           } else {
-            // Aucun changement : conserver l'ancien enregistrement intégralement
+            // Aucun changement d'étape/dates : conserver l'ancien enregistrement, en y ajoutant
+            // les informations nouvellement disponibles dans le fichier (voisins)
+            if(nouveau.voisins !== undefined && nouveau.voisins !== ancien.voisins){ ancien.voisins = nouveau.voisins; ancien.nb_voisins = nouveau.nb_voisins; }
             imported[imported.indexOf(nouveau)] = ancien;
             nbInchanges++;
           }
