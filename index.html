@@ -326,12 +326,19 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
         </div>
         <div class="ff">
           <label class="fl">Rôle <span class="req">*</span></label>
-          <select class="fsel" id="adm-role" style="font-size:12px;">
+          <select class="fsel" id="adm-role" style="font-size:12px;" onchange="document.getElementById('adm-zone-wrap').style.display=this.value==='cqe'?'':'none'">
             <option value="agent">Agent PRESFOR</option>
             <option value="ce">Commissaire Enquêteur (CE) — Visuel</option>
             <option value="gnss">Opérateur GNSS — Visuel</option>
             <option value="cqe">Contrôleur qualité — Accès CQE uniquement</option>
             <option value="admin">Administrateur</option>
+          </select>
+        </div>
+        <div class="ff" id="adm-zone-wrap" style="display:none;">
+          <label class="fl">Région du contrôleur <span class="req">*</span></label>
+          <select class="fsel" id="adm-zone" style="font-size:12px;">
+            <option value="cavally">Cavally (Lot 13)</option>
+            <option value="worodougou">Worodougou (Lot 4)</option>
           </select>
         </div>
         <div class="ff">
@@ -1523,7 +1530,15 @@ function zoneApplyUI(){
   if(typeof indRenderGenre==='function') indRenderGenre();
 }
 
+function cqeUserZone(){ return (currentUser && currentUser.role==='cqe') ? ((currentUser.zone && PROJECT_ZONES[currentUser.zone]) ? currentUser.zone : 'cavally') : null; }
+function cqeLockZone(){
+  const z=cqeUserZone(); if(!z) return;
+  dashZoneFilter=z;
+  const zs=document.getElementById('zone-selector'); if(zs) zs.style.display='none';
+  zoneApplyUI();
+}
 function zoneSwitch(id){
+  const lz=cqeUserZone(); if(lz) id=lz;   // un contrôleur qualité reste sur sa région
   if(id!=='all' && !PROJECT_ZONES[id]) return;
   dashZoneFilter = id;
   zoneApplyUI();
@@ -6279,24 +6294,21 @@ function cqeRenderAll(){
   const q = (cqeFilterState.q||'').toLowerCase();
   const fDept = cqeFilterState.dept||'';
   const fAgent = cqeFilterState.agent||'';
-  const fAssigne = cqeFilterState.assigne||'';
   const sourceListe = vueCorriges ? corriges : rejetes;
   const depts = [...new Set(sourceListe.map(d=>d.dept).filter(Boolean))].sort();
   const agentsListe = [...new Set(sourceListe.map(d=>d.agent).filter(Boolean))].sort();
-  const controleurs = getControleursQualite();
   const filtered = sourceListe.filter(d=>{
     const mq = !q || String(d.id).toLowerCase().includes(q) || ((d.prenom||'')+' '+(d.nom_demandeur||'')).toLowerCase().includes(q) || (d.village||'').toLowerCase().includes(q);
     const mDept = !fDept || d.dept===fDept;
     const mAgent = !fAgent || d.agent===fAgent;
-    const mAssigne = vueCorriges || !fAssigne || (fAssigne==='__non_assigne__' ? !pubCQ[d.id].assigne_a : (pubCQ[d.id].assigne_a||'')===fAssigne);
-    return mq && mDept && mAgent && mAssigne;
+    return mq && mDept && mAgent;
   });
 
   const rows = filtered.slice(0,200).map(d=>{
     const cq = pubCQ[d.id];
     const derniereColonne = vueCorriges
       ? `<td style="padding:8px 12px;color:var(--text2);">${cq.corrige_par||'—'} <span style="color:var(--text3);">· ${fmtDate(cq.date_correction)}</span></td>`
-      : `<td style="padding:8px 12px;color:var(--text2);">${cq.assigne_a||'<span style="color:var(--text3);">Non assigné</span>'}</td>`;
+      : `<td style="padding:8px 12px;color:var(--text2);">${cq.date_rejet?fmtDate(cq.date_rejet)+' <span style="color:var(--text3);">· '+(cqeDaysBetween(cq.date_rejet,cqeToday())||0)+' j</span>':'—'}</td>`;
     return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="cqeShowDossierDetail('${String(d.id).replace(/'/g,"\\'")}')">
     <td style="padding:8px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--blue);">${d.id}</td>
     <td style="padding:8px 12px;">${d.prenom||''} ${d.nom_demandeur||''}</td>
@@ -6320,11 +6332,7 @@ function cqeRenderAll(){
         <option value="">Tous agents</option>
         ${agentsListe.map(a=>`<option value="${a}" ${fAgent===a?'selected':''}>${a}</option>`).join('')}
       </select>
-      ${!vueCorriges ? `<select onchange="cqeSetFilter('assigne',this.value)" style="border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;">
-        <option value="">Tous les contrôleurs</option>
-        <option value="__non_assigne__" ${fAssigne==='__non_assigne__'?'selected':''}>Non assigné</option>
-        ${controleurs.map(c=>`<option value="${c}" ${fAssigne===c?'selected':''}>${c}</option>`).join('')}
-      </select>` : ''}
+
       <button class="btn-s" onclick="cqeExportCSV()" style="display:inline-flex;align-items:center;gap:5px;">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
         Exporter CSV
@@ -6334,7 +6342,7 @@ function cqeRenderAll(){
     <div style="padding:8px 16px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);">${vueCorriges?'Dossiers corrigés':'Dossiers rejetés'} (contrôle qualité) — ${filtered.length.toLocaleString('fr-FR')} résultat(s)</div>
     <div style="overflow-x:auto;">
     <table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">N° Dossier</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Demandeur</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Village</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Agent</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">${vueCorriges?'Corrigé par':'Assigné à'}</th></tr></thead>
+      <thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">N° Dossier</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Demandeur</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Village</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Agent</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">${vueCorriges?'Corrigé par':'Rejeté le'}</th></tr></thead>
       <tbody>${rows || '<tr><td colspan="5" style="padding:16px;text-align:center;color:var(--text3);">Aucun résultat pour ces filtres</td></tr>'}</tbody>
     </table>
     </div>
@@ -6363,22 +6371,20 @@ function cqeExportCSV(){
   const q = (cqeFilterState.q||'').toLowerCase();
   const fDept = cqeFilterState.dept||'';
   const fAgent = cqeFilterState.agent||'';
-  const fAssigne = cqeFilterState.assigne||'';
   const filtered = source.filter(d=>{
     const mq = !q || String(d.id).toLowerCase().includes(q) || ((d.prenom||'')+' '+(d.nom_demandeur||'')).toLowerCase().includes(q) || (d.village||'').toLowerCase().includes(q);
     const mDept = !fDept || d.dept===fDept;
     const mAgent = !fAgent || d.agent===fAgent;
-    const mAssigne = vueCorriges || !fAssigne || (fAssigne==='__non_assigne__' ? !pubCQ[d.id].assigne_a : (pubCQ[d.id].assigne_a||'')===fAssigne);
-    return mq && mDept && mAgent && mAssigne;
+    return mq && mDept && mAgent;
   });
   if(!filtered.length){ showToast('Rien à exporter pour ces filtres.'); return; }
   const header = vueCorriges
     ? ['N° Dossier','Demandeur','Département','Sous-préfecture','Village','Agent','Motif de rejet initial','Corrigé par','Date de correction']
-    : ['N° Dossier','Demandeur','Département','Sous-préfecture','Village','Agent','Motif de rejet','Assigné à'];
+    : ['N° Dossier','Demandeur','Département','Sous-préfecture','Village','Agent','Motif de rejet','Date de rejet'];
   const rows = filtered.map(d=>{
     const cq = pubCQ[d.id];
     const base = [d.id||'', ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim(), d.dept||'', d.sp||'', d.village||'', d.agent||'', motifDossier(d)];
-    return vueCorriges ? [...base, cq.corrige_par||'', fmtDate(cq.date_correction)] : [...base, cq.assigne_a||''];
+    return vueCorriges ? [...base, cq.corrige_par||'', fmtDate(cq.date_correction)] : [...base, fmtDate(cq.date_rejet)];
   });
   const csv = '\uFEFF' + [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n');
   const a = document.createElement('a');
@@ -6392,7 +6398,7 @@ function cqeExportCSV(){
 function cqeCleanTxt(t){ return String(t||'').replace(/_x000D_/g,'').replace(/\r/g,'').replace(/\n{2,}/g,'\n').trim(); }
 function cqeBuildCorrections(){
   const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
-  const q = (cqeFilterState.q||'').toLowerCase(), fDept = cqeFilterState.dept||'', fAgent = cqeFilterState.agent||'', fAssigne = cqeFilterState.assigne||'';
+  const q = (cqeFilterState.q||'').toLowerCase(), fDept = cqeFilterState.dept||'', fAgent = cqeFilterState.agent||'';
   const lignes = [];
   afor.forEach(d=>{
     const cq = pubCQ[d.id];
@@ -6404,7 +6410,6 @@ function cqeBuildCorrections(){
     if(q && !(String(d.id).toLowerCase().includes(q) || ((d.prenom||'')+' '+(d.nom_demandeur||'')).toLowerCase().includes(q) || (d.village||'').toLowerCase().includes(q))) return;
     if(fDept && d.dept!==fDept) return;
     if(fAgent && d.agent!==fAgent) return;
-    if(fAssigne && rejet){ const as = cq.assigne_a||''; if(fAssigne==='__non_assigne__' ? as : as!==fAssigne) return; }
     const motifs = [];
     if(rejet){
       if(cq.motif_qc1) motifs.push('QC1 : '+cqeCleanTxt(cq.motif_qc1));
@@ -6420,7 +6425,7 @@ function cqeBuildCorrections(){
         rejet && planInc ? 'Rejet CQ + plan incohérent' : (rejet ? 'Rejet CQ' : 'Plan incohérent'),
         motifs.join('\n'), planTxt,
         vois,
-        (rejet && cq.assigne_a) || (planInc ? pc.par : '') || '',
+        (planInc ? pc.par : '') || '',
         planInc ? (pc.date||'') : '',
         '', '', '']
     });
@@ -6508,17 +6513,6 @@ function cqeShowDossierDetail(id){
     row('Agent responsable', d.agent||'—') +
     row('Niveau global', cq.niveau||'—') +
     row('Superficie (contrôle)', cq.superf ? Number(cq.superf).toFixed(2)+' ha' : '—') +
-    (cq.rejete && !estCorrige ? (()=>{
-      const controleurs = getControleursQualite();
-      return `<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;">
-        <div style="color:var(--text3);margin-bottom:5px;">Assigné à</div>
-        <select onchange="cqeAssigner('${String(d.id).replace(/'/g,"\\'")}', this.value)" style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:5px 8px;font-size:12px;">
-          <option value="">— Non assigné —</option>
-          ${controleurs.map(c=>`<option value="${c}" ${cq.assigne_a===c?'selected':''}>${c}</option>`).join('')}
-          ${(cq.assigne_a && !controleurs.includes(cq.assigne_a)) ? `<option value="${cq.assigne_a}" selected>${cq.assigne_a}</option>` : ''}
-        </select>
-      </div>`;
-    })() : '') +
     (cq.motif_qc1 ? row('Motif rejet QC1', cq.motif_qc1) : '') +
     (cq.motif_qc2 ? row('Motif rejet QC2', cq.motif_qc2) : '') +
     (cq.motif_final ? row('Motif rejet validation finale', cq.motif_final) : '') +
@@ -6947,7 +6941,7 @@ function cqeEnsureDates(){
 }
 function cqeOverdue(){
   const t=cqeToday(), out=[];
-  (dossiersAFOR||[]).forEach(d=>{
+  dashFilterByZone(dossiersAFOR||[], dashZoneFilter).forEach(d=>{
     const c=pubCQ[d.id]; if(!c||!c.rejete||c.corrige||!c.date_rejet) return;
     const j=cqeDaysBetween(c.date_rejet,t);
     if(j!=null && j>=CQE_ALERT_DAYS) out.push({d,c,j});
@@ -6969,10 +6963,9 @@ function cqeRenderPilotage(){
   const retard=ag.filter(x=>x.j>=CQE_ALERT_DAYS), crit=ag.filter(x=>x.j>=CQE_CRIT_DAYS);
   const delais=corr.map(d=>{const c=pubCQ[d.id]; return (c.date_rejet&&c.date_correction&&!c.date_rejet_est)?cqeDaysBetween(c.date_rejet,c.date_correction):null;}).filter(v=>v!=null&&v>=0);
   const med=cqeMedian(delais);
-  // Activité de contrôle : contrôles de plan + corrections validées
-  const acts=[]; // {d:date, by}
-  Object.keys(planChecks||{}).forEach(id=>{ const k=planChecks[id]; if(k&&k.date) acts.push({d:k.date,by:k.par||'(inconnu)',t:k.statut==='conforme'?'ok':'inc',id}); });
-  Object.keys(pubCQ||{}).forEach(id=>{ const c=pubCQ[id]; if(c&&c.corrige&&c.date_correction) acts.push({d:c.date_correction,by:c.corrige_par||'(inconnu)',t:'corr',id}); });
+  // Activité de contrôle : contrôles de plan + corrections validées (zone active uniquement)
+  const zoneIds=new Set(afor.map(d=>String(d.id)));
+  const acts=cqeBuildActions().filter(a=>zoneIds.has(String(a.id)));
   const d7=new Date(Date.now()-6*86400000).toISOString().split('T')[0];
   const today=acts.filter(a=>a.d===t).length, sem=acts.filter(a=>a.d>=d7).length;
   kpiEl.innerHTML=[
@@ -6983,14 +6976,15 @@ function cqeRenderPilotage(){
     ['Contrôles aujourd\'hui',today,'#0f766e'],
     ['Contrôles 7 derniers jours',sem,'#0f766e']
   ].map(k=>`<div class="kpi"><div class="kpi-l">${k[0]}</div><div class="kpi-v" style="color:${k[2]}">${k[1]}</div></div>`).join('');
-  // Contrôleurs
+  // Contrôleurs : l'admin voit tous les contrôleurs de la zone, un contrôleur ne voit que lui-même
+  const isAdm = currentUser && currentUser.role==='admin';
+  const meName = cqeWho();
   const ctl={};
-  const C=n=>ctl[n]||(ctl[n]={n,tot:0,s7:0,ok:0,inc:0,corr:0,att:0,delais:[]});
-  acts.forEach(a=>{const c=C(a.by); c.tot++; if(a.d>=d7)c.s7++; if(a.t==='ok')c.ok++; if(a.t==='inc')c.inc++; if(a.t==='corr')c.corr++;});
-  (typeof getControleursQualite==='function'?getControleursQualite():[]).forEach(u=>{ const n=(typeof u==='string')?u:(u.nom||'').split('—')[0].trim(); if(n) C(n); });
-  attente.forEach(d=>{const a=pubCQ[d.id].assigne_a; if(a) C(String(a).split('—')[0].trim()).att++;});
-  corr.forEach(d=>{const c=pubCQ[d.id]; if(c.corrige_par&&c.date_rejet&&c.date_correction&&!c.date_rejet_est){const v=cqeDaysBetween(c.date_rejet,c.date_correction); if(v!=null&&v>=0) C(c.corrige_par).delais.push(v);}});
-  const ctlRows=Object.values(ctl).sort((a,b)=>b.tot-a.tot).map(c=>`<tr><td style="font-weight:600;">${planEsc(c.n)}</td><td>${c.tot}</td><td>${c.s7}</td><td>${c.ok}</td><td>${c.inc}</td><td>${c.corr}</td><td>${c.att}</td><td>${cqeFmtJ(cqeMedian(c.delais))}</td></tr>`).join('')||'<tr><td colspan="8" style="text-align:center;color:#888;">Aucune activité enregistrée pour l\'instant.</td></tr>';
+  const C=n=>ctl[n]||(ctl[n]={n,tot:0,s7:0,ok:0,inc:0,corr:0,delais:[]});
+  acts.forEach(a=>{ if(!isAdm && a.by!==meName) return; const c=C(a.by); c.tot++; if(a.d>=d7)c.s7++; if(a.t==='ok')c.ok++; if(a.t==='inc')c.inc++; if(a.t==='corr')c.corr++;});
+  cqeUsers().forEach(u=>{ if(!isAdm && u.name!==meName) return; if(dashZoneFilter==='all' || u.zone===dashZoneFilter) C(u.name); });
+  corr.forEach(d=>{const c=pubCQ[d.id]; if(c.corrige_par&&ctl[c.corrige_par]&&c.date_rejet&&c.date_correction&&!c.date_rejet_est){const v=cqeDaysBetween(c.date_rejet,c.date_correction); if(v!=null&&v>=0) ctl[c.corrige_par].delais.push(v);}});
+  const ctlRows=Object.values(ctl).sort((a,b)=>b.tot-a.tot).map(c=>`<tr><td style="font-weight:600;">${planEsc(c.n)}</td><td>${c.tot}</td><td>${c.s7}</td><td>${c.ok}</td><td>${c.inc}</td><td>${c.corr}</td><td>${cqeFmtJ(cqeMedian(c.delais))}</td></tr>`).join('')||'<tr><td colspan="7" style="text-align:center;color:#888;">Aucune activité enregistrée pour l\'instant.</td></tr>';
   // Agents
   const A={};
   const AG=n=>A[n]||(A[n]={n,dos:0,cq:0,rej:0,att:0,retard:0,delais:[]});
@@ -6999,13 +6993,13 @@ function cqeRenderPilotage(){
     return `<tr><td style="font-weight:600;">${planEsc(a.n)}</td><td>${a.dos}</td><td>${a.cq}</td><td>${a.rej}</td><td style="font-weight:700;color:${col}">${tx}%</td><td>${a.att}</td><td style="${a.retard?'color:#dc2626;font-weight:700;':''}">${a.retard}</td><td>${cqeFmtJ(cqeMedian(a.delais))}</td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:#888;">Aucun dossier contrôlé.</td></tr>';
   // Retards
   const lateRows=retard.sort((a,b)=>b.j-a.j).slice(0,100).map(x=>{const c=pubCQ[x.d.id]; const col=x.j>=CQE_CRIT_DAYS?'#991b1b':'#d97706';
-    return `<tr><td>${planEsc(x.d.id)}</td><td>${planEsc(x.d.agent||'—')}</td><td>${planEsc(c.assigne_a||'non assigné')}</td><td>${planEsc(c.date_rejet)}${c.date_rejet_est?' <span title="Date du premier constat (rejet antérieur au suivi)">*</span>':''}</td><td style="font-weight:700;color:${col}">${x.j} j</td><td><button class="btn-s" onclick="cqeShowDossierDetail('${String(x.d.id).replace(/'/g,"\\'")}')">Voir</button></td></tr>`;}).join('')||'<tr><td colspan="6" style="text-align:center;color:#16a34a;">Aucune correction en retard.</td></tr>';
+    return `<tr><td>${planEsc(x.d.id)}</td><td>${planEsc(x.d.agent||'—')}</td><td>${planEsc(c.date_rejet)}${c.date_rejet_est?' <span title="Date du premier constat (rejet antérieur au suivi)">*</span>':''}</td><td style="font-weight:700;color:${col}">${x.j} j</td><td><button class="btn-s" onclick="cqeShowDossierDetail('${String(x.d.id).replace(/'/g,"\\'")}')">Voir</button></td></tr>`;}).join('')||'<tr><td colspan="5" style="text-align:center;color:#16a34a;">Aucune correction en retard.</td></tr>';
   const th=h=>`<thead><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr></thead>`;
   const hasEst=rej.some(d=>pubCQ[d.id].date_rejet_est);
   el.innerHTML=`
    <div class="tw" style="padding:12px;margin-bottom:12px;"><div style="font-weight:700;margin-bottom:6px;">Contrôles par jour (14 derniers jours)</div><div style="height:200px;"><canvas id="cqe-pilot-cv"></canvas></div></div>
-   <div class="tw" style="margin-bottom:12px;overflow:auto;"><div style="font-weight:700;padding:10px 12px;">Corrections en retard (≥ ${CQE_ALERT_DAYS} jours)</div><table>${th(['Dossier','Agent','Assigné à','Rejeté le','Attente','']) }<tbody>${lateRows}</tbody></table>${hasEst?'<div style="padding:6px 12px;font-size:11px;color:#777;">* Rejet antérieur au suivi : le délai compte à partir du premier constat dans l\'application.</div>':''}</div>
-   <div class="tw" style="margin-bottom:12px;overflow:auto;"><div style="font-weight:700;padding:10px 12px;">Travail des contrôleurs qualité</div><table>${th(['Contrôleur','Total contrôles','7 derniers j','Plans conformes','Plans incohérents','Corrections validées','Dossiers assignés en attente','Délai médian'])}<tbody>${ctlRows}</tbody></table></div>
+   <div class="tw" style="margin-bottom:12px;overflow:auto;"><div style="font-weight:700;padding:10px 12px;">Corrections en retard (≥ ${CQE_ALERT_DAYS} jours)</div><table>${th(['Dossier','Agent','Rejeté le','Attente',''])}<tbody>${lateRows}</tbody></table>${hasEst?'<div style="padding:6px 12px;font-size:11px;color:#777;">* Rejet antérieur au suivi : le délai compte à partir du premier constat dans l\'application.</div>':''}</div>
+   <div class="tw" style="margin-bottom:12px;overflow:auto;"><div style="font-weight:700;padding:10px 12px;">${isAdm?'Évaluation des contrôleurs qualité':'Mon travail'}${isAdm?` <span style="float:right;font-weight:400;font-size:12px;">Du <input type="date" id="cqe-ev-from" style="font-size:12px;"> au <input type="date" id="cqe-ev-to" style="font-size:12px;"> <button class="btn-p" style="font-size:12px;" onclick="cqeExportEvaluation()">⬇ Exporter l'évaluation (Excel)</button></span>`:''}</div><table>${th(['Contrôleur','Total contrôles','7 derniers j','Plans conformes','Plans incohérents','Corrections validées','Délai médian'])}<tbody>${ctlRows}</tbody></table></div>
    <div class="tw" style="overflow:auto;"><div style="font-weight:700;padding:10px 12px;">Qualité par agent (du plus au moins rejeté)</div><table>${th(['Agent','Dossiers','Contrôlés','Rejetés','Taux de rejet','En attente de correction','En retard','Délai médian de correction'])}<tbody>${agRows}</tbody></table></div>`;
   // graphique
   const days=[]; for(let i=13;i>=0;i--) days.push(new Date(Date.now()-i*86400000).toISOString().split('T')[0]);
@@ -7021,6 +7015,56 @@ function cqeRenderPilotage(){
         options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,ticks:{precision:0}}}}});
     }
   }catch(e){ console.warn('pilot chart',e); }
+}
+
+// Contrôleurs qualité déclarés (nom, identifiant, zone). Sans zone renseignée → Cavally par défaut.
+function cqeUsers(){
+  const seen=new Set();
+  return Object.values(users_db||{}).filter(u=>u&&u.id&&u.role==='cqe'&&!seen.has(u.id)&&seen.add(u.id))
+    .map(u=>({id:u.id, name:String(u.nom||'').split('—')[0].trim(), zone:u.zone||'cavally', last_login:u.last_login||null}));
+}
+// Toutes les actions de contrôle : {id, d(date), by, t:'ok'|'inc'|'corr'}
+function cqeBuildActions(){
+  const seen=new Set(), out=[];
+  const add=(id,d,by,t)=>{ if(!id||!d||!by) return; const k=id+'|'+t+'|'+d+'|'+by; if(seen.has(k)) return; seen.add(k); out.push({id,d,by,t}); };
+  Object.keys(planChecks||{}).forEach(id=>{ const k=planChecks[id]; if(k&&k.date) add(id,k.date,k.par||'(inconnu)',k.statut==='conforme'?'ok':'inc'); });
+  Object.keys(pubCQ||{}).forEach(id=>{ const c=pubCQ[id]; if(!c) return;
+    if(c.corrige&&c.date_correction) add(id,c.date_correction,c.corrige_par||'(inconnu)','corr');
+    (c.ev||[]).forEach(e=>{ if(e.t==='plan_conforme') add(id,e.d,e.by||'(inconnu)','ok'); else if(e.t==='plan_incoherent') add(id,e.d,e.by||'(inconnu)','inc'); else if(e.t==='corrige') add(id,e.d,e.by||'(inconnu)','corr'); });
+  });
+  return out;
+}
+function cqeExportEvaluation(){
+  if(!currentUser || currentUser.role!=='admin'){ showToast('Réservé à l\'administrateur.'); return; }
+  if(typeof XLSX==='undefined'){ showToast('Bibliothèque Excel indisponible.'); return; }
+  const from=(document.getElementById('cqe-ev-from')||{}).value||'', to=(document.getElementById('cqe-ev-to')||{}).value||'';
+  const dosById=new Map((dossiersAFOR||[]).map(d=>[String(d.id),d]));
+  const users=cqeUsers(); const byName=new Map(users.map(u=>[u.name,u]));
+  const t=cqeToday();
+  const acts=cqeBuildActions().filter(a=>(!from||a.d>=from)&&(!to||a.d<=to));
+  const zl=z=>(PROJECT_ZONES[z]||{}).label||z;
+  const stat={}; const S=n=>stat[n]||(stat[n]={n,days:new Set(),ok:0,inc:0,corr:0,first:null,last:null,delais:[]});
+  users.forEach(u=>S(u.name));
+  acts.forEach(a=>{ const x=S(a.by); x.days.add(a.d); x[a.t]++; if(!x.first||a.d<x.first)x.first=a.d; if(!x.last||a.d>x.last)x.last=a.d;
+    if(a.t==='corr'){ const c=pubCQ[a.id]; if(c&&c.date_rejet&&!c.date_rejet_est){ const v=cqeDaysBetween(c.date_rejet,c.date_correction); if(v!=null&&v>=0) x.delais.push(v);} } });
+  const rows=Object.values(stat).map(x=>{
+    const u=byName.get(x.n); const tot=x.ok+x.inc+x.corr; const plans=x.ok+x.inc;
+    return {'Contrôleur':x.n,'Identifiant':u?u.id:'','Zone':u?zl(u.zone):'(compte supprimé ou inconnu)','Période':(from||'début')+' → '+(to||t),
+      'Jours d\'activité':x.days.size,'Total contrôles':tot,'Moyenne par jour actif':x.days.size?Math.round(tot/x.days.size*10)/10:0,
+      'Plans vérifiés':plans,'Plans conformes':x.ok,'Plans incohérents signalés':x.inc,'% incohérences détectées':plans?Math.round(x.inc/plans*100)+'%':'',
+      'Corrections validées':x.corr,'Délai médian de correction (j)':(()=>{const m=cqeMedian(x.delais);return m==null?'':Math.round(m*10)/10;})(),
+      'Première activité':x.first||'','Dernière activité':x.last||'','Jours depuis dernière activité':x.last?cqeDaysBetween(x.last,t):'','Dernière connexion':u&&u.last_login?u.last_login.slice(0,10):''};
+  }).sort((a,b)=>b['Total contrôles']-a['Total contrôles']);
+  const typeL={ok:'Plan conforme',inc:'Plan incohérent',corr:'Correction validée'};
+  const det=acts.sort((a,b)=>a.d<b.d?1:-1).map(a=>{ const d=dosById.get(String(a.id))||{}; const c=pubCQ[a.id]||{}; const u=byName.get(a.by);
+    return {'Date':a.d,'Contrôleur':a.by,'Zone':u?zl(u.zone):'','Action':typeL[a.t],'N° dossier':a.id,'Département':d.dept||'','Agent':d.agent||'',
+      'Commentaire':a.t==='inc'?((planChecks[a.id]||{}).commentaire||''):'','Date de rejet':c.date_rejet||''}; });
+  const wb=XLSX.utils.book_new();
+  const w1=XLSX.utils.json_to_sheet(rows.length?rows:[{'Contrôleur':'Aucune donnée'}]); w1['!cols']=Array(17).fill({wch:20});
+  const w2=XLSX.utils.json_to_sheet(det.length?det:[{'Date':'Aucune action'}]); w2['!cols']=Array(9).fill({wch:20});
+  XLSX.utils.book_append_sheet(wb,w1,'Évaluation'); XLSX.utils.book_append_sheet(wb,w2,'Détail des actions');
+  XLSX.writeFile(wb,'Evaluation_controleurs_qualite_'+t+'.xlsx');
+  showToast('Évaluation exportée ('+rows.length+' contrôleur(s), '+det.length+' action(s)).');
 }
 setTimeout(()=>{ try{ cqeEnsureDates(); cqeUpdateBadge(); }catch(e){} }, 4000);
 
@@ -7058,18 +7102,6 @@ function cqeAnnulerCorrection(id){
   cqeRenderAll();
   cqeShowDossierDetail(id);
   showToast('Correction annulée pour le dossier '+id+' — remis en rejeté.');
-}
-
-// ── Assigner un dossier rejeté (encore non corrigé) à un contrôleur qualité pour suivi ──
-function cqeAssigner(id, nom){
-  const cq = pubCQ[id];
-  if(!cq) return;
-  cq.assigne_a = nom || null;
-  cq.assigne_date = nom ? cqeToday() : null;
-  cqeLogEvent(id, nom?'assigne':'desassigne');
-  pubSave();
-  cqeRenderAll();
-  showToast(nom ? 'Dossier '+id+' assigné à '+nom+'.' : 'Dossier '+id+' désassigné.');
 }
 
 function pubInit(){
@@ -10574,7 +10606,7 @@ async function authInit(){
     if(stored){
       const session = JSON.parse(stored);
       if(users_db[session.id] && users_db[session.id].id){
-        currentUser = session;
+        currentUser = Object.assign({}, session, {role:users_db[session.id].role||session.role, zone:users_db[session.id].zone||null});
         authApplyUI();
         document.getElementById('auth-overlay').style.display = 'none';
         users_db[session.id].last_login = new Date().toISOString();
@@ -10634,7 +10666,7 @@ async function authLogin(){
     }
     // 4. Connexion réussie
     err.textContent='Connexion réussie !';
-    currentUser = {id:user.id, nom:user.nom, role:user.role, loginAt:new Date().toISOString()};
+    currentUser = {id:user.id, nom:user.nom, role:user.role, zone:user.zone||null, loginAt:new Date().toISOString()};
     localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(currentUser));
     // Backup users_db dans localStorage
     try{ localStorage.setItem('presfor_users_backup', JSON.stringify(users_db)); }catch(e){}
@@ -10687,7 +10719,8 @@ function authApplyUI(){
     // Contrôleur qualité : seul module accessible, on y bascule directement (le reste de la
     // navigation est masqué par CSS, mais un module resté ouvert d'une session précédente
     // doit quand même être remplacé par CQE).
-    if(role==='cqe') switchModule('cqe');
+    if(role==='cqe'){ cqeLockZone(); switchModule('cqe'); }
+    else { const zs=document.getElementById('zone-selector'); if(zs) zs.style.display=''; }
   } else {
     ui.style.display = 'none';
     document.getElementById('tb-logout-btn').style.display = 'none';
@@ -10749,7 +10782,7 @@ function adminLoadUsers(){
   const _seenR = new Set();
   tbody.innerHTML = list.filter(u=>!_seenR.has(u.id)&&_seenR.add(u.id)).map(u=>{
     const isMe = u.id === currentUser.id;
-    const roleB = u.role==='admin'?'<span class="badge b-amber">Admin</span>':u.role==='ce'?'<span class="badge b-green">CE — Visuel</span>':u.role==='gnss'?'<span class="badge b-green">GNSS — Visuel</span>':'<span class="badge b-blue">Agent</span>';
+    const roleB = u.role==='admin'?'<span class="badge b-amber">Admin</span>':u.role==='ce'?'<span class="badge b-green">CE — Visuel</span>':u.role==='gnss'?'<span class="badge b-green">GNSS — Visuel</span>':u.role==='cqe'?`<span class="badge b-blue">Contrôle qualité</span><br><select onchange="adminSetZone('${u.id}',this.value)" style="margin-top:4px;font-size:11px;"><option value="cavally" ${(u.zone||'cavally')==='cavally'?'selected':''}>Région : Cavally</option><option value="worodougou" ${u.zone==='worodougou'?'selected':''}>Région : Worodougou</option></select>`:'<span class="badge b-blue">Agent</span>';
     const created = u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—';
     const last = u.last_login
       ? new Date(u.last_login).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
@@ -10855,6 +10888,7 @@ async function adminCreateUser(){
     const hash = await hashPassword(pwd);
     const role = document.getElementById('adm-role')?.value || 'agent';
     const userData = {id, nom, role, password_hash:hash, created_at:new Date().toISOString(), last_login:null};
+    if(role==='cqe') userData.zone = document.getElementById('adm-zone')?.value || 'cavally';
     // 1. Mémoire en premier → affichage immédiat garanti
     users_db[id] = userData;
     adminLoadUsers();
@@ -10880,6 +10914,17 @@ async function adminCreateUser(){
 }
 
 
+
+async function adminSetZone(id, zone){
+  if(!users_db[id]) return;
+  try{
+    const patch={}; patch['users_db/'+fbKey(id)+'/zone']=zone;
+    const r=await fetch(FIREBASE_URL+'/presfor.json',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch),signal:AbortSignal.timeout(10000)});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    users_db[id].zone=zone;
+    showToast('Région de "'+id+'" : '+(PROJECT_ZONES[zone]||{}).label+'. Effective à sa prochaine connexion.');
+  }catch(e){ showToast('Erreur : '+e.message); adminLoadUsers(); }
+}
 
 async function adminDeleteUser(id){
   if(!confirm('Supprimer le compte "'+id+'" ?')) return;
