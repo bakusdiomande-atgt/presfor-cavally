@@ -1218,6 +1218,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
           <button class="btn-s" id="cqe-tab-dossiers" onclick="cqeSetTab('dossiers')" style="font-weight:700;">Dossiers CQ</button>
           <button class="btn-s" id="cqe-tab-controle" onclick="cqeSetTab('controle')">Contrôle des dossiers</button>
           <button class="btn-s" id="cqe-tab-plans" onclick="cqeSetTab('plans')">Plans parcellaires</button>
+          <button class="btn-s" id="cqe-tab-rapprochement" onclick="cqeSetTab('rapprochement')">Rapprochement des sources</button>
           <button class="btn-s" id="cqe-tab-pilotage" onclick="cqeSetTab('pilotage')">Pilotage CQE <span id="cqe-pilot-badge" style="display:none;background:#dc2626;color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:3px;"></span></button>
         </div>
       </div>
@@ -2011,7 +2012,7 @@ function dosRenderPage(){
           <button class="btn-xs" onclick="dosEdit('${d.id}')">✏</button>
           <button class="btn-xs btn-xs-red" onclick="dosDel('${d.id}')">✕</button>
         </div>`
-      : `<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:var(--surface2);color:var(--text3)">${d._src==='afor'?'AFOR':d._src==='gnss'?'GNSS':''}</span>`;
+      : (d._src==='afor' ? `<button class="btn-xs" title="Fiche complète (toutes les sources)" onclick="dosOpenFiche('${String(d.id).replace(/'/g,"\\'")}')">📋</button>` : `<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:var(--surface2);color:var(--text3)">${d._src==='gnss'?'GNSS':''}</span>`);
     return `<tr>
       <td class="td-mono" style="font-size:11px">${d.id||'—'} ${src}</td>
       <td style="font-size:12px;font-weight:500">${nom}</td>
@@ -6238,6 +6239,7 @@ function cqeRenderAll(){
   if(typeof cqeTab!=='undefined' && cqeTab==='plans'){ planRenderTab(); return; }
   if(typeof cqeTab!=='undefined' && cqeTab==='pilotage'){ cqeRenderPilotage(); return; }
   if(typeof cqeTab!=='undefined' && cqeTab==='controle'){ cqeRenderControle(); return; }
+  if(typeof cqeTab!=='undefined' && cqeTab==='rapprochement'){ recRender(); return; }
   const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
   const cqIds = Object.keys(pubCQ||{});
   const aforIds = new Set(afor.map(d=>d.id));
@@ -6570,6 +6572,7 @@ function planCodeFromName(name){
 function cqeSetTab(t){
   cqeTab = t;
   const a=document.getElementById('cqe-tab-dossiers'), b=document.getElementById('cqe-tab-plans');
+  const rp=document.getElementById('cqe-tab-rapprochement'); if(rp) rp.style.fontWeight = t==='rapprochement'?'700':'400';
   const k=document.getElementById('cqe-tab-controle'); if(k) k.style.fontWeight = t==='controle'?'700':'400';
   const c=document.getElementById('cqe-tab-pilotage'); if(c) c.style.fontWeight = t==='pilotage'?'700':'400';
   if(a) a.style.fontWeight = t==='dossiers'?'700':'400';
@@ -7094,6 +7097,7 @@ function cqeCtlOpen(id){
       ${cq&&cq.rejete?row('Contrôle AFOR',cq.corrige?'Rejeté puis corrigé':'<span style="color:#dc2626;">Rejeté</span>'):''}
       ${k?row('Dernier contrôle',(k.statut==='conforme'?'Conforme':'Rejeté')+' · '+esc(k.par||'')+' · '+esc(k.date||'')):''}
       ${k&&k.motif?row('Motif',esc(k.motif)):''}
+      <div style="padding:8px 0 0;"><button class="btn-s" onclick="dosOpenFiche('${qid}')">📋 Fiche complète (toutes les sources)</button></div>
       ${hasPlan?`<div style="padding:10px 0;"><button class="btn-s" onclick="cqeCtlClose();planOpen('${qid}')">Voir / vérifier le plan parcellaire</button></div>`:'<div style="padding:8px 0;font-size:12px;color:var(--text3);">Aucun plan importé pour ce dossier.</div>'}
       ${can?`<div style="margin-top:8px;"><label style="font-size:11px;color:var(--text3);">Motif du rejet (obligatoire si rejeté)</label>
         <input id="ctl-motif" style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;margin:3px 0 8px;" placeholder="Ex. : voisin Sud manquant">
@@ -7120,6 +7124,159 @@ function cqeCtlSubmit(id,statut){
   cqeCtlClose();
   showToast(statut==='conforme'?'Dossier '+id+' : conforme.':'Dossier '+id+' rejeté — il apparaît dans « Dossiers CQ » pour correction.');
   cqeRenderAll();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RAPPROCHEMENT DES SOURCES — fiche complète d'un dossier (AFOR + tablettes + GNSS + plan + contrôle)
+// Règle de valeur retenue : AFOR fait foi ; à défaut tablette, puis GNSS. Étape et dates : la plus avancée.
+// ═══════════════════════════════════════════════════════════════
+function recNormName(x){ return String(x||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z0-9]+/g,' ').trim(); }
+function recNameTokens(x){ return recNormName(x).split(' ').filter(t=>t.length>1); }
+// Noms cohérents : mêmes mots (ordre indifférent) ou l'un contenu dans l'autre
+function recNameCompat(a,b){
+  const A=recNameTokens(a), B=recNameTokens(b); if(!A.length||!B.length) return null;
+  const sa=new Set(A), sb=new Set(B);
+  const inter=A.filter(t=>sb.has(t)).length;
+  if(inter===0) return false;
+  return inter>=Math.min(sa.size,sb.size) || inter/Math.max(sa.size,sb.size)>=0.6;
+}
+function recDate(v){ if(!v) return null; const m=String(v).match(/^(\d{4}-\d{2}-\d{2})/); return m?m[1]:null; }
+function recDayDiff(a,b){ const x=Date.parse(a), y=Date.parse(b); return (isNaN(x)||isNaN(y))?null:Math.round(Math.abs(x-y)/86400000); }
+const REC_STEPS=[ // étape AFOR → (champ date AFOR, extracteur tablette)
+  {k:'DD',label:'Demande',      tab:t=>t.requests&&recDate(t.requests.requestDate)},
+  {k:'RDC',label:'Recensement droits coutumiers', tab:t=>t.minutes&&recDate(t.minutes.minutesDate)},
+  {k:'CL',label:'Constat de limite',  tab:t=>t.observations&&recDate(t.observations.observationDate)},
+  {k:'OV',label:'Ouverture publicité',tab:t=>(t.openAdvertising&&recDate(t.openAdvertising.openDate))||(t.advertising&&recDate(t.advertising.openDate))},
+  {k:'CP',label:'Clôture publicité',  tab:t=>(t.closeAdvertising&&recDate(t.closeAdvertising.closeDate))||(t.advertising&&recDate(t.advertising.closeDate))},
+  {k:'AP',label:'Existence paisible', tab:t=>t.existence&&recDate(t.existence.dateExistence)},
+  {k:'VA',label:'Validation',         tab:t=>t.validation&&(recDate(t.validation.validationDate)||recDate(t.validation.creationDate))},
+];
+function recFiche(d){
+  const t=(typeof tabMatchForDossier==='function'&&tabMatchForDossier(d))||{};
+  const req=t.requests||null, obs=t.observations||null;
+  const gi=(typeof gnssForDossier==='function')?gnssForDossier(d):null, ge=gi&&gi.entries&&gi.entries[0];
+  const cq=pubCQ[d.id]||null, plan=(typeof planGetFor==='function')?planGetFor(d):null, ctl=cqeCtl[d.id]||null;
+  const rows=[]; // {sec,champ,afor,tab,gnss,retenu,etat:'ok'|'ecart'|'manque'|'info', note}
+  const add=(sec,champ,a,tb,g,retenu,etat,note)=>rows.push({sec,champ,afor:a==null||a===''?'':String(a),tab:tb==null||tb===''?'':String(tb),gnss:g==null||g===''?'':String(g),retenu:retenu==null?'':String(retenu),etat,note:note||''});
+  const has=v=>v!=null&&v!=='';
+  // Identité
+  const nomA=((d.prenom||'')+' '+(d.nom_demandeur||d.nom||'')).trim(), nomT=req?req.label:'', nomG=ge?ge.nom_demand:'';
+  let etat='ok';
+  if(has(nomA)&&has(nomT)&&recNameCompat(nomA,nomT)===false) etat='ecart';
+  if(has(nomA)&&has(nomG)&&recNameCompat(nomA,nomG)===false) etat='ecart';
+  if(!has(nomA)&&!has(nomT)&&!has(nomG)) etat='manque';
+  add('Identité','Demandeur',nomA,nomT,nomG,nomA||nomT||nomG,etat);
+  const gT=req&&req.applicant&&req.applicant.gender?(String(req.applicant.gender).toUpperCase().startsWith('F')?'F':'H'):'';
+  add('Identité','Genre',d.genre,gT,'',d.genre||gT,(d.genre&&gT&&d.genre!==gT)?'ecart':((d.genre||gT)?'ok':'manque'));
+  const natT=req&&req.applicant?req.applicant.nationality:'';
+  add('Identité','Nationalité','',natT,'',natT,natT?'ok':'manque');
+  const bd=req&&req.applicant?recDate(req.applicant.birthdate):'';
+  add('Identité','Date de naissance','',bd,'',bd,bd?'ok':'manque');
+  add('Identité','Téléphone','',req&&req.applicant?req.applicant.phoneNumber:'','',req&&req.applicant?req.applicant.phoneNumber:'',(req&&req.applicant&&req.applicant.phoneNumber)?'ok':'manque');
+  // Localisation
+  const land=req&&req.land||{}, vil=land.village||{}, spT=vil.subPrefecture||{}, dpT=spT.department||{};
+  const cmp=(a,b,c)=>{ const n=[a,b,c].filter(has).map(recNormName); return n.length>1&&new Set(n).size>1?'ecart':(n.length?'ok':'manque'); };
+  add('Localisation','Village',d.village,vil.label,ge&&ge.village,d.village||vil.label||(ge&&ge.village),cmp(d.village,vil.label,ge&&ge.village));
+  add('Localisation','Sous-préfecture',d.sp,spT.label,ge&&ge.sp,d.sp||spT.label||(ge&&ge.sp),cmp(d.sp,spT.label,ge&&ge.sp));
+  add('Localisation','Département',d.dept,dpT.label,ge&&ge.dept,d.dept||dpT.label||(ge&&ge.dept),cmp(d.dept,dpT.label,ge&&ge.dept));
+  add('Localisation','Code parcelle',d.code_parcelle,land.numParcelle||(req&&req.applicant&&req.applicant.numParcelle),ge&&ge.n_demcge,d.code_parcelle||land.numParcelle||'',((d.code_parcelle||land.numParcelle||(ge&&ge.n_demcge))?'ok':'manque'));
+  // Superficies
+  const sA=d.superficie_declaree||0, sT=(land.estimatedArea!=null&&land.estimatedArea!=='')?Number(land.estimatedArea):0, sO=obs&&obs.estimatedArea?Number(obs.estimatedArea):0, sG=gi?gi.superficie:0, sC=cq&&cq.superf?parseFloat(cq.superf):0;
+  const vals=[sA,sT,sO,sG,sC].filter(v=>v>0);
+  const spread=vals.length>1?(Math.max(...vals)-Math.min(...vals))/Math.max(...vals):0;
+  const f2=v=>v>0?(Math.round(v*100)/100)+' ha':'';
+  add('Superficie','Superficie (ha)',f2(sA)+(sC?(sA?' · ':'')+'contrôle '+f2(sC):''),f2(sT)+(sO?(sT?' · ':'')+'constat '+f2(sO):''),f2(sG),f2(sG||sC||sA||sO||sT),vals.length?(spread>0.10?'ecart':'ok'):'manque',spread>0.10?'Écart de '+Math.round(spread*100)+' % entre sources':'');
+  // Voisins
+  const vA=aforParseVoisins(d.voisins).map(x=>x.nom), vT=((req&&req.neighborhood)||[]).map(x=>x&&x.nameOfNeighbor).filter(Boolean);
+  const nA=new Set(vA.map(recNormName)), nT=new Set(vT.map(recNormName));
+  let vEtat='manque', vNote='';
+  if(nA.size&&nT.size){ const comm=[...nA].filter(x=>nT.has(x)).length; vEtat=comm===nA.size&&comm===nT.size?'ok':(comm>0?'ecart':'ecart'); if(vEtat==='ecart') vNote=comm+' voisin(s) en commun sur '+nA.size+' (AFOR) / '+nT.size+' (tablette)'; }
+  else if(nA.size||nT.size) vEtat='ok';
+  add('Voisins','Voisins',vA.join(', '),vT.join(', '),'',(vA.length?vA:vT).join(', '),vEtat,vNote);
+  // Étape + dates
+  const rank=k=>REC_STEPS.findIndex(x=>x.k===k);
+  let tabEtape=''; REC_STEPS.forEach(x=>{ if(x.tab(t)) tabEtape=x.k; }); if(req&&!tabEtape) tabEtape='DD';
+  const rA=rank(d.etape), rT=rank(tabEtape);
+  let eEtat=(d.etape&&tabEtape)?(rA===rT?'ok':'ecart'):((d.etape||tabEtape)?'ok':'manque');
+  const best=rT>rA?tabEtape:(d.etape||tabEtape);
+  add('Avancement','Étape atteinte',d.etape,tabEtape,'',best,eEtat,(rT>rA)?'La tablette est plus avancée que l\'AFOR (synchronisation en retard ?)':(rA>rT&&tabEtape?'L\'AFOR est plus avancée que la tablette (export tablette ancien ?)':''));
+  REC_STEPS.forEach(x=>{
+    const a=recDate(d['date_'+x.k]), tb=x.tab(t); const df=(a&&tb)?recDayDiff(a,tb):null;
+    if(!a&&!tb && rank(x.k)>Math.max(rA,rT)) return;
+    add('Avancement','Date — '+x.label,a,tb,'',a||tb||'',(a&&tb)?(df>3?'ecart':'ok'):((a||tb)?'ok':'manque'),df>3?'Écart de '+df+' jours':'');
+  });
+  // Contrôle / plan / GNSS
+  add('Contrôle','Levé GNSS','',  '', gi?(gi.nb_parcelles+' parcelle(s), '+f2(gi.superficie)):'', gi?'Levé':'Non levé', gi?'ok':'manque');
+  add('Contrôle','Contrôle AFOR (QC)',cq?(cq.rejete?(cq.corrige?'Rejeté puis corrigé':'Rejeté'):'Conforme')+(cq.motif_final||cq.motif_qc2||cq.motif_qc1?' — '+(cq.motif_final||cq.motif_qc2||cq.motif_qc1):''):'','','',cq?'Renseigné':'',cq?(cq.rejete&&!cq.corrige?'ecart':'ok'):'manque');
+  add('Contrôle','Contrôle dans l\'application','','','',ctl?((ctl.statut==='conforme'?'Conforme':'Rejeté')+' · '+ctl.par+' · '+ctl.date):'',ctl?(ctl.statut==='conforme'?'ok':'ecart'):'manque');
+  const pc=planChecks[d.id];
+  add('Contrôle','Plan parcellaire','','','',plan?('Importé'+(pc?' · '+(pc.statut==='conforme'?'validé':'incohérent')+' ('+(pc.par||'')+')':' · à vérifier')):'Aucun plan',plan?(pc&&pc.statut!=='conforme'?'ecart':'ok'):'manque');
+  const sources={AFOR:true,Tablette:!!req,'Tablette (étapes)':REC_STEPS.filter(x=>x.tab(t)).length,GNSS:!!gi,Plan:!!plan};
+  return {rows,sources,nEcarts:rows.filter(r=>r.etat==='ecart').length,nManque:rows.filter(r=>r.etat==='manque').length};
+}
+function recCloseFiche(){ const m=document.getElementById('rec-modal'); if(m) m.remove(); }
+function dosOpenFiche(id){
+  const d=(dossiersAFOR||[]).find(x=>String(x.id)===String(id)) || (typeof dossiers!=='undefined'?dossiers.find(x=>String(x.id)===String(id)):null);
+  if(!d){ showToast('Dossier introuvable.'); return; }
+  recCloseFiche();
+  const f=recFiche(d), esc=planEsc;
+  const ic={ok:'<span style="color:#16a34a;">✓</span>',ecart:'<span style="color:#dc2626;font-weight:700;">⚠ écart</span>',manque:'<span style="color:#94a3b8;">— manquant</span>'};
+  let sec='', body='';
+  f.rows.forEach(r=>{
+    if(r.sec!==sec){ sec=r.sec; body+=`<tr><td colspan="6" style="background:var(--surface2);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">${esc(sec)}</td></tr>`; }
+    body+=`<tr style="${r.etat==='ecart'?'background:#fef2f2;':''}"><td style="font-weight:600;">${esc(r.champ)}</td><td>${esc(r.afor)||'<span style="color:#cbd5e1;">—</span>'}</td><td>${esc(r.tab)||'<span style="color:#cbd5e1;">—</span>'}</td><td>${esc(r.gnss)||'<span style="color:#cbd5e1;">—</span>'}</td><td style="font-weight:600;">${esc(r.retenu)}</td><td>${ic[r.etat]}${r.note?'<div style="font-size:10px;color:#b91c1c;">'+esc(r.note)+'</div>':''}</td></tr>`;
+  });
+  const src=f.sources;
+  const m=document.createElement('div'); m.id='rec-modal';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;';
+  m.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:100%;max-width:980px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;">
+   <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;">
+     <div><h3 style="font-family:'Syne',sans-serif;font-size:15px;margin:0;">Fiche complète — dossier ${esc(d.id)}</h3>
+     <div style="font-size:11px;color:var(--text3);margin-top:3px;">Sources rapprochées : AFOR ✓ · Tablette ${src.Tablette?'✓ ('+src['Tablette (étapes)']+' étape(s))':'✗'} · GNSS ${src.GNSS?'✓':'✗'} · Plan ${src.Plan?'✓':'✗'} — <b style="color:${f.nEcarts?'#dc2626':'#16a34a'}">${f.nEcarts} écart(s)</b>, ${f.nManque} information(s) manquante(s)</div></div>
+     <button class="btn-s" onclick="recCloseFiche()">✕ Fermer</button></div>
+   <div style="overflow:auto;padding:0 8px 12px;"><table style="font-size:12px;"><thead><tr><th>Champ</th><th>Base AFOR</th><th>Tablette</th><th>GNSS</th><th>Valeur retenue</th><th>État</th></tr></thead><tbody>${body}</tbody></table></div></div>`;
+  document.body.appendChild(m);
+}
+// Rapprochement global (zone active) : synthèse + écarts + enregistrements orphelins
+function recGlobal(){
+  const afor=dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
+  const champs={}, ecarts=[], sansTab=[], res={total:afor.length,avecTab:0,avecGnss:0,avecPlan:0,complets:0,avecEcart:0};
+  afor.forEach(d=>{
+    const f=recFiche(d);
+    if(f.sources.Tablette) res.avecTab++; else sansTab.push(d);
+    if(f.sources.GNSS) res.avecGnss++; if(f.sources.Plan) res.avecPlan++;
+    if(f.nEcarts) res.avecEcart++;
+    if(f.sources.Tablette&&f.sources.GNSS&&f.nEcarts===0) res.complets++;
+    f.rows.forEach(r=>{ if(r.etat==='ecart'&&r.sec!=='Contrôle'){ champs[r.champ]=(champs[r.champ]||0)+1; ecarts.push({d,r}); } });
+  });
+  // Tablettes sans dossier AFOR
+  const idsAfor=new Set(); (dossiersAFOR||[]).forEach(d=>{ tabKeyVariants(d.id).forEach(v=>idsAfor.add(v)); tabKeyVariants(d.code_parcelle).forEach(v=>idsAfor.add(v)); });
+  const orph=[]; Object.keys((tabletteData&&tabletteData.requests)||{}).forEach(k=>{ const r=tabletteData.requests[k]; const vs=tabKeyVariants(r.requestNumber||k); if(!vs.some(v=>idsAfor.has(v))) orph.push(r); });
+  return {res,champs,ecarts,sansTab,orph};
+}
+function recRender(){
+  const kpiEl=document.getElementById('cqe-kpi'), el=document.getElementById('cqe-content');
+  const g=recGlobal(), r=g.res, pc=(a,b)=>b?Math.round(a/b*100)+' %':'—';
+  kpiEl.innerHTML=[['Dossiers (zone)',r.total,'#475569'],['Rapprochés avec tablette',r.avecTab+' ('+pc(r.avecTab,r.total)+')','#0f766e'],['Rapprochés avec GNSS',r.avecGnss+' ('+pc(r.avecGnss,r.total)+')','#2563eb'],['Dossiers avec écart(s)',r.avecEcart,r.avecEcart?'#dc2626':'#16a34a'],['Tablettes sans dossier AFOR',g.orph.length,g.orph.length?'#d97706':'#16a34a']]
+    .map(k=>`<div class="kpi"><div class="kpi-l">${k[0]}</div><div class="kpi-v" style="color:${k[2]}">${k[1]}</div></div>`).join('');
+  const ch=Object.entries(g.champs).sort((a,b)=>b[1]-a[1]);
+  const top=g.ecarts.slice(0,150).map(({d,r})=>`<tr style="cursor:pointer;" onclick="dosOpenFiche('${String(d.id).replace(/'/g,"\\'")}')"><td style="font-family:'DM Mono',monospace;font-size:11px;">${planEsc(d.id)}</td><td>${planEsc(d.agent||'—')}</td><td>${planEsc(r.champ)}</td><td>${planEsc(r.afor)}</td><td>${planEsc(r.tab)}</td><td>${planEsc(r.gnss)}</td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:#16a34a;padding:12px;">Aucun écart détecté.</td></tr>';
+  el.innerHTML=`<div class="tw" style="padding:12px 16px;margin-bottom:12px;"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;"><div style="font-weight:700;">Rapprochement des sources (AFOR · tablettes · GNSS · plans)</div><button class="btn-p" style="font-size:12px;" onclick="recExport()">⬇ Exporter le rapprochement (Excel)</button></div>
+   <div style="font-size:12px;color:var(--text2);margin-top:8px;">Écarts par champ : ${ch.length?ch.map(([k,n])=>`<b>${planEsc(k)}</b> ${n}`).join(' · '):'aucun'}</div>
+   <div style="font-size:11px;color:var(--text3);margin-top:6px;">Cliquez une ligne pour ouvrir la fiche complète du dossier. Règle : la base AFOR fait foi ; à défaut la tablette, puis le GNSS ; pour l'étape et les dates, la plus avancée.</div></div>
+   <div class="tw" style="overflow:auto;"><table><thead><tr><th>Dossier</th><th>Agent</th><th>Champ en écart</th><th>AFOR</th><th>Tablette</th><th>GNSS</th></tr></thead><tbody>${top}</tbody></table>${g.ecarts.length>150?'<div style="padding:8px 12px;font-size:11px;color:#777;">150 premiers écarts affichés sur '+g.ecarts.length+' — l\'export Excel contient tout.</div>':''}</div>`;
+}
+function recExport(){
+  if(typeof XLSX==='undefined'){ showToast('Bibliothèque Excel indisponible.'); return; }
+  const g=recGlobal(), r=g.res;
+  const syn=[['Dossiers (zone active)',r.total],['Rapprochés avec une tablette',r.avecTab],['Rapprochés avec le GNSS',r.avecGnss],['Avec un plan importé',r.avecPlan],['Dossiers avec au moins un écart',r.avecEcart],['Tablettes sans dossier AFOR',g.orph.length],['Dossiers AFOR sans tablette',g.sansTab.length],[],['Écarts par champ','Nombre'],...Object.entries(g.champs)].map(a=>a.length?{'Indicateur':a[0],'Valeur':a[1]}:{});
+  const ec=g.ecarts.map(({d,r})=>({'N° dossier':d.id,'Département':d.dept||'','Agent':d.agent||'','Champ':r.champ,'Base AFOR':r.afor,'Tablette':r.tab,'GNSS':r.gnss,'Valeur retenue':r.retenu,'Précision':r.note}));
+  const orph=g.orph.map(x=>({'N° demande tablette':x.requestNumber,'Nom':x.label||'','Village':(x.land&&x.land.village&&x.land.village.label)||'','Date demande':recDate(x.requestDate)||''}));
+  const st=g.sansTab.map(d=>({'N° dossier':d.id,'Demandeur':((d.prenom||'')+' '+(d.nom_demandeur||'')).trim(),'Village':d.village||'','Agent':d.agent||'','Étape AFOR':d.etape||''}));
+  const wb=XLSX.utils.book_new(), add=(n,rows,empty)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows.length?rows:[empty]),n);
+  add('Synthèse',syn,{'Indicateur':'—'}); add('Écarts entre sources',ec,{'N° dossier':'Aucun écart'}); add('Tablettes sans dossier AFOR',orph,{'N° demande tablette':'Aucune'}); add('Dossiers sans tablette',st,{'N° dossier':'Aucun'});
+  XLSX.writeFile(wb,'Rapprochement_sources_'+cqeToday()+'.xlsx');
+  showToast('Rapprochement exporté.');
 }
 
 // Contrôleurs qualité déclarés (nom, identifiant, zone). Sans zone renseignée → Cavally par défaut.
