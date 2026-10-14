@@ -6326,6 +6326,7 @@ function cqeRenderAll(){
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
         Exporter CSV
       </button>
+      ${!vueCorriges ? `<button class="btn-p" onclick="cqeExportCorrections()" title="Classeur Excel : un onglet par agent, avec les motifs de rejet et une colonne pour la correction" style="display:inline-flex;align-items:center;gap:5px;background:var(--accent);">⬇ Fiches de correction (Excel par agent)</button>` : ''}
     </div>
     <div style="padding:8px 16px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);">${vueCorriges?'Dossiers corrigés':'Dossiers rejetés'} (contrôle qualité) — ${filtered.length.toLocaleString('fr-FR')} résultat(s)</div>
     <div style="overflow-x:auto;">
@@ -6381,6 +6382,78 @@ function cqeExportCSV(){
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = 'PRESFOR_CQE_'+(vueCorriges?'corriges':'rejets')+'_'+new Date().toISOString().split('T')[0]+'.csv';
   a.click();
+}
+
+// ── Fiches de correction : classeur Excel à remettre aux agents (un onglet par agent) ──
+// Regroupe les dossiers rejetés non corrigés ET ceux dont le plan a été signalé incohérent.
+function cqeCleanTxt(t){ return String(t||'').replace(/_x000D_/g,'').replace(/\r/g,'').replace(/\n{2,}/g,'\n').trim(); }
+function cqeBuildCorrections(){
+  const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
+  const q = (cqeFilterState.q||'').toLowerCase(), fDept = cqeFilterState.dept||'', fAgent = cqeFilterState.agent||'', fAssigne = cqeFilterState.assigne||'';
+  const lignes = [];
+  afor.forEach(d=>{
+    const cq = pubCQ[d.id];
+    const rejet = !!(cq && cq.rejete && !cq.corrige);
+    const entry = (typeof planGetFor==='function') ? planGetFor(d) : null;
+    const pc = planChecks[d.id];
+    const planInc = !!(pc && pc.statut==='incoherent');
+    if(!rejet && !planInc) return;
+    if(q && !(String(d.id).toLowerCase().includes(q) || ((d.prenom||'')+' '+(d.nom_demandeur||'')).toLowerCase().includes(q) || (d.village||'').toLowerCase().includes(q))) return;
+    if(fDept && d.dept!==fDept) return;
+    if(fAgent && d.agent!==fAgent) return;
+    if(fAssigne && rejet){ const as = cq.assigne_a||''; if(fAssigne==='__non_assigne__' ? as : as!==fAssigne) return; }
+    const motifs = [];
+    if(rejet){
+      if(cq.motif_qc1) motifs.push('QC1 : '+cqeCleanTxt(cq.motif_qc1));
+      if(cq.motif_qc2) motifs.push('QC2 : '+cqeCleanTxt(cq.motif_qc2));
+      if(cq.motif_final) motifs.push('Validation finale : '+cqeCleanTxt(cq.motif_final));
+    }
+    const lbl = {ok:'conforme', ko:'INCOHÉRENT', na:'non vérifiable', '':'—'};
+    const planTxt = planInc ? ['Voisins : '+lbl[pc.voisins||''], 'Nom : '+lbl[pc.nom||''], 'Superficie : '+lbl[pc.superf||'']].join(' · ')+(pc.commentaire?'\nCommentaire : '+cqeCleanTxt(pc.commentaire):'') : '';
+    const vois = (typeof aforParseVoisins==='function') ? aforParseVoisins(d.voisins).map(v=>v.nom+' ('+v.position+')').join(', ') : (d.voisins||'');
+    lignes.push({
+      agent: d.agent||'(agent non renseigné)',
+      row: [d.id||'', ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim(), d.dept||'', d.sp||'', d.village||'', d.code_parcelle||'',
+        rejet && planInc ? 'Rejet CQ + plan incohérent' : (rejet ? 'Rejet CQ' : 'Plan incohérent'),
+        motifs.join('\n'), planTxt,
+        vois,
+        (rejet && cq.assigne_a) || (planInc ? pc.par : '') || '',
+        planInc ? (pc.date||'') : '',
+        '', '', '']
+    });
+  });
+  return lignes;
+}
+const CQE_CORR_HEADER = ['N° Dossier','Demandeur','Département','Sous-préfecture','Village','Code parcelle','Origine','Motif(s) de rejet','Incohérences du plan','Voisins enregistrés au dossier','Contrôleur qualité','Date du contrôle','CORRECTION APPORTÉE (agent)','DATE DE CORRECTION (agent)','CORRIGÉ PAR (agent)'];
+function cqeExportCorrections(){
+  if(typeof XLSX==='undefined'){ showToast('Bibliothèque Excel non chargée.'); return; }
+  const lignes = cqeBuildCorrections();
+  if(!lignes.length){ showToast('Aucun dossier à corriger pour ces filtres.'); return; }
+  const parAgent = {};
+  lignes.forEach(l=>{ (parAgent[l.agent]=parAgent[l.agent]||[]).push(l.row); });
+  const agents = Object.keys(parAgent).sort((a,b)=>parAgent[b].length-parAgent[a].length||a.localeCompare(b));
+  const wb = XLSX.utils.book_new();
+  const today = new Date().toISOString().split('T')[0];
+  const widths = [16,24,13,16,18,13,18,48,36,44,18,12,36,14,18].map(w=>({wch:w}));
+  const mkSheet = rows => { const ws = XLSX.utils.aoa_to_sheet([CQE_CORR_HEADER, ...rows]); ws['!cols']=widths; ws['!freeze']={xSplit:0,ySplit:1}; ws['!autofilter']={ref:'A1:O'+(rows.length+1)}; return ws; };
+  // Récapitulatif
+  const recap = [['Fiches de correction — PRESFOR Cavally'],['Édité le '+today+(currentUser&&currentUser.nom?' par '+currentUser.nom.split('—')[0].trim():'')],[],['Agent','Dossiers à corriger','Onglet'],
+    ...agents.map(a=>[a, parAgent[a].length, ''])];
+  recap.push([], ['Total', lignes.length]);
+  const wsR = XLSX.utils.aoa_to_sheet(recap); wsR['!cols']=[{wch:38},{wch:20},{wch:34}];
+  XLSX.utils.book_append_sheet(wb, wsR, 'Récapitulatif');
+  const used = new Set(['Récapitulatif','Tous']);
+  agents.forEach((a,i)=>{
+    let nm = a.replace(/[\\/?*\[\]:]/g,' ').trim().slice(0,28) || 'Agent'+(i+1);
+    let base = nm, k=2; while(used.has(nm)){ nm = base.slice(0,26)+' '+k++; }
+    used.add(nm);
+    XLSX.utils.book_append_sheet(wb, mkSheet(parAgent[a]), nm);
+    wsR[XLSX.utils.encode_cell({r:4+i,c:2})] = {t:'s', v:nm};
+  });
+  XLSX.utils.book_append_sheet(wb, mkSheet(lignes.map(l=>[...l.row.slice(0,5), l.row[5], ...l.row.slice(6)])), 'Tous');
+  const fAg = cqeFilterState.agent ? '_'+cqeFilterState.agent.replace(/[^A-Za-z0-9]+/g,'_').slice(0,30) : '';
+  XLSX.writeFile(wb, 'PRESFOR_corrections'+fAg+'_'+today+'.xlsx');
+  showToast(lignes.length+' dossier(s) à corriger exporté(s), '+agents.length+' agent(s).');
 }
 
 // ── Détail d'un dossier passé en contrôle qualité (fenêtre superposée) ──
@@ -6820,6 +6893,7 @@ function planRenderTab(){
       ${can?`<label class="btn-p" style="cursor:pointer;">📥 Importer des plans PDF<input type="file" accept=".pdf,application/pdf" multiple style="display:none" onchange="planImportFiles(this.files);this.value='';"></label>
       <label class="btn-s" style="cursor:pointer;">📁 Importer un dossier de plans<input type="file" webkitdirectory multiple style="display:none" onchange="planImportFiles(this.files);this.value='';"></label>`:''}
       <span style="font-size:11px;color:var(--text3);flex:1;min-width:240px;">Le nom de chaque fichier doit contenir le n° du dossier (ex. 088-002-021008.pdf). Un plan réimporté <b>remplace</b> l'ancien. Les plans sont consultables en lecture seule : aucun PDF n'est conservé ni téléchargeable.</span>
+      <button class="btn-s" onclick="cqeExportCorrections()">⬇ Fiches de correction (Excel par agent)</button>
       <div id="plan-import-status" style="width:100%;"></div>
     </div>`;
   if(!planFiles.length){
