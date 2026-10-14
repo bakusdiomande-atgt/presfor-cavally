@@ -6426,7 +6426,7 @@ function cqeBuildCorrections(){
     }
     const lbl = {ok:'conforme', ko:'INCOHÉRENT', na:'non vérifiable', '':'—'};
     const planTxt = planInc ? ['Voisins : '+lbl[pc.voisins||''], 'Nom : '+lbl[pc.nom||''], 'Superficie : '+lbl[pc.superf||'']].join(' · ')+(pc.commentaire?'\nCommentaire : '+cqeCleanTxt(pc.commentaire):'') : '';
-    const vois = (typeof aforParseVoisins==='function') ? aforParseVoisins(d.voisins).map(v=>v.nom+' ('+v.position+')').join(', ') : (d.voisins||'');
+    const vois = dosVoisinsList(d).list.map(v=>v.nom+' ('+v.position+')').join(', ');
     lignes.push({
       agent: d.agent||'(agent non renseigné)',
       row: [d.id||'', ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim(), d.dept||'', d.sp||'', d.village||'', d.code_parcelle||'',
@@ -6787,7 +6787,8 @@ async function planOpen(id){
   if(!voisins.length){ voisins = ((tab && tab.requests && tab.requests.neighborhood) || []).filter(v=>v && v.nameOfNeighbor); voisinsSrc = 'tablette'; }
   const gi = gnssForDossier(d);
   const cq = pubCQ[d.id] || {};
-  const haList = [gi?gi.superficie:0, cq.superf?parseFloat(cq.superf):0, d.superficie_declaree||0];
+  const _ti = dosTabInfo(d);
+  const haList = [gi?gi.superficie:0, cq.superf?parseFloat(cq.superf):0, d.superficie_declaree||0, (_ti&&_ti.superficie)||0];
   const nomDem = ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim();
   const chk = planChecks[d.id] || {};
   const st = planStatusOf(entry, d.id);
@@ -7088,6 +7089,7 @@ function cqeCtlOpen(id){
     <div style="padding:16px 20px;overflow-y:auto;flex:1;">
       ${row('Demandeur',esc(((d.prenom||'')+' '+(d.nom_demandeur||'')).trim()||'—'))}${row('Village',esc(d.village||'—'))}${row('Département',esc(d.dept||'—'))}${row('Agent',esc(d.agent||'—'))}
       ${row('Étape',esc(d.etape||'—'))}${cq&&cq.superf?row('Superficie (contrôle)',esc(Number(cq.superf).toFixed(2))+' ha'):''}
+      ${(()=>{ const ti=dosTabInfo(d); return ti?row('Nom (tablette)',esc(ti.nom||'—'))+(ti.superficie!=null?row('Superficie estimée (tablette)',esc(String(ti.superficie))+' ha'):'')+(ti.nationalite?row('Nationalité (tablette)',esc(ti.nationalite)):''):'<div style="padding:6px 0;font-size:11px;color:var(--text3);">Pas de données tablette pour ce dossier.</div>'; })()}
       ${typeof aforVoisinsHtml==='function'?aforVoisinsHtml(d):''}
       ${cq&&cq.rejete?row('Contrôle AFOR',cq.corrige?'Rejeté puis corrigé':'<span style="color:#dc2626;">Rejeté</span>'):''}
       ${k?row('Dernier contrôle',(k.statut==='conforme'?'Conforme':'Rejeté')+' · '+esc(k.par||'')+' · '+esc(k.date||'')):''}
@@ -9185,10 +9187,26 @@ function aforParseVoisins(str){
   }
   return out;
 }
+// Voisins : la base AFOR fait foi ; à défaut, les données des tablettes complètent
+function dosVoisinsList(d){
+  let v = aforParseVoisins(d && d.voisins), src = 'AFOR';
+  if(!v.length){
+    try{ const tab = tabMatchForDossier(d);
+      v = ((tab && tab.requests && tab.requests.neighborhood) || []).filter(x=>x && x.nameOfNeighbor).map(x=>({nom:String(x.nameOfNeighbor).trim(), position:x.position||''}));
+      src = 'tablette'; }catch(e){}
+  }
+  return {list:v, src};
+}
+function dosTabInfo(d){
+  try{ const t=tabMatchForDossier(d); const r=t&&t.requests; if(!r) return null;
+    const a=r.applicant||{}, l=r.land||{};
+    return {nom:r.label||'', nationalite:a.nationality||'', tel:a.phoneNumber||'', superficie:(l.estimatedArea!=null&&l.estimatedArea!=='')?Number(l.estimatedArea):null, village:(l.village&&l.village.label)||''};
+  }catch(e){ return null; }
+}
 function aforVoisinsHtml(d){
-  const v = aforParseVoisins(d && d.voisins);
-  if(!v.length) return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--text3);">Voisins</span><span style="float:right;color:var(--text3);">Non renseignés (réimportez la base AFOR)</span></div>';
-  return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><div style="color:var(--text3);margin-bottom:3px;">Voisins ('+v.length+')</div>'+v.map(x=>'<div style="display:flex;justify-content:space-between;padding:1px 0;"><span style="font-weight:600;">'+String(x.nom).replace(/[<>&]/g,'')+'</span><span style="color:var(--text3);">'+x.position+'</span></div>').join('')+'</div>';
+  const vr = dosVoisinsList(d), v = vr.list;
+  if(!v.length) return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--text3);">Voisins</span><span style="float:right;color:var(--text3);">Non renseignés (ni AFOR ni tablette)</span></div>';
+  return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><div style="color:var(--text3);margin-bottom:3px;">Voisins ('+v.length+') · source : '+vr.src+'</div>'+v.map(x=>'<div style="display:flex;justify-content:space-between;padding:1px 0;"><span style="font-weight:600;">'+String(x.nom).replace(/[<>&]/g,'')+'</span><span style="color:var(--text3);">'+x.position+'</span></div>').join('')+'</div>';
 }
 
 function aforImportExcel(input){
