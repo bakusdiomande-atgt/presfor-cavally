@@ -1210,6 +1210,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
         <div class="btn-row">
           <button class="btn-s" id="cqe-tab-dossiers" onclick="cqeSetTab('dossiers')" style="font-weight:700;">Dossiers CQ</button>
           <button class="btn-s" id="cqe-tab-plans" onclick="cqeSetTab('plans')">Plans parcellaires</button>
+          <button class="btn-s" id="cqe-tab-pilotage" onclick="cqeSetTab('pilotage')">Pilotage CQE <span id="cqe-pilot-badge" style="display:none;background:#dc2626;color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:3px;"></span></button>
         </div>
       </div>
       <div class="kpi-bar" id="cqe-kpi"></div>
@@ -6211,7 +6212,9 @@ function cqeRenderAll(){
   const kpiEl = document.getElementById('cqe-kpi');
   const contentEl = document.getElementById('cqe-content');
   if(!kpiEl || !contentEl) return;
+  cqeEnsureDates(); cqeUpdateBadge();
   if(typeof cqeTab!=='undefined' && cqeTab==='plans'){ planRenderTab(); return; }
+  if(typeof cqeTab!=='undefined' && cqeTab==='pilotage'){ cqeRenderPilotage(); return; }
   const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
   const cqIds = Object.keys(pubCQ||{});
   const aforIds = new Set(afor.map(d=>d.id));
@@ -6565,6 +6568,7 @@ function planCodeFromName(name){
 function cqeSetTab(t){
   cqeTab = t;
   const a=document.getElementById('cqe-tab-dossiers'), b=document.getElementById('cqe-tab-plans');
+  const c=document.getElementById('cqe-tab-pilotage'); if(c) c.style.fontWeight = t==='pilotage'?'700':'400';
   if(a) a.style.fontWeight = t==='dossiers'?'700':'400';
   if(b) b.style.fontWeight = t==='plans'?'700':'400';
   cqeRenderAll();
@@ -6863,6 +6867,7 @@ async function planSubmit(id, statut){
   if(statut==='incoherent' && !comm){ showToast('Indiquez en commentaire ce qui est incohérent.'); return; }
   const d = (dossiersAFOR||[]).find(x=>String(x.id)===String(id));
   const entry = d ? planGetFor(d) : null;
+  if(pubCQ[id]){ cqeLogEvent(id,'plan_'+statut); pubSave(); }
   await planSaveCheck(id, {voisins:g('voisins'), nom:g('nom'), superf:g('superf'), statut, commentaire:comm, par:planWho(), date:new Date().toISOString().split('T')[0], planTs: entry?entry.ts:null});
   showToast(statut==='conforme'?'Plan '+id+' validé.':'Incohérence signalée pour '+id+'.');
   planClose();
@@ -6926,11 +6931,112 @@ function planRenderTab(){
 }
 setTimeout(()=>{ try{ planReindex(); planLoadChecks(); planLoadMeta(); }catch(e){ console.warn('plans init', e); } }, 2500);
 
+// ═══════════════════════════════════════════════════════════════
+// PILOTAGE CQE — suivi du travail des contrôleurs qualité et des délais de correction
+// ═══════════════════════════════════════════════════════════════
+const CQE_ALERT_DAYS = 7, CQE_CRIT_DAYS = 14;
+let cqePilotChart = null;
+function cqeDaysBetween(a,b){ const x=new Date(a), y=new Date(b); if(isNaN(x)||isNaN(y)) return null; return Math.round((y-x)/86400000); }
+function cqeMedian(arr){ if(!arr.length) return null; const a=arr.slice().sort((x,y)=>x-y), m=Math.floor(a.length/2); return a.length%2?a[m]:(a[m-1]+a[m])/2; }
+function cqeFmtJ(v){ return v==null?'—':(Math.round(v*10)/10)+' j'; }
+// Les rejets existants avant la mise en place du suivi reçoivent la date du premier constat
+function cqeEnsureDates(){
+  let ch=false; const t=cqeToday();
+  Object.keys(pubCQ||{}).forEach(id=>{ const c=pubCQ[id]; if(c && c.rejete && !c.date_rejet){ c.date_rejet=t; c.date_rejet_est=true; ch=true; } });
+  if(ch) pubSave();
+}
+function cqeOverdue(){
+  const t=cqeToday(), out=[];
+  (dossiersAFOR||[]).forEach(d=>{
+    const c=pubCQ[d.id]; if(!c||!c.rejete||c.corrige||!c.date_rejet) return;
+    const j=cqeDaysBetween(c.date_rejet,t);
+    if(j!=null && j>=CQE_ALERT_DAYS) out.push({d,c,j});
+  });
+  return out.sort((a,b)=>b.j-a.j);
+}
+function cqeUpdateBadge(){
+  const b=document.getElementById('cqe-pilot-badge'); if(!b) return;
+  const n=cqeOverdue().length; b.textContent=n; b.style.display=n?'inline-block':'none';
+}
+function cqeRenderPilotage(){
+  const kpiEl=document.getElementById('cqe-kpi'), el=document.getElementById('cqe-content');
+  const t=cqeToday();
+  const afor=dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
+  const rej=afor.filter(d=>pubCQ[d.id]&&pubCQ[d.id].rejete);
+  const attente=rej.filter(d=>!pubCQ[d.id].corrige);
+  const corr=rej.filter(d=>pubCQ[d.id].corrige);
+  const ag=attente.map(d=>({d,j:cqeDaysBetween(pubCQ[d.id].date_rejet,t)})).filter(x=>x.j!=null);
+  const retard=ag.filter(x=>x.j>=CQE_ALERT_DAYS), crit=ag.filter(x=>x.j>=CQE_CRIT_DAYS);
+  const delais=corr.map(d=>{const c=pubCQ[d.id]; return (c.date_rejet&&c.date_correction&&!c.date_rejet_est)?cqeDaysBetween(c.date_rejet,c.date_correction):null;}).filter(v=>v!=null&&v>=0);
+  const med=cqeMedian(delais);
+  // Activité de contrôle : contrôles de plan + corrections validées
+  const acts=[]; // {d:date, by}
+  Object.keys(planChecks||{}).forEach(id=>{ const k=planChecks[id]; if(k&&k.date) acts.push({d:k.date,by:k.par||'(inconnu)',t:k.statut==='conforme'?'ok':'inc',id}); });
+  Object.keys(pubCQ||{}).forEach(id=>{ const c=pubCQ[id]; if(c&&c.corrige&&c.date_correction) acts.push({d:c.date_correction,by:c.corrige_par||'(inconnu)',t:'corr',id}); });
+  const d7=new Date(Date.now()-6*86400000).toISOString().split('T')[0];
+  const today=acts.filter(a=>a.d===t).length, sem=acts.filter(a=>a.d>=d7).length;
+  kpiEl.innerHTML=[
+    ['Rejetés en attente',attente.length,'#d97706'],
+    ['En retard (≥ '+CQE_ALERT_DAYS+' j)',retard.length,retard.length?'#dc2626':'#16a34a'],
+    ['Critiques (≥ '+CQE_CRIT_DAYS+' j)',crit.length,crit.length?'#991b1b':'#16a34a'],
+    ['Délai médian de correction',cqeFmtJ(med),'#2563eb'],
+    ['Contrôles aujourd\'hui',today,'#0f766e'],
+    ['Contrôles 7 derniers jours',sem,'#0f766e']
+  ].map(k=>`<div class="kpi"><div class="kpi-l">${k[0]}</div><div class="kpi-v" style="color:${k[2]}">${k[1]}</div></div>`).join('');
+  // Contrôleurs
+  const ctl={};
+  const C=n=>ctl[n]||(ctl[n]={n,tot:0,s7:0,ok:0,inc:0,corr:0,att:0,delais:[]});
+  acts.forEach(a=>{const c=C(a.by); c.tot++; if(a.d>=d7)c.s7++; if(a.t==='ok')c.ok++; if(a.t==='inc')c.inc++; if(a.t==='corr')c.corr++;});
+  (typeof getControleursQualite==='function'?getControleursQualite():[]).forEach(u=>{ const n=(typeof u==='string')?u:(u.nom||'').split('—')[0].trim(); if(n) C(n); });
+  attente.forEach(d=>{const a=pubCQ[d.id].assigne_a; if(a) C(String(a).split('—')[0].trim()).att++;});
+  corr.forEach(d=>{const c=pubCQ[d.id]; if(c.corrige_par&&c.date_rejet&&c.date_correction&&!c.date_rejet_est){const v=cqeDaysBetween(c.date_rejet,c.date_correction); if(v!=null&&v>=0) C(c.corrige_par).delais.push(v);}});
+  const ctlRows=Object.values(ctl).sort((a,b)=>b.tot-a.tot).map(c=>`<tr><td style="font-weight:600;">${planEsc(c.n)}</td><td>${c.tot}</td><td>${c.s7}</td><td>${c.ok}</td><td>${c.inc}</td><td>${c.corr}</td><td>${c.att}</td><td>${cqeFmtJ(cqeMedian(c.delais))}</td></tr>`).join('')||'<tr><td colspan="8" style="text-align:center;color:#888;">Aucune activité enregistrée pour l\'instant.</td></tr>';
+  // Agents
+  const A={};
+  const AG=n=>A[n]||(A[n]={n,dos:0,cq:0,rej:0,att:0,retard:0,delais:[]});
+  afor.forEach(d=>{const n=d.agent||'(agent non renseigné)'; const a=AG(n); a.dos++; const c=pubCQ[d.id]; if(c){a.cq++; if(c.rejete){a.rej++; if(!c.corrige){a.att++; const j=cqeDaysBetween(c.date_rejet,t); if(j!=null&&j>=CQE_ALERT_DAYS)a.retard++;} else if(c.date_rejet&&c.date_correction&&!c.date_rejet_est){const v=cqeDaysBetween(c.date_rejet,c.date_correction); if(v!=null&&v>=0)a.delais.push(v);}}}});
+  const agRows=Object.values(A).filter(a=>a.cq>0).sort((x,y)=>(y.rej/y.cq)-(x.rej/x.cq)).map(a=>{const tx=Math.round(a.rej/a.cq*100); const col=tx>=30?'#dc2626':tx>=15?'#d97706':'#16a34a';
+    return `<tr><td style="font-weight:600;">${planEsc(a.n)}</td><td>${a.dos}</td><td>${a.cq}</td><td>${a.rej}</td><td style="font-weight:700;color:${col}">${tx}%</td><td>${a.att}</td><td style="${a.retard?'color:#dc2626;font-weight:700;':''}">${a.retard}</td><td>${cqeFmtJ(cqeMedian(a.delais))}</td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:#888;">Aucun dossier contrôlé.</td></tr>';
+  // Retards
+  const lateRows=retard.sort((a,b)=>b.j-a.j).slice(0,100).map(x=>{const c=pubCQ[x.d.id]; const col=x.j>=CQE_CRIT_DAYS?'#991b1b':'#d97706';
+    return `<tr><td>${planEsc(x.d.id)}</td><td>${planEsc(x.d.agent||'—')}</td><td>${planEsc(c.assigne_a||'non assigné')}</td><td>${planEsc(c.date_rejet)}${c.date_rejet_est?' <span title="Date du premier constat (rejet antérieur au suivi)">*</span>':''}</td><td style="font-weight:700;color:${col}">${x.j} j</td><td><button class="btn-s" onclick="cqeShowDossierDetail('${String(x.d.id).replace(/'/g,"\\'")}')">Voir</button></td></tr>`;}).join('')||'<tr><td colspan="6" style="text-align:center;color:#16a34a;">Aucune correction en retard.</td></tr>';
+  const th=h=>`<thead><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr></thead>`;
+  const hasEst=rej.some(d=>pubCQ[d.id].date_rejet_est);
+  el.innerHTML=`
+   <div class="tw" style="padding:12px;margin-bottom:12px;"><div style="font-weight:700;margin-bottom:6px;">Contrôles par jour (14 derniers jours)</div><div style="height:200px;"><canvas id="cqe-pilot-cv"></canvas></div></div>
+   <div class="tw" style="margin-bottom:12px;overflow:auto;"><div style="font-weight:700;padding:10px 12px;">Corrections en retard (≥ ${CQE_ALERT_DAYS} jours)</div><table>${th(['Dossier','Agent','Assigné à','Rejeté le','Attente','']) }<tbody>${lateRows}</tbody></table>${hasEst?'<div style="padding:6px 12px;font-size:11px;color:#777;">* Rejet antérieur au suivi : le délai compte à partir du premier constat dans l\'application.</div>':''}</div>
+   <div class="tw" style="margin-bottom:12px;overflow:auto;"><div style="font-weight:700;padding:10px 12px;">Travail des contrôleurs qualité</div><table>${th(['Contrôleur','Total contrôles','7 derniers j','Plans conformes','Plans incohérents','Corrections validées','Dossiers assignés en attente','Délai médian'])}<tbody>${ctlRows}</tbody></table></div>
+   <div class="tw" style="overflow:auto;"><div style="font-weight:700;padding:10px 12px;">Qualité par agent (du plus au moins rejeté)</div><table>${th(['Agent','Dossiers','Contrôlés','Rejetés','Taux de rejet','En attente de correction','En retard','Délai médian de correction'])}<tbody>${agRows}</tbody></table></div>`;
+  // graphique
+  const days=[]; for(let i=13;i>=0;i--) days.push(new Date(Date.now()-i*86400000).toISOString().split('T')[0]);
+  const cnt=k=>days.map(dd=>acts.filter(a=>a.d===dd&&(k==='all'||a.t===k)).length);
+  try{
+    if(cqePilotChart){ cqePilotChart.destroy(); cqePilotChart=null; }
+    const cv=document.getElementById('cqe-pilot-cv');
+    if(cv && typeof Chart!=='undefined'){
+      cqePilotChart=new Chart(cv,{type:'bar',data:{labels:days.map(x=>x.slice(5)),datasets:[
+        {label:'Plans conformes',data:cnt('ok'),backgroundColor:'#16a34a'},
+        {label:'Plans incohérents',data:cnt('inc'),backgroundColor:'#dc2626'},
+        {label:'Corrections validées',data:cnt('corr'),backgroundColor:'#2563eb'}]},
+        options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,ticks:{precision:0}}}}});
+    }
+  }catch(e){ console.warn('pilot chart',e); }
+}
+setTimeout(()=>{ try{ cqeEnsureDates(); cqeUpdateBadge(); }catch(e){} }, 4000);
+
 // ── Marquer un dossier rejeté comme corrigé et validé par le contrôleur qualité :
 // il sort de "Rejetés" et vient compléter "Conformes". ──
+function cqeWho(){ return (currentUser && currentUser.nom) ? currentUser.nom.split('—')[0].trim() : null; }
+function cqeToday(){ return new Date().toISOString().split('T')[0]; }
+function cqeLogEvent(id, t){
+  const cq = pubCQ[id]; if(!cq) return;
+  (cq.ev = cq.ev||[]).push({t, d:cqeToday(), by:cqeWho()});
+  if(cq.ev.length>20) cq.ev = cq.ev.slice(-20);
+}
 function cqeMarquerCorrige(id){
   const cq = pubCQ[id];
   if(!cq || !cq.rejete) return;
+  cqeLogEvent(id,'corrige');
   cq.corrige = true;
   cq.date_correction = new Date().toISOString().split('T')[0];
   cq.corrige_par = (currentUser && currentUser.nom) ? currentUser.nom.split('—')[0].trim() : null;
@@ -6944,6 +7050,7 @@ function cqeMarquerCorrige(id){
 function cqeAnnulerCorrection(id){
   const cq = pubCQ[id];
   if(!cq) return;
+  cqeLogEvent(id,'annule');
   cq.corrige = false;
   cq.date_correction = null;
   cq.corrige_par = null;
@@ -6958,6 +7065,8 @@ function cqeAssigner(id, nom){
   const cq = pubCQ[id];
   if(!cq) return;
   cq.assigne_a = nom || null;
+  cq.assigne_date = nom ? cqeToday() : null;
+  cqeLogEvent(id, nom?'assigne':'desassigne');
   pubSave();
   cqeRenderAll();
   showToast(nom ? 'Dossier '+id+' assigné à '+nom+'.' : 'Dossier '+id+' désassigné.');
@@ -8115,6 +8224,17 @@ function notifGetAlertes(){
     });
   }
 
+  // 1b. Corrections en retard (suivi CQE)
+  try{
+    const od=cqeOverdue();
+    if(od.length){
+      const crit=od.filter(x=>x.j>=CQE_CRIT_DAYS).length;
+      alertes.push({id:'cqe_retard', type: crit?'danger':'warning', titre:'Corrections en retard',
+        msg: od.length+' dossier(s) rejeté(s) non corrigé(s) depuis '+CQE_ALERT_DAYS+' jours ou plus'+(crit?' · dont '+crit+' critique(s) (≥ '+CQE_CRIT_DAYS+' j)':'')+' · le plus ancien : '+od[0].j+' jours',
+        date:new Date().toISOString(), action:"switchModule('cqe'); cqeSetTab('pilotage');"});
+    }
+  }catch(e){}
+
   // 2. Taux de validation faible par zone (moins de 15% de dossiers validés, avec un minimum de dossiers pour être significatif)
   if(typeof PROJECT_ZONES!=='undefined'){
     Object.keys(PROJECT_ZONES).forEach(zoneId=>{
@@ -9052,6 +9172,7 @@ function aforImportExcel(input){
                                (superfCQ1   && superfCQ1!=='N/A')   ? superfCQ1   :
                                (superfCQ2   && superfCQ2!=='N/A')   ? superfCQ2   :
                                (superfCL    && superfCL!=='N/A')    ? superfCL    : null;
+          const _prevCQ = pubCQ[dos.id] || null;
           pubCQ[dos.id] = {
             niveau:       (row[AFOR_COLS.niveau]||'').trim() || null,
             statut_cq:    statutCQ || null,
@@ -9061,6 +9182,22 @@ function aforImportExcel(input){
             motif_final:  (motifFinal && motifFinal!=='N/A') ? motifFinal : null,
             superf:       superfCqVal,
           };
+          if(_prevCQ){
+            // Conserver le travail manuel du contrôleur qualité (suivi des corrections)
+            const _n = pubCQ[dos.id];
+            ['assigne_a','assigne_date','date_rejet','ev'].forEach(k=>{ if(_prevCQ[k]!=null) _n[k]=_prevCQ[k]; });
+            const _same = (_prevCQ.motif_qc1||null)===_n.motif_qc1 && (_prevCQ.motif_qc2||null)===_n.motif_qc2 && (_prevCQ.motif_final||null)===_n.motif_final;
+            if(_prevCQ.corrige && _n.rejete && _same){
+              _n.corrige = true; _n.date_correction = _prevCQ.date_correction||null; _n.corrige_par = _prevCQ.corrige_par||null;
+            } else if(_prevCQ.corrige && _n.rejete && !_same){
+              _n.ev = (_n.ev||[]).concat([{t:'re_rejet', d:new Date().toISOString().split('T')[0], by:null}]);
+              _n.date_rejet = new Date().toISOString().split('T')[0];
+            } else if(_prevCQ.corrige && !_n.rejete){
+              _n.corrige = true; _n.date_correction = _prevCQ.date_correction||null; _n.corrige_par = _prevCQ.corrige_par||null;
+            }
+            if(_n.rejete && !_prevCQ.rejete) _n.date_rejet = new Date().toISOString().split('T')[0];
+          }
+          if(pubCQ[dos.id].rejete && !pubCQ[dos.id].date_rejet) pubCQ[dos.id].date_rejet = new Date().toISOString().split('T')[0];
         }
         nb++;
       });
