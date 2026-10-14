@@ -1207,6 +1207,10 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <div class="panel active">
       <div class="page-head">
         <div><h2>CQE — Contrôle Qualité Enquête</h2><p>Suivi qualité des dossiers passés en contrôle</p></div>
+        <div class="btn-row">
+          <button class="btn-s" id="cqe-tab-dossiers" onclick="cqeSetTab('dossiers')" style="font-weight:700;">Dossiers CQ</button>
+          <button class="btn-s" id="cqe-tab-plans" onclick="cqeSetTab('plans')">Plans parcellaires</button>
+        </div>
       </div>
       <div class="kpi-bar" id="cqe-kpi"></div>
       <div id="cqe-content"></div>
@@ -6206,6 +6210,7 @@ function cqeRenderAll(){
   const kpiEl = document.getElementById('cqe-kpi');
   const contentEl = document.getElementById('cqe-content');
   if(!kpiEl || !contentEl) return;
+  if(typeof cqeTab!=='undefined' && cqeTab==='plans'){ planRenderTab(); return; }
   const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
   const cqIds = Object.keys(pubCQ||{});
   const aforIds = new Set(afor.map(d=>d.id));
@@ -6443,10 +6448,405 @@ function cqeShowDossierDetail(id){
       ? `<div style="margin-top:12px;"><button class="btn-s" style="width:100%;" onclick="cqeAnnulerCorrection('${String(d.id).replace(/'/g,"\\'")}')">Annuler la correction (remettre en rejeté)</button></div>`
       : `<div style="margin-top:12px;"><button class="btn-p" style="width:100%;background:var(--accent);" onclick="cqeMarquerCorrige('${String(d.id).replace(/'/g,"\\'")}')">✓ Marquer comme corrigé et validé</button></div>`
     ) : '') +
+    `<div style="margin-top:8px;"><button class="btn-s" style="width:100%;" onclick="planOpen('${String(d.id).replace(/'/g,"\\'")}')">📐 Vérifier le plan parcellaire</button></div>` +
     `<div style="margin-top:8px;"><button class="btn-s" style="width:100%;" onclick="document.getElementById('cqe-dossier-modal').style.display='none'; dashGoToDossierInActivites('${String(d.id).replace(/'/g,"\\'")}');">Voir dans Activités → Certificat foncier</button></div>`;
 
   modal.style.display = 'flex';
 }
+
+
+// ═══════════════════════════════════════════════════════════════
+// PLANS PARCELLAIRES (PDF) — importés dans l'application, consultables en lecture seule
+// Chaque PDF est converti en image compressée (page(s) du plan) + texte extrait. Le PDF d'origine n'est
+// jamais stocké : il n'existe donc rien à télécharger. Un plan réimporté (même n° de dossier) REMPLACE le précédent.
+// Firebase : plans_meta/{clé} (léger, pour les listes) · plans_img/{clé} (image + texte, chargée à l'ouverture).
+// ═══════════════════════════════════════════════════════════════
+let cqeTab = 'dossiers';
+let planMeta = {};             // {clé: {code,name,size,mod,ts,by,kb,w,h,pages,txt}}
+let planFiles = [];            // liste dérivée de planMeta
+let planIndex = new Map();     // variantes du n° de dossier -> entrée
+let planChecks = {};           // {id_dossier: {voisins,nom,superf,statut,commentaire,par,date,planTs}}
+let planImgCache = {};
+let planImporting = false;
+let planFilterState = {q:'', statut:'', page:0};
+const PLAN_PAGE = 100;
+const PLAN_MAX_KB = 380;        // taille cible d'un plan compressé
+const PLAN_QUOTA_MB = 1024;     // espace de la base Firebase (offre gratuite) — repère d'affichage
+
+try{ const c = localStorage.getItem('presfor_plan_checks'); if(c) planChecks = JSON.parse(c); }catch(e){}
+try{ const m = localStorage.getItem('presfor_plan_meta'); if(m) planMeta = JSON.parse(m); }catch(e){}
+
+function planEsc(x){ return String(x==null?'':x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function planNorm(x){ return String(x||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]+/g,' ').trim(); }
+function planCanEdit(){ return !!currentUser && currentUser.role!=='ce' && currentUser.role!=='gnss'; }
+function planWho(){ return (currentUser && currentUser.nom) ? currentUser.nom.split('—')[0].trim() : ''; }
+function planKeyOf(code){ return String(code).replace(/[^A-Za-z0-9_-]/g,'_'); }
+function planCodeFromName(name){
+  const base = name.replace(/\.pdf$/i,'');
+  const m = base.match(/\d{2,3}-\d{2,3}-\d{3,7}/);
+  return m ? m[0] : base.trim();
+}
+
+function cqeSetTab(t){
+  cqeTab = t;
+  const a=document.getElementById('cqe-tab-dossiers'), b=document.getElementById('cqe-tab-plans');
+  if(a) a.style.fontWeight = t==='dossiers'?'700':'400';
+  if(b) b.style.fontWeight = t==='plans'?'700':'400';
+  cqeRenderAll();
+}
+
+function planReindex(){
+  planFiles = Object.entries(planMeta).map(([k,m])=>Object.assign({key:k}, m));
+  planIndex = new Map();
+  planFiles.forEach(e=>{ tabKeyVariants(e.code||e.key).forEach(v=>{ if(!planIndex.has(v)) planIndex.set(v, e); }); });
+}
+function planGetFor(d){
+  if(!d || !planIndex.size) return null;
+  for(const v of tabKeyVariants(d.id)){ const e = planIndex.get(v); if(e) return e; }
+  if(d.code_parcelle){ for(const v of tabKeyVariants(d.code_parcelle)){ const e = planIndex.get(v); if(e) return e; } }
+  return null;
+}
+async function planLoadMeta(){
+  try{
+    const r = await fetch(FIREBASE_URL+'/presfor/plans_meta.json',{signal:AbortSignal.timeout(20000)});
+    if(!r.ok) return false;
+    const d = await r.json();
+    planMeta = d || {};
+    try{ localStorage.setItem('presfor_plan_meta', JSON.stringify(planMeta)); }catch(e){}
+    planReindex();
+    return true;
+  }catch(e){ console.warn('planLoadMeta:', e.message); return false; }
+}
+
+// ── Vérifications partagées ──
+async function planLoadChecks(){
+  try{
+    const r = await fetch(FIREBASE_URL+'/presfor/plan_checks.json',{signal:AbortSignal.timeout(15000)});
+    if(!r.ok) return;
+    const d = await r.json();
+    if(d){ planChecks = Object.assign({}, planChecks, d); try{ localStorage.setItem('presfor_plan_checks', JSON.stringify(planChecks)); }catch(e){} }
+  }catch(e){ console.warn('planLoadChecks:', e.message); }
+}
+async function planSaveCheck(id, chk){
+  planChecks[id] = chk;
+  try{ localStorage.setItem('presfor_plan_checks', JSON.stringify(planChecks)); }catch(e){}
+  if(typeof syncPendingStart==='function') syncPendingStart();
+  try{
+    const r = await fetch(FIREBASE_URL+'/presfor/plan_checks/'+encodeURIComponent(id)+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(chk),signal:AbortSignal.timeout(15000)});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+  }catch(e){
+    console.warn('planSaveCheck:', e.message); showToast('⚠ Vérification enregistrée localement seulement : '+e.message);
+    if(typeof updateSyncIndicator==='function') updateSyncIndicator('error');
+  }finally{ if(typeof syncPendingEnd==='function') syncPendingEnd(); }
+}
+// Le plan a été remplacé depuis le dernier contrôle ?
+function planStatusOf(entry, id){
+  const c = planChecks[id];
+  if(!c) return 'a_verifier';
+  if(entry && c.planTs && entry.ts && entry.ts > c.planTs) return 'a_reverifier';
+  return c.statut;
+}
+
+// ── pdf.js (chargé à la demande) ──
+function planLoadPdfJs(){
+  if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  return new Promise((res,rej)=>{
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    sc.onload = ()=>{ try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; res(window.pdfjsLib); }catch(e){ rej(e); } };
+    sc.onerror = ()=>rej(new Error('bibliothèque pdf.js indisponible (connexion Internet requise pour l\'import)'));
+    document.head.appendChild(sc);
+  });
+}
+// Convertit un PDF en image(s) JPEG compressée(s) + texte
+async function planProcessPdf(file){
+  const lib = await planLoadPdfJs();
+  const pdf = await lib.getDocument({data: await file.arrayBuffer()}).promise;
+  const nbPages = Math.min(pdf.numPages, 2);
+  const imgs = []; let text = '';
+  for(let p=1; p<=nbPages; p++){
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    text += tc.items.map(i=>i.str).join(' ')+' \n';
+    const vp1 = page.getViewport({scale:1});
+    let width = 1800, q = 0.72, dataUrl = '', cv = document.createElement('canvas');
+    for(let essai=0; essai<6; essai++){
+      const scale = width / vp1.width, vp = page.getViewport({scale});
+      cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+      const ctx = cv.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,cv.width,cv.height);
+      await page.render({canvasContext:ctx, viewport:vp}).promise;
+      dataUrl = cv.toDataURL('image/jpeg', q);
+      if(dataUrl.length/1024*0.75 <= PLAN_MAX_KB) break;
+      if(q>0.5) q -= 0.1; else width = Math.round(width*0.85);
+    }
+    imgs.push({data:dataUrl, w:cv.width, h:cv.height});
+  }
+  return {imgs, text: text.slice(0,6000), pages: pdf.numPages};
+}
+
+// ── Import (ajout et remplacement) ──
+async function planImportFiles(fileList){
+  if(planImporting){ showToast('Un import est déjà en cours.'); return; }
+  if(!planCanEdit()){ showToast('Import réservé aux administrateurs et contrôleurs qualité.'); return; }
+  const files = Array.from(fileList||[]).filter(f=>/\.pdf$/i.test(f.name));
+  if(!files.length){ showToast('Aucun fichier PDF sélectionné.'); return; }
+  planImporting = true;
+  files.sort((a,b)=>a.lastModified-b.lastModified); // si deux fichiers ont le même n°, le plus récent l'emporte
+  const st = document.getElementById('plan-import-status');
+  const res = {nouveau:0, maj:0, inchange:0, erreurs:[], kb:0};
+  let done = 0;
+  const upd = ()=>{ if(st) st.innerHTML = '<div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;"><div style="width:'+Math.round(done/files.length*100)+'%;height:100%;background:var(--accent);"></div></div><div style="font-size:11px;margin-top:4px;">'+done+' / '+files.length+' — '+res.nouveau+' nouveau(x), '+res.maj+' remplacé(s), '+res.inchange+' inchangé(s)'+(res.erreurs.length?', <span style="color:var(--red);">'+res.erreurs.length+' erreur(s)</span>':'')+'</div>'; };
+  upd();
+  if(typeof syncPendingStart==='function') syncPendingStart();
+  for(const f of files){
+    try{
+      const code = planCodeFromName(f.name), key = planKeyOf(code);
+      const ex = planMeta[key];
+      if(ex && ex.size===f.size && ex.mod===f.lastModified){ res.inchange++; }
+      else {
+        const out = await planProcessPdf(f);
+        const kb = Math.round(out.imgs.reduce((s,i)=>s+i.data.length,0)/1024*0.75);
+        const ts = new Date().toISOString();
+        // 1) image + texte (PUT = remplace intégralement l'ancienne version)
+        let r = await fetch(FIREBASE_URL+'/presfor/plans_img/'+key+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({imgs:out.imgs, txt:out.text}),signal:AbortSignal.timeout(90000)});
+        if(!r.ok) throw new Error('HTTP '+r.status+' (image)');
+        // 2) fiche légère
+        const meta = {code, name:f.name, size:f.size, mod:f.lastModified, ts, by:planWho(), kb, w:out.imgs[0].w, h:out.imgs[0].h, pages:out.pages, txt: planNorm(out.text).length>0 ? 1 : 0};
+        r = await fetch(FIREBASE_URL+'/presfor/plans_meta/'+key+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(meta),signal:AbortSignal.timeout(20000)});
+        if(!r.ok) throw new Error('HTTP '+r.status+' (fiche)');
+        planMeta[key] = meta; delete planImgCache[key];
+        if(ex) res.maj++; else res.nouveau++;
+        res.kb += kb;
+      }
+    }catch(e){
+      res.erreurs.push(f.name+' : '+(e.message||e));
+      console.error('planImport', f.name, e);
+      // arrêt si Firebase refuse les écritures
+      if(/HTTP 40[13]/.test(String(e.message))) { done++; upd(); break; }
+    }
+    done++; upd();
+    if(done%10===0) await new Promise(r=>setTimeout(r,0));
+  }
+  try{ localStorage.setItem('presfor_plan_meta', JSON.stringify(planMeta)); }catch(e){}
+  planReindex();
+  planImporting = false;
+  if(typeof syncPendingEnd==='function') syncPendingEnd();
+  upd();
+  if(st && res.erreurs.length) st.innerHTML += '<details style="margin-top:6px;"><summary style="cursor:pointer;color:var(--red);">Détail des erreurs</summary><div style="font-size:11px;white-space:pre-wrap;">'+planEsc(res.erreurs.join('\n'))+'</div></details>';
+  showToast('Plans : '+res.nouveau+' nouveau(x), '+res.maj+' remplacé(s), '+res.inchange+' inchangé(s)'+(res.erreurs.length?', '+res.erreurs.length+' erreur(s)':''));
+  planRenderTabKeepStatus();
+}
+function planRenderTabKeepStatus(){
+  const st = document.getElementById('plan-import-status'); const keep = st ? st.innerHTML : '';
+  planRenderTab();
+  const st2 = document.getElementById('plan-import-status'); if(st2) st2.innerHTML = keep;
+}
+async function planDelete(key){
+  if(!currentUser || currentUser.role!=='admin'){ showToast('Suppression réservée aux administrateurs.'); return; }
+  if(!confirm('Supprimer définitivement ce plan de la base ?')) return;
+  try{
+    await fetch(FIREBASE_URL+'/presfor/plans_img/'+key+'.json',{method:'DELETE'});
+    await fetch(FIREBASE_URL+'/presfor/plans_meta/'+key+'.json',{method:'DELETE'});
+    delete planMeta[key]; delete planImgCache[key];
+    try{ localStorage.setItem('presfor_plan_meta', JSON.stringify(planMeta)); }catch(e){}
+    planReindex(); planClose(); planRenderTab(); showToast('Plan supprimé.');
+  }catch(e){ showToast('Suppression impossible : '+e.message); }
+}
+
+// Un nom est « trouvé » si tous ses mots figurent dans le texte du plan (ordre indifférent)
+function planNameStatus(name, normText){
+  const toks = planNorm(name).split(' ').filter(t=>t.length>=2);
+  if(!toks.length) return 'na';
+  const set = new Set(normText.split(' '));
+  const n = toks.filter(t=>set.has(t)).length;
+  return n===toks.length ? 'ok' : (n>=Math.ceil(toks.length*0.6) ? 'partiel' : 'ko');
+}
+function planSurfStatus(txt, haList){
+  const nums = (txt.match(/\d+(?:[.,]\d+)?/g)||[]).map(x=>parseFloat(x.replace(',','.'))).filter(x=>!isNaN(x));
+  const cibles = haList.filter(h=>h>0);
+  if(!cibles.length || !nums.length) return 'na';
+  const ok = cibles.some(h=>nums.some(n=>Math.abs(n-h)<=Math.max(0.05,h*0.02) || Math.abs(n-h*10000)<=Math.max(5,h*10000*0.01)));
+  return ok ? 'ok' : 'ko';
+}
+
+// ── Fenêtre de vérification : plan (lecture seule) à gauche, données du dossier et contrôle à droite ──
+let planZoom = 100;
+function planSetZoom(z){
+  planZoom = Math.max(40, Math.min(400, z));
+  document.querySelectorAll('#plan-modal .plan-img').forEach(i=>{ i.style.width = planZoom+'%'; });
+  const l = document.getElementById('plan-zoom-l'); if(l) l.textContent = planZoom+' %';
+}
+async function planOpen(id){
+  const d = (dossiersAFOR||[]).find(x=>String(x.id)===String(id));
+  if(!d){ showToast('Dossier introuvable.'); return; }
+  const entry = planGetFor(d);
+  if(!entry){ showToast('Aucun plan importé pour le dossier '+id+'.'); return; }
+  planClose();
+  showToast('Chargement du plan…');
+  let rec = planImgCache[entry.key];
+  if(!rec){
+    try{
+      const r = await fetch(FIREBASE_URL+'/presfor/plans_img/'+entry.key+'.json',{signal:AbortSignal.timeout(60000)});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      rec = await r.json();
+      if(!rec || !rec.imgs) throw new Error('plan vide');
+      planImgCache[entry.key] = rec;
+      const ks = Object.keys(planImgCache); if(ks.length>8) delete planImgCache[ks[0]];
+    }catch(e){ showToast('Plan introuvable dans la base : '+e.message); return; }
+  }
+  const txt = rec.txt || '';
+  const tab = tabMatchForDossier(d);
+  const voisins = ((tab && tab.requests && tab.requests.neighborhood) || []).filter(v=>v && v.nameOfNeighbor);
+  const gi = gnssForDossier(d);
+  const cq = pubCQ[d.id] || {};
+  const haList = [gi?gi.superficie:0, cq.superf?parseFloat(cq.superf):0, d.superficie_declaree||0];
+  const nomDem = ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim();
+  const chk = planChecks[d.id] || {};
+  const st = planStatusOf(entry, d.id);
+  const can = planCanEdit();
+  const sel = (name,val)=>`<select id="plan-${name}" ${can?'':'disabled'} style="width:100%;padding:5px;border:1px solid var(--border-med);border-radius:6px;font-size:12px;">
+      ${[['','— à évaluer —'],['ok','Conforme'],['ko','Incohérent'],['na','Non vérifiable']].map(o=>`<option value="${o[0]}" ${val===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>`;
+  const who = planEsc(planWho()||'consultation');
+  const wm = encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='360' height='220'><text x='20' y='120' font-family='Arial' font-size='15' fill='rgba(0,0,0,0.07)' transform='rotate(-25 180 110)'>PRESFOR · consultation · ${planWho().replace(/[<>&']/g,'')||'CQE'}</text></svg>`);
+  const modal = document.createElement('div');
+  modal.id = 'plan-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;display:flex;padding:14px;';
+  modal.oncontextmenu = ()=>false;
+  const sid = String(d.id).replace(/'/g,"\\'");
+  modal.innerHTML = `<style>@media print{#plan-modal{display:none!important}}#plan-modal img{-webkit-user-drag:none;user-select:none;-webkit-user-select:none;}</style>
+  <div style="background:var(--surface);border-radius:12px;width:100%;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <h3 style="font-family:'Syne',sans-serif;font-size:14px;margin:0;">Plan parcellaire · dossier ${planEsc(d.id)} · ${planEsc(nomDem)}</h3>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="btn-s" onclick="planSetZoom(planZoom-20)">−</button><span id="plan-zoom-l" style="font-size:11px;min-width:42px;text-align:center;">100 %</span><button class="btn-s" onclick="planSetZoom(planZoom+20)">+</button>
+        ${(currentUser&&currentUser.role==='admin')?`<button class="btn-s" style="color:var(--red);" onclick="planDelete('${entry.key}')">Supprimer</button>`:''}
+        <button class="btn-s" onclick="planClose()">✕ Fermer</button></div>
+    </div>
+    <div style="flex:1;display:flex;min-height:0;">
+      <div id="plan-viewer" style="flex:1;min-width:0;overflow:auto;background:#d9d9d9;position:relative;" oncontextmenu="return false">
+        ${rec.imgs.map(i=>`<div style="position:relative;margin:0 0 8px;"><img class="plan-img" draggable="false" src="${i.data}" style="width:100%;display:block;background:#fff;"><div style="position:absolute;inset:0;background:url('data:image/svg+xml;utf8,${wm}');pointer-events:none;"></div></div>`).join('')}
+      </div>
+      <div id="plan-side" style="width:430px;max-width:45%;border-left:1px solid var(--border);overflow-y:auto;padding:14px;font-size:12px;">
+        <div id="plan-auto"></div>
+        <div style="margin-top:14px;font-weight:700;color:var(--blue);">Contrôle du plan</div>
+        ${st==='a_reverifier'?'<div style="margin-top:6px;padding:6px 8px;background:var(--amber-lt);border-radius:6px;">↻ Ce plan a été remplacé depuis le dernier contrôle : à vérifier de nouveau.</div>':''}
+        <label style="display:block;margin-top:6px;">Noms des voisins${sel('voisins',chk.voisins||'')}</label>
+        <label style="display:block;margin-top:6px;">Nom du demandeur${sel('nom',chk.nom||'')}</label>
+        <label style="display:block;margin-top:6px;">Superficie${sel('superf',chk.superf||'')}</label>
+        <label style="display:block;margin-top:6px;">Commentaire<textarea id="plan-comm" rows="3" ${can?'':'disabled'} style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:6px;font-size:12px;font-family:inherit;">${planEsc(chk.commentaire||'')}</textarea></label>
+        ${chk.statut?`<div style="margin-top:8px;font-size:11px;color:var(--text3);">Dernier contrôle : <b>${chk.statut==='conforme'?'Conforme':'Incohérent'}</b> par ${planEsc(chk.par||'—')} le ${planEsc(chk.date||'')}</div>`:''}
+        <div style="margin-top:6px;font-size:10px;color:var(--text3);">Plan importé le ${planEsc((entry.ts||'').slice(0,10))}${entry.by?' par '+planEsc(entry.by):''} · ${planEsc(entry.name||'')}</div>
+        ${can?`<div style="display:flex;gap:8px;margin-top:10px;">
+          <button class="btn-p" style="flex:1;background:var(--accent);" onclick="planSubmit('${sid}','conforme')">✓ Plan conforme</button>
+          <button class="btn-p" style="flex:1;background:var(--red);" onclick="planSubmit('${sid}','incoherent')">⚠ Signaler incohérence</button></div>`:'<div style="margin-top:10px;color:var(--text3);">Lecture seule pour ce profil.</div>'}
+      </div>
+    </div></div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('keydown', ()=>{});
+  planKeyBlock(true);
+
+  // Comparaison automatique plan ↔ dossier (texte lu à l'import)
+  const nt = planNorm(txt), auto_ok = !!nt;
+  const icon = s => s==='ok'?'<span style="color:var(--accent);font-weight:700;">✓ présent</span>':s==='partiel'?'<span style="color:var(--amber);font-weight:700;">≈ partiel</span>':s==='ko'?'<span style="color:var(--red);font-weight:700;">✗ absent du plan</span>':'<span style="color:var(--text3);">—</span>';
+  const line = (l,r)=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);"><span>${l}</span><span style="text-align:right;">${r}</span></div>`;
+  let h = '<div style="font-weight:700;color:var(--blue);margin-bottom:4px;">Dossier</div>'+
+    line('Demandeur (AFOR)', planEsc(nomDem||'—'))+line('Village / SP', planEsc((d.village||'—')+' / '+(d.sp||'—')))+line('Agent', planEsc(d.agent||'—'))+
+    line('Superficie GNSS', gi?gi.superficie.toFixed(2)+' ha':'—')+(cq.superf?line('Superficie contrôle', Number(cq.superf).toFixed(2)+' ha'):'')+(d.superficie_declaree?line('Superficie déclarée', d.superficie_declaree+' ha'):'');
+  if(!auto_ok) h += '<div style="margin:10px 0;padding:8px;background:var(--amber-lt);border-radius:6px;">Ce plan ne contient pas de texte lisible (plan scanné ou vectorisé) : comparaison à faire à l\'œil.</div>';
+  h += '<div style="font-weight:700;color:var(--blue);margin:12px 0 4px;">Voisins enregistrés sur tablette'+(voisins.length?'':' — aucun')+'</div>';
+  h += voisins.length ? voisins.map(v=>line(planEsc(v.position||'—')+' : <b>'+planEsc(v.nameOfNeighbor)+'</b>', auto_ok?icon(planNameStatus(v.nameOfNeighbor, nt)):'<span style="color:var(--text3);">à vérifier</span>')).join('')
+    : '<div style="color:var(--text3);padding:4px 0;">Aucune donnée tablette pour ce dossier (importez les ZIP tablette) — comparez les voisins du plan avec la fiche papier.</div>';
+  h += '<div style="font-weight:700;color:var(--blue);margin:12px 0 4px;">Comparaisons automatiques</div>';
+  h += line('Nom du demandeur sur le plan', auto_ok?icon(planNameStatus(nomDem, nt)):'—');
+  h += line('Superficie du dossier retrouvée sur le plan', auto_ok?({ok:'<span style="color:var(--accent);font-weight:700;">✓ cohérente</span>',ko:'<span style="color:var(--red);font-weight:700;">✗ non retrouvée</span>',na:'—'})[planSurfStatus(txt, haList)]:'—');
+  document.getElementById('plan-auto').innerHTML = h;
+  if(auto_ok && can){
+    const setIf = (idSel, v)=>{ const e=document.getElementById(idSel); if(e && !e.value && v) e.value=v; };
+    if(voisins.length){ const sts = voisins.map(v=>planNameStatus(v.nameOfNeighbor, nt)); setIf('plan-voisins', sts.every(x=>x==='ok')?'ok':(sts.some(x=>x==='ko')?'ko':'')); }
+    const ns = planNameStatus(nomDem, nt); setIf('plan-nom', ns==='ok'?'ok':(ns==='ko'?'ko':''));
+    const ss = planSurfStatus(txt, haList); setIf('plan-superf', ss==='na'?'':ss);
+  }
+}
+// Bloque Ctrl+S / Ctrl+P / Ctrl+C pendant la consultation (dissuasion : le fichier PDF n'existe pas dans l'application)
+function planKeyHandler(e){
+  if((e.ctrlKey||e.metaKey) && ['s','p','u'].includes((e.key||'').toLowerCase())){ e.preventDefault(); e.stopPropagation(); }
+}
+function planKeyBlock(on){
+  document.removeEventListener('keydown', planKeyHandler, true);
+  if(on) document.addEventListener('keydown', planKeyHandler, true);
+}
+function planClose(){
+  const m = document.getElementById('plan-modal'); if(m) m.remove();
+  planKeyBlock(false);
+}
+async function planSubmit(id, statut){
+  const g = k => (document.getElementById('plan-'+k)||{}).value||'';
+  const comm = g('comm').trim();
+  if(statut==='incoherent' && !comm){ showToast('Indiquez en commentaire ce qui est incohérent.'); return; }
+  const d = (dossiersAFOR||[]).find(x=>String(x.id)===String(id));
+  const entry = d ? planGetFor(d) : null;
+  await planSaveCheck(id, {voisins:g('voisins'), nom:g('nom'), superf:g('superf'), statut, commentaire:comm, par:planWho(), date:new Date().toISOString().split('T')[0], planTs: entry?entry.ts:null});
+  showToast(statut==='conforme'?'Plan '+id+' validé.':'Incohérence signalée pour '+id+'.');
+  planClose();
+  if(cqeTab==='plans') planRenderTab();
+}
+
+// ── Onglet « Plans parcellaires » ──
+function planSetFilter(k,v){ planFilterState[k]=v; planFilterState.page=0; planRenderTab(); }
+function planRenderTab(){
+  const kpiEl = document.getElementById('cqe-kpi'), contentEl = document.getElementById('cqe-content');
+  if(!kpiEl||!contentEl) return;
+  if(!window._planMetaTried){ window._planMetaTried=true; planLoadMeta().then(ok=>{ if(ok && cqeTab==='plans') planRenderTabKeepStatus(); }); }
+  const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
+  const par = [], matched = new Set();
+  afor.forEach(d=>{ const e=planGetFor(d); if(e){ par.push({d,e}); matched.add(e.key); } });
+  const orph = planFiles.filter(e=>!matched.has(e.key)).length;
+  const conf = par.filter(x=>planStatusOf(x.e,x.d.id)==='conforme').length;
+  const inc  = par.filter(x=>planStatusOf(x.e,x.d.id)==='incoherent').length;
+  const mb = planFiles.reduce((s,e)=>s+(e.kb||0),0)/1024;
+  kpiEl.innerHTML = `
+    <div class="kpi blue"><div class="kpi-l">Plans importés</div><div class="kpi-v">${planFiles.length.toLocaleString('fr-FR')}</div><div class="kpi-s">≈ ${mb.toFixed(0)} Mo sur ${PLAN_QUOTA_MB} Mo de base</div></div>
+    <div class="kpi"><div class="kpi-l">Dossiers avec plan</div><div class="kpi-v">${par.length.toLocaleString('fr-FR')}</div><div class="kpi-s">sur ${afor.length.toLocaleString('fr-FR')} dossiers</div></div>
+    <div class="kpi green"><div class="kpi-l">Plans conformes</div><div class="kpi-v">${conf}</div></div>
+    <div class="kpi red"><div class="kpi-l">Plans incohérents</div><div class="kpi-v">${inc}</div></div>
+    <div class="kpi ${orph?'amber':''}"><div class="kpi-l">Plans sans dossier</div><div class="kpi-v">${orph}</div><div class="kpi-s">n° de dossier non reconnu</div></div>`;
+  const can = planCanEdit();
+  const bar = `<div class="tw" style="padding:12px 16px;margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      ${can?`<label class="btn-p" style="cursor:pointer;">📥 Importer des plans PDF<input type="file" accept=".pdf,application/pdf" multiple style="display:none" onchange="planImportFiles(this.files);this.value='';"></label>
+      <label class="btn-s" style="cursor:pointer;">📁 Importer un dossier de plans<input type="file" webkitdirectory multiple style="display:none" onchange="planImportFiles(this.files);this.value='';"></label>`:''}
+      <span style="font-size:11px;color:var(--text3);flex:1;min-width:240px;">Le nom de chaque fichier doit contenir le n° du dossier (ex. 088-002-021008.pdf). Un plan réimporté <b>remplace</b> l'ancien. Les plans sont consultables en lecture seule : aucun PDF n'est conservé ni téléchargeable.</span>
+      <div id="plan-import-status" style="width:100%;"></div>
+    </div>`;
+  if(!planFiles.length){
+    contentEl.innerHTML = bar + '<div class="empty-state"><p style="font-size:13px;">Aucun plan importé pour l\'instant.</p></div>';
+    return;
+  }
+  const q = planNorm(planFilterState.q), stf = planFilterState.statut;
+  let rows = par.filter(x=>{
+    const s = planStatusOf(x.e, x.d.id);
+    if(stf && s!==stf && !(stf==='a_verifier' && s==='a_reverifier')) return false;
+    if(q){ const hay = planNorm([x.d.id,x.d.prenom,x.d.nom_demandeur,x.d.village,x.d.sp,x.d.agent].join(' ')); if(!q.split(' ').every(t=>hay.includes(t))) return false; }
+    return true;
+  });
+  const total = rows.length, pages = Math.max(1, Math.ceil(total/PLAN_PAGE));
+  planFilterState.page = Math.min(planFilterState.page, pages-1);
+  rows = rows.slice(planFilterState.page*PLAN_PAGE, (planFilterState.page+1)*PLAN_PAGE);
+  const badge = (e,id)=>{ const s=planStatusOf(e,id); return s==='a_verifier'?'<span style="color:var(--text3);">À vérifier</span>':s==='a_reverifier'?'<span style="color:var(--amber);font-weight:700;">↻ Plan modifié — à re-vérifier</span>':s==='conforme'?'<span style="color:var(--accent);font-weight:700;">✓ Conforme</span>':'<span style="color:var(--red);font-weight:700;">⚠ Incohérent</span>'; };
+  contentEl.innerHTML = bar + `<div class="tw" style="overflow:hidden;">
+    <div style="padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);">
+      <input type="text" placeholder="N° dossier, nom, village, agent…" value="${planEsc(planFilterState.q)}" oninput="planFilterState.q=this.value;planFilterState.page=0;clearTimeout(window._plT);window._plT=setTimeout(planRenderTabKeepStatus,250);" style="padding:7px 11px;border:1px solid var(--border);border-radius:6px;font-size:12px;min-width:220px;">
+      <select onchange="planSetFilter('statut',this.value)" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
+        ${[['','Tous les statuts'],['a_verifier','À vérifier'],['conforme','Conformes'],['incoherent','Incohérents']].map(o=>`<option value="${o[0]}" ${stf===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>
+      <span style="font-size:11px;color:var(--text3);align-self:center;">${total.toLocaleString('fr-FR')} plan(s)</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--surface2);">
+      <th style="text-align:left;padding:7px 10px;">Dossier</th><th style="text-align:left;padding:7px 10px;">Demandeur</th><th style="text-align:left;padding:7px 10px;">Village</th><th style="text-align:left;padding:7px 10px;">Agent</th><th style="text-align:left;padding:7px 10px;">Statut du plan</th><th style="padding:7px 10px;"></th></tr></thead>
+      <tbody>${rows.map(x=>`<tr style="border-top:1px solid var(--border);"><td style="padding:6px 10px;font-family:'DM Mono',monospace;">${planEsc(x.d.id)}</td><td style="padding:6px 10px;">${planEsc(((x.d.prenom||'')+' '+(x.d.nom_demandeur||'')).trim())}</td><td style="padding:6px 10px;">${planEsc(x.d.village||'')}</td><td style="padding:6px 10px;">${planEsc(x.d.agent||'')}</td><td style="padding:6px 10px;">${badge(x.e,x.d.id)}</td><td style="padding:6px 10px;text-align:right;"><button class="btn-s" onclick="planOpen('${String(x.d.id).replace(/'/g,"\\'")}')">Ouvrir</button></td></tr>`).join('')||'<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--text3);">Aucun plan ne correspond.</td></tr>'}</tbody></table>
+    ${pages>1?`<div style="padding:8px 16px;display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);font-size:11px;"><button class="btn-s" ${planFilterState.page===0?'disabled':''} onclick="planFilterState.page--;planRenderTab()">← Précédent</button> Page ${planFilterState.page+1} / ${pages} <button class="btn-s" ${planFilterState.page>=pages-1?'disabled':''} onclick="planFilterState.page++;planRenderTab()">Suivant →</button></div>`:''}
+  </div>`;
+}
+setTimeout(()=>{ try{ planReindex(); planLoadChecks(); planLoadMeta(); }catch(e){ console.warn('plans init', e); } }, 2500);
 
 // ── Marquer un dossier rejeté comme corrigé et validé par le contrôleur qualité :
 // il sort de "Rejetés" et vient compléter "Conformes". ──
