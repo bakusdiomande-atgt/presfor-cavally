@@ -3016,6 +3016,8 @@ function agRenderKPI(idPrefix){
   const ce    = agents.filter(a=>a.fonction==='Commissaire enquêteur').length;
   const absAuj = absences.filter(a=>{ const t=new Date().toISOString().split('T')[0]; return a.debut<=t&&a.fin>=t; }).length;
   const zoneLabel = dashZoneFilter==='all' ? 'Cavally + Worodougou' : (PROJECT_ZONES[dashZoneFilter]||PROJECT_ZONES.cavally).label;
+  window._agKpiList={total:agents, ce:agents.filter(a=>a.fonction==='Commissaire enquêteur'), gnss:agents.filter(a=>a.fonction==='Opérateur GNSS'),
+    abs:agents.filter(a=>{ const t=new Date().toISOString().split('T')[0]; return absences.some(x=>x.debut<=t&&x.fin>=t&&(x.agent===a.nom)); })};
   el.innerHTML=`
     <div class="kpi blue"><div class="kpi-l">Total agents</div><div class="kpi-v">${total}</div><div class="kpi-s">${zoneLabel}</div></div>
     <div class="kpi green"><div class="kpi-l">Comm. enquêteurs</div><div class="kpi-v">${ce}</div><div class="kpi-s">+ ${chefs} chefs d\'équipe</div></div>
@@ -4856,17 +4858,17 @@ function dashRenderIndicateurs(s){
     return dosMois.length>0 ? Math.round(rejMois/dosMois.length*100) : 0;
   });
 
-  const mini=(label,val,obj,cvsId)=>`<div style="background:var(--surface3);border-radius:var(--radius-sm);padding:10px 14px;display:flex;flex-direction:column;height:100%;overflow:hidden;">
+  const mini=(label,val,obj,cvsId,go)=>`<div ${go?`onclick="ddGo('${go}')" title="Cliquer pour voir la liste"`:''} style="${go?'cursor:pointer;':''}background:var(--surface3);border-radius:var(--radius-sm);padding:10px 14px;display:flex;flex-direction:column;height:100%;overflow:hidden;">
     <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px;flex-shrink:0;">${label}</div>
     <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;flex-shrink:0;">${val}</div>
     <div style="font-size:10px;color:var(--text3);margin-bottom:6px;flex-shrink:0;">${obj}</div>
     <div style="flex:1;min-height:0;position:relative;"><canvas id="${cvsId}" style="position:absolute;inset:0;width:100%;height:100%;"></canvas></div>
   </div>`;
   el.innerHTML =
-    mini('Taux de validation', dashPctTxt(s.nbValides, s.afor.length), 'Objectif : ≥ 60%', 'dash-spark-validation') +
+    mini('Taux de validation', dashPctTxt(s.nbValides, s.afor.length), 'Objectif : ≥ 60%', 'dash-spark-validation', 'dossiers valides') +
     mini('Couverture villages', tauxCouverture+'%', 'Objectif : ≥ 90%', 'dash-spark-couverture') +
     mini('Productivité moyenne', productivite+' ha/j', 'Par opérateur GNSS', 'dash-spark-productivite') +
-    mini('Contrôle qualité', tauxCQ+'%', tauxRejetCQ+'% de rejets', 'dash-spark-cq');
+    mini('Contrôle qualité', tauxCQ+'%', tauxRejetCQ+'% de rejets', 'dash-spark-cq', 'dossiers passes en cq');
 
   const c = dashChartColors();
   dashSparkline('dash-spark-validation', trendValidation, c.accent);
@@ -7059,8 +7061,8 @@ function cqeRenderControle(){
   const ctlIds=Object.keys(cqeCtl).filter(id=>ids.has(id));
   const nOk=ctlIds.filter(id=>cqeCtl[id].statut==='conforme').length, nRej=ctlIds.length-nOk;
   const myDay=cqeBuildActions().filter(a=>ids.has(String(a.id))&&a.by===me&&a.d===t&&(a.t==='dos_ok'||a.t==='dos_rej')).length;
-  kpiEl.innerHTML=[['Dossiers de la zone',afor.length,'#475569'],['À contrôler',afor.length-ctlIds.length,'#d97706'],['Conformes',nOk,'#16a34a'],['Rejetés',nRej,'#dc2626'],['Mes contrôles aujourd\'hui',myDay,'#0f766e']]
-    .map(k=>`<div class="kpi"><div class="kpi-l">${k[0]}</div><div class="kpi-v" style="color:${k[2]}">${k[1].toLocaleString('fr-FR')}</div></div>`).join('');
+  kpiEl.innerHTML=[['Dossiers de la zone',afor.length,'#475569',''],['À contrôler',afor.length-ctlIds.length,'#d97706','a_controler'],['Conformes',nOk,'#16a34a','conforme'],['Rejetés',nRej,'#dc2626','rejete'],['Mes contrôles aujourd\'hui',myDay,'#0f766e',null]]
+    .map(k=>`<div class="kpi" ${k[3]===null?'':`onclick="cqeCtlSet('statut','${k[3]}')" style="cursor:pointer;" title="Cliquer pour filtrer la liste"`}><div class="kpi-l">${k[0]}</div><div class="kpi-v" style="color:${k[2]}">${k[1].toLocaleString('fr-FR')}</div></div>`).join('');
   const f=cqeCtlFilter, q=(f.q||'').toLowerCase();
   const depts=[...new Set(afor.map(d=>d.dept).filter(Boolean))].sort();
   const list=afor.filter(d=>{
@@ -7334,6 +7336,172 @@ function recExport(){
   showToast('Rapprochement exporté.');
 }
 
+// ═══════════════════════════════════════════════════════════════
+// LISTE DERRIÈRE CHAQUE CHIFFRE — clic sur une carte (KPI) de n'importe quel onglet
+// ═══════════════════════════════════════════════════════════════
+const DD = {rows:[], cols:[], title:'', q:'', page:0, fiche:true};
+function ddNorm(x){ return String(x||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').replace(/filtre/g,'').trim(); }
+function ddZone(){ return dashFilterByZone(dossiersAFOR||[], dashZoneFilter); }
+const DD_COL_BASE=[
+  {h:'N° dossier',f:d=>d.id},{h:'Demandeur',f:d=>((d.prenom||'')+' '+(d.nom_demandeur||d.nom||'')).trim()},{h:'Village',f:d=>d.village||''},
+  {h:'Département',f:d=>d.dept||''},{h:'Agent',f:d=>d.agent||''},{h:'Étape',f:d=>(d.etape||'')+(d.cf_signe?' · CF signé':'')}
+];
+function ddOpen(title, rows, extra, opt){
+  DD.title=title; DD.rows=rows||[]; DD.q=''; DD.page=0; DD.fiche=!(opt&&opt.noFiche);
+  DD.cols=(opt&&opt.cols)?opt.cols:DD_COL_BASE.concat(extra||[]);
+  ddRender();
+}
+function ddClose(){ const m=document.getElementById('dd-modal'); if(m) m.remove(); }
+function ddFiltered(){
+  const q=ddNorm(DD.q); if(!q) return DD.rows;
+  return DD.rows.filter(r=>DD.cols.some(c=>ddNorm(c.f(r)).includes(q)));
+}
+function ddSetQ(v){ DD.q=v; DD.page=0; ddRender(true); }
+function ddSetPage(n){ DD.page=n; ddRender(true); }
+function ddRender(keepFocus){
+  const list=ddFiltered(), PG=100, pages=Math.max(1,Math.ceil(list.length/PG)); if(DD.page>=pages) DD.page=pages-1;
+  const esc=planEsc;
+  const rows=list.slice(DD.page*PG,DD.page*PG+PG).map(r=>`<tr ${DD.fiche&&r&&r.id?`style="cursor:pointer;" onclick="dosOpenFiche('${String(r.id).replace(/'/g,"\\'")}')"`:''}>${DD.cols.map(c=>`<td>${esc(c.f(r))}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${DD.cols.length}" style="text-align:center;color:#888;padding:14px;">Aucun élément.</td></tr>`;
+  let m=document.getElementById('dd-modal');
+  if(!m){ m=document.createElement('div'); m.id='dd-modal'; m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:9998;padding:16px;'; document.body.appendChild(m); }
+  m.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:100%;max-width:1050px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+      <h3 style="font-family:'Syne',sans-serif;font-size:15px;margin:0;">${esc(DD.title)} <span style="font-weight:400;color:var(--text3);font-size:12px;">— ${list.length.toLocaleString('fr-FR')} élément(s)</span></h3>
+      <div style="display:flex;gap:8px;align-items:center;"><input id="dd-q" type="text" placeholder="Rechercher…" value="${esc(DD.q)}" oninput="ddSetQ(this.value)" style="border:1px solid var(--border-med);border-radius:6px;padding:6px 10px;font-size:12px;width:200px;"><button class="btn-s" onclick="ddExport()">⬇ Excel</button><button class="btn-s" onclick="ddClose()">✕ Fermer</button></div></div>
+    <div style="overflow:auto;flex:1;"><table style="font-size:12px;"><thead><tr>${DD.cols.map(c=>`<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
+    <div style="padding:10px 16px;display:flex;gap:8px;align-items:center;font-size:12px;border-top:1px solid var(--border);"><button class="btn-s" ${DD.page<=0?'disabled':''} onclick="ddSetPage(${DD.page-1})">←</button> Page ${DD.page+1} / ${pages} <button class="btn-s" ${DD.page>=pages-1?'disabled':''} onclick="ddSetPage(${DD.page+1})">→</button>${DD.fiche?'<span style="margin-left:auto;color:var(--text3);">Cliquez une ligne pour ouvrir la fiche complète du dossier.</span>':''}</div></div>`;
+  if(keepFocus){ const el=document.getElementById('dd-q'); if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length); } }
+}
+function ddExport(){
+  if(typeof XLSX==='undefined'){ showToast('Bibliothèque Excel indisponible.'); return; }
+  const list=ddFiltered();
+  const rows=list.map(r=>{ const o={}; DD.cols.forEach(c=>{ o[c.h]=c.f(r); }); return o; });
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows.length?rows:[{'Info':'Aucun élément'}]),'Liste');
+  const slug=ddNorm(DD.title).replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40)||'liste';
+  XLSX.writeFile(wb,'Liste_'+slug+'_'+new Date().toISOString().split('T')[0]+'.xlsx'); showToast(rows.length+' ligne(s) exportée(s).');
+}
+// Colonnes supplémentaires fréquentes
+const DD_X={
+  gnss:{h:'Superficie GNSS (ha)',f:d=>{ const g=gnssForDossier(d); return g?(Math.round(g.superficie*100)/100):''; }},
+  type:{h:'Type',f:d=>d.type||''},
+  retard:{h:'Jours de retard',f:d=>{ const r=aforCalcRetard(d); return r.retard?r.jours:''; }},
+  motif:{h:'Motif de rejet',f:d=>{ const c=pubCQ[d.id]||{}; return cqeCleanTxt?cqeCleanTxt(c.motif_final||c.motif_qc2||c.motif_qc1||''):(c.motif_final||c.motif_qc2||c.motif_qc1||''); }},
+  rejetle:{h:'Rejeté le',f:d=>(pubCQ[d.id]||{}).date_rejet||''}
+};
+// Registre : module + libellé de carte → fonction qui renvoie [titre, lignes, colonnes sup.] (ou lance l'ouverture elle-même)
+function ddGo(key){ try{ const h=DD_REG.accueil[key]||DD_REG.cqe[key]||DD_REG.dossier[key]; const r=h&&h(); if(r) ddOpen(r[0],r[1],r[2],r[3]); }catch(e){ showToast('Impossible d\'afficher la liste : '+e.message); } }
+const DD_AG_COLS=[{h:'Nom',f:r=>r.nom},{h:'Fonction',f:r=>r.fonction},{h:'Zone',f:r=>r.zone||'cavally'},{h:'Téléphone',f:r=>r.tel||''}];
+const DD_REG={
+  accueil:{
+    'superficie securisee':()=>['Dossiers levés au GNSS',ddZone().filter(d=>gnssForDossier(d)),[DD_X.gnss]],
+    'dossiers traites':()=>['Dossiers traités',ddZone(),[DD_X.type]],
+    'dossiers valides':()=>['Dossiers validés',ddZone().filter(d=>d.etape==='VA'&&!(pubCQ[d.id]&&pubCQ[d.id].rejete)),[DD_X.type,DD_X.gnss]],
+    'alertes critiques':()=>{ notifToggle(); return null; }
+  },
+  dossier:{
+    'total dossiers':()=>['Tous les dossiers'+(dosListFiltered&&dosListFiltered.length&&dosListFiltered.length!==(dossiersAFOR||[]).length?' (filtre actif)':''),(dosListFiltered&&dosListFiltered.length?dosListFiltered:[...dossiers,...(dossiersAFOR||[])]),[DD_X.type,DD_X.gnss]],
+    'en retard':()=>['Dossiers en retard',(dosListFiltered&&dosListFiltered.length?dosListFiltered:[...dossiers,...(dossiersAFOR||[])]).filter(d=>aforCalcRetard(d).retard),[DD_X.retard]],
+    'valides (va)':()=>['Dossiers validés (VA)',(dosListFiltered&&dosListFiltered.length?dosListFiltered:[...dossiers,...(dossiersAFOR||[])]).filter(d=>d.etape==='VA'),[DD_X.type,{h:'CF signé',f:d=>d.cf_signe?'Oui':''}]],
+    'cfi / cfc':()=>['Dossiers CFI / CFC',(dosListFiltered&&dosListFiltered.length?dosListFiltered:[...dossiers,...(dossiersAFOR||[])]).filter(d=>d.type==='CFI'||d.type==='CFC'),[DD_X.type]],
+    'superficie gnss':()=>['Dossiers levés au GNSS',(dosListFiltered&&dosListFiltered.length?dosListFiltered:[...dossiers,...(dossiersAFOR||[])]).filter(d=>gnssForDossier(d)),[DD_X.gnss]]
+  },
+  activites:{
+    'dossiers':()=>['Dossiers',ddZone(),[DD_X.type]],
+    'valides':()=>['Dossiers validés',ddZone().filter(d=>d.etape==='VA'),[DD_X.type,DD_X.gnss]],
+    'en retard':()=>['Dossiers en retard',ddZone().filter(d=>aforCalcRetard(d).retard),[DD_X.retard]],
+    'superficie securisee':()=>['Dossiers validés avec levé GNSS',ddZone().filter(d=>d.etape==='VA'&&gnssForDossier(d)),[DD_X.gnss]]
+  },
+  pub:{
+    'total en publicite':()=>ddPub('Dossiers en publicité',()=>true),
+    'en publicite':()=>ddPub('Dossiers en publicité (filtre actif)',()=>true),
+    'superficie totale':()=>ddPub('Dossiers en publicité',()=>true),
+    'superficie':()=>ddPub('Dossiers en publicité (filtre actif)',()=>true),
+    'alerte j-5':()=>ddPub('Alerte J-5 — clôture imminente',d=>d.statut==='alerte'),
+    'en retard':()=>ddPub('Publicité en retard',d=>d.statut==='en_retard'),
+    'rejets cq':()=>ddPub('Dossiers en publicité rejetés au CQ',d=>d.cq&&d.cq.rejete)
+  },
+  cqe:{
+    'dossiers passes en cq':()=>['Dossiers passés en CQ',ddZone().filter(d=>pubCQ[d.id]),[DD_X.motif]],
+    'rejetes':()=>['Dossiers rejetés (à corriger)',ddZone().filter(d=>pubCQ[d.id]&&pubCQ[d.id].rejete&&!pubCQ[d.id].corrige),[DD_X.motif,DD_X.rejetle]],
+    'conformes':()=>['Dossiers conformes',ddZone().filter(d=>pubCQ[d.id]&&!(pubCQ[d.id].rejete&&!pubCQ[d.id].corrige)),[]],
+    'non encore controles':()=>['Dossiers non encore contrôlés',ddZone().filter(d=>!pubCQ[d.id]),[]],
+    'publicite sans gnss':()=>['Publicité sans levé GNSS',aforGetSansGnssApresPublicite(),[]],
+    // Plans parcellaires
+    'plans importes':()=>ddPlans('Plans importés',()=>true),
+    'dossiers avec plan':()=>['Dossiers avec plan',ddZone().filter(d=>planGetFor(d)),[{h:'Contrôle du plan',f:d=>{ const e=planGetFor(d); const st=planStatusOf(e,d.id); return {conforme:'Conforme',incoherent:'Incohérent',a_reverifier:'À revérifier',a_verifier:'À vérifier'}[st]||st; }}]],
+    'plans conformes':()=>['Plans conformes',ddZone().filter(d=>{ const e=planGetFor(d); return e&&planStatusOf(e,d.id)==='conforme'; }),[]],
+    'plans incoherents':()=>['Plans incohérents',ddZone().filter(d=>{ const e=planGetFor(d); return e&&planStatusOf(e,d.id)==='incoherent'; }),[{h:'Commentaire',f:d=>(planChecks[d.id]||{}).commentaire||''}]],
+    'plans sans dossier':()=>{ const afor=ddZone(), m=new Set(); afor.forEach(d=>{ const e=planGetFor(d); if(e) m.add(e.key); }); return ddPlans('Plans sans dossier',e=>!m.has(e.key)); },
+    // Contrôle des dossiers (onglet) — applique le filtre de la liste
+    'a controler':()=>{ cqeCtlSet('statut','a_controler'); return null; },
+    'conformes ':()=>null,
+    // Pilotage
+    'rejetes en attente':()=>ddPilot('Rejets en attente de correction',0),
+    'en retard (>= 7 j)':()=>ddPilot('Corrections en retard',CQE_ALERT_DAYS),
+    'critiques (>= 14 j)':()=>ddPilot('Corrections critiques',CQE_CRIT_DAYS),
+    "controles aujourd'hui":()=>ddActs('Contrôles du jour',a=>a.d===cqeToday()),
+    'controles 7 derniers jours':()=>ddActs('Contrôles des 7 derniers jours',a=>a.d>=new Date(Date.now()-6*86400000).toISOString().split('T')[0]),
+    "mes controles aujourd'hui":()=>ddActs('Mes contrôles du jour',a=>a.d===cqeToday()&&a.by===cqeWho())
+  }
+};
+function ddPub(titre, pred){
+  let all=(window._pubFiltList && titre.indexOf('filtre')>=0) ? window._pubFiltList : pubGetDossiers(false);
+  all=all.filter(pred);
+  const STAT={cloture:'Clôturé',en_cours:'En cours',alerte:'Alerte J-5',en_retard:'En retard',inconnu:'—'};
+  return [titre, all, null, {cols:[{h:'N° dossier',f:d=>d.id},{h:'Demandeur',f:d=>String(d.nom||'').trim()},{h:'Village',f:d=>d.village},{h:'Département',f:d=>d.dept},{h:'Agent',f:d=>d.agent},{h:'Ouverture',f:d=>d.dateOV||''},{h:'Clôture',f:d=>d.dateCP||''},{h:'Statut',f:d=>STAT[d.statut]||d.statut},{h:'Retard (j)',f:d=>d.retardJours||''},{h:'Superficie (ha)',f:d=>d.superficie?Math.round(d.superficie*100)/100:''},{h:'Rejet CQ',f:d=>d.cq&&d.cq.rejete?'Oui':''}]}];
+}
+function ddPlans(titre,pred){
+  const rows=planFiles.filter(pred);
+  return [titre, rows, null, {noFiche:true, cols:[{h:'Clé / n° dossier',f:e=>e.code||e.key},{h:'Fichier',f:e=>e.name||''},{h:'Pages',f:e=>e.pages||''},{h:'Taille (Ko)',f:e=>e.kb||''},{h:'Importé le',f:e=>e.ts?String(new Date(e.ts).toISOString()).slice(0,10):''},{h:'Importé par',f:e=>e.by||''}]}];
+}
+function ddPilot(titre,min){
+  const t=cqeToday(), rows=[];
+  ddZone().forEach(d=>{ const c=pubCQ[d.id]; if(!c||!c.rejete||c.corrige||!c.date_rejet) return; const j=cqeDaysBetween(c.date_rejet,t); if(j!=null&&j>=min) rows.push(d); });
+  rows.sort((a,b)=>cqeDaysBetween(pubCQ[b.id].date_rejet,t)-cqeDaysBetween(pubCQ[a.id].date_rejet,t));
+  return [titre, rows, [DD_X.rejetle,{h:'Jours d\'attente',f:d=>cqeDaysBetween((pubCQ[d.id]||{}).date_rejet,t)},DD_X.motif]];
+}
+function ddActs(titre,pred){
+  const ids=new Set(ddZone().map(d=>String(d.id)));
+  const rows=cqeBuildActions().filter(a=>ids.has(String(a.id))&&pred(a)).sort((a,b)=>a.d<b.d?1:-1);
+  return [titre, rows, null, {cols:[{h:'Date',f:a=>a.d},{h:'Contrôleur',f:a=>a.by},{h:'Action',f:a=>CQE_TYPE_LABEL[a.t]},{h:'N° dossier',f:a=>a.id}]}];
+}
+const ddAg=(t,k)=>()=>{ const l=(window._agKpiList||{})[k]||[]; return [t,l,null,{cols:DD_AG_COLS,noFiche:true}]; };
+DD_REG.indicateurs=Object.assign({}, DD_REG.dossier||{}, DD_REG.accueil||{}, {
+  'total agents':ddAg('Agents','total'), 'comm. enqueteurs':ddAg('Commissaires enquêteurs','ce'),
+  'operateurs gnss':ddAg('Opérateurs GNSS','gnss'), 'absents auj.':ddAg('Agents absents aujourd\'hui','abs'),
+  'dossiers cf ouverts':()=>['Dossiers CF ouverts',(dossiers||[]).slice(),[DD_X.type]]
+});
+function ddModuleOf(el){
+  const mod=el.closest('.module'); if(!mod) return null;
+  const k=mod.id.replace('module-','');
+  return k;
+}
+function ddKeyOf(el){
+  const l=el.querySelector('.kpi-l') || (el.classList.contains('dash-kpi-card') ? el.querySelector('div > div:nth-child(2)') : null);
+  return l ? ddNorm(l.textContent) : '';
+}
+function ddHandler(card){
+  const mod=ddModuleOf(card); if(!mod||!DD_REG[mod]) return null;
+  const key=ddKeyOf(card); if(!key) return null;
+  return DD_REG[mod][key] || DD_REG[mod][key.replace(/\s+$/,'')] || null;
+}
+function ddDecorate(root){
+  (root||document).querySelectorAll('.kpi, .dash-kpi-card').forEach(c=>{
+    if(c.dataset.dd) return;
+    const h=ddHandler(c); if(!h) return;
+    c.dataset.dd='1'; c.style.cursor='pointer'; c.title='Cliquer pour voir la liste';
+  });
+}
+document.addEventListener('click',function(e){
+  const card=e.target.closest&&e.target.closest('.kpi, .dash-kpi-card'); if(!card||!card.dataset.dd) return;
+  if(card.getAttribute('onclick')) return; // cartes déjà interactives (Rapprochement)
+  const h=ddHandler(card); if(!h) return;
+  try{ const r=h(); if(r) ddOpen(r[0], r[1], r[2], r[3]); }catch(err){ console.error('drill-down', err); showToast('Impossible d\'afficher la liste : '+err.message); }
+});
+(function(){ let tm=null; const run=()=>{ tm=null; try{ ddDecorate(); }catch(e){} };
+  const start=()=>{ new MutationObserver(()=>{ if(!tm) tm=setTimeout(run,150); }).observe(document.body,{childList:true,subtree:true}); run(); };
+  if(document.body) start(); else document.addEventListener('DOMContentLoaded',start); })();
+
 // Contrôleurs qualité déclarés (nom, identifiant, zone). Sans zone renseignée → Cavally par défaut.
 const CQE_TYPE_LABEL={ok:'Plan conforme',inc:'Plan incohérent',corr:'Correction validée',dos_ok:'Dossier conforme',dos_rej:'Dossier rejeté'};
 function cqeUsers(){
@@ -7465,6 +7633,7 @@ function pubPopulateSP(){
 }
 
 function pubRenderKPIFiltered(liste){
+  window._pubFiltList = liste;
   // KPI réactifs aux filtres actifs
   if(!liste || liste.length === pubGetDossiers(false).length){
     pubRenderKPI(); return; // pas de filtre actif → KPI globaux
@@ -7489,6 +7658,7 @@ function pubRenderKPIFiltered(liste){
 }
 
 function pubRenderKPI(){
+  window._pubFiltList = null;
   const all = pubGetDossiers(false); // KPI = seulement dossiers en pub
   const enCours   = all.filter(d => d.statut === 'en_cours').length;
   const alertes   = all.filter(d => d.statut === 'alerte').length;
