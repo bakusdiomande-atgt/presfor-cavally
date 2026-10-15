@@ -1774,6 +1774,12 @@ function dosRenderAll(){
 
 // Index GNSS pré-calculé : id_dossier → superficie
 // Reconstruit à chaque import GNSS ou AFOR
+// Dossier validé = étape VA et non rejeté au contrôle qualité (définition unique pour toute l'application)
+function isValide(d){ return !!d && d.etape==='VA' && !(pubCQ && pubCQ[d.id] && pubCQ[d.id].rejete); }
+function dosSuperfValide(d){ let g=null; try{ g=gnssForDossier(d); }catch(e){} return g&&g.superficie ? g.superficie : (d.superficie_declaree||0); }
+function dosSuperfValideTotal(list){ return (list||[]).filter(isValide).reduce((s,d)=>s+dosSuperfValide(d),0); }
+function fmtHa(v){ return (Math.round(v*10)/10).toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1}); }
+function fmtD_placeholder(){}
 let _gnssSuperfIndex = null;
 let _gnssOrphelins   = []; // Parcelles GNSS sans dossier AFOR correspondant
 
@@ -1859,8 +1865,10 @@ function dosRenderKPI(filtered){
   const tous = filtered ? filtered : [...dossiers, ...dossiersAFOR, ...gnssOrphans];
   const tot  = tous.length;
   const retards = tous.filter(d=>aforCalcRetard(d).retard).length;
-  const va      = tous.filter(d=>d.etape==='VA').length;
+  const va      = tous.filter(d=>isValide(d)).length;
   const signes  = tous.filter(d=>d.cf_signe).length;
+  const superfVa = dosSuperfValideTotal(tous);
+  const vaRej = tous.filter(d=>d.etape==='VA' && !isValide(d)).length;
   const manuel  = filtered ? filtered.filter(d=>!d._src||d._src==='manuel').length : dossiers.length;
   const afor    = filtered ? filtered.filter(d=>d._src==='afor').length            : dossiersAFOR.length;
   const gnssSeul = filtered ? filtered.filter(d=>d._src==='gnss').length           : gnssOrphans.length;
@@ -1889,7 +1897,7 @@ function dosRenderKPI(filtered){
   kpiEl.innerHTML =
     `<div class="kpi blue"><div class="kpi-l">Total dossiers</div><div class="kpi-v">${tot.toLocaleString('fr-FR')}${lbl}</div><div class="kpi-s">${manuel} manuels · ${afor} AFOR${gnssSeul?(' · '+gnssSeul+' GNSS seul'):''}</div></div>
      <div class="kpi ${retards>0?'red':'green'}"><div class="kpi-l">En retard</div><div class="kpi-v">${retards}</div><div class="kpi-s">${tot>0?Math.round(retards/tot*100):0}%</div></div>
-     <div class="kpi green"><div class="kpi-l">Validés (VA)</div><div class="kpi-v">${va}</div><div class="kpi-s">${tot>0?Math.round(va/tot*100):0}% · dont ${signes} CF signés</div></div>
+     <div class="kpi green"><div class="kpi-l">Validés (VA)</div><div class="kpi-v">${va}</div><div class="kpi-s">${tot>0?Math.round(va/tot*100):0}% · dont ${signes} CF signés<br><b>${fmtHa(superfVa)} ha</b> validés${vaRej?` · ${vaRej} VA rejeté(s) CQ exclus`:''}</div></div>
      <div class="kpi amber"><div class="kpi-l">CFI / CFC</div><div class="kpi-v">${tous.filter(d=>d.type==='CFI').length}</div><div class="kpi-s">${tous.filter(d=>d.type==='CFC').length} CFC</div></div>
      <div class="kpi teal"><div class="kpi-l">Superficie GNSS${lbl}</div><div class="kpi-v" style="font-size:16px;">${totalHa.toFixed(1)}</div><div class="kpi-s">hectares levés</div></div>`;
 }
@@ -3296,7 +3304,7 @@ function agOpenFiche(nom){
       '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:#22C55E">'+nbCFI+'</div><div style="font-size:10px;color:var(--text3)">CFI</div></div>'+
       '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:#16A34A">'+nbCFC+'</div><div style="font-size:10px;color:var(--text3)">CFC</div></div>'+
       '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:'+(nbCFRetards>0?'var(--red)':'var(--accent)')+'">'+nbCFRetards+'</div><div style="font-size:10px;color:var(--text3)">En retard</div></div>'+
-      '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:#0369A1">'+mesFichesCF.filter(function(d){return d.etape==='VA';}).length+'</div><div style="font-size:10px;color:var(--text3)">Validés (VA)</div></div>'+
+      '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:#0369A1">'+mesFichesCF.filter(function(d){return isValide(d);}).length+'</div><div style="font-size:10px;color:var(--text3)">Validés (VA)</div></div>'+
       '</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:6px;">'+
       ETAPES_CF.map(function(e){
@@ -4320,7 +4328,7 @@ function dashComputeStats(zoneFilter){
   // selon son étape (les deux critères sont indépendants dans les données, d'où le risque de double comptage).
   const enCours = afor.filter(d=>['DD','RDC'].includes(d.etape) && !rejeteIds.has(d.id)).length;
   const enquetes = afor.filter(d=>['CL','OV','CP','AP'].includes(d.etape) && !rejeteIds.has(d.id)).length;
-  const valides = afor.filter(d=>d.etape==='VA' && !rejeteIds.has(d.id));
+  const valides = afor.filter(d=>isValide(d) && !rejeteIds.has(d.id));
   const alertesN = typeof notifGetAlertes==='function' ? notifGetAlertes().length : afor.filter(d=>aforCalcRetard(d).retard).length;
   return {
     superficieValidee, totalDossiers, nbValides:valides.length,
@@ -4361,7 +4369,7 @@ function dashPctTxt(v, obj){
   return Math.min(999, Math.round(r))+'%';
 }
 
-function dashKpiCard(icon, iconBg, iconColor, label, val, obj, valColor, subLabel, unit){
+function dashKpiCard(icon, iconBg, iconColor, label, val, obj, valColor, subLabel, unit, extra){
   const pct = dashPct(val, obj);
   const displayVal = (typeof val==='number'?val.toLocaleString('fr-FR'):val) + (unit?(' '+unit):'');
   return `<div class="dash-kpi-card">
@@ -4371,6 +4379,7 @@ function dashKpiCard(icon, iconBg, iconColor, label, val, obj, valColor, subLabe
     </div>
     <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:${valColor||'var(--text)'};line-height:1;">${displayVal}</div>
     <div style="font-size:10px;color:var(--text3);margin:4px 0 6px;">Objectif : ${obj.toLocaleString('fr-FR')}</div>
+    ${extra?`<div style="font-size:11px;font-weight:600;color:${iconColor};margin:0 0 6px;">${extra}</div>`:''}
     ${subLabel ? `<div style="display:inline-block;font-size:10px;font-weight:600;color:var(--amber);background:var(--amber-lt);border-radius:4px;padding:2px 6px;margin-bottom:6px;">⚠ ${subLabel}</div>` : ''}
     <div style="display:flex;align-items:center;gap:6px;">
       <div class="dash-progress-track"><div class="dash-progress-fill" style="width:${val>0?Math.max(1,Math.min(100,pct)):0}%;background:${iconColor}"></div></div>
@@ -4388,7 +4397,7 @@ function dashRenderKPI(s){
   el.innerHTML =
     dashKpiCard(ic('<path d="M8 1C5 5 3 8 3 10.5a5 5 0 0 0 10 0C13 8 11 5 8 1z"/>'), 'var(--accent-lt)', 'var(--accent)', 'Superficie sécurisée', Math.round(s.superficieValidee), obj.ha, null, null, 'ha') +
     dashKpiCard(ic('<rect x="2" y="3" width="12" height="11" rx="1"/><path d="M2 6h12"/>'), 'var(--blue-lt)', 'var(--blue)', 'Dossiers traités', s.totalDossiers, obj.dossiers, null, s.orphansGnss.length>0 ? 'dont '+s.orphansGnss.length.toLocaleString('fr-FR')+' parcelles GNSS sans dossier AFOR' : null) +
-    dashKpiCard(ic('<path d="M3 8l3.5 3.5L13 4.5"/>'), '#F3EAFB', '#7C3AED', 'Dossiers validés', s.nbValides, obj.valides) +
+    dashKpiCard(ic('<path d="M3 8l3.5 3.5L13 4.5"/>'), '#F3EAFB', '#7C3AED', 'Dossiers validés', s.nbValides, obj.valides, null, null, null, fmtHa(dosSuperfValideTotal(s.afor))+' ha validés') +
     `<div class="dash-kpi-card">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
         <div class="dash-kpi-icon" style="background:var(--amber-lt);color:var(--amber)">${ic('<circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/>')}</div>
@@ -4499,7 +4508,7 @@ function dashRenderStatutDonut(s){
 
 function dashSPStats(spName){
   const dos = (dossiersAFOR||[]).filter(d=>d.sp===spName);
-  const valides = dos.filter(d=>d.etape==='VA').length;
+  const valides = dos.filter(d=>isValide(d)).length;
   const pct = dos.length>0 ? Math.round(valides/dos.length*100) : null;
   return {total:dos.length, valides, pct};
 }
@@ -5777,9 +5786,9 @@ function actRenderAll(){
   if(actCurrent==='CF'){
     // Act. C dispose de vraies données via le suivi AFOR
     const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
-    const valides = afor.filter(d=>d.etape==='VA').length;
+    const valides = afor.filter(d=>isValide(d)).length;
     const retards = afor.filter(d=>aforCalcRetard(d).retard).length;
-    const superficie = afor.filter(d=>d.etape==='VA').reduce((s,d)=>{const g=gnssForDossier(d);return s+(g?g.superficie:0);},0);
+    const superficie = afor.filter(d=>isValide(d)).reduce((s,d)=>{const g=gnssForDossier(d);return s+(g?g.superficie:0);},0);
     document.getElementById('act-kpi').innerHTML = `
       <div class="kpi blue"><div class="kpi-l">Dossiers</div><div class="kpi-v">${afor.length.toLocaleString('fr-FR')}</div></div>
       <div class="kpi green"><div class="kpi-l">Validés</div><div class="kpi-v">${valides.toLocaleString('fr-FR')}</div></div>
@@ -5930,7 +5939,7 @@ function indRenderAll(){
   const superficieOf = (list)=>list.reduce((s,d)=>{ const g=gnssForDossier(d); return s+(g?g.superficie:0); },0);
 
   const enCours = afor.filter(d=>d.etape!=='VA');
-  const delivre = afor.filter(d=>d.etape==='VA');
+  const delivre = afor.filter(d=>isValide(d));
 
   // Écart entre le total GNSS brut (tous les levés) et la portion effectivement rattachée à un
   // dossier AFOR (seule comptée dans les panneaux "Par superficie" ci-dessous, car il faut le
@@ -6228,9 +6237,9 @@ function indRenderGenre(){
   };
 
   const cfiEnCours = afor.filter(d=>d.type==='CFI' && d.etape!=='VA');
-  const cfiDelivre  = afor.filter(d=>d.type==='CFI' && d.etape==='VA');
+  const cfiDelivre  = afor.filter(d=>d.type==='CFI' && isValide(d));
   const cfcEnCours = afor.filter(d=>d.type==='CFC' && d.etape!=='VA');
-  const cfcDelivre  = afor.filter(d=>d.type==='CFC' && d.etape==='VA');
+  const cfcDelivre  = afor.filter(d=>d.type==='CFC' && isValide(d));
 
   build(cfiEnCours, 'ind-genre-card-0', iconPerson, 'Dossiers individuels en cours de traitement', 'Ha');
   build(cfiDelivre,  'ind-genre-card-1', iconPerson, 'CF individuels délivrés', 'Ha');
@@ -7383,6 +7392,8 @@ function ddExport(){
 // Colonnes supplémentaires fréquentes
 const DD_X={
   gnss:{h:'Superficie GNSS (ha)',f:d=>{ const g=gnssForDossier(d); return g?(Math.round(g.superficie*100)/100):''; }},
+  sup:{h:'Superficie (ha)',f:d=>{ const v=dosSuperfValide(d); return v?Math.round(v*100)/100:''; }},
+  sig:{h:'CF signé',f:d=>d.cf_signe?('Oui'+(d.date_SIG?' · '+d.date_SIG:'')):'Non'},
   type:{h:'Type',f:d=>d.type||''},
   retard:{h:'Jours de retard',f:d=>{ const r=aforCalcRetard(d); return r.retard?r.jours:''; }},
   motif:{h:'Motif de rejet',f:d=>{ const c=pubCQ[d.id]||{}; return cqeCleanTxt?cqeCleanTxt(c.motif_final||c.motif_qc2||c.motif_qc1||''):(c.motif_final||c.motif_qc2||c.motif_qc1||''); }},
@@ -7395,21 +7406,21 @@ const DD_REG={
   accueil:{
     'superficie securisee':()=>['Dossiers levés au GNSS',ddZone().filter(d=>gnssForDossier(d)),[DD_X.gnss]],
     'dossiers traites':()=>['Dossiers traités',ddZone(),[DD_X.type]],
-    'dossiers valides':()=>['Dossiers validés',ddZone().filter(d=>d.etape==='VA'&&!(pubCQ[d.id]&&pubCQ[d.id].rejete)),[DD_X.type,DD_X.gnss]],
+    'dossiers valides':()=>['Dossiers validés',ddZone().filter(d=>isValide(d)&&!(pubCQ[d.id]&&pubCQ[d.id].rejete)),[DD_X.type,DD_X.sup,DD_X.sig,DD_X.gnss]],
     'alertes critiques':()=>{ notifToggle(); return null; }
   },
   dossier:{
     'total dossiers':()=>['Tous les dossiers'+(dosListFiltered&&dosListFiltered.length&&dosListFiltered.length!==(dossiersAFOR||[]).length?' (filtre actif)':''),(dosListFiltered&&dosListFiltered.length?dosListFiltered:[...dossiers,...(dossiersAFOR||[])]),[DD_X.type,DD_X.gnss]],
     'en retard':()=>['Dossiers en retard',(dosListFiltered&&dosListFiltered.length?dosListFiltered:[...dossiers,...(dossiersAFOR||[])]).filter(d=>aforCalcRetard(d).retard),[DD_X.retard]],
-    'valides (va)':()=>['Dossiers validés (VA)',(dosListFiltered&&dosListFiltered.length?dosListFiltered:[...dossiers,...(dossiersAFOR||[])]).filter(d=>d.etape==='VA'),[DD_X.type,{h:'CF signé',f:d=>d.cf_signe?'Oui':''}]],
+    'valides (va)':()=>['Dossiers validés (VA)',(dosListFiltered&&dosListFiltered.length?dosListFiltered:[...dossiers,...(dossiersAFOR||[])]).filter(d=>isValide(d)),[DD_X.type,DD_X.sup,DD_X.sig]],
     'cfi / cfc':()=>['Dossiers CFI / CFC',(dosListFiltered&&dosListFiltered.length?dosListFiltered:[...dossiers,...(dossiersAFOR||[])]).filter(d=>d.type==='CFI'||d.type==='CFC'),[DD_X.type]],
     'superficie gnss':()=>['Dossiers levés au GNSS',(dosListFiltered&&dosListFiltered.length?dosListFiltered:[...dossiers,...(dossiersAFOR||[])]).filter(d=>gnssForDossier(d)),[DD_X.gnss]]
   },
   activites:{
     'dossiers':()=>['Dossiers',ddZone(),[DD_X.type]],
-    'valides':()=>['Dossiers validés',ddZone().filter(d=>d.etape==='VA'),[DD_X.type,DD_X.gnss]],
+    'valides':()=>['Dossiers validés',ddZone().filter(d=>isValide(d)),[DD_X.type,DD_X.sup,DD_X.sig,DD_X.gnss]],
     'en retard':()=>['Dossiers en retard',ddZone().filter(d=>aforCalcRetard(d).retard),[DD_X.retard]],
-    'superficie securisee':()=>['Dossiers validés avec levé GNSS',ddZone().filter(d=>d.etape==='VA'&&gnssForDossier(d)),[DD_X.gnss]]
+    'superficie securisee':()=>['Dossiers validés avec levé GNSS',ddZone().filter(d=>isValide(d)&&gnssForDossier(d)),[DD_X.gnss]]
   },
   pub:{
     'total en publicite':()=>ddPub('Dossiers en publicité',()=>true),
@@ -8765,7 +8776,7 @@ function notifGetAlertes(){
     Object.keys(PROJECT_ZONES).forEach(zoneId=>{
       const zAfor = dashFilterByZone(dossiersAFOR||[], zoneId);
       if(zAfor.length < 20) return; // pas assez de dossiers pour que le taux soit significatif
-      const valides = zAfor.filter(d=>d.etape==='VA').length;
+      const valides = zAfor.filter(d=>isValide(d)).length;
       const taux = Math.round(valides/zAfor.length*100);
       if(taux < 15){
         alertes.push({
@@ -9459,6 +9470,7 @@ function aforShowDiag(nbVa){
   m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;';
   m.innerHTML='<div style="background:var(--surface);border-radius:12px;width:100%;max-width:760px;max-height:90vh;overflow:auto;padding:18px 22px;"><div style="display:flex;justify-content:space-between;align-items:center;"><h3 style="font-family:\'Syne\',sans-serif;font-size:15px;margin:0;">Contenu du fichier AFOR importé ('+d.total+' lignes)</h3><button class="btn-s" onclick="document.getElementById(\'afor-diag\').remove()">✕ Fermer</button></div>'
    +(nbVa===0?'<p style="font-size:12px;color:#b91c1c;">Aucun dossier validé détecté. Voici ce que contient le fichier — envoyez une capture de cette fenêtre si le problème persiste.</p>':'')
+   +('<p style="font-size:12px;"><b>Colonne(s) de signature détectée(s) :</b> '+((d.colSignature&&d.colSignature.length)?d.colSignature.join(', '):'aucune')+'</p>')
    +(d.colonnesManquantes.length?'<p style="font-size:12px;color:#b45309;"><b>Colonnes attendues absentes du fichier :</b> '+d.colonnesManquantes.join(', ')+'</p>':'')
    +'<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;"><div><b>Étape Actuelle</b><table>'+top(d.etapes)+'</table></div><div><b>Statut de Validation</b><table>'+top(d.statuts)+'</table></div><div><b>Niveau Global</b><table>'+top(d.niveaux)+'</table></div><div><b>Colonnes de dates remplies</b><table>'+Object.entries(d.dates).map(([k,n])=>'<tr><td>'+k+'</td><td style="text-align:right;">'+n+'</td></tr>').join('')+'</table></div></div></div>';
   document.body.appendChild(m);
@@ -9705,6 +9717,9 @@ function aforImportExcel(input){
       rows.forEach(r=>{ _cnt(diag.etapes,r[AFOR_COLS.etape]); _cnt(diag.statuts,r[AFOR_COLS.statut]); _cnt(diag.niveaux,r[AFOR_COLS.niveau]); ['date_DD','date_RDC','date_CL','date_AN','date_OV','date_CP','date_AP','date_VA','date_SIG'].forEach(k=>{ if(r[AFOR_COLS[k]]) diag.dates[k]=(diag.dates[k]||0)+1; }); });
       const _hdrsFichier = Object.keys(rows[0]||{});
       diag.colonnesManquantes = Object.values(AFOR_COLS).filter(c=>!_hdrsFichier.includes(c));
+      // Colonnes de signature : toute colonne dont l'en-tête contient « SIGN » (hors signature du CE/agent)
+      const _sigHdrs = _hdrsFichier.filter(h=>/SIGN/i.test(String(h).normalize('NFD').replace(/[\u0300-\u036f]/g,'')) && !/\b(CE|AGENT|COMMISSAIRE|TEL|PHONE)\b/i.test(h));
+      diag.colSignature = _sigHdrs;
       const imported = [];
       rows.forEach(row=>{
         const num = row[AFOR_COLS.num];
@@ -9754,7 +9769,11 @@ function aforImportExcel(input){
           nb_voisins: (()=>{ const v=parseInt(row[AFOR_COLS.nb_voisins]); return isNaN(v)?undefined:v; })(),
         };
         { const _st=String(row[AFOR_COLS.statut]||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); dos.statut_valide = /VALID|APPROUV|ACCEPT/.test(_st) && !/REJET|REFUS|INVALID|ATTENTE|NON VALID/.test(_st); }
-        dos.cf_signe = !!dos.date_SIG || /SIGN/.test(String(etapeRaw||'').toUpperCase());
+        { const NEG=/^(NON|NO|0|FAUX|-|—|N\/A|NULL|NAN|FALSE)$/i; let sig=!!dos.date_SIG;
+          _sigHdrs.forEach(h=>{ const v=row[h]; if(v!=null && String(v).trim()!=='' && !NEG.test(String(v).trim())){ sig=true; if(!dos.date_SIG){ const dd=fmtD(v); if(dd) dos.date_SIG=dd; } } });
+          const _t=(x)=>String(x||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+          [etapeRaw,row[AFOR_COLS.statut],row[AFOR_COLS.niveau]].forEach(x=>{ const t=_t(x); if(/SIGN/.test(t) && !/NON SIGN|PAS SIGN|NON-SIGN/.test(t)) sig=true; });
+          dos.cf_signe=sig; }
         if(etapeRaw && ETAPES_CF.indexOf(etape)<0) etapesInconnues[String(etapeRaw).trim()] = (etapesInconnues[String(etapeRaw).trim()]||0)+1;
         dos.etape = aforDeriveEtape(dos, ETAPES_CF.indexOf(etape)>=0?etape:'');
         imported.push(dos);
@@ -9873,7 +9892,7 @@ function aforImportExcel(input){
       } else {
         console.warn('AFOR: sauvegarde Firebase annulée (0 dossier en mémoire)');
       }
-      const nbSign = dossiersAFOR.filter(d=>d.cf_signe).length, nbVa = dossiersAFOR.filter(d=>d.etape==='VA').length;
+      const nbSign = dossiersAFOR.filter(d=>d.cf_signe).length, nbVa = dossiersAFOR.filter(d=>isValide(d)).length;
       const inconnues = Object.keys(etapesInconnues).length ? ' · étapes non reconnues dans le fichier (déduites des dates) : '+Object.entries(etapesInconnues).map(([k,n])=>k+' ('+n+')').join(', ') : '';
       showToast(msg+' · '+nbVa+' validés dont '+nbSign+' CF signés'+inconnues);
       aforLastDiag = diag;
@@ -10083,7 +10102,7 @@ function aforCFRenderList(){
   const kpi = document.getElementById('afor-cf-kpi');
   const tot = aforCFFiltered.length;
   const ret = aforCFFiltered.filter(d=>aforCalcRetard(d).retard).length;
-  const va  = aforCFFiltered.filter(d=>d.etape==='VA').length;
+  const va  = aforCFFiltered.filter(d=>isValide(d)).length;
   const sub = document.getElementById('afor-cf-subtitle');
   if(sub) sub.textContent = `${tot} dossier(s) · ${ret} en retard · ${va} validés`;
   if(kpi) kpi.innerHTML =
