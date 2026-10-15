@@ -1860,6 +1860,7 @@ function dosRenderKPI(filtered){
   const tot  = tous.length;
   const retards = tous.filter(d=>aforCalcRetard(d).retard).length;
   const va      = tous.filter(d=>d.etape==='VA').length;
+  const signes  = tous.filter(d=>d.cf_signe).length;
   const manuel  = filtered ? filtered.filter(d=>!d._src||d._src==='manuel').length : dossiers.length;
   const afor    = filtered ? filtered.filter(d=>d._src==='afor').length            : dossiersAFOR.length;
   const gnssSeul = filtered ? filtered.filter(d=>d._src==='gnss').length           : gnssOrphans.length;
@@ -1888,7 +1889,7 @@ function dosRenderKPI(filtered){
   kpiEl.innerHTML =
     `<div class="kpi blue"><div class="kpi-l">Total dossiers</div><div class="kpi-v">${tot.toLocaleString('fr-FR')}${lbl}</div><div class="kpi-s">${manuel} manuels · ${afor} AFOR${gnssSeul?(' · '+gnssSeul+' GNSS seul'):''}</div></div>
      <div class="kpi ${retards>0?'red':'green'}"><div class="kpi-l">En retard</div><div class="kpi-v">${retards}</div><div class="kpi-s">${tot>0?Math.round(retards/tot*100):0}%</div></div>
-     <div class="kpi green"><div class="kpi-l">Validés (VA)</div><div class="kpi-v">${va}</div><div class="kpi-s">${tot>0?Math.round(va/tot*100):0}%</div></div>
+     <div class="kpi green"><div class="kpi-l">Validés (VA)</div><div class="kpi-v">${va}</div><div class="kpi-s">${tot>0?Math.round(va/tot*100):0}% · dont ${signes} CF signés</div></div>
      <div class="kpi amber"><div class="kpi-l">CFI / CFC</div><div class="kpi-v">${tous.filter(d=>d.type==='CFI').length}</div><div class="kpi-s">${tous.filter(d=>d.type==='CFC').length} CFC</div></div>
      <div class="kpi teal"><div class="kpi-l">Superficie GNSS${lbl}</div><div class="kpi-v" style="font-size:16px;">${totalHa.toFixed(1)}</div><div class="kpi-s">hectares levés</div></div>`;
 }
@@ -2020,7 +2021,7 @@ function dosRenderPage(){
       <td style="font-size:11px;color:var(--text3)">${d.code_parcelle||'—'}</td>
       <td><span class="badge b-blue" style="font-size:10px">${d.type||'—'}</span></td>
       <td>
-        <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;background:${c.bg};color:${c.tx}">${d.etape||'—'}</span>
+        <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;background:${c.bg};color:${c.tx}">${d.etape||'—'}</span>${d.cf_signe?' <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#dcfce7;color:#166534;">CF signé</span>':''}
         <div style="font-size:10px;color:var(--text3)">${ETAPES_CF_LABELS[d.etape]||''}</div>
       </td>
       <td style="font-size:11px;color:var(--text2)">${dateEtape}</td>
@@ -7211,6 +7212,7 @@ function recFiche(d){
   add('Contrôle','Contrôle dans l\'application','','','',ctl?((ctl.statut==='conforme'?'Conforme':'Rejeté')+' · '+ctl.par+' · '+ctl.date):'',ctl?(ctl.statut==='conforme'?'ok':'ecart'):'manque');
   const pc=planChecks[d.id];
   add('Contrôle','Plan parcellaire','','','',plan?('Importé'+(pc?' · '+(pc.statut==='conforme'?'validé':'incohérent')+' ('+(pc.par||'')+')':' · à vérifier')):'Aucun plan',plan?(pc&&pc.statut!=='conforme'?'ecart':'ok'):'manque');
+  add('Avancement','CF signé',d.date_SIG||'',req&&req.step==='SIG'?'oui':'','',d.cf_signe?('Oui'+(d.date_SIG?' · '+d.date_SIG:'')):'Non',d.cf_signe?'ok':'manque');
   const sources={AFOR:true,Tablette:!!req,'Tablette (étapes)':REC_STEPS.filter(x=>x.tab(t)).length,GNSS:!!gi,Plan:!!plan};
   return {rows,sources,nEcarts:rows.filter(r=>r.etat==='ecart').length,nManque:rows.filter(r=>r.etat==='manque').length};
 }
@@ -9175,6 +9177,7 @@ const AFOR_COLS = {
   date_CP:'Date Clôture de Publicité',
   date_AP:"Date Existence Paisible",
   date_VA:"Date Validation d'Enquête",
+  date_AN:'Date Annonce de Publicité', date_SIG:'Date de Signature',
   statut:'Statut de Validation', niveau:'Niveau Global',
   superf_cl:'Superficie de Constat de limite',
   superf_cq1:'Superficie au contrôle 1', superf_cq2:'Superficie au contrôle 2',
@@ -9190,9 +9193,31 @@ function aforNormEtape(e){
   const m={
     'DD':'DD','RDC':'RDC','CL':'CL','OV':'OV','OP':'OV',
     'CP':'CP','AP':'AP','VA':'VA','CE':'CL',
-    'DEMANDE':'DD','CONSTAT':'CL','PUBLICITE':'OV','VALIDATION':'VA'
+    'DEMANDE':'DD','CONSTAT':'CL','PUBLICITE':'OV','VALIDATION':'VA',
+    'VE':'VA','VALIDE':'VA','VALIDÉ':'VA','SIGNE':'VA','SIGNÉ':'VA','CS':'VA','CF SIGNE':'VA','CF SIGNÉ':'VA','SIGNATURE':'VA'
   };
-  return m[String(e).trim().toUpperCase()] || String(e).trim().toUpperCase() || 'DD';
+  const k = String(e).trim().toUpperCase();
+  return m[k] || k || 'DD';
+}
+// Étape réelle d'un dossier : la plus avancée entre l'étape du fichier (si reconnue) et la dernière étape
+// pour laquelle une date est renseignée. Le libellé « Étape Actuelle » du fichier AFOR n'est pas fiable à lui seul
+// (ex. « CE » alors que l'existence paisible est déjà datée). Un CF signé est forcément au moins validé.
+function aforDeriveEtape(d, etapeFichier){
+  let best = ETAPES_CF.indexOf(etapeFichier);
+  ETAPES_CF.forEach((e,i)=>{ if(d['date_'+e] && i>best) best = i; });
+  if(d.date_SIG || d.cf_signe){ best = Math.max(best, ETAPES_CF.indexOf('VA')); }
+  if(best<0) return etapeFichier || 'DD';
+  return ETAPES_CF[best];
+}
+// Remet à niveau les dossiers déjà en mémoire (importés avec l'ancienne règle) — idempotent
+function aforRepairEtapes(){
+  let n=0;
+  (dossiersAFOR||[]).forEach(d=>{
+    if(d.date_SIG && !d.cf_signe){ d.cf_signe=true; n++; }
+    const e=aforDeriveEtape(d, d.etape);
+    if(e!==d.etape && ETAPES_CF.indexOf(e)>=ETAPES_CF.indexOf(d.etape)){ d.etape=e; n++; }
+  });
+  return n;
 }
 
 // Calculer durée en jours entre deux dates
@@ -9421,6 +9446,7 @@ function aforImportExcel(input){
       }
       if(!rows.length){showToast('Fichier vide.');return;}
       let nb=0, ignore=0;
+      const etapesInconnues = {};
       const imported = [];
       rows.forEach(row=>{
         const num = row[AFOR_COLS.num];
@@ -9460,6 +9486,8 @@ function aforImportExcel(input){
           date_CP:  fmtD(row[AFOR_COLS.date_CP]),
           date_AP:  fmtD(row[AFOR_COLS.date_AP]),
           date_VA:  fmtD(row[AFOR_COLS.date_VA]),
+          date_AN:  fmtD(row[AFOR_COLS.date_AN]),
+          date_SIG: fmtD(row[AFOR_COLS.date_SIG]),
           // Superficie déclarée (colonne "Superficie de Constat de limite") — utilisée pour les
           // étapes "Demande" et "RDC", avant tout levé GNSS.
           superficie_declaree: (()=>{ const v=parseFloat((row[AFOR_COLS.superf_cl]||'').toString().replace(',','.')); return isNaN(v)?0:v; })(),
@@ -9467,6 +9495,9 @@ function aforImportExcel(input){
           voisins: (row[AFOR_COLS.voisins]||'').toString().replace(/\s+/g,' ').trim() || undefined,
           nb_voisins: (()=>{ const v=parseInt(row[AFOR_COLS.nb_voisins]); return isNaN(v)?undefined:v; })(),
         };
+        dos.cf_signe = !!dos.date_SIG || /SIGN/.test(String(etapeRaw||'').toUpperCase());
+        if(etapeRaw && ETAPES_CF.indexOf(etape)<0) etapesInconnues[String(etapeRaw).trim()] = (etapesInconnues[String(etapeRaw).trim()]||0)+1;
+        dos.etape = aforDeriveEtape(dos, ETAPES_CF.indexOf(etape)>=0?etape:'');
         imported.push(dos);
 
         // Contrôle qualité : ces colonnes sont dans le même fichier AFOR, on peuple pubCQ
@@ -9530,33 +9561,19 @@ function aforImportExcel(input){
 
       let nbNouveaux = 0, nbMaj = 0, nbInchanges = 0;
 
-      imported.forEach(nouveau=>{
+      const TRACK = ['dept','sp','village','code_parcelle','agent','type','genre','superficie_declaree','voisins','cf_signe','date_AN','date_SIG',...ETAPES_CF.map(e=>'date_'+e),'etape'];
+      imported.forEach((nouveau,idx)=>{
         const ancien = INDEX[nouveau.id];
-        if(!ancien){
-          // Nouveau dossier absent de la base locale → ajouter
-          nbNouveaux++;
-        } else {
-          // Dossier existant → comparer l'étape et les dates
-          const etapeAvance = ETAPES_CF.indexOf(nouveau.etape) > ETAPES_CF.indexOf(ancien.etape);
-          const dateMaj = ETAPES_CF.some(e => nouveau['date_'+e] && nouveau['date_'+e] !== ancien['date_'+e]);
-          if(etapeAvance || dateMaj){
-            // Étape avancée ou nouvelles dates : mettre à jour en conservant les données non-CF
-            nouveau._ancienneEtape = ancien.etape;
-            // Ne jamais reculer : si le nouveau fichier est moins avancé, garder l'étape la plus avancée
-            if(ETAPES_CF.indexOf(nouveau.etape) < ETAPES_CF.indexOf(ancien.etape)) nouveau.etape = ancien.etape;
-            // Garder les dates connues si le nouveau fichier ne les renseigne pas + champs hors fichier
-            Object.keys(ancien).forEach(k=>{
-              if(nouveau[k]===undefined || (nouveau[k]===null && ancien[k]) ) nouveau[k] = ancien[k];
-            });
-            nbMaj++;
-          } else {
-            // Aucun changement d'étape/dates : conserver l'ancien enregistrement, en y ajoutant
-            // les informations nouvellement disponibles dans le fichier (voisins)
-            if(nouveau.voisins !== undefined && nouveau.voisins !== ancien.voisins){ ancien.voisins = nouveau.voisins; ancien.nb_voisins = nouveau.nb_voisins; }
-            imported[imported.indexOf(nouveau)] = ancien;
-            nbInchanges++;
-          }
-        }
+        if(!ancien){ nbNouveaux++; return; }
+        // Fusion : le nouveau fichier prime, mais on ne perd jamais une date/info déjà connue et on ne recule jamais d'étape
+        const fusion = Object.assign({}, ancien, nouveau);
+        Object.keys(ancien).forEach(k=>{ if(nouveau[k]===undefined || (nouveau[k]===null && ancien[k]) || (nouveau[k]==='' && ancien[k])) fusion[k]=ancien[k]; });
+        fusion.cf_signe = !!(nouveau.cf_signe || ancien.cf_signe);
+        if(ETAPES_CF.indexOf(ancien.etape) > ETAPES_CF.indexOf(nouveau.etape)) fusion.etape = ancien.etape;
+        fusion.etape = aforDeriveEtape(fusion, fusion.etape);
+        const change = TRACK.some(k => (fusion[k]||null) !== (ancien[k]||null));
+        if(change){ fusion._ancienneEtape = ancien.etape; imported[idx] = fusion; nbMaj++; }
+        else { imported[idx] = ancien; nbInchanges++; }
       });
 
       // Conserver les dossiers locaux NON présents dans le nouveau fichier (import partiel)
@@ -9594,7 +9611,9 @@ function aforImportExcel(input){
       } else {
         console.warn('AFOR: sauvegarde Firebase annulée (0 dossier en mémoire)');
       }
-      showToast(msg);
+      const nbSign = dossiersAFOR.filter(d=>d.cf_signe).length, nbVa = dossiersAFOR.filter(d=>d.etape==='VA').length;
+      const inconnues = Object.keys(etapesInconnues).length ? ' · étapes non reconnues dans le fichier (déduites des dates) : '+Object.entries(etapesInconnues).map(([k,n])=>k+' ('+n+')').join(', ') : '';
+      showToast(msg+' · '+nbVa+' validés dont '+nbSign+' CF signés'+inconnues);
       aforRenderAll();
       // Rafraîchir aussi Indicateurs et le Tableau de bord, même s'ils ne sont pas le module
       // actif au moment de l'import — pour que leurs chiffres soient à jour dès qu'on y va.
@@ -9612,6 +9631,7 @@ function aforImportExcel(input){
 }
 
 function aforRenderAll(){
+  try{ aforRepairEtapes(); }catch(e){ console.warn('aforRepairEtapes', e); }
   gnssRebuildSuperfIndex();
   aforUpdateBtnLabel();
   // Met à jour les cards dashboard + badge sidebar
