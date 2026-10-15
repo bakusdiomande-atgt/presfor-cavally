@@ -430,7 +430,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-g</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-h</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -4204,13 +4204,13 @@ function dashRenderCartographieDetail(){
   const geo = dashGetZoneGeo();
   const rows = geo.map(sp=>{
     const st = dashSPStats(sp.name);
-    const tier = dashMapTier(st.pct);
+    const tier = dashMapTier(st.ha, dashMapScale(geo));
     return `<tr style="border-bottom:1px solid var(--border);">
       <td style="padding:7px 12px;"><span style="width:9px;height:9px;border-radius:2px;background:${tier.c};display:inline-block;margin-right:6px;"></span>${sp.name}</td>
       <td style="padding:7px 12px;color:var(--text2);">${sp.dept}</td>
       <td style="padding:7px 12px;text-align:right;">${st.total}</td>
       <td style="padding:7px 12px;text-align:right;font-weight:600;">${st.valides}</td>
-      <td style="padding:7px 12px;text-align:right;font-weight:700;color:${tier.c};">${st.pct!==null?st.pct+'%':'—'}</td>
+      <td style="padding:7px 12px;text-align:right;font-weight:700;color:${tier.c};">${(Math.round(st.ha*10)/10).toLocaleString('fr-FR')} ha</td>
     </tr>`;
   }).join('');
   autre.style.textAlign='left';
@@ -4223,7 +4223,7 @@ function dashRenderCartographieDetail(){
     </div>
     <div class="tw" style="overflow:hidden;">
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Sous-préfecture</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Département</th><th style="text-align:right;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Dossiers</th><th style="text-align:right;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Validés</th><th style="text-align:right;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Taux</th></tr></thead>
+        <thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Sous-préfecture</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Département</th><th style="text-align:right;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Dossiers</th><th style="text-align:right;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Validés</th><th style="text-align:right;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Superficie sécurisée</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -4508,19 +4508,36 @@ function dashRenderStatutDonut(s){
   </div>`).join('');
 }
 
+function dashSPNorm(x){ return String(x||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]+/g,' ').trim(); }
+// Statistiques par sous-préfecture : dossiers, validés, et SUPERFICIE SÉCURISÉE (ha levés au GNSS dans la sous-préfecture)
 function dashSPStats(spName){
   const dos = (dossiersAFOR||[]).filter(d=>d.sp===spName);
   const valides = dos.filter(d=>isValide(d)).length;
   const pct = dos.length>0 ? Math.round(valides/dos.length*100) : null;
-  return {total:dos.length, valides, pct};
+  const k = dashSPNorm(spName);
+  if(!dashSPStats._cache || dashSPStats._cacheKey!==(gnssData||[]).length){
+    const m={}; (gnssData||[]).forEach(g=>{ const n=dashSPNorm(g.sp); if(n) m[n]=(m[n]||0)+(g.superficie||0); });
+    dashSPStats._cache=m; dashSPStats._cacheKey=(gnssData||[]).length;
+  }
+  const ha = dashSPStats._cache[k]||0;
+  return {total:dos.length, valides, pct, ha};
 }
-
-function dashMapTier(pct){
-  if(pct===null) return {c:'#E5E7EB', label:'Non démarré'};
-  if(pct>=75) return {c:'#1B7A4A', label:'≥ 75%'};
-  if(pct>=50) return {c:'#8BC34A', label:'50% - 75%'};
-  if(pct>=25) return {c:'#FBC02D', label:'25% - 50%'};
-  return {c:'#E53935', label:'< 25%'};
+// Échelle de couleurs en 4 classes relatives au maximum de la zone affichée (0 ha = « Non levé »)
+function dashMapScale(geo){
+  const max = Math.max(0, ...(geo||[]).map(sp=>dashSPStats(sp.name).ha));
+  const fr = v=>Math.round(v).toLocaleString('fr-FR');
+  return { max, tiers:[
+    {c:'#1B7A4A', l:'≥ '+fr(max*0.75)+' ha', min:max*0.75},
+    {c:'#8BC34A', l:fr(max*0.5)+' – '+fr(max*0.75)+' ha', min:max*0.5},
+    {c:'#FBC02D', l:fr(max*0.25)+' – '+fr(max*0.5)+' ha', min:max*0.25},
+    {c:'#E53935', l:'< '+fr(max*0.25)+' ha', min:0.0001},
+    {c:'#E5E7EB', l:'Non levé', min:-1},
+  ]};
+}
+function dashMapTier(ha, scale){
+  scale = scale || dashMapScale(dashGetZoneGeo());
+  if(!(ha>0) || !(scale.max>0)) return scale.tiers[4];
+  return scale.tiers.find(t=>ha>=t.min) || scale.tiers[3];
 }
 
 // ── Carte Leaflet + fond OpenStreetMap ──
@@ -4561,13 +4578,14 @@ function dashBuildLeafletPolygons(map, legendEl, opts){
     color:'#1C4A2E', weight:2.5, fill:false, interactive:false
   }).addTo(map);
   const bounds = [];
+  const scale = dashMapScale(geo);
   geo.forEach(sp=>{
     const st = dashSPStats(sp.name);
-    const tier = dashMapTier(st.pct);
+    const tier = dashMapTier(st.ha, scale);
     const poly = L.polygon(sp.latlngs, {
       color:'#fff', weight:1.2, fillColor:tier.c, fillOpacity:0.75
     }).addTo(map);
-    poly.bindTooltip(`<b>${sp.name}</b> (${sp.dept})<br>${st.total} dossier(s) — ${st.valides} validé(s)${st.pct!==null?' ('+st.pct+'%)':''}`);
+    poly.bindTooltip(`<b>${sp.name}</b> (${sp.dept})<br>Superficie sécurisée : <b>${Math.round(st.ha*10)/10} ha</b><br>${st.total} dossier(s) — ${st.valides} validé(s)`);
     poly.on('mouseover', ()=>poly.setStyle({fillOpacity:0.95}));
     poly.on('mouseout', ()=>poly.setStyle({fillOpacity:0.75}));
     sp.latlngs.forEach(ll=>bounds.push(ll));
@@ -4591,12 +4609,8 @@ function dashBuildLeafletPolygons(map, legendEl, opts){
     setTimeout(()=>{ map.invalidateSize(); map.fitBounds(CI_BOUNDS, {padding:[4,4]}); }, 200);
   }
   if(legendEl){
-    const legendItems = [
-      {c:'#1B7A4A', l:'≥ 75%'}, {c:'#8BC34A', l:'50% - 75%'},
-      {c:'#FBC02D', l:'25% - 50%'}, {c:'#E53935', l:'< 25%'},
-      {c:'#E5E7EB', l:'Non démarré'},
-    ];
-    legendEl.innerHTML = legendItems.map(it=>`<div style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:${it.c};flex-shrink:0;"></span>${it.l}</div>`).join('');
+    const legendItems = scale.tiers;
+    legendEl.innerHTML = '<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">Superficie sécurisée</div>' + legendItems.map(it=>`<div style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:${it.c};flex-shrink:0;"></span>${it.l}</div>`).join('');
     if(!opts.noRecentrer){
       const btn = document.createElement('button');
       btn.textContent = '📍 Recentrer sur ' + zoneLabel;
@@ -4623,7 +4637,7 @@ function dashRenderMap(s){
   if(dashLeafletMapSmall){ if(dashLeafletMapSmall._presforResizeObserver) dashLeafletMapSmall._presforResizeObserver.disconnect(); dashLeafletMapSmall.remove(); dashLeafletMapSmall=null; }
   el.innerHTML = `<div style="display:flex;width:100%;height:100%;">
     <div id="dash-leaflet-small" style="flex:1;min-width:0;border-radius:6px;overflow:hidden;"></div>
-    <div id="dash-leaflet-legend-small" style="font-size:10px;color:var(--text2);display:flex;flex-direction:column;gap:4px;justify-content:center;flex-shrink:0;width:78px;margin-left:auto;padding-left:8px;"></div>
+    <div id="dash-leaflet-legend-small" style="font-size:10px;color:var(--text2);display:flex;flex-direction:column;gap:4px;justify-content:center;flex-shrink:0;width:92px;margin-left:auto;padding-left:8px;"></div>
   </div>`;
   dashLeafletMapSmall = L.map('dash-leaflet-small', {zoomControl:true, attributionControl:false, scrollWheelZoom:false, doubleClickZoom:true});
   dashBuildLeafletPolygons(dashLeafletMapSmall, document.getElementById('dash-leaflet-legend-small'));
