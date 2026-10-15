@@ -9439,7 +9439,7 @@ function aforNormEtape(e){
 function aforDeriveEtape(d, etapeFichier){
   let best = ETAPES_CF.indexOf(etapeFichier);
   ETAPES_CF.forEach((e,i)=>{ if(d['date_'+e] && i>best) best = i; });
-  if(d.date_SIG || d.cf_signe || d.statut_valide){ best = Math.max(best, ETAPES_CF.indexOf('VA')); }
+  if(d.date_SIG || d.cf_signe){ best = Math.max(best, ETAPES_CF.indexOf('VA')); }
   if(best<0) return etapeFichier || 'DD';
   return ETAPES_CF[best];
 }
@@ -9850,7 +9850,7 @@ function aforImportExcel(input){
         const fusion = Object.assign({}, ancien, nouveau);
         Object.keys(ancien).forEach(k=>{ if(nouveau[k]===undefined || (nouveau[k]===null && ancien[k]) || (nouveau[k]==='' && ancien[k])) fusion[k]=ancien[k]; });
         fusion.cf_signe = !!(nouveau.cf_signe || ancien.cf_signe);
-        if(ETAPES_CF.indexOf(ancien.etape) > ETAPES_CF.indexOf(nouveau.etape)) fusion.etape = ancien.etape;
+        fusion.etape = nouveau.etape; // l'étape vient du fichier (dates + statut) : on ne conserve plus une ancienne étape plus avancée
         fusion.etape = aforDeriveEtape(fusion, fusion.etape);
         const change = TRACK.some(k => (fusion[k]||null) !== (ancien[k]||null));
         if(change){ fusion._ancienneEtape = ancien.etape; imported[idx] = fusion; nbMaj++; }
