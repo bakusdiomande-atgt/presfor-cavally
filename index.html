@@ -430,7 +430,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">PRESFOR <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-d</span></div>
+    <div class="tb-title">PRESFOR <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-f</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -2483,7 +2483,7 @@ function dosMAJImportExcel(input){
       const range = XLSX.utils.decode_range(ws['!ref']||'A1');
       range.e.c = 21; // Limiter à la colonne V (index 21 = col 22)
       ws['!ref'] = XLSX.utils.encode_range(range);
-      const rows = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false});
+      const rows = XLSX.utils.sheet_to_json(xlsxFixDates(ws), {defval:null, raw:false});
       if(!rows.length){ showToast('Fichier vide.'); return; }
 
       const fmtD = v => {
@@ -5254,7 +5254,7 @@ const ACT_STEPS = {
       {label:'Approbation', etape:'AP'},
       {label:'Validation', etape:'VA'},
       {label:'Établissement du plan définitif', etape:'VA'},
-      {label:'Édition du CF', etape:'VA'},
+      {label:'CF signé', signe:true},
     ]
   },
   CONTRAT: {
@@ -5364,11 +5364,14 @@ function actComputeCFRealises(afor){
     } else if(idx===2 || idx===3){
       // PVCL, Parcelle levée : total GNSS brut, indépendamment du rattachement à un dossier
       ha = haGnssBrut;
+    } else if(step.signe){
+      // CF signés : superficie GNSS si levée, sinon superficie déclarée
+      ha = matched.reduce((s,d)=>s+dosSuperfValide(d), 0);
     } else {
       // Étapes suivantes : superficie des dossiers AFOR effectivement rattachés au GNSS
       ha = matched.reduce((s,d)=>{ const g=gnssForDossier(d); return s+(g?g.superficie:0); }, 0);
     }
-    return { dossier: matched.length, ha: Math.round(ha) };
+    return { dossier: matched.length, ha: step.signe ? Math.round(ha*10)/10 : Math.round(ha) };
   });
 }
 
@@ -5555,7 +5558,7 @@ const ACT_CF_STEP_DATE = {
   8:  {field:'date_AP',  label:'Date approbation'},
   9:  {field:'date_VA',  label:'Date validation'},
   10: {field:'date_VA',  label:'Date validation'},
-  11: {field:'date_VA',  label:'Date validation'},
+  11: {field:'date_SIG', label:'Date de signature'},
 };
 // Association étape CF -> fiche tablette + candidats de champ date (la donnée tablette,
 // quand elle existe pour ce dossier, est préférée à la date AFOR globale, plus approximative)
@@ -5597,6 +5600,7 @@ function actCFStepDate(d, stepIdx){
 // ── Dossiers ayant atteint une étape CF donnée (ou au-delà) ──
 function actCFStepMatch(afor, stepIdx){
   const step = ACT_STEPS.CF.steps[stepIdx];
+  if(step.signe) return afor.filter(d=>d.cf_signe);
   if(step.gnss){
     return afor.filter(d=>{ const g=gnssForDossier(d); return g && g.leve; });
   }
@@ -5613,6 +5617,7 @@ function actCFStepDetailMatch(afor, stepIdx){
     // Cas particulier "Établissement du plan provisoire" : carte produite = publicité ouverte ou au-delà
     return afor.filter(d => ETAPE_ORDER_CF[d.etape]!==undefined && ETAPE_ORDER_CF[d.etape]>=ETAPE_ORDER_CF['OV']);
   }
+  if(step.signe) return afor.filter(d=>d.cf_signe);
   if(step.gnss){
     return afor.filter(d=>{ const g=gnssForDossier(d); return g && g.leve; });
   }
@@ -5631,7 +5636,7 @@ function actDetailRender(){
       const dateVal = actCFStepDate(d, stepIdx);
       const jours = actJours(dateVal);
       const g = gnssForDossier(d);
-      const superficie = g ? g.superficie.toFixed(2)+' ha' : '—';
+      const superficie = g ? g.superficie.toFixed(2)+' ha' : (stepIdx===11 && d.superficie_declaree ? Number(d.superficie_declaree).toFixed(2)+' ha (déclarée)' : '—');
       let supDeclaree = '—';
       if(showSupDeclaree){
         const tab = tabMatchForDossier(d);
@@ -8043,7 +8048,7 @@ function pubImportCQ(input){
     try{
       const wb   = XLSX.read(e.target.result, {type:'array', cellDates:true});
       const ws   = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false});
+      const rows = XLSX.utils.sheet_to_json(xlsxFixDates(ws), {defval:null, raw:false});
       if(!rows.length){ showToast('Fichier vide.'); return; }
 
       const norm = s => (s||'').toString().toLowerCase()
@@ -9179,6 +9184,19 @@ function showMergeBanner(dosAdded){
   }
 }
 
+// Dates Excel : SheetJS (raw:false) renvoie le texte formaté « m/j/aa » (année sur 2 chiffres, ordre américain),
+// que les imports ne savaient pas lire → on force un texte ISO AAAA-MM-JJ sur toutes les cellules de type date.
+function xlsxFixDates(ws){
+  if(!ws) return ws;
+  Object.keys(ws).forEach(k=>{
+    if(k[0]==='!') return; const c=ws[k];
+    if(c && c.t==='d' && c.v instanceof Date && !isNaN(c.v)){
+      const d=new Date(c.v.getTime()+30000);
+      c.w=d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
+    }
+  });
+  return ws;
+}
 // ── Fusionner deux tableaux par ID (sans doublon) ──
 function mergeById(local, remote){
   const merged = [...(Array.isArray(remote) ? remote : [])];
@@ -9708,7 +9726,7 @@ function aforImportExcel(input){
       } else {
         const wb = XLSX.read(e.target.result, {type:'array', cellDates:true, cellNF:false, cellHTML:false});
         const ws = wb.Sheets[wb.SheetNames[0]];
-        rows = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false, blankrows:false}).map(aforCanonicalizeRow);
+        rows = XLSX.utils.sheet_to_json(xlsxFixDates(ws), {defval:null, raw:false, blankrows:false}).map(aforCanonicalizeRow);
         console.log('XLSX lu:', rows.length, 'lignes');
       }
       if(!rows.length){showToast('Fichier vide.');return;}
@@ -10283,7 +10301,7 @@ function gnssImportExcel(input){
     try{
       const wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false});
+      const rows = XLSX.utils.sheet_to_json(xlsxFixDates(ws), {defval:null, raw:false});
       if(!rows.length){ showToast('Fichier vide.'); return; }
 
       const gnssAncien = Array.isArray(gnssData) ? gnssData : [];
