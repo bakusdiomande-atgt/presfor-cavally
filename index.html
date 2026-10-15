@@ -430,7 +430,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-h</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-j</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -1160,7 +1160,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
             <th>Rang</th><th>Agent</th><th>Fonction</th>
             <th title="Dossiers saisis (CE/ISF) ou parcelles levées (Opérateur GNSS)">Dossiers traités</th>
             <th title="Superficie GNSS levée (colonne NOM_AGENT du fichier GNSS)">Superficie (ha)</th>
-            <th>Dossiers CF</th><th>Jours terrain</th><th>Moy./jour</th><th>Performance</th>
+            <th title="Dossiers au stade VA (validés)">Dossiers validés</th><th title="Nombre de jours distincts avec création de dossier (CE) ou levé (GNSS)">Jours terrain</th><th>Moy./jour</th><th>Performance</th>
           </tr></thead>
           <tbody id="ind-ag-perf-tbody"></tbody>
         </table></div>
@@ -3352,9 +3352,11 @@ function agRenderPerf(idPrefix){
   const kpiEl = document.getElementById(idPrefix+'-perf-kpi');
   const tbodyEl = document.getElementById(idPrefix+'-perf-tbody');
   if(!kpiEl || !tbodyEl) return;
+  // Production des Commissaires enquêteurs : calculée depuis la base AFOR (mise à jour à chaque import)
+  const _ceMap = {}; try{ (aforGetAgentsData()||[]).forEach(x=>{ _ceMap[String(x.nom).trim().toUpperCase()] = x; }); }catch(e){}
   const data = AGENTS_FULL.filter(a=>(dashZoneFilter==='all')||(a.zone===dashZoneFilter)||(!a.zone && dashZoneFilter==='cavally')).map(a=>{
     const mesDossiers = dossiers.filter(d=>d.agent===a.nom);
-    const dosCF = mesDossiers.filter(d=>d.activite==='CF').length;
+    let dosCF = mesDossiers.filter(d=>d.activite==='CF').length;
     const isGnss = a.fonction === 'Opérateur GNSS';
     const gStats = (isGnss && typeof gnssStatsForAgent==='function') ? gnssStatsForAgent(a.nom) : null;
     let totalDos, jours, moy, ha;
@@ -3364,6 +3366,10 @@ function agRenderPerf(idPrefix){
       jours    = gStats.jours;
       moy      = gStats.moyParJour;
       ha       = gStats.superficie;
+    } else if(_ceMap[String(a.nom).trim().toUpperCase()]){
+      const ce = _ceMap[String(a.nom).trim().toUpperCase()];
+      totalDos = ce.total; jours = ce.jours||0; moy = jours>0 ? Math.round(ce.total/jours*10)/10 : 0; ha = ce.ha;
+      dosCF = ce.va;
     } else {
       totalDos = 0;
       jours    = 0;
@@ -3373,6 +3379,12 @@ function agRenderPerf(idPrefix){
     return {a, totalDos, jours, moy, dosCF, ha, isGnss, gnssSansDonnee: isGnss && !(gStats && gStats.hasColumn)};
   }).sort((x,y)=>y.totalDos-x.totalDos);
 
+  // CE présents dans le fichier AFOR mais absents de la liste des agents : lignes ajoutées pour ne pas perdre leur production
+  Object.values(_ceMap).filter(x=>x.horsListe && x.total>0).forEach(x=>{
+    if(dashZoneFilter!=='all' && dashZoneFilter!=='cavally') return;
+    data.push({a:{nom:x.nom, fonction:'Commissaire enquêteur', zone:'cavally'}, totalDos:x.total, jours:x.jours||0, moy:(x.jours?Math.round(x.total/x.jours*10)/10:0), dosCF:x.va, ha:x.ha, isGnss:false, gnssSansDonnee:false, horsListe:true});
+  });
+  data.sort((x,y)=>y.totalDos-x.totalDos);
   const maxDos = data[0]?.totalDos||1;
   const totalAll = data.reduce((s,d)=>s+d.totalDos,0);
   const actifs = data.filter(d=>d.totalDos>0).length;
@@ -3394,7 +3406,7 @@ function agRenderPerf(idPrefix){
                          {label:'Faible',bg:'var(--surface2)',tx:'var(--text2)'};
     return`<tr style="border-bottom:1px solid var(--border);">
       <td style="padding:9px 12px;text-align:center;font-family:'Syne',sans-serif;font-weight:700;color:${i<3?'var(--accent)':'var(--text3)'};">${i+1}</td>
-      <td style="padding:9px 12px;font-weight:600;font-size:13px;">${d.a.nom} <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;background:${(d.a.zone||'cavally')==='worodougou'?'#FFF3E0':'#E8F5E9'};color:${(d.a.zone||'cavally')==='worodougou'?'#E65100':'#1B5E20'};">${(d.a.zone||'cavally')==='worodougou'?'Worodougou':'Cavally'}</span>${d.a.dateDepart?' <span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:8px;background:var(--surface2);color:var(--text3);">Parti le '+fmtDate(d.a.dateDepart)+'</span>':''}</td>
+      <td style="padding:9px 12px;font-weight:600;font-size:13px;">${d.a.nom}${d.horsListe?' <span style="font-size:9px;color:var(--amber-txt);" title="Présent dans le fichier AFOR mais absent de la liste des agents">(hors liste)</span>':''} <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;background:${(d.a.zone||'cavally')==='worodougou'?'#FFF3E0':'#E8F5E9'};color:${(d.a.zone||'cavally')==='worodougou'?'#E65100':'#1B5E20'};">${(d.a.zone||'cavally')==='worodougou'?'Worodougou':'Cavally'}</span>${d.a.dateDepart?' <span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:8px;background:var(--surface2);color:var(--text3);">Parti le '+fmtDate(d.a.dateDepart)+'</span>':''}</td>
       <td style="padding:9px 12px;"><span style="font-size:10px;padding:2px 7px;border-radius:8px;background:${c.bg};color:${c.tx};border:1px solid ${c.brd}">${d.a.fonction}</span></td>
       <td style="padding:9px 12px;">
         <div style="display:flex;align-items:center;gap:8px;">
@@ -9937,6 +9949,7 @@ function aforImportExcel(input){
       if(typeof dashRenderAll==='function'){ try{ dashRenderAll(); }catch(e){ console.error('dashRenderAll après import AFOR:', e); } }
       if(typeof indRenderNav==='function'){ try{ indRenderNav(); }catch(e){} }
       if(typeof indRenderAll==='function'){ try{ indRenderAll(); }catch(e){ console.error('indRenderAll après import AFOR:', e); } }
+      try{ agRenderPerf('ind-ag'); agRenderPerf(); if(typeof agRenderKPI==='function'){ agRenderKPI('ind-ag'); } }catch(e){}
       if(document.getElementById('dos-panel-list') &&
          document.getElementById('dos-panel-list').classList.contains('active')){
         dosRenderAll();
@@ -9992,24 +10005,47 @@ function aforGetAgentsData(){
     canonNormes[normA(canon)] = canon;
   });
 
-  // Fonction : trouver le nom canonique d'un agent, ou null si pas un vrai CE
-  const getCanon = s => {
-    if(!s) return null;
-    return canonNormes[normA(s)] || null; // null si pas dans la liste
+  // Rapprochement des noms (ordre des mots libre, noms partiels, petites fautes de frappe) avec la liste officielle des CE.
+  // Un nom absent de la liste n'est plus ignoré : il garde sa propre ligne (marquée « hors liste »).
+  const toks = s => normA(s).replace(/[^A-Z0-9 ]+/g,' ').split(/\s+/).filter(Boolean);
+  const lev1 = (a,b)=>{ if(a===b) return true; const lim = Math.min(a.length,b.length)>=6 ? 2 : 1; if(Math.abs(a.length-b.length)>lim) return false;
+    let prev=Array.from({length:b.length+1},(_,i)=>i);
+    for(let i=1;i<=a.length;i++){ const cur=[i]; for(let j=1;j<=b.length;j++) cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1)); prev=cur; }
+    return prev[b.length]<=lim; };
+  const roster = getAgentsCECanoniques().map(n=>({n, t:toks(n)}));
+  const cache = {};
+  const horsListe = new Set();
+  const getCanon = raw => {
+    if(!raw) return null;
+    const key = String(raw);
+    if(key in cache) return cache[key];
+    const t = toks(raw); let best=null, bestSc=0;
+    roster.forEach(r=>{
+      const [small,big] = t.length<=r.t.length ? [t,r.t] : [r.t,t];
+      let sc=0;
+      if(t.length===r.t.length && t.every(x=>r.t.includes(x))) sc=100;
+      else if(small.length>=2 && small.every(x=>big.includes(x))) sc=80;
+      else if(small.length>=2 && small.every(x=>big.some(y=>lev1(x,y)))) sc=60;
+      if(sc>bestSc){ bestSc=sc; best=r.n; }
+    });
+    if(!best){ best = normA(raw).replace(/\s+/g,' ').trim(); horsListe.add(best); }
+    return cache[key]=best;
   };
 
   const agents = {};
   dossiersAFOR.forEach(d => {
     const canon = getCanon(d.agent);
-    if(!canon) return; // ignorer si pas un vrai agent CE
+    if(!canon) return;
     if(!agents[canon]) agents[canon] = {
-      nom: canon,
+      nom: canon, horsListe: horsListe.has(canon),
       total: 0, retards: 0,
-      parEtape: {},
+      parEtape: {}, va:0, dates:new Set(),
       tempsDD_RDC:[], tempsRDC_CL:[], tempsCL_OV:[],
     };
     const ag = agents[canon];
     ag.total++;
+    if(isValide(d)) ag.va++;
+    if(d.date_DD) ag.dates.add(String(d.date_DD).substring(0,10));
     if(d.etape) ag.parEtape[d.etape] = (ag.parEtape[d.etape]||0) + 1;
     const r = aforCalcRetard(d);
     if(r.retard) ag.retards++;
@@ -10023,7 +10059,7 @@ function aforGetAgentsData(){
 
   // S'assurer que les 13 agents apparaissent même avec 0 dossier
   getAgentsCECanoniques().forEach(c => {
-    if(!agents[c]) agents[c] = {nom:c, total:0, retards:0, parEtape:{}, tempsDD_RDC:[], tempsRDC_CL:[], tempsCL_OV:[]};
+    if(!agents[c]) agents[c] = {nom:c, total:0, retards:0, parEtape:{}, va:0, dates:new Set(), tempsDD_RDC:[], tempsRDC_CL:[], tempsCL_OV:[]};
   });
 
   const moy = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : null;
@@ -10044,6 +10080,7 @@ function aforGetAgentsData(){
       mCL_OV:    moy(ag.tempsCL_OV),
       ha:        gnssStats.ha,
       parcelles: gnssStats.parcelles,
+      jours:     ag.dates.size,
     };
   }).sort((a,b) => b.total - a.total || a.nom.localeCompare(b.nom));
 }
@@ -10417,6 +10454,7 @@ function gnssImportExcel(input){
       if(typeof dashRenderAll==='function'){ try{ dashRenderAll(); }catch(e){ console.error('dashRenderAll après import GNSS:', e); } }
       if(typeof indRenderNav==='function'){ try{ indRenderNav(); }catch(e){} }
       if(typeof indRenderAll==='function'){ try{ indRenderAll(); }catch(e){ console.error('indRenderAll après import GNSS:', e); } }
+      try{ agRenderPerf('ind-ag'); agRenderPerf(); if(typeof agRenderKPI==='function'){ agRenderKPI('ind-ag'); } }catch(e){}
       showToast(`GNSS chargé : ${nb} parcelles levées · ${gnssGetTotalHa().toFixed(1)} ha`);
     }catch(err){ showToast('Erreur lecture : '+err.message); console.error(err); }
   };
