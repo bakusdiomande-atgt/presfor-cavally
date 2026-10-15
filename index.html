@@ -4302,6 +4302,7 @@ function dashSaveObjectifs(){
 // automatiquement dans les totaux (zone 'all' et zone 'worodougou').
 function dashComputeStats(zoneFilter){
   zoneFilter = zoneFilter || dashZoneFilter;
+  try{ aforRepairEtapes(); pubRepairRejets(); }catch(e){}
   const afor = dashFilterByZone(dossiersAFOR||[], zoneFilter);
   // Superficie sécurisée = superficie totale levée au GNSS, tous levés confondus,
   // qu'ils soient ou non rattachés à un dossier AFOR déjà importé (le rattachement sert
@@ -9205,11 +9206,41 @@ function aforNormEtape(e){
 function aforDeriveEtape(d, etapeFichier){
   let best = ETAPES_CF.indexOf(etapeFichier);
   ETAPES_CF.forEach((e,i)=>{ if(d['date_'+e] && i>best) best = i; });
-  if(d.date_SIG || d.cf_signe){ best = Math.max(best, ETAPES_CF.indexOf('VA')); }
+  if(d.date_SIG || d.cf_signe || d.statut_valide){ best = Math.max(best, ETAPES_CF.indexOf('VA')); }
   if(best<0) return etapeFichier || 'DD';
   return ETAPES_CF[best];
 }
 // Remet à niveau les dossiers déjà en mémoire (importés avec l'ancienne règle) — idempotent
+// Statut de contrôle → true (rejeté), false (validé/conforme), null (inconnu : on se fie aux motifs)
+function cqStatutRejete(statut){
+  const st = String(statut||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(!st.trim()) return null;
+  if(/REJET|REFUS|CORRIG|NON CONFORM|ANOMAL|INVALID|RETOUR|NON VALID/.test(st)) return true;
+  if(/VALID|APPROUV|ACCEPT|CONFORM|SIGN|\bOK\b/.test(st)) return false;
+  return null;
+}
+// Remet à niveau les rejets déjà en mémoire (importés avec l'ancienne règle « motif rempli = rejeté »)
+function pubRepairRejets(){
+  let n=0;
+  Object.keys(pubCQ||{}).forEach(id=>{
+    const c=pubCQ[id]; if(!c||!c.rejete||c.source==='app') return;
+    if(cqStatutRejete(c.statut_cq)===false){ c.rejete=false; n++; }
+  });
+  return n;
+}
+let aforLastDiag = null;
+function aforShowDiag(nbVa){
+  const d=aforLastDiag; if(!d) return;
+  const top=(o)=>Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([k,n])=>'<tr><td>'+String(k).replace(/[<>&]/g,'')+'</td><td style="text-align:right;">'+n+'</td></tr>').join('');
+  const old=document.getElementById('afor-diag'); if(old) old.remove();
+  const m=document.createElement('div'); m.id='afor-diag';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;';
+  m.innerHTML='<div style="background:var(--surface);border-radius:12px;width:100%;max-width:760px;max-height:90vh;overflow:auto;padding:18px 22px;"><div style="display:flex;justify-content:space-between;align-items:center;"><h3 style="font-family:\'Syne\',sans-serif;font-size:15px;margin:0;">Contenu du fichier AFOR importé ('+d.total+' lignes)</h3><button class="btn-s" onclick="document.getElementById(\'afor-diag\').remove()">✕ Fermer</button></div>'
+   +(nbVa===0?'<p style="font-size:12px;color:#b91c1c;">Aucun dossier validé détecté. Voici ce que contient le fichier — envoyez une capture de cette fenêtre si le problème persiste.</p>':'')
+   +(d.colonnesManquantes.length?'<p style="font-size:12px;color:#b45309;"><b>Colonnes attendues absentes du fichier :</b> '+d.colonnesManquantes.join(', ')+'</p>':'')
+   +'<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;"><div><b>Étape Actuelle</b><table>'+top(d.etapes)+'</table></div><div><b>Statut de Validation</b><table>'+top(d.statuts)+'</table></div><div><b>Niveau Global</b><table>'+top(d.niveaux)+'</table></div><div><b>Colonnes de dates remplies</b><table>'+Object.entries(d.dates).map(([k,n])=>'<tr><td>'+k+'</td><td style="text-align:right;">'+n+'</td></tr>').join('')+'</table></div></div></div>';
+  document.body.appendChild(m);
+}
 function aforRepairEtapes(){
   let n=0;
   (dossiersAFOR||[]).forEach(d=>{
@@ -9447,6 +9478,11 @@ function aforImportExcel(input){
       if(!rows.length){showToast('Fichier vide.');return;}
       let nb=0, ignore=0;
       const etapesInconnues = {};
+      const diag = {total:rows.length, etapes:{}, statuts:{}, niveaux:{}, dates:{}};
+      const _cnt=(o,v)=>{ const k=(v==null||v==='')?'(vide)':String(v).trim(); o[k]=(o[k]||0)+1; };
+      rows.forEach(r=>{ _cnt(diag.etapes,r[AFOR_COLS.etape]); _cnt(diag.statuts,r[AFOR_COLS.statut]); _cnt(diag.niveaux,r[AFOR_COLS.niveau]); ['date_DD','date_RDC','date_CL','date_AN','date_OV','date_CP','date_AP','date_VA','date_SIG'].forEach(k=>{ if(r[AFOR_COLS[k]]) diag.dates[k]=(diag.dates[k]||0)+1; }); });
+      const _hdrsFichier = Object.keys(rows[0]||{});
+      diag.colonnesManquantes = Object.values(AFOR_COLS).filter(c=>!_hdrsFichier.includes(c));
       const imported = [];
       rows.forEach(row=>{
         const num = row[AFOR_COLS.num];
@@ -9495,6 +9531,7 @@ function aforImportExcel(input){
           voisins: (row[AFOR_COLS.voisins]||'').toString().replace(/\s+/g,' ').trim() || undefined,
           nb_voisins: (()=>{ const v=parseInt(row[AFOR_COLS.nb_voisins]); return isNaN(v)?undefined:v; })(),
         };
+        { const _st=String(row[AFOR_COLS.statut]||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); dos.statut_valide = /VALID|APPROUV|ACCEPT/.test(_st) && !/REJET|REFUS|INVALID|ATTENTE|NON VALID/.test(_st); }
         dos.cf_signe = !!dos.date_SIG || /SIGN/.test(String(etapeRaw||'').toUpperCase());
         if(etapeRaw && ETAPES_CF.indexOf(etape)<0) etapesInconnues[String(etapeRaw).trim()] = (etapesInconnues[String(etapeRaw).trim()]||0)+1;
         dos.etape = aforDeriveEtape(dos, ETAPES_CF.indexOf(etape)>=0?etape:'');
@@ -9511,8 +9548,11 @@ function aforImportExcel(input){
         const superfCQ1 = (row[AFOR_COLS.superf_cq1]||'').trim();
         const superfCQ2 = (row[AFOR_COLS.superf_cq2]||'').trim();
         const superfFinal = (row[AFOR_COLS.superf_final]||'').trim();
-        const isRejeteAfor = statutCQ.toUpperCase().includes('REJETE') || statutCQ.toUpperCase().includes('REJETÉ')
-          || !!(motifQC1 && motifQC1!=='N/A') || !!(motifQC2 && motifQC2!=='N/A') || !!(motifFinal && motifFinal!=='N/A');
+        // Le statut explicite fait foi : les colonnes « motif de rejet » restent remplies après correction,
+        // elles ne suffisent donc pas à elles seules quand le statut dit que le dossier est validé/conforme.
+        const _stRej = cqStatutRejete(statutCQ);
+        const isRejeteAfor = (_stRej!==null) ? _stRej
+          : (!!(motifQC1 && motifQC1!=='N/A') || !!(motifQC2 && motifQC2!=='N/A') || !!(motifFinal && motifFinal!=='N/A'));
         const hasCqData = statutCQ || motifQC1 || motifQC2 || motifFinal;
         if(hasCqData){
           const superfCqVal = (superfFinal && superfFinal!=='N/A') ? superfFinal :
@@ -9614,6 +9654,8 @@ function aforImportExcel(input){
       const nbSign = dossiersAFOR.filter(d=>d.cf_signe).length, nbVa = dossiersAFOR.filter(d=>d.etape==='VA').length;
       const inconnues = Object.keys(etapesInconnues).length ? ' · étapes non reconnues dans le fichier (déduites des dates) : '+Object.entries(etapesInconnues).map(([k,n])=>k+' ('+n+')').join(', ') : '';
       showToast(msg+' · '+nbVa+' validés dont '+nbSign+' CF signés'+inconnues);
+      aforLastDiag = diag;
+      if(nbVa===0 || diag.colonnesManquantes.length) setTimeout(()=>aforShowDiag(nbVa),600);
       aforRenderAll();
       // Rafraîchir aussi Indicateurs et le Tableau de bord, même s'ils ne sont pas le module
       // actif au moment de l'import — pour que leurs chiffres soient à jour dès qu'on y va.
@@ -9632,6 +9674,7 @@ function aforImportExcel(input){
 
 function aforRenderAll(){
   try{ aforRepairEtapes(); }catch(e){ console.warn('aforRepairEtapes', e); }
+  try{ if(pubRepairRejets()>0 && typeof cqeUpdateBadge==='function') cqeUpdateBadge(); }catch(e){ console.warn('pubRepairRejets', e); }
   gnssRebuildSuperfIndex();
   aforUpdateBtnLabel();
   // Met à jour les cards dashboard + badge sidebar
