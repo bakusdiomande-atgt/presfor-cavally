@@ -430,7 +430,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">PRESFOR <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-b</span></div>
+    <div class="tb-title">PRESFOR <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-d</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -1775,7 +1775,8 @@ function dosRenderAll(){
 // Index GNSS pré-calculé : id_dossier → superficie
 // Reconstruit à chaque import GNSS ou AFOR
 // Dossier validé = étape VA et non rejeté au contrôle qualité (définition unique pour toute l'application)
-function isValide(d){ return !!d && d.etape==='VA' && !(pubCQ && pubCQ[d.id] && pubCQ[d.id].rejete); }
+function isValide(d){ return !!d && d.etape==='VA'; }
+function isVaRejete(d){ return isValide(d) && !!(pubCQ && pubCQ[d.id] && pubCQ[d.id].rejete); }
 function dosSuperfValide(d){ let g=null; try{ g=gnssForDossier(d); }catch(e){} return g&&g.superficie ? g.superficie : (d.superficie_declaree||0); }
 function dosSuperfValideTotal(list){ return (list||[]).filter(isValide).reduce((s,d)=>s+dosSuperfValide(d),0); }
 function fmtHa(v){ return (Math.round(v*10)/10).toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1}); }
@@ -1868,7 +1869,7 @@ function dosRenderKPI(filtered){
   const va      = tous.filter(d=>isValide(d)).length;
   const signes  = tous.filter(d=>d.cf_signe).length;
   const superfVa = dosSuperfValideTotal(tous);
-  const vaRej = tous.filter(d=>d.etape==='VA' && !isValide(d)).length;
+  const vaRej = tous.filter(isVaRejete).length;
   const manuel  = filtered ? filtered.filter(d=>!d._src||d._src==='manuel').length : dossiers.length;
   const afor    = filtered ? filtered.filter(d=>d._src==='afor').length            : dossiersAFOR.length;
   const gnssSeul = filtered ? filtered.filter(d=>d._src==='gnss').length           : gnssOrphans.length;
@@ -1897,7 +1898,7 @@ function dosRenderKPI(filtered){
   kpiEl.innerHTML =
     `<div class="kpi blue"><div class="kpi-l">Total dossiers</div><div class="kpi-v">${tot.toLocaleString('fr-FR')}${lbl}</div><div class="kpi-s">${manuel} manuels · ${afor} AFOR${gnssSeul?(' · '+gnssSeul+' GNSS seul'):''}</div></div>
      <div class="kpi ${retards>0?'red':'green'}"><div class="kpi-l">En retard</div><div class="kpi-v">${retards}</div><div class="kpi-s">${tot>0?Math.round(retards/tot*100):0}%</div></div>
-     <div class="kpi green"><div class="kpi-l">Validés (VA)</div><div class="kpi-v">${va}</div><div class="kpi-s">${tot>0?Math.round(va/tot*100):0}% · dont ${signes} CF signés<br><b>${fmtHa(superfVa)} ha</b> validés${vaRej?` · ${vaRej} VA rejeté(s) CQ exclus`:''}</div></div>
+     <div class="kpi green"><div class="kpi-l">Validés (VA)</div><div class="kpi-v">${va}</div><div class="kpi-s">${tot>0?Math.round(va/tot*100):0}% · dont ${signes} CF signés<br><b>${fmtHa(superfVa)} ha</b> validés${vaRej?` · dont ${vaRej} rejeté(s) CQ`:''}</div></div>
      <div class="kpi amber"><div class="kpi-l">CFI / CFC</div><div class="kpi-v">${tous.filter(d=>d.type==='CFI').length}</div><div class="kpi-s">${tous.filter(d=>d.type==='CFC').length} CFC</div></div>
      <div class="kpi teal"><div class="kpi-l">Superficie GNSS${lbl}</div><div class="kpi-v" style="font-size:16px;">${totalHa.toFixed(1)}</div><div class="kpi-s">hectares levés</div></div>`;
 }
@@ -4322,17 +4323,18 @@ function dashComputeStats(zoneFilter){
   const orphansGnssAll = typeof gnssGetOrphanEntries==='function' ? gnssGetOrphanEntries() : [];
   const orphansGnss = dashFilterByZone(orphansGnssAll, zoneFilter);
   const totalDossiers = afor.length + orphansGnss.length;
-  const rejetes = afor.filter(d=>pubCQ[d.id] && pubCQ[d.id].rejete).length;
-  const rejeteIds = new Set(afor.filter(d=>pubCQ[d.id] && pubCQ[d.id].rejete).map(d=>d.id));
+  const rejetes = afor.filter(d=>pubCQ[d.id] && pubCQ[d.id].rejete && !isValide(d)).length; // les dossiers déjà validés (VA) ne sont pas recomptés ici
+  const vaRejetes = afor.filter(isVaRejete).length, nbSignes = afor.filter(d=>d.cf_signe).length;
+  const rejeteIds = new Set(afor.filter(d=>pubCQ[d.id] && pubCQ[d.id].rejete && !isValide(d)).map(d=>d.id));
   // Un dossier rejeté ne doit compter que dans "Rejetés" — pas aussi dans "En cours"/"Enquêtés"/"Validés"
   // selon son étape (les deux critères sont indépendants dans les données, d'où le risque de double comptage).
   const enCours = afor.filter(d=>['DD','RDC'].includes(d.etape) && !rejeteIds.has(d.id)).length;
   const enquetes = afor.filter(d=>['CL','OV','CP','AP'].includes(d.etape) && !rejeteIds.has(d.id)).length;
-  const valides = afor.filter(d=>isValide(d) && !rejeteIds.has(d.id));
+  const valides = afor.filter(isValide);
   const alertesN = typeof notifGetAlertes==='function' ? notifGetAlertes().length : afor.filter(d=>aforCalcRetard(d).retard).length;
   return {
     superficieValidee, totalDossiers, nbValides:valides.length,
-    enCours, enquetes, rejetes, alertesN,
+    enCours, enquetes, rejetes, vaRejetes, nbSignes, alertesN,
     afor, orphansGnss, zoneFilter
   };
 }
@@ -4397,7 +4399,7 @@ function dashRenderKPI(s){
   el.innerHTML =
     dashKpiCard(ic('<path d="M8 1C5 5 3 8 3 10.5a5 5 0 0 0 10 0C13 8 11 5 8 1z"/>'), 'var(--accent-lt)', 'var(--accent)', 'Superficie sécurisée', Math.round(s.superficieValidee), obj.ha, null, null, 'ha') +
     dashKpiCard(ic('<rect x="2" y="3" width="12" height="11" rx="1"/><path d="M2 6h12"/>'), 'var(--blue-lt)', 'var(--blue)', 'Dossiers traités', s.totalDossiers, obj.dossiers, null, s.orphansGnss.length>0 ? 'dont '+s.orphansGnss.length.toLocaleString('fr-FR')+' parcelles GNSS sans dossier AFOR' : null) +
-    dashKpiCard(ic('<path d="M3 8l3.5 3.5L13 4.5"/>'), '#F3EAFB', '#7C3AED', 'Dossiers validés', s.nbValides, obj.valides, null, null, null, fmtHa(dosSuperfValideTotal(s.afor))+' ha validés') +
+    dashKpiCard(ic('<path d="M3 8l3.5 3.5L13 4.5"/>'), '#F3EAFB', '#7C3AED', 'Dossiers validés', s.nbValides, obj.valides, null, null, null, fmtHa(dosSuperfValideTotal(s.afor))+' ha · '+s.nbSignes+' CF signé(s)'+(s.vaRejetes?' · dont '+s.vaRejetes+' rejeté(s) CQ':'')) +
     `<div class="dash-kpi-card">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
         <div class="dash-kpi-icon" style="background:var(--amber-lt);color:var(--amber)">${ic('<circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/>')}</div>
@@ -4826,7 +4828,7 @@ function dashRenderIndicateurs(s){
   let totalHa=0, totalJours=0;
   gnssAgents.forEach(a=>{ const st=gnssStatsForAgent(a.nom); if(st&&st.hasColumn){ totalHa+=st.superficie; totalJours+=st.jours; } });
   const productivite = totalJours>0 ? (totalHa/totalJours).toFixed(1) : '—';
-  const nbCQ = Object.keys(pubCQ||{}).length;
+  const nbCQ = s.afor.filter(d=>pubCQ[d.id]).length; // uniquement les dossiers actuellement dans la base (hors anciennes entrées orphelines)
   const tauxCQ = s.afor.length>0 ? Math.round(nbCQ/s.afor.length*100) : 0;
   const tauxRejetCQ = nbCQ>0 ? Math.round(s.rejetes/nbCQ*100) : 0;
 
@@ -7406,7 +7408,7 @@ const DD_REG={
   accueil:{
     'superficie securisee':()=>['Dossiers levés au GNSS',ddZone().filter(d=>gnssForDossier(d)),[DD_X.gnss]],
     'dossiers traites':()=>['Dossiers traités',ddZone(),[DD_X.type]],
-    'dossiers valides':()=>['Dossiers validés',ddZone().filter(d=>isValide(d)&&!(pubCQ[d.id]&&pubCQ[d.id].rejete)),[DD_X.type,DD_X.sup,DD_X.sig,DD_X.gnss]],
+    'dossiers valides':()=>['Dossiers validés',ddZone().filter(isValide),[DD_X.type,DD_X.sup,DD_X.sig,DD_X.gnss]],
     'alertes critiques':()=>{ notifToggle(); return null; }
   },
   dossier:{
