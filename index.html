@@ -430,7 +430,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-j</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-l</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -5809,6 +5809,14 @@ function actDetailExportCSV(){
   showToast(filtered.length + ' ligne(s) exportée(s).');
 }
 
+function actShowAberrantes(){
+  const l = dashFilterByZone(dossiersAFOR||[], dashZoneFilter).filter(d=>d.superficie_flag==='aberrante'||d.superficie_flag==='verifier')
+    .sort((x,y)=>(x.superficie_flag===y.superficie_flag?0:(x.superficie_flag==='aberrante'?-1:1))||(y.superficie_saisie-x.superficie_saisie));
+  ddOpen('Superficies à contrôler (AFOR)', l, [
+    {h:'Superficie saisie (ha)',f:d=>d.superficie_saisie},
+    {h:'Statut',f:d=>d.superficie_flag==='aberrante'?'Exclue des totaux':'Comptée — à vérifier'},
+    {h:'Motif',f:d=>d.superficie_raison||''}]);
+}
 function actRenderAll(){
   const def = ACT_DEFS[actCurrent];
   document.getElementById('act-title').textContent = def.label;
@@ -5827,9 +5835,12 @@ function actRenderAll(){
       <div class="kpi green"><div class="kpi-l">Validés</div><div class="kpi-v">${valides.toLocaleString('fr-FR')}</div></div>
       <div class="kpi red"><div class="kpi-l">En retard</div><div class="kpi-v">${retards.toLocaleString('fr-FR')}</div></div>
       <div class="kpi teal"><div class="kpi-l">Superficie sécurisée</div><div class="kpi-v" style="font-size:16px;">${superficie.toFixed(1)} ha</div></div>`;
+    try{ aforRepairEtapes(); }catch(e){}
     const realises = actComputeCFRealises(afor);
+    const aberr = afor.filter(d=>d.superficie_flag==='aberrante'), verif = afor.filter(d=>d.superficie_flag==='verifier');
+    const aberrNote = (aberr.length||verif.length) ? `<div style="margin-top:8px;padding:8px 12px;background:var(--amber-lt);color:var(--amber-txt);border-radius:6px;font-size:11px;">⚠ Contrôle de cohérence des superficies : <b>${aberr.length}</b> saisie(s) incohérente(s) exclue(s) des hectares réalisés (${Math.round(aberr.reduce((x,d)=>x+d.superficie_saisie,0)).toLocaleString('fr-FR')} ha)${verif.length?`, <b>${verif.length}</b> grande(s) parcelle(s) comptée(s) mais à vérifier`:''}. <a href="javascript:void(0)" onclick="actShowAberrantes()" style="color:inherit;font-weight:700;">Voir la liste</a></div>` : '';
     document.getElementById('act-content').innerHTML =
-      actRenderSuiviTableCF(labels, realises) +
+      actRenderSuiviTableCF(labels, realises) + aberrNote +
       `<p style="font-size:11px;color:var(--text3);margin-top:8px;">Les "Réalisés" sont calculés à partir des dossiers AFOR/GNSS déjà atteints à chaque étape ou au-delà (Dossier = nombre de demandeurs ; Hectare = superficie GNSS cumulée de ces dossiers). Certains jalons contractuels partagent la même étape de suivi AFOR (granularité actuelle du système).</p>`;
   } else {
     // ISF, DTV, Contractualisation : pas encore de source d'import — Réalisés à 0 en attendant
@@ -9521,8 +9532,48 @@ function aforShowDiag(nbVa){
    +'<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;"><div><b>Étape Actuelle</b><table>'+top(d.etapes)+'</table></div><div><b>Statut de Validation</b><table>'+top(d.statuts)+'</table></div><div><b>Niveau Global</b><table>'+top(d.niveaux)+'</table></div><div><b>Colonnes de dates remplies</b><table>'+Object.entries(d.dates).map(([k,n])=>'<tr><td>'+k+'</td><td style="text-align:right;">'+n+'</td></tr>').join('')+'</table></div></div></div>';
   document.body.appendChild(m);
 }
+// Une parcelle rurale ne dépasse pas 500 ha : au-delà, la valeur saisie est une erreur (ex. n° de dossier tapé dans la colonne superficie)
+// ── Contrôle de cohérence des superficies saisies (sans plafond fixe : le Worodougou peut avoir de grandes parcelles) ──
+// Une superficie est jugée ABERRANTE (exclue des totaux) si elle est très supérieure à la médiane de sa sous-préfecture
+// ou si elle reproduit les chiffres du n° de dossier / code parcelle — et qu'aucune autre source ne la confirme
+// (levé GNSS, superficie de contrôle, tablette). Une grande parcelle plausible reste comptée, avec le statut « à vérifier ».
+function aforAnalyseSuperficies(){
+  const list = dossiersAFOR||[];
+  const med = a=>{ if(!a.length) return 0; const b=a.slice().sort((x,y)=>x-y); const m=b.length>>1; return b.length%2?b[m]:(b[m-1]+b[m])/2; };
+  const bySp={}, byDept={}, all=[];
+  list.forEach(d=>{ if(d.superficie_saisie===undefined) d.superficie_saisie = d.superficie_aberrante>0 ? d.superficie_aberrante : (d.superficie_declaree||0);
+    const v=d.superficie_saisie; if(!(v>0)) return; all.push(v); (bySp[d.sp]=bySp[d.sp]||[]).push(v); (byDept[d.dept]=byDept[d.dept]||[]).push(v); });
+  const mAll=med(all), mSp={}, mDept={};
+  Object.keys(bySp).forEach(k=>mSp[k]=bySp[k].length>=8?med(bySp[k]):0);
+  Object.keys(byDept).forEach(k=>mDept[k]=byDept[k].length>=8?med(byDept[k]):0);
+  let n=0;
+  list.forEach(d=>{
+    const v=d.superficie_saisie||0; let st='ok', raison='';
+    const m = mSp[d.sp] || mDept[d.dept] || mAll || 1;
+    if(v>100){
+      // confirmations indépendantes
+      const refs=[]; try{ const g=gnssForDossier(d); if(g&&g.superficie) refs.push(g.superficie); }catch(e){}
+      const cq=pubCQ&&pubCQ[d.id]; if(cq){ [cq.superf_cq1,cq.superf_cq2,cq.superf_final].forEach(x=>{ const n=parseFloat(String(x||'').replace(',','.')); if(n>0) refs.push(n); }); } // contrôles indépendants de la colonne « constat de limite »
+      try{ const t=tabMatchForDossier(d); const a=t&&t.requests&&t.requests.land&&t.requests.land.estimatedArea; if(a!=null) refs.push(Number(a)||0); }catch(e){}
+      const confirme = refs.some(r=>r>0 && v/r>=0.5 && v/r<=2);
+      const digits = String(d.id||'').replace(/\D/g,'');
+      const codeN = parseInt(String(d.code_parcelle||'').replace(/\D/g,''),10);
+      const copie = Math.round(v)===v && (Math.round(v)===parseInt(digits.slice(-6),10) || Math.round(v)===parseInt(digits.slice(-5),10) || Math.round(v)===codeN);
+      const ratio = v/m;
+      if(!confirme && copie){ st='aberrante'; raison='Valeur identique à un chiffre du n° de dossier / code parcelle'; }
+      else if(!confirme && v>=1000 && ratio>=300){ st='aberrante'; raison='≈ '+Math.round(ratio)+' fois la médiane de la sous-préfecture ('+(Math.round(m*10)/10)+' ha), sans confirmation (GNSS, contrôle, tablette)'; }
+      else if(ratio>=10 || !confirme && v>=200){ st='verifier'; raison=confirme?'Grande parcelle confirmée par une autre source':'Grande parcelle ≈ '+Math.round(ratio)+' fois la médiane de la sous-préfecture ('+(Math.round(m*10)/10)+' ha), non confirmée — à vérifier'; }
+    }
+    d.superficie_flag=st; d.superficie_raison=raison;
+    const nouv = st==='aberrante' ? 0 : v;
+    if(d.superficie_declaree!==nouv){ d.superficie_declaree=nouv; n++; }
+    if(st==='aberrante') d.superficie_aberrante=v; else delete d.superficie_aberrante;
+  });
+  return n;
+}
 function aforRepairEtapes(){
   let n=0;
+  try{ aforAnalyseSuperficies(); }catch(e){ console.error('analyse superficies', e); }
   (dossiersAFOR||[]).forEach(d=>{
     if(d.date_SIG && !d.cf_signe){ d.cf_signe=true; n++; }
     const e=aforDeriveEtape(d, d.etape);
@@ -9810,6 +9861,7 @@ function aforImportExcel(input){
           // Superficie déclarée (colonne "Superficie de Constat de limite") — utilisée pour les
           // étapes "Demande" et "RDC", avant tout levé GNSS.
           superficie_declaree: (()=>{ const v=parseFloat((row[AFOR_COLS.superf_cl]||'').toString().replace(',','.')); return isNaN(v)?0:v; })(),
+          superficie_saisie: (()=>{ const v=parseFloat((row[AFOR_COLS.superf_cl]||'').toString().replace(',','.')); return isNaN(v)?0:v; })(),
           // Voisins déclarés au dossier : "Nom (Nord), Nom (Est), …" — servent au contrôle qualité des plans
           voisins: (row[AFOR_COLS.voisins]||'').toString().replace(/\s+/g,' ').trim() || undefined,
           nb_voisins: (()=>{ const v=parseInt(row[AFOR_COLS.nb_voisins]); return isNaN(v)?undefined:v; })(),
