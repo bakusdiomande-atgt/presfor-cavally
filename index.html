@@ -430,7 +430,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-l</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-m</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -3634,6 +3634,20 @@ function zvGetVilleStats(village, dept){
   return { nbDos:mesDos.length, agents };
 }
 
+// Statistiques par activité : ISF/DTV/CONTRAT viennent des dossiers saisis ; CF vient (aussi) de la base AFOR importée.
+// CF : « clôturé » = dossier validé (VA), « enquête terrain » = dossier encore à la demande, au RDC ou au constat de limite.
+function zvActStats(actKey, dept){
+  const dn = dept ? zvNormStr(String(dept).replace(/^Dép\.\s*/,'')) : null;
+  const man = (dossiers||[]).filter(d=>(d.activite||'CF')===actKey && (!dn || zvNormStr(String(d.dept||'').replace(/^Dép\.\s*/,''))===dn));
+  const ac = ACTIVITES[actKey];
+  let total=man.length, clos=man.filter(d=>d.etape==='Clôturé').length, enq=man.filter(d=>ac&&d.etape===ac.etapes[0]).length;
+  if(actKey==='CF'){
+    const af = (dossiersAFOR||[]).filter(d=>!dn || zvNormStr(d.dept)===dn);
+    total += af.length; clos += af.filter(isValide).length; enq += af.filter(d=>['DD','RDC','CL'].includes(d.etape)).length;
+  }
+  return {total, clos, enq};
+}
+
 function zvGetDeptStats(dept){
   const c = ZV_GEO[dept];
   if(!c) return {};
@@ -3657,11 +3671,8 @@ function zvRenderKPI(idPrefix){
   const depts = Object.keys(ZV_GEO);
   const allV = depts.flatMap(d=>Object.values(ZV_GEO[d].sp).flat());
   const totalV = allV.length;
-  const totalDos = dossiers.length;
-  const couverts = allV.filter(v=>{
-    const dept=depts.find(d=>Object.values(ZV_GEO[d].sp).flat().includes(v));
-    return dossiers.some(d=>d.village===v&&d.dept===dept);
-  }).length;
+  const totalDos = (dossiers||[]).length + (dossiersAFOR||[]).length;
+  const couverts = depts.reduce((n,d)=>n+(zvGetDeptStats(d).couverts||0),0);
   const pct = totalV>0?Math.round(couverts/totalV*100):0;
   const totalSP = depts.reduce((s,d)=>s+Object.keys(ZV_GEO[d].sp).length,0);
   el.innerHTML=`
@@ -3741,7 +3752,7 @@ function zvRenderDept(idPrefix){
 
   // Tableau par sous-préfecture
   html2 += Object.entries(info.sp).map(([sp, villages])=>{
-    const spDos = villages.reduce((sum,v)=>sum+dossiers.filter(d=>d.village===v&&d.dept===dept).length,0);
+    const spDos = villages.reduce((sum,v)=>sum+zvGetVilleStats(v,dept).nbDos,0);
     return `<div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden;">
       <div style="background:${info.couleur.bg};padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid ${info.couleur.brd};">
         <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:${info.couleur.tx}">${sp}</span>
@@ -3835,12 +3846,7 @@ function zvRenderCouverture(idPrefix){
 
     // Par activité dans ce dept
     const parAct={};
-    dossiers.filter(d=>d.dept===dept).forEach(d=>{
-      const act=d.activite||'CF';
-      if(!parAct[act])parAct[act]={total:0,clos:0};
-      parAct[act].total++;
-      if(d.etape==='Clôturé')parAct[act].clos++;
-    });
+    Object.keys(ACTIVITES).forEach(k=>{ parAct[k]=zvActStats(k,dept); });
 
     html3+=`<div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;">
       <div style="background:${info.couleur.brd};padding:12px 16px;">
@@ -3889,11 +3895,11 @@ function zvRenderCouverture(idPrefix){
     <tbody>
     ${Object.keys(ACTIVITES).map(actKey=>{
       const ac=ACTIVITES[actKey];
-      const mesDos=dossiers.filter(d=>d.activite===actKey);
-      const enq=mesDos.filter(d=>d.etape===ac.etapes[0]).length;
-      const clos=mesDos.filter(d=>d.etape==='Clôturé').length;
-      const encours=mesDos.length-clos;
-      const pct=mesDos.length>0?Math.round(clos/mesDos.length*100):0;
+      const st=zvActStats(actKey);
+      const mesDos={length:st.total};
+      const enq=st.enq, clos=st.clos;
+      const encours=st.total-clos;
+      const pct=st.total>0?Math.round(clos/st.total*100):0;
       return`<tr style="border-bottom:1px solid var(--border);">
         <td style="padding:9px 12px;"><span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;background:${ac.couleur.bg};color:${ac.couleur.tx}">${actKey}</span></td>
         <td style="padding:9px 12px;text-align:center;font-weight:600">${mesDos.length}</td>
