@@ -430,7 +430,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-m</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-n</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -3604,6 +3604,15 @@ const ZV_GEO = {
 function zvInit(){
   zvRenderAll();
 }
+// Rafraîchit toutes les vues Zones (module Zones + Indicateurs) après un chargement ou un import de données
+function zvRefreshAll(){
+  try{
+    zvRenderKPI(); zvRenderOverview(); zvRenderVillages(); zvRenderCouverture();
+    if(document.getElementById('zv-dept-sel')) zvRenderDept();
+    zvRenderKPI('ind-zv'); zvRenderOverview('ind-zv'); zvRenderCouverture('ind-zv');
+    if(document.getElementById('ind-zv-dept-sel')) zvRenderDept('ind-zv');
+  }catch(e){ console.warn('zvRefreshAll', e); }
+}
 
 function zvRenderAll(){
   zvRenderKPI();
@@ -3626,12 +3635,29 @@ function zvShowPanel(id, btn){
 function zvNormStr(s){
   return (s||'').toString().trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 }
+// Index village → stats, reconstruit dès que les données changent (AFOR, GNSS, dossiers manuels)
+let _zvIdx=null, _zvIdxSig='';
+function zvBuildIndex(){
+  const af=dossiersAFOR||[], gn=(typeof gnssData!=='undefined'&&gnssData)||[], mn=dossiers||[];
+  let nv=0; for(let i=0;i<af.length;i++) if(isValide(af[i])) nv++;
+  const sig=af.length+'|'+gn.length+'|'+mn.length+'|'+nv;
+  if(_zvIdx && sig===_zvIdxSig) return _zvIdx;
+  const idx={};
+  const slot=(dept,vil)=>{
+    const k=zvNormStr(String(dept||'').replace(/^Dép\.\s*/,''))+'|'+zvNormStr(vil);
+    return idx[k]||(idx[k]={nbDos:0,nbVal:0,nbGnss:0,haGnss:0,nbMan:0,agents:new Set()});
+  };
+  af.forEach(d=>{ const o=slot(d.dept,d.village); o.nbDos++; if(isValide(d)) o.nbVal++; if(d.agent) o.agents.add(d.agent); });
+  gn.forEach(g=>{ const o=slot(g.dept,g.village); o.nbGnss++; o.haGnss+=(g.superficie||0); });
+  mn.forEach(d=>{ const o=slot(d.dept,d.village); o.nbMan++; if(d.agent) o.agents.add(d.agent); });
+  _zvIdx=idx; _zvIdxSig=sig; return idx;
+}
 function zvGetVilleStats(village, dept){
-  const deptNorm = zvNormStr(String(dept).replace(/^Dép\.\s*/,''));
-  const villageNorm = zvNormStr(village);
-  const mesDos = (dossiersAFOR||[]).filter(d => zvNormStr(d.dept)===deptNorm && zvNormStr(d.village)===villageNorm);
-  const agents = [...new Set(mesDos.map(d=>d.agent).filter(Boolean))];
-  return { nbDos:mesDos.length, agents };
+  const k=zvNormStr(String(dept).replace(/^Dép\.\s*/,''))+'|'+zvNormStr(village);
+  const o=zvBuildIndex()[k];
+  if(!o) return { nbDos:0, nbVal:0, nbGnss:0, haGnss:0, nbMan:0, actif:0, agents:[] };
+  // « Couvert » = au moins un dossier (AFOR ou saisi) OU une parcelle levée au GNSS dans le village
+  return { nbDos:o.nbDos+o.nbMan, nbVal:o.nbVal, nbGnss:o.nbGnss, haGnss:o.haGnss, nbMan:o.nbMan, actif:o.nbDos+o.nbMan+o.nbGnss, agents:[...o.agents] };
 }
 
 // Statistiques par activité : ISF/DTV/CONTRAT viennent des dossiers saisis ; CF vient (aussi) de la base AFOR importée.
@@ -3652,13 +3678,13 @@ function zvGetDeptStats(dept){
   const c = ZV_GEO[dept];
   if(!c) return {};
   const allVillages = Object.values(c.sp).flat();
-  let totalDos=0, couverts=0;
+  let totalDos=0, couverts=0, totalGnss=0, totalVal=0;
   allVillages.forEach(v=>{
     const s=zvGetVilleStats(v,dept);
-    totalDos+=s.nbDos;
-    if(s.nbDos>0) couverts++;
+    totalDos+=s.nbDos; totalGnss+=s.nbGnss; totalVal+=s.nbVal;
+    if(s.actif>0) couverts++;
   });
-  return {allVillages, totalDos, couverts, partiels:0,
+  return {allVillages, totalDos, totalGnss, totalVal, couverts, partiels:0,
           nonTraites: allVillages.length-couverts,
           pct: allVillages.length>0?Math.round((couverts/allVillages.length)*100):0};
 }
@@ -3672,6 +3698,7 @@ function zvRenderKPI(idPrefix){
   const allV = depts.flatMap(d=>Object.values(ZV_GEO[d].sp).flat());
   const totalV = allV.length;
   const totalDos = (dossiers||[]).length + (dossiersAFOR||[]).length;
+  const totalVal = (dossiersAFOR||[]).filter(isValide).length, totalGn = ((typeof gnssData!=='undefined'&&gnssData)||[]).length;
   const couverts = depts.reduce((n,d)=>n+(zvGetDeptStats(d).couverts||0),0);
   const pct = totalV>0?Math.round(couverts/totalV*100):0;
   const totalSP = depts.reduce((s,d)=>s+Object.keys(ZV_GEO[d].sp).length,0);
@@ -3679,7 +3706,7 @@ function zvRenderKPI(idPrefix){
     <div class="kpi blue"><div class="kpi-l">Départements</div><div class="kpi-v">4</div><div class="kpi-s">Région du Cavally</div></div>
     <div class="kpi"><div class="kpi-l">Sous-préfectures</div><div class="kpi-v">${totalSP}</div><div class="kpi-s">${totalV} villages recensés</div></div>
     <div class="kpi green"><div class="kpi-l">Villages couverts</div><div class="kpi-v">${couverts}</div><div class="kpi-s">Taux : ${pct}%</div></div>
-    <div class="kpi amber"><div class="kpi-l">Dossiers CF ouverts</div><div class="kpi-v">${totalDos}</div><div class="kpi-s">Sur la zone entière</div></div>`;
+    <div class="kpi amber"><div class="kpi-l">Dossiers CF ouverts</div><div class="kpi-v">${totalDos}</div><div class="kpi-s">${totalVal} validés · ${totalGn} parcelles GNSS</div></div>`;
 }
 
 // ── Vue d'ensemble : cartes départements ──
@@ -3719,7 +3746,7 @@ function zvRenderOverview(idPrefix){
           </div>
         </div>
         <div style="margin-top:12px;display:flex;justify-content:space-between;font-size:12px;color:var(--text2);border-top:1px solid var(--border);padding-top:10px;">
-          <span>${s.totalDos||0} dossiers CF</span>
+          <span>${s.totalDos||0} dossiers CF · ${s.totalVal||0} validés</span><span>${s.totalGnss||0} parcelles GNSS</span>
         </div>
       </div>
     </div>`;
@@ -3746,35 +3773,43 @@ function zvRenderDept(idPrefix){
   const s = zvGetDeptStats(dept);
   let html2 = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
     <div class="kpi green"><div class="kpi-l">Villages couverts</div><div class="kpi-v">${s.couverts}</div><div class="kpi-s">Dossiers CF ouverts</div></div>
-    <div class="kpi"><div class="kpi-l">Non traités</div><div class="kpi-v">${s.nonTraites}</div><div class="kpi-s">Aucune intervention</div></div>
-    <div class="kpi blue"><div class="kpi-l">Taux couverture</div><div class="kpi-v">${s.pct}%</div><div class="kpi-s">${s.totalDos} dossiers CF</div></div>
+    <div class="kpi"><div class="kpi-l">Non traités</div><div class="kpi-v">${s.nonTraites}</div><div class="kpi-s">Ni dossier ni parcelle GNSS</div></div>
+    <div class="kpi blue"><div class="kpi-l">Taux couverture</div><div class="kpi-v">${s.pct}%</div><div class="kpi-s">${s.totalDos} dossiers CF · ${s.totalVal} validés · ${s.totalGnss} parcelles GNSS</div></div>
   </div>`;
 
   // Tableau par sous-préfecture
   html2 += Object.entries(info.sp).map(([sp, villages])=>{
     const spDos = villages.reduce((sum,v)=>sum+zvGetVilleStats(v,dept).nbDos,0);
+    const spVal = villages.reduce((sum,v)=>sum+zvGetVilleStats(v,dept).nbVal,0);
+    const spGn = villages.reduce((sum,v)=>sum+zvGetVilleStats(v,dept).nbGnss,0);
     return `<div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden;">
       <div style="background:${info.couleur.bg};padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid ${info.couleur.brd};">
         <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:${info.couleur.tx}">${sp}</span>
         <div style="display:flex;gap:12px;font-size:11px;color:${info.couleur.tx};opacity:.8;">
           <span>${villages.length} villages</span>
           <span>${spDos} dossiers CF</span>
+          <span>${spVal} validés</span>
+          <span>${spGn} parcelles GNSS</span>
         </div>
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead><tr style="background:var(--surface2);">
           <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);">Village</th>
           <th style="padding:7px 12px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);">Dossiers CF</th>
+          <th style="padding:7px 12px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);">Validés</th>
+          <th style="padding:7px 12px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);">Parcelles GNSS</th>
           <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);">Agents</th>
           <th style="padding:7px 12px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);border-bottom:1px solid var(--border);">Statut</th>
         </tr></thead>
         <tbody>
           ${villages.map(v=>{
             const vs=zvGetVilleStats(v,dept);
-            const statut=vs.nbDos>0?{l:'Couvert',c:'b-green'}:{l:'Non traité',c:'b-gray'};
+            const statut=vs.actif>0?{l:'Couvert',c:'b-green'}:{l:'Non traité',c:'b-gray'};
             return `<tr style="border-bottom:1px solid var(--border);">
               <td style="padding:7px 12px;font-weight:500">${v}</td>
               <td style="padding:7px 12px;text-align:center;font-weight:600;color:var(--accent)">${vs.nbDos}</td>
+              <td style="padding:7px 12px;text-align:center">${vs.nbVal}</td>
+              <td style="padding:7px 12px;text-align:center">${vs.nbGnss}</td>
               <td style="padding:7px 12px;font-size:11px;color:var(--text2)">${vs.agents.slice(0,2).join(', ')}${vs.agents.length>2?'...':''}</td>
               <td style="padding:7px 12px;text-align:center"><span class="badge ${statut.c}">${statut.l}</span></td>
             </tr>`;
@@ -3801,7 +3836,7 @@ function zvRenderVillages(){
     Object.entries(info.sp).forEach(([sp,villages])=>{
       villages.forEach(v=>{
         const vs=zvGetVilleStats(v,dept);
-        const statut=vs.nbDos>0?'couvert':'nontraite';
+        const statut=vs.actif>0?'couvert':'nontraite';
         all.push({village:v,dept,sp,statut,vs});
       });
     });
@@ -3824,7 +3859,7 @@ function zvRenderVillages(){
       <td style="padding:8px 12px;font-weight:500">${r.village}</td>
       <td style="padding:8px 12px;"><span style="font-size:10px;padding:2px 7px;border-radius:8px;background:${dinfo?dinfo.couleur.bg:'var(--surface2)'};color:${dinfo?dinfo.couleur.tx:'var(--text2)'}">${r.dept.replace('Dép. ','')}</span></td>
       <td style="padding:8px 12px;font-size:11px;color:var(--text2)">${r.sp}</td>
-      <td style="padding:8px 12px;text-align:center;font-weight:600;color:var(--accent)">${r.vs.nbDos}</td>
+      <td style="padding:8px 12px;text-align:center;font-weight:600;color:var(--accent)" title="${r.vs.nbVal} validé(s) · ${r.vs.nbGnss} parcelle(s) GNSS">${r.vs.nbDos}${r.vs.nbVal?` <span style="font-weight:400;font-size:10px;color:var(--text3)">(${r.vs.nbVal} val.)</span>`:''}${r.vs.nbGnss?` <span style="font-weight:400;font-size:10px;color:var(--text3)">· ${r.vs.nbGnss} GNSS</span>`:''}</td>
       <td style="padding:8px 12px;font-size:11px;color:var(--text2)">${r.vs.agents.slice(0,2).join(', ')||'—'}</td>
       <td style="padding:8px 12px;"><span class="badge ${sc}">${sl}</span></td>
     </tr>`;
@@ -3929,7 +3964,7 @@ function zvExportCSV(){
     Object.entries(info.sp).forEach(([sp,villages])=>{
       villages.forEach(v=>{
         const vs=zvGetVilleStats(v,dept);
-        const statut=vs.nbDos>0?'Couvert':'Non traité';
+        const statut=vs.actif>0?'Couvert':'Non traité';
         rows.push([dept,sp,v,vs.nbDos,statut,vs.agents.join(';')]);
       });
     });
@@ -9134,7 +9169,7 @@ async function serverLoad(){
     serverAvailable = true;
 
     updateSyncIndicator('ok');
-    dosRenderAll(); dashRenderAll();
+    dosRenderAll(); dashRenderAll(); try{ if(typeof zvRefreshAll==='function') zvRefreshAll(); }catch(e){}
     console.log('Firebase chargé:', dossiers.length, 'dossiers');
     return true;
   } catch(e) {
@@ -10008,6 +10043,7 @@ function aforImportExcel(input){
       if(typeof indRenderNav==='function'){ try{ indRenderNav(); }catch(e){} }
       if(typeof indRenderAll==='function'){ try{ indRenderAll(); }catch(e){ console.error('indRenderAll après import AFOR:', e); } }
       try{ agRenderPerf('ind-ag'); agRenderPerf(); if(typeof agRenderKPI==='function'){ agRenderKPI('ind-ag'); } }catch(e){}
+      try{ if(typeof zvRefreshAll==='function') zvRefreshAll(); }catch(e){}
       if(document.getElementById('dos-panel-list') &&
          document.getElementById('dos-panel-list').classList.contains('active')){
         dosRenderAll();
@@ -10513,6 +10549,7 @@ function gnssImportExcel(input){
       if(typeof indRenderNav==='function'){ try{ indRenderNav(); }catch(e){} }
       if(typeof indRenderAll==='function'){ try{ indRenderAll(); }catch(e){ console.error('indRenderAll après import GNSS:', e); } }
       try{ agRenderPerf('ind-ag'); agRenderPerf(); if(typeof agRenderKPI==='function'){ agRenderKPI('ind-ag'); } }catch(e){}
+      try{ if(typeof zvRefreshAll==='function') zvRefreshAll(); }catch(e){}
       showToast(`GNSS chargé : ${nb} parcelles levées · ${gnssGetTotalHa().toFixed(1)} ha`);
     }catch(err){ showToast('Erreur lecture : '+err.message); console.error(err); }
   };
@@ -10884,6 +10921,7 @@ async function aforLoadFromFirebase(){
     if(remoteTs >= localTs || dossiersAFOR.length === 0){
       dossiersAFOR = dataArr;
       console.log('AFOR Firebase chargé:', dossiersAFOR.length, 'dossiers');
+      try{ if(typeof zvRefreshAll==='function') zvRefreshAll(); }catch(e){}
       const nb = aforDeduplicate();
       try{
         localStorage.setItem('presfor_afor_data', JSON.stringify(dossiersAFOR));
@@ -11227,6 +11265,7 @@ async function gnssLoadFromFirebase(){
       });
       try{ localStorage.setItem('presfor_gnss_data', JSON.stringify(gnssData)); localStorage.setItem('presfor_gnss_ts', d.ts); }catch(e){}
       console.log('GNSS chargé Firebase:', gnssData.length, 'parcelles');
+      try{ if(typeof zvRefreshAll==='function') zvRefreshAll(); }catch(e){}
       return true;
     }
     return false;
