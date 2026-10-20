@@ -430,7 +430,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-q</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-r</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -7204,6 +7204,23 @@ async function terrSubmit(id, type){
 }
 function terrRenderTabKeep(){ if(typeof cqeTab!=='undefined' && cqeTab==='terrain') terrRenderTab(); }
 
+
+function terrInventaire(){
+  const st = k=>Object.keys((tabletteData&&tabletteData[k])||{}).length;
+  const parts = TAB_STAGE_DEFS.map(s=>`<b>${st(s.key).toLocaleString('fr-FR')}</b> ${s.label.toLowerCase()}`);
+  const last = (tabletteImports&&tabletteImports.length) ? tabletteImports[tabletteImports.length-1] : null;
+  let alerte = '';
+  if(!st('minutes') && !st('observations')){
+    alerte = st('requests')
+      ? '<div style="margin-top:6px;color:var(--amber-txt);"><b>Seules les demandes (01_requests) sont chargées.</b> Pour contrôler les RDC et les PVCL, importez aussi les archives <b>02_minutes…zip</b> et <b>03_observations…zip</b> (Imports → Données tablette).</div>'
+      : '<div style="margin-top:6px;color:var(--amber-txt);"><b>Aucune donnée tablette en mémoire.</b> Importez les ZIP (Imports → Données tablette), ou rechargez la page si vous venez de le faire : les données sont lues depuis Firebase au démarrage.</div>';
+  }
+  return `<div style="padding:10px 16px;margin-bottom:12px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);font-size:12px;">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Données tablette chargées</div>
+    <div>${parts.join(' · ')}</div>
+    ${last?`<div style="font-size:11px;color:var(--text3);margin-top:3px;">Dernier import : « ${planEsc(last.nom)} » le ${new Date(last.date).toLocaleDateString('fr-FR')} (${last.nbFichiers} fichier(s) reconnu(s))</div>`:''}${alerte}</div>`;
+}
+
 function terrRenderTab(){
   const kpiEl = document.getElementById('cqe-kpi'), contentEl = document.getElementById('cqe-content');
   if(!kpiEl||!contentEl) return;
@@ -7221,7 +7238,7 @@ function terrRenderTab(){
     <div class="kpi"><div class="kpi-l">PVCL à vérifier</div><div class="kpi-v">${cnt('pvcl','a_verifier')}</div></div>
     <div class="kpi ${(orph('minutes')+orph('observations'))?'amber':''}"><div class="kpi-l">Fiches sans dossier</div><div class="kpi-v">${orph('minutes')+orph('observations')}</div><div class="kpi-s">${orph('minutes')} RDC · ${orph('observations')} PVCL non rattachés</div></div>`;
   if(!rows.length){
-    contentEl.innerHTML = '<div class="empty-state"><p style="font-size:13px;">Aucune fiche RDC ou PVCL de tablette n\'est rattachée à un dossier. Importez les ZIP de tablette (Imports → Données tablette).</p><p style="margin-top:10px;"><button class="btn-s" onclick="terrShowStructure()">🔎 Analyser la structure des fiches</button></p></div>';
+    contentEl.innerHTML = terrInventaire() + '<div class="empty-state"><p style="font-size:13px;">Aucune fiche RDC ou PVCL de tablette n\'est rattachée à un dossier. Importez les ZIP de tablette (Imports → Données tablette).</p><p style="margin-top:10px;"><button class="btn-s" onclick="terrShowStructure()">🔎 Analyser la structure des fiches</button></p></div>';
     return;
   }
   const q = planNorm(terrFilter.q), tf = terrFilter.type, sf = terrFilter.statut;
@@ -7238,7 +7255,7 @@ function terrRenderTab(){
   const total = list.length, pages = Math.max(1, Math.ceil(total/TERR_PAGE));
   terrFilter.page = Math.min(terrFilter.page, pages-1);
   list = list.slice(terrFilter.page*TERR_PAGE, (terrFilter.page+1)*TERR_PAGE);
-  contentEl.innerHTML = `<div class="tw" style="overflow:hidden;">
+  contentEl.innerHTML = terrInventaire() + `<div class="tw" style="overflow:hidden;">
     <div style="padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);">
       <input type="text" placeholder="N° dossier, nom, village, agent…" value="${planEsc(terrFilter.q)}" oninput="terrFilter.q=this.value;terrFilter.page=0;clearTimeout(window._tfT);window._tfT=setTimeout(terrRenderTabKeep,250);" style="padding:7px 11px;border:1px solid var(--border);border-radius:6px;font-size:12px;min-width:220px;">
       <select onchange="terrFilter.type=this.value;terrFilter.page=0;terrRenderTab()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">${[['','RDC et PVCL'],['rdc','RDC seulement'],['pvcl','PVCL seulement']].map(o=>`<option value="${o[0]}" ${tf===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>
@@ -11551,6 +11568,8 @@ async function tabImportZips(){
     }
   }
 
+  const nonReconnus = files.filter(f=>!TAB_STAGE_DEFS.some(s=>f.name.startsWith(s.filePrefix))).map(f=>f.name);
+  if(nonReconnus.length) rapportParEtape.push('⚠ fichier(s) non reconnu(s) (le nom doit commencer par 01_requests, 02_minutes, 03_observations…) : '+nonReconnus.join(', '));
   if(fichiersLus===0){
     statusEl.innerHTML = '<span style="color:var(--red);">Aucun fichier reconnu. Vérifiez que les noms de fichiers commencent bien par 01_requests, 02_minutes, etc.</span>';
     return;
@@ -11574,6 +11593,7 @@ async function tabImportZips(){
   filesInput.value = '';
   document.getElementById('tab-import-pwd').value = '';
   tabRenderImportHistory();
+  try{ if(typeof cqeRenderAll==='function') cqeRenderAll(); }catch(e){}
   try{ if(typeof agRenderPerf==='function'){ agRenderPerf(); agRenderPerf('ind-ag'); } if(typeof agRenderKPI==='function'){ agRenderKPI(); agRenderKPI('ind-ag'); } }catch(e){}
   showToast('Données tablette importées : '+nomTablette);
 }
