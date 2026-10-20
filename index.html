@@ -430,7 +430,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-n</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-q</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -1218,6 +1218,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
           <button class="btn-s" id="cqe-tab-dossiers" onclick="cqeSetTab('dossiers')" style="font-weight:700;">Dossiers CQ</button>
           <button class="btn-s" id="cqe-tab-controle" onclick="cqeSetTab('controle')">Contrôle des dossiers</button>
           <button class="btn-s" id="cqe-tab-plans" onclick="cqeSetTab('plans')">Plans parcellaires</button>
+          <button class="btn-s" id="cqe-tab-terrain" onclick="cqeSetTab('terrain')">RDC &amp; PVCL</button>
           <button class="btn-s" id="cqe-tab-rapprochement" onclick="cqeSetTab('rapprochement')">Rapprochement des sources</button>
           <button class="btn-s" id="cqe-tab-pilotage" onclick="cqeSetTab('pilotage')">Pilotage CQE <span id="cqe-pilot-badge" style="display:none;background:#dc2626;color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:3px;"></span></button>
         </div>
@@ -1361,8 +1362,8 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
         </div>
         <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin-bottom:10px;">
           <div class="ff">
-            <label class="fl">Nom / identifiant de la tablette</label>
-            <input class="fi" type="text" id="tab-import-nom" placeholder="ex. Tablette Diby Arnaud">
+            <label class="fl">Nom de la tablette (facultatif — l'agent est lu dans les fiches)</label>
+            <input class="fi" type="text" id="tab-import-nom" placeholder="laisser vide : nom automatique">
           </div>
           <div class="ff">
             <label class="fl">Mot de passe des archives</label>
@@ -6343,6 +6344,7 @@ function cqeRenderAll(){
   if(!kpiEl || !contentEl) return;
   cqeEnsureDates(); cqeUpdateBadge();
   if(typeof cqeTab!=='undefined' && cqeTab==='plans'){ planRenderTab(); return; }
+  if(typeof cqeTab!=='undefined' && cqeTab==='terrain'){ terrRenderTab(); return; }
   if(typeof cqeTab!=='undefined' && cqeTab==='pilotage'){ cqeRenderPilotage(); return; }
   if(typeof cqeTab!=='undefined' && cqeTab==='controle'){ cqeRenderControle(); return; }
   if(typeof cqeTab!=='undefined' && cqeTab==='rapprochement'){ recRender(); return; }
@@ -6681,6 +6683,7 @@ function cqeSetTab(t){
   const rp=document.getElementById('cqe-tab-rapprochement'); if(rp) rp.style.fontWeight = t==='rapprochement'?'700':'400';
   const k=document.getElementById('cqe-tab-controle'); if(k) k.style.fontWeight = t==='controle'?'700':'400';
   const c=document.getElementById('cqe-tab-pilotage'); if(c) c.style.fontWeight = t==='pilotage'?'700':'400';
+  const tr=document.getElementById('cqe-tab-terrain'); if(tr) tr.style.fontWeight = t==='terrain'?'700':'400';
   if(a) a.style.fontWeight = t==='dossiers'?'700':'400';
   if(b) b.style.fontWeight = t==='plans'?'700':'400';
   cqeRenderAll();
@@ -7047,6 +7050,452 @@ function planRenderTab(){
 }
 setTimeout(()=>{ try{ planReindex(); planLoadChecks(); planLoadMeta(); }catch(e){ console.warn('plans init', e); } }, 2500);
 
+
+// ═══════════════════════════════════════════════════════════════
+// CONTRÔLE DU CONTENU DES RDC ET DES PVCL (données tablette)
+// Le contrôleur qualité lit la fiche complète saisie sur tablette (recensement des droits coutumiers,
+// PV de constat de limite), la confronte au dossier AFOR, puis la déclare conforme ou incohérente.
+// Firebase : terr_checks/{dossier} = {rdc:{…}, pvcl:{…}} · local : presfor_terr_checks
+// ═══════════════════════════════════════════════════════════════
+let terrChecks = {};
+let terrFilter = {q:'', type:'', statut:'', page:0};
+const TERR_PAGE = 100;
+const TERR_TYPES = {
+  rdc:  {label:'RDC',  titre:'Recensement des droits coutumiers', stage:'minutes',      dateField:'date_RDC', dateKeys:['minutesDate','creationDate']},
+  pvcl: {label:'PVCL', titre:'PV de constat de limite',           stage:'observations', dateField:'date_CL',  dateKeys:['observationDate','creationDate']},
+};
+try{ const c = localStorage.getItem('presfor_terr_checks'); if(c) terrChecks = JSON.parse(c); }catch(e){}
+
+async function terrLoadChecks(){
+  try{
+    const r = await fetch(FIREBASE_URL+'/presfor/terr_checks.json',{signal:AbortSignal.timeout(15000)});
+    if(!r.ok) return;
+    const d = await r.json();
+    if(d){ terrChecks = Object.assign({}, terrChecks, d); try{ localStorage.setItem('presfor_terr_checks', JSON.stringify(terrChecks)); }catch(e){} if(typeof cqeTab!=='undefined' && cqeTab==='terrain') terrRenderTab(); }
+  }catch(e){ console.warn('terrLoadChecks:', e.message); }
+}
+async function terrSaveCheck(id, type, chk){
+  const cur = terrChecks[id] = terrChecks[id] || {};
+  const prev = cur[type];
+  chk.hist = ((prev && prev.hist) || (prev && prev.date ? [{d:prev.date,by:prev.par,s:prev.statut}] : [])).concat([{d:chk.date,by:chk.par,s:chk.statut}]).slice(-10);
+  cur[type] = chk;
+  try{ localStorage.setItem('presfor_terr_checks', JSON.stringify(terrChecks)); }catch(e){}
+  if(typeof syncPendingStart==='function') syncPendingStart();
+  try{
+    const r = await fetch(FIREBASE_URL+'/presfor/terr_checks/'+encodeURIComponent(id)+'/'+type+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(chk),signal:AbortSignal.timeout(15000)});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+  }catch(e){
+    console.warn('terrSaveCheck:', e.message); showToast('⚠ Contrôle enregistré localement seulement : '+e.message);
+    if(typeof updateSyncIndicator==='function') updateSyncIndicator('error');
+  }finally{ if(typeof syncPendingEnd==='function') syncPendingEnd(); }
+}
+function terrRec(d, type){ const t = tabMatchForDossier(d); return t ? (t[TERR_TYPES[type].stage] || null) : null; }
+function terrStatut(id, type){ const c = terrChecks[id] && terrChecks[id][type]; return c ? c.statut : 'a_verifier'; }
+function terrBadge(d, type){
+  if(!terrRec(d,type)) return '<span style="color:var(--text3);">— pas de fiche</span>';
+  const s = terrStatut(d.id,type);
+  return s==='conforme'?'<span style="color:var(--accent);font-weight:700;">✓ Conforme</span>':s==='incoherent'?'<span style="color:var(--red);font-weight:700;">⚠ Incohérent</span>':'<span style="color:var(--text3);">À vérifier</span>';
+}
+
+// ── Affichage générique d'une fiche tablette : tous les champs, libellés lisibles ──
+const TERR_LABELS = {
+  label:'Libellé', requestNumber:'N° de demande', minutesNumber:'N° de RDC', codeObservation:'N° de PVCL', minutesDate:'Date du RDC', observationDate:'Date du PVCL',
+  requestDate:'Date de la demande', creationDate:'Date de création', updateDate:'Dernière modification', synchroDate:'Date de synchronisation', activeDate:'Date d\'activation',
+  applicant:'Demandeur', land:'Parcelle', estimatedArea:'Superficie estimée (ha)', area:'Superficie (ha)', neighborhood:'Voisins', neighbors:'Voisins', nameOfNeighbor:'Nom du voisin',
+  position:'Position', nationality:'Nationalité', phoneNumber:'Téléphone', village:'Village', firstName:'Prénom', lastName:'Nom', name:'Nom', birthdate:'Date de naissance', birthplace:'Lieu de naissance',
+  gender:'Sexe', profession:'Profession', witnesses:'Témoins', witness:'Témoin', rights:'Droits', customaryRights:'Droits coutumiers', rightHolders:'Détenteurs de droits', comment:'Commentaire',
+  comments:'Commentaires', observation:'Observation', observations:'Observations', step:'Étape', status:'Statut', agent:'Agent', latitude:'Latitude', longitude:'Longitude', type:'Type',
+  _tablette:'Tablette d\'origine', _importedAt:'Importé le', id:'Identifiant', code:'Code', description:'Description', usage:'Usage', origin:'Origine', acquisitionMode:'Mode d\'acquisition',
+  boundary:'Limite', boundaries:'Limites', sketch:'Croquis', signature:'Signature', photo:'Photo', photos:'Photos', date:'Date'
+};
+function terrHumanize(k){
+  if(TERR_LABELS[k]) return TERR_LABELS[k];
+  const s = String(k).replace(/^_+/,'').replace(/([a-z0-9])([A-Z])/g,'$1 $2').replace(/[_-]+/g,' ').trim();
+  return s ? s.charAt(0).toUpperCase()+s.slice(1) : String(k);
+}
+function terrFmtVal(k, v){
+  if(typeof v==='boolean') return v?'Oui':'Non';
+  if(typeof v==='string'){
+    if(/^data:image\//.test(v)) return '<img src="'+planEsc(v)+'" style="max-width:160px;max-height:120px;border:1px solid var(--border);border-radius:4px;">';
+    if(v.length>400 && /^[A-Za-z0-9+\/=\s]+$/.test(v.slice(0,200))) return '<span style="color:var(--text3);">[fichier joint non affiché]</span>';
+    if(/^\d{4}-\d{2}-\d{2}(T[\d:.]+Z?)?$/.test(v)){ const dt=new Date(v); if(!isNaN(dt)) return planEsc(/T/.test(v)?dt.toLocaleDateString('fr-FR')+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):dt.toLocaleDateString('fr-FR')); }
+  }
+  return planEsc(v);
+}
+function terrIsEmpty(v){ return v==null || v==='' || (Array.isArray(v)&&!v.length) || (typeof v==='object'&&!Array.isArray(v)&&!Object.keys(v).length); }
+function terrRenderNode(v, depth){
+  depth = depth||0;
+  if(Array.isArray(v)){
+    const items = v.filter(x=>!terrIsEmpty(x));
+    if(!items.length) return '';
+    return items.map((x,i)=>'<div style="margin:4px 0;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:'+(depth%2?'var(--surface)':'var(--surface2)')+';">'+(items.length>1?'<div style="font-size:10px;color:var(--text3);margin-bottom:2px;">n° '+(i+1)+'</div>':'')+terrRenderNode(x,depth+1)+'</div>').join('');
+  }
+  if(v && typeof v==='object'){
+    const rows = Object.keys(v).filter(k=>!terrIsEmpty(v[k]) && !(k.charAt(0)==='_' ) ).map(k=>{
+      const c = v[k];
+      if(c && typeof c==='object') return '<div style="padding:4px 0;border-bottom:1px solid var(--border);"><div style="font-weight:600;color:var(--blue);font-size:11px;">'+planEsc(terrHumanize(k))+'</div><div style="padding-left:8px;">'+(depth>6?planEsc(JSON.stringify(c)):terrRenderNode(c,depth+1))+'</div></div>';
+      return '<div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text2);">'+planEsc(terrHumanize(k))+'</span><span style="text-align:right;font-weight:500;word-break:break-word;">'+terrFmtVal(k,c)+'</span></div>';
+    });
+    return rows.join('');
+  }
+  return '<div>'+terrFmtVal('',v)+'</div>';
+}
+function terrDay(s){ const m=String(s||'').match(/^(\d{4}-\d{2}-\d{2})/); return m?m[1]:null; }
+function terrRecDate(rec, type){ for(const k of TERR_TYPES[type].dateKeys){ const d=terrDay(rec&&rec[k]); if(d) return d; } return null; }
+
+function terrOpen(id, focus){
+  const d = (dossiersAFOR||[]).find(x=>String(x.id)===String(id)); if(!d) return;
+  const can = planCanEdit();
+  const nomDem = ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim();
+  const sid = String(d.id).replace(/'/g,"\\'");
+  const gi = (typeof gnssForDossier==='function') ? gnssForDossier(d) : null;
+  const vois = dosVoisinsList(d);
+  const line = (l,r)=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text2);">${l}</span><span style="text-align:right;font-weight:500;">${r}</span></div>`;
+  const sel = (name,val)=>`<select id="terr-${name}" ${can?'':'disabled'} style="width:100%;padding:5px;border:1px solid var(--border-med);border-radius:6px;font-size:12px;">${[['','— à évaluer —'],['conforme','Conforme'],['incoherent','Incohérent']].map(o=>`<option value="${o[0]}" ${val===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>`;
+  const bloc = type=>{
+    const T = TERR_TYPES[type], rec = terrRec(d,type), chk = (terrChecks[d.id]||{})[type]||{};
+    if(!rec) return `<div style="padding:12px;color:var(--text3);border:1px dashed var(--border);border-radius:8px;margin-bottom:12px;"><b>${T.label}</b> — aucune fiche tablette retrouvée pour ce dossier. Importez les ZIP de la tablette (fichier ${T.stage==='minutes'?'02_minutes':'03_observations'}).</div>`;
+    const dt = terrRecDate(rec,type), da = d[T.dateField];
+    let ecart = '';
+    if(dt && da){ const j = Math.round((Date.parse(dt)-Date.parse(da))/86400000); ecart = Math.abs(j)>1 ? `<div style="margin:6px 0;padding:6px 8px;background:var(--amber-lt);color:var(--amber-txt);border-radius:6px;font-size:11px;">⚠ Date sur tablette (${dt.split('-').reverse().join('/')}) différente de la date dans la base AFOR (${da.split('-').reverse().join('/')}) : écart de ${Math.abs(j)} jour(s).</div>` : ''; }
+    return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:14px;overflow:hidden;">
+      <div style="background:var(--surface2);padding:8px 12px;display:flex;justify-content:space-between;align-items:center;"><b style="font-family:'Syne',sans-serif;">${T.label} — ${T.titre}</b><span style="font-size:11px;">${terrBadge(d,type)}</span></div>
+      <div style="padding:8px 12px;font-size:12px;">${ecart}${terrRenderNode(rec,0)||'<span style="color:var(--text3);">Fiche vide.</span>'}
+        <div style="font-size:10px;color:var(--text3);margin-top:6px;">Tablette : ${planEsc(rec._tablette||'—')}${rec._importedAt?' · importé le '+new Date(rec._importedAt).toLocaleDateString('fr-FR'):''}</div></div>
+      <div style="background:var(--surface2);padding:10px 12px;border-top:1px solid var(--border);">
+        <div style="font-weight:700;color:var(--blue);margin-bottom:4px;">Contrôle du ${T.label}</div>
+        <label style="display:block;">Résultat${sel(type+'-statut',chk.statut||'')}</label>
+        <label style="display:block;margin-top:6px;">Commentaire<textarea id="terr-${type}-comm" rows="2" ${can?'':'disabled'} style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:6px;font-size:12px;font-family:inherit;">${planEsc(chk.commentaire||'')}</textarea></label>
+        ${chk.statut?`<div style="margin-top:6px;font-size:11px;color:var(--text3);">Dernier contrôle : <b>${chk.statut==='conforme'?'Conforme':'Incohérent'}</b> par ${planEsc(chk.par||'—')} le ${planEsc(chk.date||'')}</div>`:''}
+        ${can?`<button class="btn-p" style="margin-top:8px;" onclick="terrSubmit('${sid}','${type}')">Enregistrer le contrôle ${T.label}</button>`:'<div style="margin-top:8px;color:var(--text3);">Lecture seule pour ce profil.</div>'}
+      </div></div>`;
+  };
+  const old = document.getElementById('terr-modal'); if(old) old.remove();
+  const modal = document.createElement('div');
+  modal.id = 'terr-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;display:flex;padding:14px;';
+  modal.innerHTML = `<div style="background:var(--surface);border-radius:12px;width:100%;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <h3 style="font-family:'Syne',sans-serif;font-size:14px;margin:0;">Contrôle RDC / PVCL · dossier ${planEsc(d.id)} · ${planEsc(nomDem)}</h3>
+      <div style="display:flex;gap:6px;">${(typeof planGetFor==='function' && planGetFor(d))?`<button class="btn-s" onclick="terrClose();planOpen('${sid}')">Voir le plan</button>`:''}<button class="btn-s" onclick="terrClose()">✕ Fermer</button></div>
+    </div>
+    <div style="flex:1;display:flex;min-height:0;">
+      <div id="terr-main" style="flex:1;min-width:0;overflow:auto;padding:14px;font-size:12px;">${bloc('rdc')}${bloc('pvcl')}</div>
+      <div style="width:340px;max-width:38%;border-left:1px solid var(--border);overflow-y:auto;padding:14px;font-size:12px;">
+        <div style="font-weight:700;color:var(--blue);margin-bottom:4px;">Dossier AFOR (référence)</div>
+        ${line('Demandeur', planEsc(nomDem||'—'))}${line('Village / SP', planEsc((d.village||'—')+' / '+(d.sp||'—')))}${line('Agent', planEsc(d.agent||'—'))}
+        ${line('Étape', planEsc(d.etape||'—'))}${line('Date demande', d.date_DD?d.date_DD.split('-').reverse().join('/'):'—')}${line('Date RDC', d.date_RDC?d.date_RDC.split('-').reverse().join('/'):'—')}${line('Date PVCL', d.date_CL?d.date_CL.split('-').reverse().join('/'):'—')}
+        ${line('Superficie déclarée', d.superficie_declaree?d.superficie_declaree+' ha':'—')}${line('Superficie GNSS', gi?gi.superficie.toFixed(2)+' ha':'—')}
+        <div style="font-weight:700;color:var(--blue);margin:12px 0 4px;">Voisins déclarés (${planEsc(vois.src)})</div>
+        ${vois.list.length?vois.list.map(v=>line(planEsc(v.position||'—'), '<b>'+planEsc(v.nom)+'</b>')).join(''):'<div style="color:var(--text3);">Aucun voisin enregistré.</div>'}
+      </div></div></div>`;
+  document.body.appendChild(modal);
+}
+function terrClose(){ const m=document.getElementById('terr-modal'); if(m) m.remove(); }
+async function terrSubmit(id, type){
+  const st = (document.getElementById('terr-'+type+'-statut')||{}).value||'';
+  const comm = ((document.getElementById('terr-'+type+'-comm')||{}).value||'').trim();
+  if(!st){ showToast('Choisissez un résultat : conforme ou incohérent.'); return; }
+  if(st==='incoherent' && !comm){ showToast('Indiquez en commentaire ce qui est incohérent.'); return; }
+  await terrSaveCheck(id, type, {statut:st, commentaire:comm, par:planWho(), date:cqeToday()});
+  showToast(TERR_TYPES[type].label+' '+id+' : '+(st==='conforme'?'conforme.':'incohérence signalée.'));
+  terrOpen(id);
+  terrRenderTabKeep();
+}
+function terrRenderTabKeep(){ if(typeof cqeTab!=='undefined' && cqeTab==='terrain') terrRenderTab(); }
+
+function terrRenderTab(){
+  const kpiEl = document.getElementById('cqe-kpi'), contentEl = document.getElementById('cqe-content');
+  if(!kpiEl||!contentEl) return;
+  const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
+  const rows = [];
+  afor.forEach(d=>{ const r=terrRec(d,'rdc'), p=terrRec(d,'pvcl'); if(r||p) rows.push({d,r,p}); });
+  const cnt = (type,s)=>rows.filter(x=>x[type==='rdc'?'r':'p'] && terrStatut(x.d.id,type)===s).length;
+  const nbR = rows.filter(x=>x.r).length, nbP = rows.filter(x=>x.p).length;
+  const idsAfor = new Set(); (dossiersAFOR||[]).forEach(d=>{ tabKeyVariants(d.id).forEach(v=>idsAfor.add(v)); tabKeyVariants(d.code_parcelle).forEach(v=>idsAfor.add(v)); });
+  const orph = (stage)=>Object.keys((tabletteData&&tabletteData[stage])||{}).filter(k=>!tabKeyVariants(k).some(v=>idsAfor.has(v))).length;
+  kpiEl.innerHTML = `
+    <div class="kpi blue"><div class="kpi-l">Fiches RDC (tablette)</div><div class="kpi-v">${nbR.toLocaleString('fr-FR')}</div><div class="kpi-s">${cnt('rdc','conforme')} conformes · ${cnt('rdc','incoherent')} incohérentes</div></div>
+    <div class="kpi blue"><div class="kpi-l">Fiches PVCL (tablette)</div><div class="kpi-v">${nbP.toLocaleString('fr-FR')}</div><div class="kpi-s">${cnt('pvcl','conforme')} conformes · ${cnt('pvcl','incoherent')} incohérents</div></div>
+    <div class="kpi"><div class="kpi-l">RDC à vérifier</div><div class="kpi-v">${cnt('rdc','a_verifier')}</div></div>
+    <div class="kpi"><div class="kpi-l">PVCL à vérifier</div><div class="kpi-v">${cnt('pvcl','a_verifier')}</div></div>
+    <div class="kpi ${(orph('minutes')+orph('observations'))?'amber':''}"><div class="kpi-l">Fiches sans dossier</div><div class="kpi-v">${orph('minutes')+orph('observations')}</div><div class="kpi-s">${orph('minutes')} RDC · ${orph('observations')} PVCL non rattachés</div></div>`;
+  if(!rows.length){
+    contentEl.innerHTML = '<div class="empty-state"><p style="font-size:13px;">Aucune fiche RDC ou PVCL de tablette n\'est rattachée à un dossier. Importez les ZIP de tablette (Imports → Données tablette).</p><p style="margin-top:10px;"><button class="btn-s" onclick="terrShowStructure()">🔎 Analyser la structure des fiches</button></p></div>';
+    return;
+  }
+  const q = planNorm(terrFilter.q), tf = terrFilter.type, sf = terrFilter.statut;
+  let list = rows.filter(x=>{
+    if(tf==='rdc' && !x.r) return false;
+    if(tf==='pvcl' && !x.p) return false;
+    if(sf){
+      const ok = (type)=> (type==='rdc'?x.r:x.p) && terrStatut(x.d.id,type)===sf;
+      if(tf==='rdc'){ if(!ok('rdc')) return false; } else if(tf==='pvcl'){ if(!ok('pvcl')) return false; } else if(!ok('rdc') && !ok('pvcl')) return false;
+    }
+    if(q){ const hay = planNorm([x.d.id,x.d.prenom,x.d.nom_demandeur,x.d.village,x.d.sp,x.d.agent].join(' ')); if(!q.split(' ').every(t=>hay.includes(t))) return false; }
+    return true;
+  });
+  const total = list.length, pages = Math.max(1, Math.ceil(total/TERR_PAGE));
+  terrFilter.page = Math.min(terrFilter.page, pages-1);
+  list = list.slice(terrFilter.page*TERR_PAGE, (terrFilter.page+1)*TERR_PAGE);
+  contentEl.innerHTML = `<div class="tw" style="overflow:hidden;">
+    <div style="padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);">
+      <input type="text" placeholder="N° dossier, nom, village, agent…" value="${planEsc(terrFilter.q)}" oninput="terrFilter.q=this.value;terrFilter.page=0;clearTimeout(window._tfT);window._tfT=setTimeout(terrRenderTabKeep,250);" style="padding:7px 11px;border:1px solid var(--border);border-radius:6px;font-size:12px;min-width:220px;">
+      <select onchange="terrFilter.type=this.value;terrFilter.page=0;terrRenderTab()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">${[['','RDC et PVCL'],['rdc','RDC seulement'],['pvcl','PVCL seulement']].map(o=>`<option value="${o[0]}" ${tf===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>
+      <select onchange="terrFilter.statut=this.value;terrFilter.page=0;terrRenderTab()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">${[['','Tous les statuts'],['a_verifier','À vérifier'],['conforme','Conformes'],['incoherent','Incohérents']].map(o=>`<option value="${o[0]}" ${sf===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>
+      <span style="font-size:11px;color:var(--text3);align-self:center;">${total.toLocaleString('fr-FR')} dossier(s)</span>
+      <span style="margin-left:auto;display:flex;gap:6px;"><button class="btn-s" onclick="tabShowRecoupement()">⇄ Recoupement AFOR ↔ tablette</button><button class="btn-s" onclick="terrShowStructure()">🔎 Analyser la structure des fiches</button></span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--surface2);">
+      <th style="text-align:left;padding:7px 10px;">Dossier</th><th style="text-align:left;padding:7px 10px;">Demandeur</th><th style="text-align:left;padding:7px 10px;">Village</th><th style="text-align:left;padding:7px 10px;">Agent</th><th style="text-align:left;padding:7px 10px;">RDC</th><th style="text-align:left;padding:7px 10px;">PVCL</th><th style="padding:7px 10px;"></th></tr></thead>
+      <tbody>${list.map(x=>`<tr style="border-top:1px solid var(--border);"><td style="padding:6px 10px;font-family:'DM Mono',monospace;">${planEsc(x.d.id)}</td><td style="padding:6px 10px;">${planEsc(((x.d.prenom||'')+' '+(x.d.nom_demandeur||'')).trim())}</td><td style="padding:6px 10px;">${planEsc(x.d.village||'')}</td><td style="padding:6px 10px;">${planEsc(x.d.agent||'')}</td><td style="padding:6px 10px;">${terrBadge(x.d,'rdc')}</td><td style="padding:6px 10px;">${terrBadge(x.d,'pvcl')}</td><td style="padding:6px 10px;text-align:right;"><button class="btn-s" onclick="terrOpen('${String(x.d.id).replace(/'/g,"\\'")}')">Ouvrir</button></td></tr>`).join('')||'<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--text3);">Aucune fiche ne correspond.</td></tr>'}</tbody></table>
+    ${pages>1?`<div style="padding:8px 16px;display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);font-size:11px;"><button class="btn-s" ${terrFilter.page===0?'disabled':''} onclick="terrFilter.page--;terrRenderTab()">← Précédent</button> Page ${terrFilter.page+1} / ${pages} <button class="btn-s" ${terrFilter.page>=pages-1?'disabled':''} onclick="terrFilter.page++;terrRenderTab()">Suivant →</button></div>`:''}
+  </div>`;
+}
+
+// ── Analyse de la structure des fiches tablette : champs, taux de remplissage, valeurs fréquentes ──
+// Les champs à nombreuses valeurs distinctes sont seulement comptés ; seules les valeurs de champs à choix limité
+// (≤ 12 valeurs distinctes) sont listées.
+function terrAnalyse(stageKey){
+  const store = (tabletteData&&tabletteData[stageKey])||{};
+  const recs = Object.values(store), n = recs.length;
+  const F = {};
+  const walk = (v, path)=>{
+    if(Array.isArray(v)){
+      F[path] = F[path]||{n:0,vals:new Map(),types:new Set(),len:[]}; if(v.length){ F[path].n++; F[path].types.add('liste'); F[path].len.push(v.length); }
+      v.forEach(x=>{ if(x && typeof x==='object' && !Array.isArray(x)) Object.keys(x).forEach(k=>walk(x[k], path+'[].'+k)); else if(x!=null && x!=='') walk(x, path+'[]'); });
+      return;
+    }
+    if(v && typeof v==='object'){
+      Object.keys(v).forEach(k=>{ if(k.charAt(0)==='_') return; walk(v[k], path?path+'.'+k:k); });
+      return;
+    }
+    const f = F[path] = F[path]||{n:0,vals:new Map(),types:new Set(),len:[]};
+    if(v==null || v==='') return;
+    f.n++; f.types.add(typeof v==='string' && /^\d{4}-\d{2}-\d{2}/.test(v) ? 'date' : (typeof v==='string' && v.length>400 ? 'fichier' : typeof v));
+    const key = String(v).length>60 ? '(texte long)' : String(v);
+    f.vals.set(key,(f.vals.get(key)||0)+1);
+  };
+  recs.forEach(r=>{ const seen = {}; Object.keys(r).forEach(k=>{ if(k.charAt(0)!=='_') walk(r[k], k); }); });
+  return {n, fields:Object.keys(F).sort().map(p=>{ const f=F[p]; const dist=f.vals.size;
+    return {path:p, rempli:f.n, pct:n?Math.round(f.n/n*100):0, types:[...f.types].join('/')||'—', distinct:dist,
+      ex: dist && dist<=12 ? [...f.vals.entries()].sort((a,b)=>b[1]-a[1]).map(e=>e[0]+' ('+e[1]+')').join(' ; ') : (f.len.length?('listes de 1 à '+Math.max(...f.len)+' élément(s)'):(dist?'valeurs variées ('+dist+' distinctes)':''))}; })};
+}
+function terrStructureTexte(){
+  const out = ['STRUCTURE DES FICHES TABLETTE — '+new Date().toLocaleDateString('fr-FR')];
+  [['minutes','RDC (02_minutes)'],['observations','PVCL (03_observations)']].forEach(([k,lab])=>{
+    const a = terrAnalyse(k);
+    out.push('', '=== '+lab+' : '+a.n+' fiche(s) ===');
+    if(!a.n){ out.push('(aucune fiche importée)'); return; }
+    a.fields.forEach(f=>out.push(f.path+' | rempli '+f.pct+'% ('+f.rempli+'/'+a.n+') | '+f.types+(f.ex?' | '+f.ex:'')));
+  });
+  return out.join('\n');
+}
+function terrShowStructure(){
+  const txt = terrStructureTexte();
+  const old = document.getElementById('terr-struct'); if(old) old.remove();
+  const m = document.createElement('div');
+  m.id = 'terr-struct';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;';
+  m.innerHTML = `<div style="background:var(--surface);border-radius:12px;width:100%;max-width:900px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <b style="font-family:'Syne',sans-serif;">Structure des fiches RDC et PVCL</b>
+      <div style="display:flex;gap:6px;"><button class="btn-s" onclick="terrCopyStructure()">Copier</button><button class="btn-s" onclick="terrDownloadStructure()">Télécharger (.txt)</button><button class="btn-s" onclick="document.getElementById('terr-struct').remove()">✕ Fermer</button></div></div>
+    <div style="padding:8px 16px;font-size:11px;color:var(--text3);">Les champs à nombreuses valeurs différentes (noms, téléphones, numéros) sont seulement comptés ; seules les valeurs de champs à choix limité (sexe, type de droit, position…) sont listées. Relisez le rapport avant de le transmettre.</div>
+    <pre id="terr-struct-txt" style="margin:0;padding:12px 16px;overflow:auto;font-size:11px;white-space:pre-wrap;flex:1;">${planEsc(txt)}</pre></div>`;
+  document.body.appendChild(m);
+}
+function terrCopyStructure(){ const t = terrStructureTexte(); (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>showToast('Rapport copié.')).catch(()=>showToast('Copie impossible : utilisez « Télécharger ».')); }
+function terrDownloadStructure(){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([terrStructureTexte()],{type:'text/plain;charset=utf-8'})); a.download='structure_fiches_tablette.txt'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); }
+
+
+// ═══════════════════════════════════════════════════════════════
+// RECOUPEMENT TABLETTE ↔ AFOR
+// L'agent responsable est lu dans les fiches tablette (champ repéré automatiquement : celui dont les valeurs
+// correspondent le mieux à la liste des agents). La performance est unique : les dossiers AFOR sont complétés
+// par la tablette (agent ou dates manquants) et les dossiers présents seulement sur tablette sont ajoutés.
+// ═══════════════════════════════════════════════════════════════
+const TAB_STAGE_ETAPE = [['validation','AP'],['existence','AP'],['closeAdvertising','CP'],['openAdvertising','OV'],['advertising','OV'],['observations','CL'],['minutes','RDC'],['requests','DD']];
+let _tabAgentPaths = null, _tabAgentSig = '';
+function agNormTok(s){ return (s||'').toString().trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z0-9 ]+/g,' ').split(/\s+/).filter(Boolean); }
+function agRosterMatcher(){
+  const lev1 = (a,b)=>{ if(a===b) return true; const lim = Math.min(a.length,b.length)>=6 ? 2 : 1; if(Math.abs(a.length-b.length)>lim) return false;
+    let prev=Array.from({length:b.length+1},(_,i)=>i);
+    for(let i=1;i<=a.length;i++){ const cur=[i]; for(let j=1;j<=b.length;j++) cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1)); prev=cur; }
+    return prev[b.length]<=lim; };
+  const roster = (AGENTS_FULL||[]).map(a=>({n:String(a.nom).toUpperCase(), t:agNormTok(a.nom)}));
+  const cache = {};
+  return raw=>{
+    if(!raw || typeof raw!=='string') return null;
+    if(raw in cache) return cache[raw];
+    const t = agNormTok(raw); let best=null, bestSc=0;
+    if(t.length>=2) roster.forEach(r=>{
+      const [small,big] = t.length<=r.t.length ? [t,r.t] : [r.t,t];
+      let sc=0;
+      if(t.length===r.t.length && t.every(x=>r.t.includes(x))) sc=100;
+      else if(small.length>=2 && small.every(x=>big.includes(x))) sc=80;
+      else if(small.length>=2 && small.every(x=>big.some(y=>lev1(x,y)))) sc=60;
+      if(sc>bestSc){ bestSc=sc; best=r.n; }
+    });
+    return cache[raw]=best;
+  };
+}
+function tabGetPath(o, path){ let c=o; for(const k of path.split('.')){ if(c==null||typeof c!=='object') return undefined; c=c[k]; } return c; }
+// Champs texte candidats d'une fiche (profondeur ≤ 3, hors listes) + noms composés prénom/nom
+function tabCandidatePaths(rec){
+  const out = {};
+  const walk = (v, path, depth)=>{
+    if(v==null || Array.isArray(v) || depth>3) return;
+    if(typeof v==='object'){
+      const keys = Object.keys(v).filter(k=>k.charAt(0)!=='_');
+      const fk = keys.find(k=>/^(first.?name|prenoms?|given.?name)$/i.test(k)), lk = keys.find(k=>/^(last.?name|nom|surname|family.?name)$/i.test(k));
+      if(fk && lk && typeof v[fk]==='string' && typeof v[lk]==='string') out[(path?path+'.':'')+'{'+fk+'+'+lk+'}'] = (v[fk]+' '+v[lk]).trim();
+      keys.forEach(k=>walk(v[k], path?path+'.'+k:k, depth+1));
+      return;
+    }
+    if(typeof v==='string' && v.length<=80) out[path] = v;
+  };
+  Object.keys(rec||{}).forEach(k=>{ if(k.charAt(0)!=='_') walk(rec[k], k, 1); });
+  return out;
+}
+function tabReadCandidate(rec, p){
+  const m = p.match(/^(.*?)\.?\{([^+}]+)\+([^}]+)\}$/);
+  if(m){ const base = m[1] ? tabGetPath(rec, m[1]) : rec; if(!base||typeof base!=='object') return null; return ((base[m[2]]||'')+' '+(base[m[3]]||'')).trim()||null; }
+  const v = tabGetPath(rec, p); return typeof v==='string' ? v : null;
+}
+function tabAgentOverride(){ try{ return (localStorage.getItem('presfor_tab_agent_field')||'').trim(); }catch(e){ return ''; } }
+function tabAgentPaths(){
+  const sig = TAB_STAGE_DEFS.map(s=>Object.keys((tabletteData&&tabletteData[s.key])||{}).length).join('|')+'|'+tabAgentOverride()+'|'+(AGENTS_FULL||[]).length;
+  if(_tabAgentPaths && sig===_tabAgentSig) return _tabAgentPaths;
+  const match = agRosterMatcher(), res = {}, ov = tabAgentOverride();
+  TAB_STAGE_DEFS.forEach(st=>{
+    const recs = Object.values((tabletteData&&tabletteData[st.key])||{});
+    if(!recs.length){ return; }
+    if(ov){ res[st.key] = {path:ov, pct:null, manual:true}; return; }
+    const sample = recs.length>400 ? recs.filter((_,i)=>i%Math.ceil(recs.length/400)===0) : recs;
+    const stat = {};
+    sample.forEach(r=>{ const c = tabCandidatePaths(r); Object.keys(c).forEach(p=>{ const s = stat[p]||(stat[p]={n:0,ok:0}); s.n++; if(match(c[p])) s.ok++; }); });
+    let best=null;
+    Object.keys(stat).forEach(p=>{ const s=stat[p]; const pct=s.ok/sample.length; if(s.ok>=3 && pct>=0.3 && (!best || pct>best.pct)) best={path:p,pct:Math.round(pct*100)}; });
+    if(best) res[st.key]=best;
+  });
+  _tabAgentPaths = res; _tabAgentSig = sig; return res;
+}
+// Agent d'une fiche tablette (nom brut), ou null
+function tabAgentOfRec(rec, stageKey){
+  const p = tabAgentPaths()[stageKey]; if(!p||!rec) return null;
+  const v = tabReadCandidate(rec, p.path);
+  return v && v.trim() ? v.trim() : null;
+}
+// Agent d'après l'ensemble des fiches d'un dossier (demande en priorité)
+function tabAgentFromMatch(t){
+  if(!t) return null;
+  for(const st of ['requests','minutes','observations','advertising','openAdvertising','closeAdvertising','existence','validation']){
+    const a = t[st] ? tabAgentOfRec(t[st], st) : null; if(a) return a;
+  }
+  return null;
+}
+function tabDateOf(rec, keys){ for(const k of keys){ const d = terrDay(rec&&rec[k]); if(d) return d; } return null; }
+const TAB_STAGE_DATES = {requests:['date_DD',['requestDate','creationDate']], minutes:['date_RDC',['minutesDate','creationDate']], observations:['date_CL',['observationDate','creationDate']],
+  advertising:['date_OV',['advertisingDate','announcementDate','creationDate']], closeAdvertising:['date_CP',['closeAdvertisingDate','closingDate','creationDate']]};
+
+// Liste des dossiers utilisée pour la performance des agents : AFOR complété par la tablette + dossiers vus seulement sur tablette
+let _tabMerged = null, _tabMergedAf = null, _tabMergedSig = '';
+function tabMergedForPerf(){
+  const af = dossiersAFOR||[];
+  const nTab = TAB_STAGE_DEFS.reduce((n,s)=>n+Object.keys((tabletteData&&tabletteData[s.key])||{}).length,0);
+  if(!nTab) return af;
+  const sig = nTab+'|'+af.length+'|'+_tabAgentSig+tabAgentOverride();
+  if(_tabMerged && _tabMergedAf===af && _tabMergedSig===sig) return _tabMerged;
+  tabAgentPaths();
+  const idsAfor = new Set(); af.forEach(d=>{ tabKeyVariants(d.id).forEach(v=>idsAfor.add(v)); tabKeyVariants(d.code_parcelle).forEach(v=>idsAfor.add(v)); });
+  const out = af.map(d=>{
+    const t = tabMatchForDossier(d); if(!t) return d;
+    let e = null; const set=(k,v)=>{ if(!e) e=Object.assign({},d); e[k]=v; };
+    if(!d.agent){ const a = tabAgentFromMatch(t); if(a) set('agent', a); }
+    Object.keys(TAB_STAGE_DATES).forEach(st=>{ const cfg=TAB_STAGE_DATES[st]; if(!d[cfg[0]] && t[st]){ const dt = tabDateOf(t[st], cfg[1]); if(dt) set(cfg[0], dt); } });
+    return e||d;
+  });
+  const reqs = (tabletteData&&tabletteData.requests)||{};
+  Object.keys(reqs).forEach(k=>{
+    if(tabKeyVariants(k).some(v=>idsAfor.has(v))) return;
+    const t = tabMatchForDossier({id:k}) || {requests:reqs[k]};
+    const v = {id:String(k), _tabOnly:true, agent: tabAgentFromMatch(t)||'', etape:'DD', prenom:'', nom_demandeur:(t.requests&&t.requests.label)||'', village:'', dept:'', sp:'', superficie_declaree:0};
+    for(const [st,et] of TAB_STAGE_ETAPE){ if(t[st]){ v.etape = et; break; } }
+    Object.keys(TAB_STAGE_DATES).forEach(st=>{ const cfg=TAB_STAGE_DATES[st]; if(t[st]){ const dt=tabDateOf(t[st], cfg[1]); if(dt) v[cfg[0]]=dt; } });
+    out.push(v);
+  });
+  _tabMerged = out; _tabMergedAf = af; _tabMergedSig = sig;
+  return out;
+}
+
+// Recoupement : concordances et écarts entre fiches tablette et dossiers AFOR
+function tabRecoupement(){
+  const match = agRosterMatcher(), af = dossiersAFOR||[];
+  const r = {both:0, afOnly:0, tabOnly:0, agentDiff:[], dateDiff:[], sansAgentAfor:0, agentsTab:{}};
+  const ids = new Set();
+  af.forEach(d=>{
+    tabKeyVariants(d.id).forEach(v=>ids.add(v)); tabKeyVariants(d.code_parcelle).forEach(v=>ids.add(v));
+    const t = tabMatchForDossier(d);
+    if(!t){ r.afOnly++; return; }
+    r.both++;
+    const ta = tabAgentFromMatch(t);
+    if(ta){ const c = match(ta)||ta.toUpperCase(); r.agentsTab[c]=(r.agentsTab[c]||0)+1; }
+    const aa = d.agent ? (match(d.agent)||String(d.agent).toUpperCase()) : '';
+    if(!aa) r.sansAgentAfor++;
+    const tc = ta ? (match(ta)||ta.toUpperCase()) : '';
+    if(aa && tc && aa!==tc) r.agentDiff.push({d, afor:aa, tab:tc});
+    [['minutes','date_RDC','RDC'],['observations','date_CL','PVCL'],['requests','date_DD','Demande']].forEach(([st,f,lab])=>{
+      if(!t[st] || !d[f]) return; const dt = tabDateOf(t[st], TAB_STAGE_DATES[st][1]); if(!dt) return;
+      const j = Math.round((Date.parse(dt)-Date.parse(d[f]))/86400000);
+      if(Math.abs(j)>1) r.dateDiff.push({d, lab, afor:d[f], tab:dt, j});
+    });
+  });
+  Object.keys((tabletteData&&tabletteData.requests)||{}).forEach(k=>{ if(!tabKeyVariants(k).some(v=>ids.has(v))) r.tabOnly++; });
+  return r;
+}
+function tabShowRecoupement(){
+  const r = tabRecoupement(), paths = tabAgentPaths();
+  const fr = x=>String(x).split('-').reverse().join('/');
+  const tbl = (head, rows)=>`<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:12px;"><thead><tr style="background:var(--surface2);">${head.map(h=>`<th style="text-align:left;padding:5px 8px;">${h}</th>`).join('')}</tr></thead><tbody>${rows||'<tr><td colspan="9" style="padding:10px;color:var(--text3);">Aucun écart.</td></tr>'}</tbody></table>`;
+  const agentRows = r.agentDiff.slice(0,200).map(x=>`<tr style="border-top:1px solid var(--border);"><td style="padding:4px 8px;font-family:'DM Mono',monospace;">${planEsc(x.d.id)}</td><td style="padding:4px 8px;">${planEsc(x.afor)}</td><td style="padding:4px 8px;">${planEsc(x.tab)}</td></tr>`).join('');
+  const dateRows = r.dateDiff.slice(0,200).map(x=>`<tr style="border-top:1px solid var(--border);"><td style="padding:4px 8px;font-family:'DM Mono',monospace;">${planEsc(x.d.id)}</td><td style="padding:4px 8px;">${x.lab}</td><td style="padding:4px 8px;">${fr(x.afor)}</td><td style="padding:4px 8px;">${fr(x.tab)}</td><td style="padding:4px 8px;">${x.j>0?'+':''}${x.j} j</td></tr>`).join('');
+  const pinfo = Object.keys(paths).length ? Object.entries(paths).map(([st,p])=>`${st} : <code>${planEsc(p.path)}</code>${p.pct!=null?' ('+p.pct+' % de noms reconnus)':' (choix manuel)'}`).join(' · ') : '<span style="color:var(--amber-txt);">aucun champ « agent » reconnu dans les fiches tablette — saisissez-le ci-dessous.</span>';
+  const old = document.getElementById('tab-recoup'); if(old) old.remove();
+  const m = document.createElement('div'); m.id='tab-recoup';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;';
+  m.innerHTML = `<div style="background:var(--surface);border-radius:12px;width:100%;max-width:960px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;"><b style="font-family:'Syne',sans-serif;">Recoupement tablette ↔ AFOR</b><button class="btn-s" onclick="document.getElementById('tab-recoup').remove()">✕ Fermer</button></div>
+    <div style="padding:14px 16px;overflow:auto;font-size:12px;">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;">
+        <div class="kpi green"><div class="kpi-l">Dossiers recoupés</div><div class="kpi-v">${r.both.toLocaleString('fr-FR')}</div><div class="kpi-s">présents sur tablette et AFOR</div></div>
+        <div class="kpi"><div class="kpi-l">AFOR sans fiche tablette</div><div class="kpi-v">${r.afOnly.toLocaleString('fr-FR')}</div></div>
+        <div class="kpi ${r.tabOnly?'amber':''}"><div class="kpi-l">Tablette sans dossier AFOR</div><div class="kpi-v">${r.tabOnly.toLocaleString('fr-FR')}</div><div class="kpi-s">comptés dans la performance</div></div>
+        <div class="kpi ${r.agentDiff.length?'red':''}"><div class="kpi-l">Agent différent</div><div class="kpi-v">${r.agentDiff.length}</div><div class="kpi-s">${r.dateDiff.length} écart(s) de date</div></div>
+      </div>
+      <div style="margin-bottom:10px;color:var(--text2);">Champ agent repéré — ${pinfo}</div>
+      <div style="margin-bottom:12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        <label style="font-size:11px;">Champ agent (si la détection automatique est fausse) :</label>
+        <input id="tab-agent-field" class="fi" style="width:220px;padding:5px 8px;" placeholder="ex. createdBy ou agent.name" value="${planEsc(tabAgentOverride())}">
+        <button class="btn-s" onclick="tabSetAgentField(document.getElementById('tab-agent-field').value)">Appliquer</button>
+        <button class="btn-s" onclick="tabSetAgentField('')">Détection automatique</button></div>
+      <div style="font-weight:700;color:var(--blue);margin:8px 0 4px;">Agent différent entre AFOR et tablette (${r.agentDiff.length})</div>
+      ${tbl(['Dossier','Agent AFOR','Agent tablette'], agentRows)}
+      <div style="font-weight:700;color:var(--blue);margin:8px 0 4px;">Dates différentes de plus d'un jour (${r.dateDiff.length})</div>
+      ${tbl(['Dossier','Étape','Date AFOR','Date tablette','Écart'], dateRows)}
+      <div style="font-size:11px;color:var(--text3);">Performance des agents : un seul décompte. Les dossiers AFOR sans agent ou sans date sont complétés par la tablette, et les dossiers vus seulement sur tablette sont ajoutés (étape plafonnée à « Approbation » tant que l'AFOR ne les a pas validés).</div>
+    </div></div>`;
+  document.body.appendChild(m);
+}
+function tabSetAgentField(v){
+  try{ if(v&&v.trim()) localStorage.setItem('presfor_tab_agent_field', v.trim()); else localStorage.removeItem('presfor_tab_agent_field'); }catch(e){}
+  _tabAgentPaths=null; _tabMerged=null;
+  try{ if(typeof agRenderPerf==='function'){ agRenderPerf(); agRenderPerf('ind-ag'); } }catch(e){}
+  tabShowRecoupement();
+}
+
+setTimeout(()=>{ try{ terrLoadChecks(); }catch(e){} }, 2800);
+
 // ═══════════════════════════════════════════════════════════════
 // PILOTAGE CQE — suivi du travail des contrôleurs qualité et des délais de correction
 // ═══════════════════════════════════════════════════════════════
@@ -7087,7 +7536,7 @@ function cqeRenderPilotage(){
   const med=cqeMedian(delais);
   // Activité de contrôle : contrôles de plan + corrections validées (zone active uniquement)
   const zoneIds=new Set(afor.map(d=>String(d.id)));
-  const acts=cqeBuildActions().filter(a=>zoneIds.has(String(a.id)));
+  const acts=cqeBuildActions().filter(a=>zoneIds.has(String(a.id).split('#')[0]));
   const d7=new Date(Date.now()-6*86400000).toISOString().split('T')[0];
   const today=acts.filter(a=>a.d===t).length, sem=acts.filter(a=>a.d>=d7).length;
   kpiEl.innerHTML=[
@@ -7612,6 +8061,9 @@ function cqeBuildActions(){
   Object.keys(planChecks||{}).forEach(id=>{ const k=planChecks[id]; if(!k) return;
     if(k.date) add(id,k.date,k.par||'(inconnu)',k.statut==='conforme'?'ok':'inc');
     (k.hist||[]).forEach(h=>{ if(h&&h.d) add(id,h.d,h.by||'(inconnu)',h.s==='conforme'?'ok':'inc'); }); });
+  Object.keys(terrChecks||{}).forEach(id=>{ ['rdc','pvcl'].forEach(ty=>{ const k=terrChecks[id]&&terrChecks[id][ty]; if(!k) return;
+    if(k.date) add(id+'#'+ty,k.date,k.par||'(inconnu)','ter_'+(k.statut==='conforme'?'ok':'inc'));
+    (k.hist||[]).forEach(h=>{ if(h&&h.d) add(id+'#'+ty,h.d,h.by||'(inconnu)','ter_'+(h.s==='conforme'?'ok':'inc')); }); }); });
   Object.keys(cqeCtl||{}).forEach(id=>{ const k=cqeCtl[id]; if(!k) return;
     if(k.date) add(id,k.date,k.par||'(inconnu)',k.statut==='conforme'?'dos_ok':'dos_rej');
     (k.hist||[]).forEach(h=>{ if(h&&h.d) add(id,h.d,h.by||'(inconnu)',h.s==='conforme'?'dos_ok':'dos_rej'); }); });
@@ -10127,7 +10579,8 @@ function aforGetAgentsData(){
   };
 
   const agents = {};
-  dossiersAFOR.forEach(d => {
+  const _src = tabMergedForPerf(); // AFOR complété par la tablette (agent, dates) + dossiers vus seulement sur tablette
+  _src.forEach(d => {
     const canon = getCanon(d.agent);
     if(!canon) return;
     if(!agents[canon]) agents[canon] = {
@@ -10160,7 +10613,7 @@ function aforGetAgentsData(){
   return Object.values(agents).map(ag => {
     const score = ag.total > 0 ? Math.round((1-ag.retards/ag.total)*100) : 0;
     // Superficie et parcelles GNSS
-    const gnssStats = dossiersAFOR.filter(d => getCanon(d.agent) === ag.nom)
+    const gnssStats = _src.filter(d => getCanon(d.agent) === ag.nom)
       .reduce((acc,d) => {
         const g = gnssForDossier(d);
         if(g){ acc.ha += g.superficie||0; acc.parcelles++; }
@@ -11009,6 +11462,7 @@ async function tabLoadFromFirebase(){
       if(r.ok){ const d = await r.json(); if(d) nouvelleDonnee[stage.key] = d; }
     }
     tabletteData = nouvelleDonnee; tabInvalidateIndex(); tabFbStatus='chargé depuis Firebase';
+    try{ if(typeof agRenderPerf==='function'){ agRenderPerf(); agRenderPerf('ind-ag'); } }catch(e){}
     if(meta.imports) tabletteImports = meta.imports;
     localStorage.setItem('presfor_tablette_ts', meta.ts);
     try{ tabSaveToStorage(); }catch(e){}
@@ -11052,13 +11506,12 @@ function tabRecordRank(rec, stageKey){
 }
 
 async function tabImportZips(){
-  const nomTablette = (document.getElementById('tab-import-nom').value||'').trim();
+  const nomTablette = (document.getElementById('tab-import-nom').value||'').trim() || ('Import du '+new Date().toLocaleDateString('fr-FR'));
   const password = document.getElementById('tab-import-pwd').value||'';
   const filesInput = document.getElementById('tab-import-files');
   const statusEl = document.getElementById('tab-import-status');
   const files = Array.from(filesInput.files||[]);
 
-  if(!nomTablette){ statusEl.textContent = 'Merci de donner un nom à cette tablette.'; return; }
   if(!password){ statusEl.textContent = 'Merci de renseigner le mot de passe des archives.'; return; }
   if(!files.length){ statusEl.textContent = 'Merci de sélectionner les fichiers ZIP exportés.'; return; }
   if(typeof zip==='undefined'){ statusEl.textContent = 'Erreur : la bibliothèque de lecture ZIP ne s\'est pas chargée. Rechargez la page.'; return; }
@@ -11121,6 +11574,7 @@ async function tabImportZips(){
   filesInput.value = '';
   document.getElementById('tab-import-pwd').value = '';
   tabRenderImportHistory();
+  try{ if(typeof agRenderPerf==='function'){ agRenderPerf(); agRenderPerf('ind-ag'); } if(typeof agRenderKPI==='function'){ agRenderKPI(); agRenderKPI('ind-ag'); } }catch(e){}
   showToast('Données tablette importées : '+nomTablette);
 }
 
@@ -11151,7 +11605,7 @@ function tabRenderImportHistory(){
 // code normalisé → enregistrement, par étape. Évite de reparcourir toutes les clés pour chaque dossier
 // et tolère les variantes de format (espaces, tirets, zéros de tête).
 let _tabIndex = null;
-function tabInvalidateIndex(){ _tabIndex = null; }
+function tabInvalidateIndex(){ _tabIndex = null; _tabMerged = null; _tabAgentPaths = null; }
 function tabKeyVariants(code){
   const n = tabNormCode(code);
   if(!n) return [];
