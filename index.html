@@ -430,7 +430,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-t</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-v</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -7059,7 +7059,7 @@ setTimeout(()=>{ try{ planReindex(); planLoadChecks(); planLoadMeta(); }catch(e)
 // ═══════════════════════════════════════════════════════════════
 let terrChecks = {};
 let terrFilter = {q:'', type:'', statut:'', anom:'', page:0};
-function terrCtlBadge(x){ if(!x.ctl) return '<span style="color:var(--text3);">—</span>'; return x.ctl.err||x.ctl.warn ? (x.ctl.err?`<span style="color:var(--red);font-weight:700;">${x.ctl.err} grave(s)</span> `:'')+(x.ctl.warn?`<span style="color:var(--amber-txt);">${x.ctl.warn} alerte(s)</span>`:'') : '<span style="color:var(--accent);">✓ RAS</span>'; }
+function terrCtlBadge(x, k){ k=k||'ctl'; x=Object.assign({}, x, {ctl:x[k]}); if(!x.ctl) return '<span style="color:var(--text3);">—</span>'; return x.ctl.err||x.ctl.warn ? (x.ctl.err?`<span style="color:var(--red);font-weight:700;">${x.ctl.err} grave(s)</span> `:'')+(x.ctl.warn?`<span style="color:var(--amber-txt);">${x.ctl.warn} alerte(s)</span>`:'') : '<span style="color:var(--accent);">✓ RAS</span>'; }
 const TERR_PAGE = 100;
 const TERR_TYPES = {
   rdc:  {label:'RDC',  titre:'Recensement des droits coutumiers', stage:'minutes',      dateField:'date_RDC', dateKeys:['minutesDate','creationDate']},
@@ -7107,7 +7107,7 @@ const TERR_LABELS = {
   gender:'Sexe', profession:'Profession', witnesses:'Témoins', witness:'Témoin', rights:'Droits', customaryRights:'Droits coutumiers', rightHolders:'Détenteurs de droits', comment:'Commentaire',
   comments:'Commentaires', observation:'Observation', observations:'Observations', step:'Étape', status:'Statut', agent:'Agent', latitude:'Latitude', longitude:'Longitude', type:'Type',
   _tablette:'Tablette d\'origine', _importedAt:'Importé le', id:'Identifiant', code:'Code', description:'Description', usage:'Usage', origin:'Origine', acquisitionMode:'Mode d\'acquisition',
-  memberType:'Qualité', firstname:'Nom et prénoms', identityDocumentType:'Type de pièce', identityDocumentNumber:'N° de pièce', residence:'Résidence', observations:'Observations', nameOfSeller:'Nom du vendeur', phoneNumberOfSeller:'Téléphone du vendeur', nameOfWitness:'Témoin', phoneNumberOfWitness:'Téléphone du témoin', whenDidYouBuyIt:'Date d\'achat', howMuchDidYouBuyThisLandFor:'Prix d\'achat', doYouHaveAPurchasingDocument:'Document d\'achat', isThereAWitness:'Présence d\'un témoin', haveSoleRights:'Droits exclusifs', whoDidYouBuyTheLandWith:'Acheté avec', canWeSeeTheSeller:'Vendeur joignable', canWeSeeWitness:'Témoin joignable', detenteurHeritage:'Détenteur d\'origine', lienParentageHeritage:'Lien de parenté', dateHeritage:'Date de l\'héritage', nombreHeritiers:'Nombre d\'héritiers', nombreOtherInheritors:'Autres héritiers', confirmationHeritier:'Héritier confirmé', confirmationPartageHeritier:'Partage confirmé', confirmationTemoin:'Témoin confirmé', confirmationOrigineBien:'Origine du bien confirmée', confirmationNomDetenteurDuBien:'Détenteur confirmé', nomPrenomReferent:'Référent', telReferent:'Téléphone du référent', donateurParcelle:'Donateur', nomPrenomDonateur:'Nom du donateur', dateDonation:'Date du don', raisonDonation:'Raison du don', dureDon:'Durée du don', lienParental:'Lien parental', typeDeDon:'Don', nameOccupant:'Nom', occupantType:'Type d\'occupant', cultureType:'Culture', superficie:'Superficie (ha)', boundary:'Limite', boundaries:'Limites', sketch:'Croquis', signature:'Signature', photo:'Photo', photos:'Photos', date:'Date'
+  memberType:'Qualité', estimatedArea:'Superficie estimée (ha)', expertSurveyor:'Géomètre-expert', presences:'Liste de présence', nameOfPerson:'Nom', numberCNI:'N° de pièce', isPresent:'Présent', presenceDate:'Date de présence', representant:'Représentant', hasSignatoryPhoto:'Signature présente', firstname:'Nom et prénoms', identityDocumentType:'Type de pièce', identityDocumentNumber:'N° de pièce', residence:'Résidence', observations:'Observations', nameOfSeller:'Nom du vendeur', phoneNumberOfSeller:'Téléphone du vendeur', nameOfWitness:'Témoin', phoneNumberOfWitness:'Téléphone du témoin', whenDidYouBuyIt:'Date d\'achat', howMuchDidYouBuyThisLandFor:'Prix d\'achat', doYouHaveAPurchasingDocument:'Document d\'achat', isThereAWitness:'Présence d\'un témoin', haveSoleRights:'Droits exclusifs', whoDidYouBuyTheLandWith:'Acheté avec', canWeSeeTheSeller:'Vendeur joignable', canWeSeeWitness:'Témoin joignable', detenteurHeritage:'Détenteur d\'origine', lienParentageHeritage:'Lien de parenté', dateHeritage:'Date de l\'héritage', nombreHeritiers:'Nombre d\'héritiers', nombreOtherInheritors:'Autres héritiers', confirmationHeritier:'Héritier confirmé', confirmationPartageHeritier:'Partage confirmé', confirmationTemoin:'Témoin confirmé', confirmationOrigineBien:'Origine du bien confirmée', confirmationNomDetenteurDuBien:'Détenteur confirmé', nomPrenomReferent:'Référent', telReferent:'Téléphone du référent', donateurParcelle:'Donateur', nomPrenomDonateur:'Nom du donateur', dateDonation:'Date du don', raisonDonation:'Raison du don', dureDon:'Durée du don', lienParental:'Lien parental', typeDeDon:'Don', nameOccupant:'Nom', occupantType:'Type d\'occupant', cultureType:'Culture', superficie:'Superficie (ha)', boundary:'Limite', boundaries:'Limites', sketch:'Croquis', signature:'Signature', photo:'Photo', photos:'Photos', date:'Date'
 };
 function terrHumanize(k){
   if(TERR_LABELS[k]) return TERR_LABELS[k];
@@ -7161,7 +7161,7 @@ function terrOpen(id, focus){
     if(dt && da){ const j = Math.round((Date.parse(dt)-Date.parse(da))/86400000); ecart = Math.abs(j)>1 ? `<div style="margin:6px 0;padding:6px 8px;background:var(--amber-lt);color:var(--amber-txt);border-radius:6px;font-size:11px;">⚠ Date sur tablette (${dt.split('-').reverse().join('/')}) différente de la date dans la base AFOR (${da.split('-').reverse().join('/')}) : écart de ${Math.abs(j)} jour(s).</div>` : ''; }
     return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:14px;overflow:hidden;">
       <div style="background:var(--surface2);padding:8px 12px;display:flex;justify-content:space-between;align-items:center;"><b style="font-family:'Syne',sans-serif;">${T.label} — ${T.titre}</b><span style="font-size:11px;">${terrBadge(d,type)}</span></div>
-      <div style="padding:8px 12px;font-size:12px;">${(type==='rdc'&&terrIsPV(rec))?terrRenderPV(d,rec):(ecart+(terrRenderNode(rec,0)||'<span style="color:var(--text3);">Fiche vide.</span>'))}
+      <div style="padding:8px 12px;font-size:12px;">${(type==='rdc'&&terrIsPV(rec))?terrRenderPV(d,rec):(type==='pvcl'&&terrIsPVCL(rec))?terrRenderPVCL(d,rec):(ecart+(terrRenderNode(rec,0)||'<span style="color:var(--text3);">Fiche vide.</span>'))}
         <div style="font-size:10px;color:var(--text3);margin-top:6px;">Tablette : ${planEsc(rec._tablette||'—')}${rec._importedAt?' · importé le '+new Date(rec._importedAt).toLocaleDateString('fr-FR'):''}</div></div>
       <div style="background:var(--surface2);padding:10px 12px;border-top:1px solid var(--border);">
         <div style="font-weight:700;color:var(--blue);margin-bottom:4px;">Contrôle du ${T.label}</div>
@@ -7228,7 +7228,7 @@ function terrRenderTab(){
   const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
   const rows = [];
   afor.forEach(d=>{ const r=terrRec(d,'rdc'), p=terrRec(d,'pvcl'); if(r||p) rows.push({d,r,p}); });
-  rows.forEach(x=>{ x.ctl = (x.r && terrIsPV(x.r)) ? pvCtlCounts(terrRdcControls(x.d,x.r)) : null; });
+  rows.forEach(x=>{ x.ctl = (x.r && terrIsPV(x.r)) ? pvCtlCounts(terrRdcControls(x.d,x.r)) : null; x.ctlP = (x.p && terrIsPVCL(x.p)) ? pvCtlCounts(terrPvclControls(x.d,x.p)) : null; });
   const cnt = (type,s)=>rows.filter(x=>x[type==='rdc'?'r':'p'] && terrStatut(x.d.id,type)===s).length;
   const nbR = rows.filter(x=>x.r).length, nbP = rows.filter(x=>x.p).length;
   const idsAfor = new Set(); (dossiersAFOR||[]).forEach(d=>{ tabKeyVariants(d.id).forEach(v=>idsAfor.add(v)); tabKeyVariants(d.code_parcelle).forEach(v=>idsAfor.add(v)); });
@@ -7238,6 +7238,7 @@ function terrRenderTab(){
     <div class="kpi blue"><div class="kpi-l">Fiches PVCL (tablette)</div><div class="kpi-v">${nbP.toLocaleString('fr-FR')}</div><div class="kpi-s">${cnt('pvcl','conforme')} conformes · ${cnt('pvcl','incoherent')} incohérents</div></div>
     <div class="kpi"><div class="kpi-l">RDC à vérifier</div><div class="kpi-v">${cnt('rdc','a_verifier')}</div></div>
     <div class="kpi ${rows.filter(x=>x.ctl&&x.ctl.err).length?'red':''}"><div class="kpi-l">RDC avec anomalie grave</div><div class="kpi-v">${rows.filter(x=>x.ctl&&x.ctl.err).length}</div><div class="kpi-s">${rows.filter(x=>x.ctl&&!x.ctl.err&&x.ctl.warn).length} avec alertes seulement</div></div>
+    <div class="kpi ${rows.filter(x=>x.ctlP&&x.ctlP.err).length?'red':''}"><div class="kpi-l">PVCL avec anomalie grave</div><div class="kpi-v">${rows.filter(x=>x.ctlP&&x.ctlP.err).length}</div><div class="kpi-s">${rows.filter(x=>x.ctlP&&!x.ctlP.err&&x.ctlP.warn).length} avec alertes seulement</div></div>
     <div class="kpi"><div class="kpi-l">PVCL à vérifier</div><div class="kpi-v">${cnt('pvcl','a_verifier')}</div></div>
     <div class="kpi ${(orph('minutes')+orph('observations'))?'amber':''}"><div class="kpi-l">Fiches sans dossier</div><div class="kpi-v">${orph('minutes')+orph('observations')}</div><div class="kpi-s">${orph('minutes')} RDC · ${orph('observations')} PVCL non rattachés</div></div>`;
   if(!rows.length){
@@ -7246,8 +7247,8 @@ function terrRenderTab(){
   }
   const q = planNorm(terrFilter.q), tf = terrFilter.type, sf = terrFilter.statut;
   let list = rows.filter(x=>{
-    if(terrFilter.anom==='err' && !(x.ctl&&x.ctl.err)) return false;
-    if(terrFilter.anom==='warn' && !(x.ctl&&(x.ctl.err||x.ctl.warn))) return false;
+    if(terrFilter.anom==='err' && !((x.ctl&&x.ctl.err)||(x.ctlP&&x.ctlP.err))) return false;
+    if(terrFilter.anom==='warn' && !((x.ctl&&(x.ctl.err||x.ctl.warn))||(x.ctlP&&(x.ctlP.err||x.ctlP.warn)))) return false;
     if(tf==='rdc' && !x.r) return false;
     if(tf==='pvcl' && !x.p) return false;
     if(sf){
@@ -7270,8 +7271,8 @@ function terrRenderTab(){
       <span style="margin-left:auto;display:flex;gap:6px;"><button class="btn-s" onclick="tabShowRecoupement()">⇄ Recoupement AFOR ↔ tablette</button><button class="btn-s" onclick="terrShowStructure()">🔎 Analyser la structure des fiches</button></span>
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--surface2);">
-      <th style="text-align:left;padding:7px 10px;">Dossier</th><th style="text-align:left;padding:7px 10px;">Demandeur</th><th style="text-align:left;padding:7px 10px;">Village</th><th style="text-align:left;padding:7px 10px;">Agent</th><th style="text-align:left;padding:7px 10px;">RDC</th><th style="text-align:left;padding:7px 10px;">Contrôles auto (RDC)</th><th style="text-align:left;padding:7px 10px;">PVCL</th><th style="padding:7px 10px;"></th></tr></thead>
-      <tbody>${list.map(x=>`<tr style="border-top:1px solid var(--border);"><td style="padding:6px 10px;font-family:'DM Mono',monospace;">${planEsc(x.d.id)}</td><td style="padding:6px 10px;">${planEsc(((x.d.prenom||'')+' '+(x.d.nom_demandeur||'')).trim())}</td><td style="padding:6px 10px;">${planEsc(x.d.village||'')}</td><td style="padding:6px 10px;">${planEsc(x.d.agent||'')}</td><td style="padding:6px 10px;">${terrBadge(x.d,'rdc')}</td><td style="padding:6px 10px;">${terrCtlBadge(x)}</td><td style="padding:6px 10px;">${terrBadge(x.d,'pvcl')}</td><td style="padding:6px 10px;text-align:right;"><button class="btn-s" onclick="terrOpen('${String(x.d.id).replace(/'/g,"\\'")}')">Ouvrir</button></td></tr>`).join('')||'<tr><td colspan="8" style="padding:16px;text-align:center;color:var(--text3);">Aucune fiche ne correspond.</td></tr>'}</tbody></table>
+      <th style="text-align:left;padding:7px 10px;">Dossier</th><th style="text-align:left;padding:7px 10px;">Demandeur</th><th style="text-align:left;padding:7px 10px;">Village</th><th style="text-align:left;padding:7px 10px;">Agent</th><th style="text-align:left;padding:7px 10px;">RDC</th><th style="text-align:left;padding:7px 10px;">Contrôles auto (RDC)</th><th style="text-align:left;padding:7px 10px;">PVCL</th><th style="text-align:left;padding:7px 10px;">Contrôles auto (PVCL)</th><th style="padding:7px 10px;"></th></tr></thead>
+      <tbody>${list.map(x=>`<tr style="border-top:1px solid var(--border);"><td style="padding:6px 10px;font-family:'DM Mono',monospace;">${planEsc(x.d.id)}</td><td style="padding:6px 10px;">${planEsc(((x.d.prenom||'')+' '+(x.d.nom_demandeur||'')).trim())}</td><td style="padding:6px 10px;">${planEsc(x.d.village||'')}</td><td style="padding:6px 10px;">${planEsc(x.d.agent||'')}</td><td style="padding:6px 10px;">${terrBadge(x.d,'rdc')}</td><td style="padding:6px 10px;">${terrCtlBadge(x)}</td><td style="padding:6px 10px;">${terrBadge(x.d,'pvcl')}</td><td style="padding:6px 10px;">${terrCtlBadge(x,'ctlP')}</td><td style="padding:6px 10px;text-align:right;"><button class="btn-s" onclick="terrOpen('${String(x.d.id).replace(/'/g,"\\'")}')">Ouvrir</button></td></tr>`).join('')||'<tr><td colspan="9" style="padding:16px;text-align:center;color:var(--text3);">Aucune fiche ne correspond.</td></tr>'}</tbody></table>
     ${pages>1?`<div style="padding:8px 16px;display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);font-size:11px;"><button class="btn-s" ${terrFilter.page===0?'disabled':''} onclick="terrFilter.page--;terrRenderTab()">← Précédent</button> Page ${terrFilter.page+1} / ${pages} <button class="btn-s" ${terrFilter.page>=pages-1?'disabled':''} onclick="terrFilter.page++;terrRenderTab()">Suivant →</button></div>`:''}
   </div>`;
 }
@@ -7385,7 +7386,7 @@ function tabCEFromMembers(rec){
   if(!rec) return null;
   for(const k of Object.keys(rec)){ const a=rec[k]; if(!Array.isArray(a)) continue;
     const m = a.find(x=>x && x.memberType && /commissaire/i.test(x.memberType.label||''));
-    if(m){ const n=((m.firstname||'')+' '+(m.lastname||'')).replace(/\s+/g,' ').trim(); if(n) return n; } }
+    if(m){ const n=((m.firstname||m.nameOfPerson||'')+' '+(m.lastname||'')).replace(/\s+/g,' ').trim(); if(n) return n; } }
   return null;
 }
 function tabReadCandidate(rec, p){
@@ -7611,8 +7612,6 @@ function terrRdcControls(d, rec){
   if(d.nb_voisins!=null && voisins.length && voisins.length!==d.nb_voisins) add('info','Nombre de voisins : '+voisins.length+' sur le PV, '+d.nb_voisins+' dans la base AFOR.');
   const vA = dosVoisinsList(d).list; if(vA.length && voisins.length){ const abs = voisins.filter(v=>!vA.some(a=>pvSim(pvName(v),a.nom)>=0.6)).length; if(abs) add('warn',abs+' voisin(s) du PV absent(s) de la liste des voisins AFOR.'); }
   const vide = (rec.intercalaire||[]).filter(i=>!(i.reponse||'').trim()).length; if(vide) add('warn',vide+' réponse(s) vide(s) dans les déclarations des voisins et témoins.');
-  // Superficie
-  const ti = dosTabInfo(d); if(ti && ti.superficie && d.superficie_declaree){ const q=ti.superficie/d.superficie_declaree; if(q>1.2||q<0.8) add('warn','Superficie estimée sur la demande tablette ('+ti.superficie+' ha) différente de la superficie AFOR ('+d.superficie_declaree+' ha).'); }
   _pvCtl.set(rec,{sig,res:out}); return out;
 }
 function pvCtlCounts(res){ return {err:res.filter(x=>x.s==='err').length, warn:res.filter(x=>x.s==='warn').length}; }
@@ -7657,6 +7656,79 @@ function terrRenderPV(d, rec){
   h += sec('Litiges fonciers', list(rec.complainants)) + sec('Servitudes et droits d\'usage', list(rec.listEasements)) + sec('Droits de propriété / concession accordés par l\'administration', list(rec.concessionRights));
   if(rec.manager) h += sec('Gestionnaire du groupement', '<div style="font-size:11px;">'+terrRenderNode(rec.manager,1)+'</div>');
   if((rec.entitledPeople||[]).length) h += sec('Ayants droit ('+rec.entitledPeople.length+')', list(rec.entitledPeople));
+  h += `<details style="margin-top:12px;"><summary style="cursor:pointer;font-size:11px;color:var(--text3);">Toutes les données brutes de la fiche</summary><div style="margin-top:6px;">${terrRenderNode(rec,0)}</div></details>`;
+  return h;
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// PVCL — PV de constat de limite : affichage + contrôles automatiques
+// (structure de l'export 03_observations : estimatedArea, expertSurveyor, neighborhood, presences…)
+// ═══════════════════════════════════════════════════════════════
+function terrIsPVCL(rec){ return !!rec && (Array.isArray(rec.neighborhood) || Array.isArray(rec.presences) || !!rec.expertSurveyor); }
+function pvclHasSig(p){ return !!p && (p.hasSignatoryPhoto===true || (p.hasSignatoryPhoto==null && !!p.signatoryPhoto)); }
+function pvclCard(pos){ const t=new Set(agNormTok(pos)); const o=[]; if(t.has('NORD')) o.push('N'); if(t.has('SUD')) o.push('S'); if(t.has('EST')) o.push('E'); if(t.has('OUEST')) o.push('O'); return o; }
+const _pvclCtl = new WeakMap();
+function terrPvclControls(d, rec){
+  const rdc = terrRec(d,'rdc');
+  const sig = [d.id,d.date_CL,d.date_RDC,d.superficie_declaree,d.village,d.voisins,rdc?1:0].join('|');
+  const c = _pvclCtl.get(rec); if(c && c.sig===sig) return c.res;
+  const out = []; const add=(s,t)=>out.push({s,t});
+  const nb = rec.neighborhood||[], pres = rec.presences||[];
+  // Superficie
+  const a = Number(rec.estimatedArea);
+  if(!(a>0)) add('err','Superficie estimée du PVCL absente ou nulle.');
+  // Les superficies AFOR / demande sont déclaratives et la superficie GNSS fait foi : aucun écart de superficie n'est signalé.
+  // Dates
+  const dt = terrRecDate(rec,'pvcl');
+  if(dt && d.date_CL){ const j=Math.round((Date.parse(dt)-Date.parse(d.date_CL))/86400000); if(Math.abs(j)>1) add('warn','Date du PVCL ('+dt.split('-').reverse().join('/')+') différente de la date AFOR ('+d.date_CL.split('-').reverse().join('/')+') : '+Math.abs(j)+' jour(s).'); }
+  const dr = rdc && terrRecDate(rdc,'rdc'); if(dt && dr && dt<dr) add('err','Le PVCL ('+dt.split('-').reverse().join('/')+') est antérieur au RDC ('+dr.split('-').reverse().join('/')+').');
+  // Village
+  if(rec.label && d.village && agNormTok(rec.label).join(' ')!==agNormTok(d.village).join(' ') && pvSim(rec.label,d.village)<0.6) add('warn','Village du PVCL ('+rec.label+') différent du village du dossier AFOR ('+d.village+').');
+  // Géomètre-expert
+  const ex = rec.expertSurveyor; if(!ex) add('err','Aucun géomètre-expert renseigné.'); else if(!pvclHasSig(ex)) add('err','Signature du géomètre-expert manquante.');
+  // Limites
+  if(!nb.length) add('err','Aucune limite / aucun voisin enregistré.');
+  else {
+    const cov = new Set(); nb.forEach(n=>pvclCard(n.position).forEach(x=>cov.add(x)));
+    const manq = ['N','E','S','O'].filter(x=>!cov.has(x)); if(manq.length) add(manq.length>=2?'warn':'info','Aucun voisin déclaré au '+manq.map(x=>({N:'Nord',E:'Est',S:'Sud',O:'Ouest'}[x])).join(', ')+'.');
+    const sansNom = nb.filter(n=>!(n.nameOfNeighbor||'').trim()).length; if(sansNom) add('err',sansNom+' limite(s) sans nom de voisin.');
+    const absents = nb.filter(n=>n.isPresent===false && n.description==='Personne physique').length; if(absents) add('warn',absents+' voisin(s) (personne physique) absent(s) lors du constat.');
+    const phys = nb.filter(n=>/personne physique/i.test(n.description||''));
+    // voisins présents sur la liste de présence
+    const horsListe = phys.filter(n=>n.nameOfNeighbor && !pres.some(p=>pvSim(p.nameOfPerson,n.nameOfNeighbor)>=0.6)); if(horsListe.length) add('warn',horsListe.length+' voisin(s) du PVCL absent(s) de la liste de présence : '+horsListe.slice(0,3).map(n=>n.nameOfNeighbor).join(' ; ')+(horsListe.length>3?'…':'')+'.');
+    // cohérence avec le RDC
+    if(rdc){ const vr = (rdc.interviewedPeople||[]).filter(pvIsNeighbor);
+      if(vr.length){ const abs = vr.filter(v=>!nb.some(n=>pvSim(pvName(v),n.nameOfNeighbor)>=0.6)).length; if(abs) add('warn',abs+' voisin(s) limitrophe(s) du RDC ne figure(nt) pas parmi les voisins du PVCL.'); }
+    } else add('info','Pas de fiche RDC tablette pour ce dossier : cohérence RDC ↔ PVCL non vérifiable.');
+    // voisins AFOR
+    const vA = dosVoisinsList(d).list; if(vA.length && phys.length){ const abs = phys.filter(n=>!vA.some(x=>pvSim(n.nameOfNeighbor,x.nom)>=0.6)).length; if(abs) add('info',abs+' voisin(s) du PVCL absent(s) de la liste des voisins AFOR.'); }
+  }
+  // Liste de présence
+  if(!pres.length) add('err','Liste de présence vide.');
+  else {
+    const sm = pres.filter(p=>!pvclHasSig(p)); if(sm.length) add(sm.length===pres.length?'err':'warn',sm.length+' signature(s) manquante(s) sur '+pres.length+' présent(s).');
+    const noCni = pres.filter(p=>!String(p.numberCNI||'').trim()).length; if(noCni) add('info',noCni+' présent(s) sans n° de pièce.');
+    const by = {}; pres.forEach(p=>{ const n=String(p.numberCNI||'').toUpperCase().replace(/[^A-Z0-9]/g,''); if(n.length>=6) (by[n]=by[n]||[]).push(p); });
+    Object.keys(by).forEach(n=>{ const g=by[n]; if(g.length<2) return; const diff=g.some((p,i)=>g.slice(i+1).some(q=>pvSim(p.nameOfPerson,q.nameOfPerson)<0.5)); add(diff?'err':'warn', diff?'Même n° de pièce ('+n+') pour des personnes différentes : '+g.map(p=>p.nameOfPerson).join(' / ')+'.':'Personne en double dans la liste de présence (n° '+n+') : '+g[0].nameOfPerson+'.'); });
+    if(!pres.some(p=>/commissaire/i.test((p.memberType&&p.memberType.label)||''))) add('warn','Aucun commissaire enquêteur sur la liste de présence.');
+    const ce = pres.find(p=>/commissaire/i.test((p.memberType&&p.memberType.label)||'')); if(ce && d.agent){ const m=agRosterMatcher(); const x=m(ce.nameOfPerson)||String(ce.nameOfPerson).toUpperCase(), y=m(d.agent)||String(d.agent).toUpperCase(); if(x!==y && pvSim(ce.nameOfPerson,d.agent)<0.6) add('warn','Commissaire enquêteur du PVCL ('+ce.nameOfPerson+') différent de l\'agent AFOR ('+d.agent+').'); }
+  }
+  _pvclCtl.set(rec,{sig,res:out}); return out;
+}
+
+function terrRenderPVCL(d, rec){
+  const E = planEsc, nb = rec.neighborhood||[], pres = rec.presences||[], ex = rec.expertSurveyor;
+  const sec = (t,body)=>`<div style="margin:12px 0 4px;font-weight:700;color:var(--blue);font-size:12px;">${t}</div>${body}`;
+  const th = 'text-align:left;padding:4px 8px;font-size:10px;text-transform:uppercase;color:var(--text3);', td = 'padding:4px 8px;border-top:1px solid var(--border);vertical-align:top;';
+  const tbl = (heads, rows)=> rows.length ? `<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:var(--surface2);">${heads.map(h=>`<th style="${th}">${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>` : '<div style="color:var(--text3);font-size:11px;">Aucun.</div>';
+  const ok = '<span style="color:var(--accent);font-weight:700;">✓</span>', ko = '<span style="color:var(--red);font-weight:700;">✗ manquante</span>';
+  const res = terrPvclControls(d, rec), col = {err:'var(--red)',warn:'var(--amber-txt)',info:'var(--text3)'}, ic = {err:'✗',warn:'⚠',info:'ℹ'};
+  const dt = terrRecDate(rec,'pvcl');
+  let h = sec('Contrôles automatiques', res.length ? '<div style="font-size:11px;">'+res.map(x=>`<div style="padding:3px 0;color:${col[x.s]};">${ic[x.s]} ${E(x.t)}</div>`).join('')+'</div>' : '<div style="color:var(--accent);font-size:11px;">✓ Aucune anomalie détectée automatiquement.</div>');
+  h += sec('Identification', `<div style="font-size:11px;">Village : <b>${E(rec.label||'—')}</b> · date : <b>${E(dt?dt.split('-').reverse().join('/'):'—')}</b> · superficie estimée : <b>${E(rec.estimatedArea!=null?rec.estimatedArea+' ha':'—')}</b><br>Géomètre-expert : <b>${E(ex?((ex.firstname||'')+' '+(ex.lastname||'')).trim():'—')}</b>${ex&&ex.number?' ('+E(ex.number)+')':''} · signature ${ex&&pvclHasSig(ex)?ok:ko}<br>Attestation du comité — signature CE : ${rec.hasComityAttestSignatoryCE?ok:'non'} · CVGFR : ${rec.hasComityAttestSignatoryCVGFR?ok:'non'} · Président CVGFR : ${rec.hasComityAttestSignatoryPCVGFR?ok:'non'}</div>`);
+  h += sec('Limites et voisins ('+nb.length+')', tbl(['Position','Nom du voisin / de la limite','Nature','Présent','Date de présence'], nb.map(n=>`<tr><td style="${td}">${E(n.position||'—')}</td><td style="${td}font-weight:500;">${E(n.nameOfNeighbor||'')||'<span style="color:var(--red);">— sans nom —</span>'}</td><td style="${td}">${E(n.description||'')}</td><td style="${td}">${n.isPresent===false?'<span style="color:var(--red);">Non</span>':'Oui'}</td><td style="${td}">${n.presenceDate?E(String(n.presenceDate).slice(0,10).split('-').reverse().join('/')):'—'}</td></tr>`)));
+  h += sec('Liste de présence ('+pres.length+')', tbl(['N°','Nom et prénoms','Qualité','Pièce d\'identité','Signature'], pres.map((p,i)=>`<tr><td style="${td}">${i+1}</td><td style="${td}font-weight:500;">${E(p.nameOfPerson||'')}</td><td style="${td}">${E((p.memberType&&p.memberType.label)||'')}</td><td style="${td}">${E(p.numberCNI||'—')}</td><td style="${td}">${pvclHasSig(p)?ok:ko}</td></tr>`)));
   h += `<details style="margin-top:12px;"><summary style="cursor:pointer;font-size:11px;color:var(--text3);">Toutes les données brutes de la fiche</summary><div style="margin-top:6px;">${terrRenderNode(rec,0)}</div></details>`;
   return h;
 }
