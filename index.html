@@ -430,7 +430,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-x</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-z</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -1218,6 +1218,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
           <button class="btn-s" id="cqe-tab-dossiers" onclick="cqeSetTab('dossiers')" style="font-weight:700;">Dossiers CQ</button>
           <button class="btn-s" id="cqe-tab-controle" onclick="cqeSetTab('controle')">Contrôle des dossiers</button>
           <button class="btn-s" id="cqe-tab-plans" onclick="cqeSetTab('plans')">Plans parcellaires</button>
+          <button class="btn-s" id="cqe-tab-rejets" onclick="cqeSetTab('rejets')">Rejets &amp; suivi</button>
           <button class="btn-s" id="cqe-tab-terrain" onclick="cqeSetTab('terrain')">RDC &amp; PVCL</button>
           <button class="btn-s" id="cqe-tab-rapprochement" onclick="cqeSetTab('rapprochement')">Rapprochement des sources</button>
           <button class="btn-s" id="cqe-tab-pilotage" onclick="cqeSetTab('pilotage')">Pilotage CQE <span id="cqe-pilot-badge" style="display:none;background:#dc2626;color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:3px;"></span></button>
@@ -6345,6 +6346,7 @@ function cqeRenderAll(){
   cqeEnsureDates(); cqeUpdateBadge();
   if(typeof cqeTab!=='undefined' && cqeTab==='plans'){ planRenderTab(); return; }
   if(typeof cqeTab!=='undefined' && cqeTab==='terrain'){ terrRenderTab(); return; }
+  if(typeof cqeTab!=='undefined' && cqeTab==='rejets'){ cqeRenderRejets(); return; }
   if(typeof cqeTab!=='undefined' && cqeTab==='pilotage'){ cqeRenderPilotage(); return; }
   if(typeof cqeTab!=='undefined' && cqeTab==='controle'){ cqeRenderControle(); return; }
   if(typeof cqeTab!=='undefined' && cqeTab==='rapprochement'){ recRender(); return; }
@@ -6683,6 +6685,7 @@ function cqeSetTab(t){
   const rp=document.getElementById('cqe-tab-rapprochement'); if(rp) rp.style.fontWeight = t==='rapprochement'?'700':'400';
   const k=document.getElementById('cqe-tab-controle'); if(k) k.style.fontWeight = t==='controle'?'700':'400';
   const c=document.getElementById('cqe-tab-pilotage'); if(c) c.style.fontWeight = t==='pilotage'?'700':'400';
+  const rj=document.getElementById('cqe-tab-rejets'); if(rj) rj.style.fontWeight = t==='rejets'?'700':'400';
   const tr=document.getElementById('cqe-tab-terrain'); if(tr) tr.style.fontWeight = t==='terrain'?'700':'400';
   if(a) a.style.fontWeight = t==='dossiers'?'700':'400';
   if(b) b.style.fontWeight = t==='plans'?'700':'400';
@@ -7212,6 +7215,124 @@ async function terrSubmit(id, type){
 function terrRenderTabKeep(){ if(typeof cqeTab!=='undefined' && cqeTab==='terrain') terrRenderTab(); }
 
 // ═══════════════════════════════════════════════════════════════
+// ONGLET « Rejets & suivi » — tous les dossiers rejetés (fichier AFOR, statut AFOR, contrôleurs CQ),
+// avec responsable CQ (portefeuille), suivi des corrections et délais.
+// ═══════════════════════════════════════════════════════════════
+let rejFilter = {q:'', origine:'', etat:'a_corriger', resp:'', dept:'', page:0};
+const REJ_PAGE = 100;
+function rejResponsable(d){
+  const c = pubCQ[d.id]; if(!c) return '';
+  if(c.assigne_a) return c.assigne_a;
+  const e = (c.ev||[]).find(x=>x.t==='rejet_app' && x.by); return e ? e.by : '';
+}
+function rejMotif(d){ const c=pubCQ[d.id]; if(!c) return d.statut_txt?('Statut AFOR : '+d.statut_txt):''; return cqeCleanTxt(c.motif_final||c.motif_qc2||c.motif_qc1||'') || (c.statut_cq||''); }
+function rejRows(){
+  const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
+  const rows = [];
+  afor.forEach(d=>{ const e = rejEtat(d); if(e.etat==='ok') return; rows.push({d, e, resp:rejResponsable(d)}); });
+  return rows;
+}
+function rejSetFilter(k,v){ rejFilter[k]=v; rejFilter.page=0; cqeRenderRejets(); }
+// Prise en charge / attribution. Un dossier rejeté seulement par le statut AFOR reçoit une fiche de suivi CQ.
+function rejIsAdmin(){ return !!currentUser && currentUser.role==='admin'; }
+function rejIsCqe(){ return !!currentUser && currentUser.role==='cqe'; }
+function rejAssign(id, who){
+  const me = cqeWho()||'', cur = (pubCQ[id]&&pubCQ[id].assigne_a)||'';
+  if(!rejIsAdmin()){
+    // Contrôleur qualité : seulement se prendre en charge un dossier libre (ou se libérer de son propre dossier)
+    const ok = rejIsCqe() && ((who===me && !cur) || (!who && cur===me));
+    if(!ok){ showToast('Seul l\'administrateur peut attribuer ce dossier à un autre contrôleur.'); cqeRenderAll(); return; }
+  }
+  const d = (dossiersAFOR||[]).find(x=>String(x.id)===String(id)); if(!d) return;
+  const t = cqeToday();
+  let c = pubCQ[id];
+  if(!c){ c = pubCQ[id] = {niveau:null,statut_cq:'REJETÉ (statut AFOR)',rejete:true,motif_qc1:null,motif_qc2:null,motif_final:'Statut AFOR : '+(d.statut_txt||'rejeté'),superf:null,date_rejet:t,source:'afor_statut',ev:[]}; }
+  c.assigne_a = who || ''; c.assigne_date = who ? t : null;
+  cqeLogEvent(id, who ? 'assigne' : 'desassigne');
+  pubSave();
+  cqeRenderAll();
+}
+function rejPrendre(id){ rejAssign(id, cqeWho()||''); }
+function rejCorrige(id){
+  if(!pubCQ[id]) return;
+  if(!rejIsAdmin() && !(rejIsCqe() && pubCQ[id].assigne_a===(cqeWho()||''))){ showToast('Ce dossier n\'est pas dans votre portefeuille : prenez-le en charge d\'abord.'); return; }
+  if(!pubCQ[id].assigne_a) pubCQ[id].assigne_a = cqeWho()||'';
+  cqeMarquerCorrige(id);
+}
+function cqeRenderRejets(){
+  const kpiEl = document.getElementById('cqe-kpi'), el = document.getElementById('cqe-content');
+  if(!kpiEl||!el) return;
+  const all = rejRows();
+  const can = rejIsAdmin()||rejIsCqe(), me = cqeWho()||'';
+  const aCorr = all.filter(x=>x.e.etat==='rejete'), corr = all.filter(x=>x.e.etat==='corrige');
+  const nonAss = aCorr.filter(x=>!x.resp).length;
+  const crit = aCorr.filter(x=>x.e.jours!=null && x.e.jours>=CQE_CRIT_DAYS).length, alr = aCorr.filter(x=>x.e.jours!=null && x.e.jours>=CQE_ALERT_DAYS && x.e.jours<CQE_CRIT_DAYS).length;
+  const orig = o=>aCorr.filter(x=>x.e.origine===o||(o==='rdc'&&x.e.origine==='rdc+pvcl')||(o==='pvcl'&&x.e.origine==='rdc+pvcl')).length;
+  kpiEl.innerHTML = `
+    <div class="kpi ${aCorr.length?'red':''}"><div class="kpi-l">Rejetés à corriger</div><div class="kpi-v">${aCorr.length.toLocaleString('fr-FR')}</div><div class="kpi-s">AFOR ${orig('afor')} · plan ${orig('plan')} · RDC ${orig('rdc')} · PVCL ${orig('pvcl')}</div></div>
+    <div class="kpi"><div class="kpi-l">Rejetés puis corrigés</div><div class="kpi-v">${corr.length.toLocaleString('fr-FR')}</div></div>
+    <div class="kpi ${nonAss?'amber':''}"><div class="kpi-l">Sans responsable CQ</div><div class="kpi-v">${nonAss.toLocaleString('fr-FR')}</div><div class="kpi-s">à attribuer à un contrôleur</div></div>
+    <div class="kpi ${crit?'red':alr?'amber':''}"><div class="kpi-l">En retard de correction</div><div class="kpi-v">${crit+alr}</div><div class="kpi-s">${crit} ≥ ${CQE_CRIT_DAYS} j · ${alr} ≥ ${CQE_ALERT_DAYS} j</div></div>`;
+  // Portefeuille par contrôleur
+  const names = Array.from(new Set(getControleursQualite().concat(all.map(x=>x.resp).filter(Boolean)))).sort();
+  const port = names.map(n=>{ const a=all.filter(x=>x.resp===n); const ac=a.filter(x=>x.e.etat==='rejete'); const j=ac.map(x=>x.e.jours).filter(v=>v!=null); return {n, ac:ac.length, co:a.length-ac.length, ret:ac.filter(x=>x.e.jours!=null&&x.e.jours>=CQE_ALERT_DAYS).length, max:j.length?Math.max(...j):null}; });
+  const depts = Array.from(new Set(all.map(x=>x.d.dept).filter(Boolean))).sort();
+  const q = planNorm(rejFilter.q);
+  let list = all.filter(x=>{
+    if(rejFilter.etat==='a_corriger' && x.e.etat!=='rejete') return false;
+    if(rejFilter.etat==='corrige' && x.e.etat!=='corrige') return false;
+    if(rejFilter.origine && !(x.e.origine===rejFilter.origine || (x.e.origine==='rdc+pvcl' && /rdc|pvcl/.test(rejFilter.origine)))) return false;
+    if(rejFilter.resp==='__none' && x.resp) return false;
+    if(rejFilter.resp && rejFilter.resp!=='__none' && x.resp!==rejFilter.resp) return false;
+    if(rejFilter.dept && x.d.dept!==rejFilter.dept) return false;
+    if(q){ const hay=planNorm([x.d.id,x.d.prenom,x.d.nom_demandeur,x.d.village,x.d.agent,x.resp].join(' ')); if(!q.split(' ').every(t=>hay.includes(t))) return false; }
+    return true;
+  });
+  list.sort((a,b)=>(b.e.jours||0)-(a.e.jours||0));
+  window._rejList = list;
+  const total = list.length, pages = Math.max(1, Math.ceil(total/REJ_PAGE));
+  rejFilter.page = Math.min(rejFilter.page, pages-1);
+  const pageList = list.slice(rejFilter.page*REJ_PAGE, (rejFilter.page+1)*REJ_PAGE);
+  const S = 'padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;';
+  const opt = (arr,v)=>arr.map(o=>`<option value="${planEsc(o[0])}" ${v===o[0]?'selected':''}>${planEsc(o[1])}</option>`).join('');
+  const ctlSel = (id,cur)=>`<select ${rejIsAdmin()?'':'disabled'} onchange="rejAssign('${String(id).replace(/'/g,"\\'")}',this.value)" style="padding:3px;border:1px solid var(--border);border-radius:5px;font-size:11px;max-width:150px;"><option value="">— non attribué —</option>${names.map(n=>`<option ${n===cur?'selected':''}>${planEsc(n)}</option>`).join('')}</select>`;
+  el.innerHTML = `
+  <div class="tw" style="margin-bottom:12px;overflow:auto;"><div style="font-weight:700;padding:10px 12px;">Portefeuille des contrôleurs qualité</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:6px 10px;">Contrôleur</th><th style="text-align:right;padding:6px 10px;">Dossiers à corriger (actif)</th><th style="text-align:right;padding:6px 10px;">En retard (≥ ${CQE_ALERT_DAYS} j)</th><th style="text-align:right;padding:6px 10px;">Plus ancien (j)</th><th style="text-align:right;padding:6px 10px;">Corrigés</th><th></th></tr></thead>
+    <tbody>${port.map(p=>`<tr style="border-top:1px solid var(--border);"><td style="padding:6px 10px;font-weight:600;">${planEsc(p.n)}</td><td style="padding:6px 10px;text-align:right;font-weight:700;">${p.ac}</td><td style="padding:6px 10px;text-align:right;color:${p.ret?'var(--red)':'inherit'};">${p.ret}</td><td style="padding:6px 10px;text-align:right;">${p.max==null?'—':p.max}</td><td style="padding:6px 10px;text-align:right;">${p.co}</td><td style="padding:6px 10px;text-align:right;"><button class="btn-s" onclick="rejSetFilter('resp','${String(p.n).replace(/'/g,"\\'")}')">Voir</button></td></tr>`).join('')||'<tr><td colspan="6" style="padding:12px;text-align:center;color:var(--text3);">Aucun compte contrôleur qualité.</td></tr>'}</tbody></table></div>
+  <div class="tw" style="overflow:hidden;">
+    <div style="padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);align-items:center;">
+      <input type="text" placeholder="N° dossier, nom, village, agent, contrôleur…" value="${planEsc(rejFilter.q)}" oninput="rejFilter.q=this.value;rejFilter.page=0;clearTimeout(window._rjT);window._rjT=setTimeout(cqeRenderRejets,250);" style="${S}min-width:220px;">
+      <select onchange="rejSetFilter('etat',this.value)" style="${S}">${opt([['a_corriger','À corriger'],['corrige','Corrigés'],['','Tous']],rejFilter.etat)}</select>
+      <select onchange="rejSetFilter('origine',this.value)" style="${S}">${opt([['','Toutes origines'],['afor','AFOR (fichier / statut)'],['plan','CQ — plan'],['rdc','CQ — RDC'],['pvcl','CQ — PVCL']],rejFilter.origine)}</select>
+      <select onchange="rejSetFilter('resp',this.value)" style="${S}">${opt([['','Tous les responsables'],['__none','Sans responsable']].concat(me?[[me,'Mon portefeuille']]:[]).concat(names.filter(n=>n!==me).map(n=>[n,n])),rejFilter.resp)}</select>
+      <select onchange="rejSetFilter('dept',this.value)" style="${S}">${opt([['','Tous départements']].concat(depts.map(x=>[x,x])),rejFilter.dept)}</select>
+      <span style="font-size:11px;color:var(--text3);">${total.toLocaleString('fr-FR')} dossier(s)</span>
+      <span style="margin-left:auto;"><button class="btn-s" onclick="rejExport()">⬇ Exporter (CSV)</button></span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--surface2);">
+      ${['Dossier','Demandeur','Village','Agent','Origine','Motif','Rejeté le','Délai','État','Responsable CQ',''].map(h=>`<th style="text-align:left;padding:7px 10px;">${h}</th>`).join('')}</tr></thead>
+    <tbody>${pageList.map(x=>{ const id=String(x.d.id).replace(/'/g,"\\'"), c=x.e.cq; const j=x.e.jours; const jc=j==null?'':(j>=CQE_CRIT_DAYS?'var(--red)':j>=CQE_ALERT_DAYS?'var(--amber-txt)':'inherit');
+      return `<tr style="border-top:1px solid var(--border);"><td style="padding:6px 10px;font-family:'DM Mono',monospace;">${planEsc(x.d.id)}</td><td style="padding:6px 10px;">${planEsc(((x.d.prenom||'')+' '+(x.d.nom_demandeur||'')).trim())}</td><td style="padding:6px 10px;">${planEsc(x.d.village||'')}</td><td style="padding:6px 10px;">${planEsc(x.d.agent||'')}</td>
+      <td style="padding:6px 10px;">${planEsc(REJ_LIB[x.e.origine]||'')}</td><td style="padding:6px 10px;max-width:260px;font-size:11px;">${planEsc(rejMotif(x.d)).slice(0,160)}</td>
+      <td style="padding:6px 10px;white-space:nowrap;">${c&&c.date_rejet?planEsc(c.date_rejet.split('-').reverse().join('/')):'—'}</td><td style="padding:6px 10px;color:${jc};font-weight:${jc!=='inherit'?700:400};">${j==null?'—':j+' j'}</td>
+      <td style="padding:6px 10px;">${x.e.etat==='rejete'?'<span style="color:var(--red);font-weight:700;">À corriger</span>':'<span style="color:var(--accent);font-weight:700;">Corrigé</span>'}</td>
+      <td style="padding:6px 10px;">${ctlSel(x.d.id,x.resp)}</td>
+      <td style="padding:6px 10px;white-space:nowrap;text-align:right;">${can&&x.e.etat==='rejete'?`${(x.resp===me||(x.resp&&!rejIsAdmin()))?'':`<button class="btn-s" onclick="rejPrendre('${id}')">Prendre en charge</button> `}${(c&&(rejIsAdmin()||x.resp===me))?`<button class="btn-s" onclick="rejCorrige('${id}')">✓ Corrigé</button> `:''}`:''}<button class="btn-s" onclick="terrOpen('${id}')">Fiche</button></td></tr>`; }).join('')||'<tr><td colspan="11" style="padding:16px;text-align:center;color:var(--text3);">Aucun dossier ne correspond.</td></tr>'}</tbody></table>
+    ${pages>1?`<div style="padding:8px 16px;display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);font-size:11px;"><button class="btn-s" ${rejFilter.page===0?'disabled':''} onclick="rejFilter.page--;cqeRenderRejets()">← Précédent</button> Page ${rejFilter.page+1} / ${pages} <button class="btn-s" ${rejFilter.page>=pages-1?'disabled':''} onclick="rejFilter.page++;cqeRenderRejets()">Suivant →</button></div>`:''}
+  </div>`;
+}
+function rejExport(){
+  const list = window._rejList||[];
+  if(!list.length){ showToast('Rien à exporter.'); return; }
+  const header = ['N° Dossier','Demandeur','Département','Sous-préfecture','Village','Agent','Origine','Motif','Date de rejet','Délai (j)','État','Responsable CQ','Date de correction','Corrigé par'];
+  const rows = list.map(x=>{ const d=x.d, c=x.e.cq||{}; return [d.id||'',((d.prenom||'')+' '+(d.nom_demandeur||'')).trim(),d.dept||'',d.sp||'',d.village||'',d.agent||'',REJ_LIB[x.e.origine]||'',rejMotif(d),c.date_rejet||'',x.e.jours==null?'':x.e.jours,x.e.etat==='rejete'?'À corriger':'Corrigé',x.resp||'',c.date_correction||'',c.corrige_par||'']; });
+  const csv = '\uFEFF'+[header,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n');
+  const a = document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='SSE_PRESFOR_CAG_rejets_suivi_'+new Date().toISOString().split('T')[0]+'.csv'; a.click();
+}
+
+// ═══════════════════════════════════════════════════════════════
 // REJETS : AFOR (fichier) / CQ plan / CQ RDC / CQ PVCL — état par dossier, lien contrôle tablette → rejet CQ,
 // détection des fiches refaites (re-vérification), compteur unifié.
 // ═══════════════════════════════════════════════════════════════
@@ -7262,6 +7383,7 @@ function terrApplyRejet(id, type, chk){
     else if(!c.rejete || c.corrige){ c.rejete=true; c.corrige=false; c.date_correction=null; c.corrige_par=null; c.motif_final=motif; c.date_rejet=t; delete c.date_rejet_est; c.statut_cq='REJETÉ (contrôle '+T.label+')'; if(c.source!=='app'){ c.source='app'; c.terr={}; } cqeLogEvent(id,'rejet_app'); changed = true; }
     else { c.motif_final = c.motif_final ? (c.motif_final.indexOf(motif)>=0 ? c.motif_final : c.motif_final+' | '+motif) : motif; cqeLogEvent(id,'rejet_app'); changed = true; }
     c.terr = c.terr||{}; c.terr[type] = {d:t,by,motif:chk.commentaire||''};
+    if(!c.assigne_a){ c.assigne_a = by; c.assigne_date = t; }
   } else if(chk.statut==='conforme' && c && c.terr && c.terr[type]){
     c.terr_orig = Object.assign(c.terr_orig||{}, {[type]:true}); delete c.terr[type];
     if(!Object.keys(c.terr).length && c.rejete && !c.corrige && c.source==='app'){
@@ -8032,6 +8154,7 @@ function cqeCtlSubmit(id,statut){
     else if(!c.rejete || c.corrige){ c.rejete=true; c.corrige=false; c.date_correction=null; c.corrige_par=null; c.motif_final=motif; c.date_rejet=t; delete c.date_rejet_est; cqeLogEvent(id,'rejet_app'); }
     else { cqeLogEvent(id,'rejet_app'); }
   }
+  if(statut==='rejete' && pubCQ[id] && !pubCQ[id].assigne_a){ pubCQ[id].assigne_a = by; pubCQ[id].assigne_date = t; }
   pubSave();
   cqeCtlClose();
   showToast(statut==='conforme'?'Dossier '+id+' : conforme.':'Dossier '+id+' rejeté — il apparaît dans « Dossiers CQ » pour correction.');
