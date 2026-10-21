@@ -430,7 +430,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-r</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-t</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -7058,7 +7058,8 @@ setTimeout(()=>{ try{ planReindex(); planLoadChecks(); planLoadMeta(); }catch(e)
 // Firebase : terr_checks/{dossier} = {rdc:{…}, pvcl:{…}} · local : presfor_terr_checks
 // ═══════════════════════════════════════════════════════════════
 let terrChecks = {};
-let terrFilter = {q:'', type:'', statut:'', page:0};
+let terrFilter = {q:'', type:'', statut:'', anom:'', page:0};
+function terrCtlBadge(x){ if(!x.ctl) return '<span style="color:var(--text3);">—</span>'; return x.ctl.err||x.ctl.warn ? (x.ctl.err?`<span style="color:var(--red);font-weight:700;">${x.ctl.err} grave(s)</span> `:'')+(x.ctl.warn?`<span style="color:var(--amber-txt);">${x.ctl.warn} alerte(s)</span>`:'') : '<span style="color:var(--accent);">✓ RAS</span>'; }
 const TERR_PAGE = 100;
 const TERR_TYPES = {
   rdc:  {label:'RDC',  titre:'Recensement des droits coutumiers', stage:'minutes',      dateField:'date_RDC', dateKeys:['minutesDate','creationDate']},
@@ -7106,7 +7107,7 @@ const TERR_LABELS = {
   gender:'Sexe', profession:'Profession', witnesses:'Témoins', witness:'Témoin', rights:'Droits', customaryRights:'Droits coutumiers', rightHolders:'Détenteurs de droits', comment:'Commentaire',
   comments:'Commentaires', observation:'Observation', observations:'Observations', step:'Étape', status:'Statut', agent:'Agent', latitude:'Latitude', longitude:'Longitude', type:'Type',
   _tablette:'Tablette d\'origine', _importedAt:'Importé le', id:'Identifiant', code:'Code', description:'Description', usage:'Usage', origin:'Origine', acquisitionMode:'Mode d\'acquisition',
-  boundary:'Limite', boundaries:'Limites', sketch:'Croquis', signature:'Signature', photo:'Photo', photos:'Photos', date:'Date'
+  memberType:'Qualité', firstname:'Nom et prénoms', identityDocumentType:'Type de pièce', identityDocumentNumber:'N° de pièce', residence:'Résidence', observations:'Observations', nameOfSeller:'Nom du vendeur', phoneNumberOfSeller:'Téléphone du vendeur', nameOfWitness:'Témoin', phoneNumberOfWitness:'Téléphone du témoin', whenDidYouBuyIt:'Date d\'achat', howMuchDidYouBuyThisLandFor:'Prix d\'achat', doYouHaveAPurchasingDocument:'Document d\'achat', isThereAWitness:'Présence d\'un témoin', haveSoleRights:'Droits exclusifs', whoDidYouBuyTheLandWith:'Acheté avec', canWeSeeTheSeller:'Vendeur joignable', canWeSeeWitness:'Témoin joignable', detenteurHeritage:'Détenteur d\'origine', lienParentageHeritage:'Lien de parenté', dateHeritage:'Date de l\'héritage', nombreHeritiers:'Nombre d\'héritiers', nombreOtherInheritors:'Autres héritiers', confirmationHeritier:'Héritier confirmé', confirmationPartageHeritier:'Partage confirmé', confirmationTemoin:'Témoin confirmé', confirmationOrigineBien:'Origine du bien confirmée', confirmationNomDetenteurDuBien:'Détenteur confirmé', nomPrenomReferent:'Référent', telReferent:'Téléphone du référent', donateurParcelle:'Donateur', nomPrenomDonateur:'Nom du donateur', dateDonation:'Date du don', raisonDonation:'Raison du don', dureDon:'Durée du don', lienParental:'Lien parental', typeDeDon:'Don', nameOccupant:'Nom', occupantType:'Type d\'occupant', cultureType:'Culture', superficie:'Superficie (ha)', boundary:'Limite', boundaries:'Limites', sketch:'Croquis', signature:'Signature', photo:'Photo', photos:'Photos', date:'Date'
 };
 function terrHumanize(k){
   if(TERR_LABELS[k]) return TERR_LABELS[k];
@@ -7118,7 +7119,7 @@ function terrFmtVal(k, v){
   if(typeof v==='string'){
     if(/^data:image\//.test(v)) return '<img src="'+planEsc(v)+'" style="max-width:160px;max-height:120px;border:1px solid var(--border);border-radius:4px;">';
     if(v.length>400 && /^[A-Za-z0-9+\/=\s]+$/.test(v.slice(0,200))) return '<span style="color:var(--text3);">[fichier joint non affiché]</span>';
-    if(/^\d{4}-\d{2}-\d{2}(T[\d:.]+Z?)?$/.test(v)){ const dt=new Date(v); if(!isNaN(dt)) return planEsc(/T/.test(v)?dt.toLocaleDateString('fr-FR')+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):dt.toLocaleDateString('fr-FR')); }
+    if(/^\d{4}-\d{2}-\d{2}(T[\d:.]+Z?)?$/.test(v)){ const dt=new Date(v); if(!isNaN(dt)) return planEsc((/T/.test(v) && !/T00:00:00(\.0+)?Z?$/.test(v))?dt.toLocaleDateString('fr-FR')+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):dt.toLocaleDateString('fr-FR')); }
   }
   return planEsc(v);
 }
@@ -7131,7 +7132,7 @@ function terrRenderNode(v, depth){
     return items.map((x,i)=>'<div style="margin:4px 0;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:'+(depth%2?'var(--surface)':'var(--surface2)')+';">'+(items.length>1?'<div style="font-size:10px;color:var(--text3);margin-bottom:2px;">n° '+(i+1)+'</div>':'')+terrRenderNode(x,depth+1)+'</div>').join('');
   }
   if(v && typeof v==='object'){
-    const rows = Object.keys(v).filter(k=>!terrIsEmpty(v[k]) && !(k.charAt(0)==='_' ) ).map(k=>{
+    const rows = Object.keys(v).filter(k=>!terrIsEmpty(v[k]) && !(k.charAt(0)==='_' ) && !(depth>0 && ['id','active','synchro'].includes(k)) && !/photo$/i.test(k) && !/(Period|ForNature)$/.test(k)).map(k=>{
       const c = v[k];
       if(c && typeof c==='object') return '<div style="padding:4px 0;border-bottom:1px solid var(--border);"><div style="font-weight:600;color:var(--blue);font-size:11px;">'+planEsc(terrHumanize(k))+'</div><div style="padding-left:8px;">'+(depth>6?planEsc(JSON.stringify(c)):terrRenderNode(c,depth+1))+'</div></div>';
       return '<div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text2);">'+planEsc(terrHumanize(k))+'</span><span style="text-align:right;font-weight:500;word-break:break-word;">'+terrFmtVal(k,c)+'</span></div>';
@@ -7160,7 +7161,7 @@ function terrOpen(id, focus){
     if(dt && da){ const j = Math.round((Date.parse(dt)-Date.parse(da))/86400000); ecart = Math.abs(j)>1 ? `<div style="margin:6px 0;padding:6px 8px;background:var(--amber-lt);color:var(--amber-txt);border-radius:6px;font-size:11px;">⚠ Date sur tablette (${dt.split('-').reverse().join('/')}) différente de la date dans la base AFOR (${da.split('-').reverse().join('/')}) : écart de ${Math.abs(j)} jour(s).</div>` : ''; }
     return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:14px;overflow:hidden;">
       <div style="background:var(--surface2);padding:8px 12px;display:flex;justify-content:space-between;align-items:center;"><b style="font-family:'Syne',sans-serif;">${T.label} — ${T.titre}</b><span style="font-size:11px;">${terrBadge(d,type)}</span></div>
-      <div style="padding:8px 12px;font-size:12px;">${ecart}${terrRenderNode(rec,0)||'<span style="color:var(--text3);">Fiche vide.</span>'}
+      <div style="padding:8px 12px;font-size:12px;">${(type==='rdc'&&terrIsPV(rec))?terrRenderPV(d,rec):(ecart+(terrRenderNode(rec,0)||'<span style="color:var(--text3);">Fiche vide.</span>'))}
         <div style="font-size:10px;color:var(--text3);margin-top:6px;">Tablette : ${planEsc(rec._tablette||'—')}${rec._importedAt?' · importé le '+new Date(rec._importedAt).toLocaleDateString('fr-FR'):''}</div></div>
       <div style="background:var(--surface2);padding:10px 12px;border-top:1px solid var(--border);">
         <div style="font-weight:700;color:var(--blue);margin-bottom:4px;">Contrôle du ${T.label}</div>
@@ -7227,6 +7228,7 @@ function terrRenderTab(){
   const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
   const rows = [];
   afor.forEach(d=>{ const r=terrRec(d,'rdc'), p=terrRec(d,'pvcl'); if(r||p) rows.push({d,r,p}); });
+  rows.forEach(x=>{ x.ctl = (x.r && terrIsPV(x.r)) ? pvCtlCounts(terrRdcControls(x.d,x.r)) : null; });
   const cnt = (type,s)=>rows.filter(x=>x[type==='rdc'?'r':'p'] && terrStatut(x.d.id,type)===s).length;
   const nbR = rows.filter(x=>x.r).length, nbP = rows.filter(x=>x.p).length;
   const idsAfor = new Set(); (dossiersAFOR||[]).forEach(d=>{ tabKeyVariants(d.id).forEach(v=>idsAfor.add(v)); tabKeyVariants(d.code_parcelle).forEach(v=>idsAfor.add(v)); });
@@ -7235,6 +7237,7 @@ function terrRenderTab(){
     <div class="kpi blue"><div class="kpi-l">Fiches RDC (tablette)</div><div class="kpi-v">${nbR.toLocaleString('fr-FR')}</div><div class="kpi-s">${cnt('rdc','conforme')} conformes · ${cnt('rdc','incoherent')} incohérentes</div></div>
     <div class="kpi blue"><div class="kpi-l">Fiches PVCL (tablette)</div><div class="kpi-v">${nbP.toLocaleString('fr-FR')}</div><div class="kpi-s">${cnt('pvcl','conforme')} conformes · ${cnt('pvcl','incoherent')} incohérents</div></div>
     <div class="kpi"><div class="kpi-l">RDC à vérifier</div><div class="kpi-v">${cnt('rdc','a_verifier')}</div></div>
+    <div class="kpi ${rows.filter(x=>x.ctl&&x.ctl.err).length?'red':''}"><div class="kpi-l">RDC avec anomalie grave</div><div class="kpi-v">${rows.filter(x=>x.ctl&&x.ctl.err).length}</div><div class="kpi-s">${rows.filter(x=>x.ctl&&!x.ctl.err&&x.ctl.warn).length} avec alertes seulement</div></div>
     <div class="kpi"><div class="kpi-l">PVCL à vérifier</div><div class="kpi-v">${cnt('pvcl','a_verifier')}</div></div>
     <div class="kpi ${(orph('minutes')+orph('observations'))?'amber':''}"><div class="kpi-l">Fiches sans dossier</div><div class="kpi-v">${orph('minutes')+orph('observations')}</div><div class="kpi-s">${orph('minutes')} RDC · ${orph('observations')} PVCL non rattachés</div></div>`;
   if(!rows.length){
@@ -7243,6 +7246,8 @@ function terrRenderTab(){
   }
   const q = planNorm(terrFilter.q), tf = terrFilter.type, sf = terrFilter.statut;
   let list = rows.filter(x=>{
+    if(terrFilter.anom==='err' && !(x.ctl&&x.ctl.err)) return false;
+    if(terrFilter.anom==='warn' && !(x.ctl&&(x.ctl.err||x.ctl.warn))) return false;
     if(tf==='rdc' && !x.r) return false;
     if(tf==='pvcl' && !x.p) return false;
     if(sf){
@@ -7259,13 +7264,14 @@ function terrRenderTab(){
     <div style="padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);">
       <input type="text" placeholder="N° dossier, nom, village, agent…" value="${planEsc(terrFilter.q)}" oninput="terrFilter.q=this.value;terrFilter.page=0;clearTimeout(window._tfT);window._tfT=setTimeout(terrRenderTabKeep,250);" style="padding:7px 11px;border:1px solid var(--border);border-radius:6px;font-size:12px;min-width:220px;">
       <select onchange="terrFilter.type=this.value;terrFilter.page=0;terrRenderTab()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">${[['','RDC et PVCL'],['rdc','RDC seulement'],['pvcl','PVCL seulement']].map(o=>`<option value="${o[0]}" ${tf===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>
+      <select onchange="terrFilter.anom=this.value;terrFilter.page=0;terrRenderTab()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">${[['','Toutes les fiches'],['err','Anomalie grave'],['warn','Anomalie ou alerte']].map(o=>`<option value="${o[0]}" ${terrFilter.anom===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>
       <select onchange="terrFilter.statut=this.value;terrFilter.page=0;terrRenderTab()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">${[['','Tous les statuts'],['a_verifier','À vérifier'],['conforme','Conformes'],['incoherent','Incohérents']].map(o=>`<option value="${o[0]}" ${sf===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>
       <span style="font-size:11px;color:var(--text3);align-self:center;">${total.toLocaleString('fr-FR')} dossier(s)</span>
       <span style="margin-left:auto;display:flex;gap:6px;"><button class="btn-s" onclick="tabShowRecoupement()">⇄ Recoupement AFOR ↔ tablette</button><button class="btn-s" onclick="terrShowStructure()">🔎 Analyser la structure des fiches</button></span>
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--surface2);">
-      <th style="text-align:left;padding:7px 10px;">Dossier</th><th style="text-align:left;padding:7px 10px;">Demandeur</th><th style="text-align:left;padding:7px 10px;">Village</th><th style="text-align:left;padding:7px 10px;">Agent</th><th style="text-align:left;padding:7px 10px;">RDC</th><th style="text-align:left;padding:7px 10px;">PVCL</th><th style="padding:7px 10px;"></th></tr></thead>
-      <tbody>${list.map(x=>`<tr style="border-top:1px solid var(--border);"><td style="padding:6px 10px;font-family:'DM Mono',monospace;">${planEsc(x.d.id)}</td><td style="padding:6px 10px;">${planEsc(((x.d.prenom||'')+' '+(x.d.nom_demandeur||'')).trim())}</td><td style="padding:6px 10px;">${planEsc(x.d.village||'')}</td><td style="padding:6px 10px;">${planEsc(x.d.agent||'')}</td><td style="padding:6px 10px;">${terrBadge(x.d,'rdc')}</td><td style="padding:6px 10px;">${terrBadge(x.d,'pvcl')}</td><td style="padding:6px 10px;text-align:right;"><button class="btn-s" onclick="terrOpen('${String(x.d.id).replace(/'/g,"\\'")}')">Ouvrir</button></td></tr>`).join('')||'<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--text3);">Aucune fiche ne correspond.</td></tr>'}</tbody></table>
+      <th style="text-align:left;padding:7px 10px;">Dossier</th><th style="text-align:left;padding:7px 10px;">Demandeur</th><th style="text-align:left;padding:7px 10px;">Village</th><th style="text-align:left;padding:7px 10px;">Agent</th><th style="text-align:left;padding:7px 10px;">RDC</th><th style="text-align:left;padding:7px 10px;">Contrôles auto (RDC)</th><th style="text-align:left;padding:7px 10px;">PVCL</th><th style="padding:7px 10px;"></th></tr></thead>
+      <tbody>${list.map(x=>`<tr style="border-top:1px solid var(--border);"><td style="padding:6px 10px;font-family:'DM Mono',monospace;">${planEsc(x.d.id)}</td><td style="padding:6px 10px;">${planEsc(((x.d.prenom||'')+' '+(x.d.nom_demandeur||'')).trim())}</td><td style="padding:6px 10px;">${planEsc(x.d.village||'')}</td><td style="padding:6px 10px;">${planEsc(x.d.agent||'')}</td><td style="padding:6px 10px;">${terrBadge(x.d,'rdc')}</td><td style="padding:6px 10px;">${terrCtlBadge(x)}</td><td style="padding:6px 10px;">${terrBadge(x.d,'pvcl')}</td><td style="padding:6px 10px;text-align:right;"><button class="btn-s" onclick="terrOpen('${String(x.d.id).replace(/'/g,"\\'")}')">Ouvrir</button></td></tr>`).join('')||'<tr><td colspan="8" style="padding:16px;text-align:center;color:var(--text3);">Aucune fiche ne correspond.</td></tr>'}</tbody></table>
     ${pages>1?`<div style="padding:8px 16px;display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);font-size:11px;"><button class="btn-s" ${terrFilter.page===0?'disabled':''} onclick="terrFilter.page--;terrRenderTab()">← Précédent</button> Page ${terrFilter.page+1} / ${pages} <button class="btn-s" ${terrFilter.page>=pages-1?'disabled':''} onclick="terrFilter.page++;terrRenderTab()">Suivant →</button></div>`:''}
   </div>`;
 }
@@ -7375,7 +7381,15 @@ function tabCandidatePaths(rec){
   Object.keys(rec||{}).forEach(k=>{ if(k.charAt(0)!=='_') walk(rec[k], k, 1); });
   return out;
 }
+function tabCEFromMembers(rec){
+  if(!rec) return null;
+  for(const k of Object.keys(rec)){ const a=rec[k]; if(!Array.isArray(a)) continue;
+    const m = a.find(x=>x && x.memberType && /commissaire/i.test(x.memberType.label||''));
+    if(m){ const n=((m.firstname||'')+' '+(m.lastname||'')).replace(/\s+/g,' ').trim(); if(n) return n; } }
+  return null;
+}
 function tabReadCandidate(rec, p){
+  if(p==='@CE') return tabCEFromMembers(rec);
   const m = p.match(/^(.*?)\.?\{([^+}]+)\+([^}]+)\}$/);
   if(m){ const base = m[1] ? tabGetPath(rec, m[1]) : rec; if(!base||typeof base!=='object') return null; return ((base[m[2]]||'')+' '+(base[m[3]]||'')).trim()||null; }
   const v = tabGetPath(rec, p); return typeof v==='string' ? v : null;
@@ -7391,7 +7405,7 @@ function tabAgentPaths(){
     if(ov){ res[st.key] = {path:ov, pct:null, manual:true}; return; }
     const sample = recs.length>400 ? recs.filter((_,i)=>i%Math.ceil(recs.length/400)===0) : recs;
     const stat = {};
-    sample.forEach(r=>{ const c = tabCandidatePaths(r); Object.keys(c).forEach(p=>{ const s = stat[p]||(stat[p]={n:0,ok:0}); s.n++; if(match(c[p])) s.ok++; }); });
+    sample.forEach(r=>{ const c = tabCandidatePaths(r); const ceN = tabCEFromMembers(r); if(ceN) c['@CE']=ceN; Object.keys(c).forEach(p=>{ const s = stat[p]||(stat[p]={n:0,ok:0}); s.n++; if(match(c[p])) s.ok++; }); });
     let best=null;
     Object.keys(stat).forEach(p=>{ const s=stat[p]; const pct=s.ok/sample.length; if(s.ok>=3 && pct>=0.3 && (!best || pct>best.pct)) best={path:p,pct:Math.round(pct*100)}; });
     if(best) res[st.key]=best;
@@ -7477,7 +7491,7 @@ function tabShowRecoupement(){
   const tbl = (head, rows)=>`<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:12px;"><thead><tr style="background:var(--surface2);">${head.map(h=>`<th style="text-align:left;padding:5px 8px;">${h}</th>`).join('')}</tr></thead><tbody>${rows||'<tr><td colspan="9" style="padding:10px;color:var(--text3);">Aucun écart.</td></tr>'}</tbody></table>`;
   const agentRows = r.agentDiff.slice(0,200).map(x=>`<tr style="border-top:1px solid var(--border);"><td style="padding:4px 8px;font-family:'DM Mono',monospace;">${planEsc(x.d.id)}</td><td style="padding:4px 8px;">${planEsc(x.afor)}</td><td style="padding:4px 8px;">${planEsc(x.tab)}</td></tr>`).join('');
   const dateRows = r.dateDiff.slice(0,200).map(x=>`<tr style="border-top:1px solid var(--border);"><td style="padding:4px 8px;font-family:'DM Mono',monospace;">${planEsc(x.d.id)}</td><td style="padding:4px 8px;">${x.lab}</td><td style="padding:4px 8px;">${fr(x.afor)}</td><td style="padding:4px 8px;">${fr(x.tab)}</td><td style="padding:4px 8px;">${x.j>0?'+':''}${x.j} j</td></tr>`).join('');
-  const pinfo = Object.keys(paths).length ? Object.entries(paths).map(([st,p])=>`${st} : <code>${planEsc(p.path)}</code>${p.pct!=null?' ('+p.pct+' % de noms reconnus)':' (choix manuel)'}`).join(' · ') : '<span style="color:var(--amber-txt);">aucun champ « agent » reconnu dans les fiches tablette — saisissez-le ci-dessous.</span>';
+  const pinfo = Object.keys(paths).length ? Object.entries(paths).map(([st,p])=>`${st} : <code>${planEsc(p.path==='@CE'?'commissaire enquêteur de l\'équipe d\'enquête':p.path)}</code>${p.pct!=null?' ('+p.pct+' % de noms reconnus)':' (choix manuel)'}`).join(' · ') : '<span style="color:var(--amber-txt);">aucun champ « agent » reconnu dans les fiches tablette — saisissez-le ci-dessous.</span>';
   const old = document.getElementById('tab-recoup'); if(old) old.remove();
   const m = document.createElement('div'); m.id='tab-recoup';
   m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;';
@@ -7509,6 +7523,142 @@ function tabSetAgentField(v){
   _tabAgentPaths=null; _tabMerged=null;
   try{ if(typeof agRenderPerf==='function'){ agRenderPerf(); agRenderPerf('ind-ag'); } }catch(e){}
   tabShowRecoupement();
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// PV DE RECENSEMENT DES DROITS COUTUMIERS — affichage fidèle au PV papier + contrôles automatiques
+// (structure de l'export 02_minutes : investigationMembers, interviewedPeople, intercalaire, response1-4…)
+// ═══════════════════════════════════════════════════════════════
+// Allège une fiche à l'import : photos et signatures (images base64) remplacées par un indicateur de présence
+function tabSlimRecord(v){
+  if(Array.isArray(v)) return v.map(tabSlimRecord);
+  if(v && typeof v==='object'){ const o={}; Object.keys(v).forEach(k=>{ o[k]=tabSlimRecord(v[k]); }); return o; }
+  if(typeof v==='string' && v.length>1000 && (/^data:image\//.test(v) || /^[A-Za-z0-9+\/=\r\n]+$/.test(v.slice(0,200)))) return true;
+  return v;
+}
+function terrIsPV(rec){ return !!rec && (Array.isArray(rec.investigationMembers) || Array.isArray(rec.interviewedPeople)); }
+function pvName(p){ return ((p&&p.firstname||'')+' '+(p&&p.lastname||'')).replace(/\s+/g,' ').trim(); }
+function pvRole(p){ return (p&&p.memberType&&p.memberType.label)||''; }
+function pvIsHolder(p){ const m=p&&p.memberType; return !!m && (m.code==='001' || /d[ée]tenteur/i.test(m.label||'')); }
+function pvIsNeighbor(p){ const m=p&&p.memberType; return !!m && (m.code==='007' || /voisin/i.test(m.label||'')); }
+function pvIsCE(p){ return /commissaire/i.test(pvRole(p)); }
+function pvSim(a,b){ const x=agNormTok(a), y=agNormTok(b); if(!x.length||!y.length) return 0; const s=new Set(y); const c=x.filter(t=>s.has(t)).length; return c/Math.min(x.length,y.length); }
+function pvPhoneBad(t){ const s=String(t||'').replace(/\D/g,''); return !s || /^0+$/.test(s) || s.length<8; }
+function pvIdKey(p){ return String(p&&p.identityDocumentNumber||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+
+let _pvIdIdx = null, _pvIdSig = '';
+function pvIdIndex(){
+  const store = (tabletteData&&tabletteData.minutes)||{}, keys = Object.keys(store), sig = keys.length+'';
+  if(_pvIdIdx && sig===_pvIdSig) return _pvIdIdx;
+  const idx = new Map();
+  keys.forEach(k=>{ const r=store[k]; (r.interviewedPeople||[]).forEach(p=>{ const n=pvIdKey(p); if(n.length<6) return; if(!idx.has(n)) idx.set(n,[]); idx.get(n).push({k:tabNormCode(k), nom:pvName(p)}); }); });
+  _pvIdIdx = idx; _pvIdSig = sig; return idx;
+}
+const _pvCtl = new WeakMap();
+function terrRdcControls(d, rec){
+  const sig = [d.id,d.agent,d.date_RDC,d.superficie_declaree,d.nb_voisins,d.voisins,(tabletteData.requests&&Object.keys(tabletteData.requests).length)].join('|');
+  const c = _pvCtl.get(rec); if(c && c.sig===sig) return c.res;
+  const out = []; const add=(s,t)=>out.push({s,t});
+  const members = rec.investigationMembers||[], people = rec.interviewedPeople||[];
+  const match = agRosterMatcher();
+  // Agent
+  const ces = members.filter(pvIsCE);
+  if(!ces.length) add('err','Aucun commissaire enquêteur dans l\'équipe d\'enquête.');
+  else if(d.agent){ const cn=pvName(ces[0]); const a=match(cn)||cn.toUpperCase(), b=match(d.agent)||String(d.agent).toUpperCase(); if(a!==b && pvSim(cn,d.agent)<0.6) add('warn','Commissaire enquêteur du PV ('+cn+') différent de l\'agent de la base AFOR ('+d.agent+').'); }
+  // Détenteur / demandeur
+  const holders = people.filter(pvIsHolder).concat(members.filter(pvIsHolder));
+  const autres = people.concat(members).some(p=>p&&p.memberType&&(['010','011','013'].includes(p.memberType.code)||/gestionnaire|ayant|repr[ée]sentant/i.test(p.memberType.label||''))) || !!rec.manager || (rec.entitledPeople||[]).length>0;
+  if(!holders.length && !autres) add('err','Aucun détenteur de droit (ni gestionnaire, ni ayant droit) enregistré.');
+  else if(!holders.length) add('info','Pas de « détenteur de droit » : parcelle gérée par un gestionnaire ou des ayants droit.');
+  else if(holders.length){ const dem=((d.prenom||'')+' '+(d.nom_demandeur||'')).trim(); if(dem && Math.max(...holders.map(h=>pvSim(pvName(h),dem)))<0.5) add('warn','Le détenteur de droit du PV ne correspond pas au demandeur AFOR ('+dem+').'); }
+  // Date
+  const dt = terrRecDate(rec,'rdc'); if(dt && d.date_RDC){ const j=Math.round((Date.parse(dt)-Date.parse(d.date_RDC))/86400000); if(Math.abs(j)>1) add('warn','Date du PV ('+dt.split('-').reverse().join('/')+') différente de la date RDC AFOR ('+d.date_RDC.split('-').reverse().join('/')+') : '+Math.abs(j)+' jour(s).'); }
+  // Noms incomplets
+  const courts = people.concat(members).filter(p=>{ const n=pvName(p); return n && (agNormTok(n).length<2 || n.replace(/\s/g,'').length<5); }).map(p=>pvName(p)+' ('+pvRole(p)+')');
+  const sansNom = people.filter(p=>!pvName(p)).length;
+  if(sansNom) add('err',sansNom+' personne(s) sans nom dans la fiche démographique.');
+  if(courts.length) add('warn','Nom(s) incomplet(s) : '+[...new Set(courts)].slice(0,4).join(' ; ')+(courts.length>4?'…':'')+'.');
+  // Pièces d'identité
+  const hSansPiece = people.filter(pvIsHolder).filter(p=>!pvIdKey(p)); if(hSansPiece.length) add('err','Détenteur de droit sans n° de pièce d\'identité.');
+  const sansPiece = people.filter(p=>!pvIdKey(p)).length; if(sansPiece && !hSansPiece.length) add('info',sansPiece+' personne(s) sans n° de pièce d\'identité.');
+  const byId = {}; people.forEach(p=>{ const n=pvIdKey(p); if(n.length>=6) (byId[n]=byId[n]||[]).push(p); });
+  Object.keys(byId).forEach(n=>{ const g=byId[n]; if(g.length<2) return; const diff = g.some((p,i)=>g.slice(i+1).some(q=>pvSim(pvName(p),pvName(q))<0.5));
+    add(diff?'err':'warn', diff ? 'Même n° de pièce ('+n+') attribué à des personnes différentes : '+g.map(pvName).join(' / ')+'.' : 'Personne enregistrée plusieurs fois (n° '+n+') : '+pvName(g[0])+'.'); });
+  const gi = pvIdIndex(); const me = tabNormCode(rec.minutesNumber);
+  let cross = 0; Object.keys(byId).filter(n=>byId[n].some(p=>pvIsHolder(p)||pvIsNeighbor(p))).forEach(n=>{ (gi.get(n)||[]).filter(e=>e.k!==me && pvSim(e.nom,pvName(byId[n][0]))<0.5).slice(0,1).forEach(e=>{ if(cross++<3) add('warn','N° de pièce '+n+' aussi utilisé dans le dossier '+e.k+' par une personne de nom différent ('+e.nom+').'); }); });
+  // Téléphones
+  const phTab = members.filter(m=>pvIsHolder(m)||pvIsCE(m)).filter(m=>pvPhoneBad(m.phoneNumber)); if(phTab.length) add('warn','Téléphone manquant ou factice pour : '+phTab.map(m=>pvName(m)||pvRole(m)).join(' ; ')+'.');
+  // Signatures
+  const sigM = members.filter(m=>!m.signatoryPhoto);
+  const sigCrit = sigM.filter(m=>pvIsCE(m)||pvIsHolder(m)); if(sigCrit.length) add('err','Signature manquante : '+sigCrit.map(m=>pvRole(m)+' '+pvName(m)).join(' ; ')+'.');
+  else if(sigM.length) add('warn',sigM.length+' signature(s) manquante(s) sur '+members.length+' membres de l\'équipe d\'enquête.');
+  // Déclarations du demandeur
+  const manq = [['response1','Q1 droits revendiqués'],['response2','Q2 exercice seul'],['response3','Q3 origine des droits'],['response4','Q4 occupants']].filter(([k])=>!rec[k]).map(x=>x[1]);
+  if(manq.length) add(manq.length>=3||!rec.response3?'warn':'info','Déclaration du demandeur non renseignée : '+manq.join(', ')+'.');
+  const r1 = rec.response1; if(r1 && !(r1.qresponse1||'').trim() && !(r1.qresponse2||'').trim()) add('warn','Q1 : réponses vides.');
+  const r3 = rec.response3;
+  if(r3){ const o=r3.howDidYouGetThisParcel;
+    if(o==='CAS_ACHAT' && !(r3.sellerAudition&&r3.sellerAudition.nameOfSeller)) add('warn','Achat : nom du vendeur non renseigné.');
+    if(o==='CAS_HERITAGE' && !(r3.transferorFamilyAudition&&(r3.transferorFamilyAudition.detenteurHeritage||r3.transferorFamilyAudition.nomPrenomReferent))) add('warn','Héritage : détenteur d\'origine / référent non renseigné.');
+    if(o==='CAS_DON' && !(r3.applicantAudition&&r3.applicantAudition.nomPrenomDonateur)) add('warn','Don : nom du donateur non renseigné.'); }
+  const r4 = rec.response4; if(r4 && String(r4.occuper)==='1' && !(r4.occupants||[]).length) add('err','Q4 : des occupants sont déclarés mais aucun n\'est décrit.');
+  // Voisins
+  const voisins = people.filter(pvIsNeighbor), temoins = [...new Set((rec.intercalaire||[]).map(i=>i.nomTemoin).filter(Boolean))];
+  if(voisins.length<2) add('warn','Moins de 2 voisins limitrophes enregistrés ('+voisins.length+').');
+  const sansDecl = voisins.filter(v=>!temoins.some(t=>pvSim(pvName(v),t)>=0.6));
+  if(voisins.length && sansDecl.length) add(sansDecl.length===voisins.length?'err':'warn',sansDecl.length+' voisin(s) limitrophe(s) sur '+voisins.length+' sans déclaration.');
+  if(d.nb_voisins!=null && voisins.length && voisins.length!==d.nb_voisins) add('info','Nombre de voisins : '+voisins.length+' sur le PV, '+d.nb_voisins+' dans la base AFOR.');
+  const vA = dosVoisinsList(d).list; if(vA.length && voisins.length){ const abs = voisins.filter(v=>!vA.some(a=>pvSim(pvName(v),a.nom)>=0.6)).length; if(abs) add('warn',abs+' voisin(s) du PV absent(s) de la liste des voisins AFOR.'); }
+  const vide = (rec.intercalaire||[]).filter(i=>!(i.reponse||'').trim()).length; if(vide) add('warn',vide+' réponse(s) vide(s) dans les déclarations des voisins et témoins.');
+  // Superficie
+  const ti = dosTabInfo(d); if(ti && ti.superficie && d.superficie_declaree){ const q=ti.superficie/d.superficie_declaree; if(q>1.2||q<0.8) add('warn','Superficie estimée sur la demande tablette ('+ti.superficie+' ha) différente de la superficie AFOR ('+d.superficie_declaree+' ha).'); }
+  _pvCtl.set(rec,{sig,res:out}); return out;
+}
+function pvCtlCounts(res){ return {err:res.filter(x=>x.s==='err').length, warn:res.filter(x=>x.s==='warn').length}; }
+
+function terrRenderPV(d, rec){
+  const E = planEsc, members = rec.investigationMembers||[], people = rec.interviewedPeople||[];
+  const sec = (t,body)=>`<div style="margin:12px 0 4px;font-weight:700;color:var(--blue);font-size:12px;">${t}</div>${body}`;
+  const th = 'text-align:left;padding:4px 8px;font-size:10px;text-transform:uppercase;color:var(--text3);';
+  const td = 'padding:4px 8px;border-top:1px solid var(--border);vertical-align:top;';
+  const tbl = (heads, rows)=> rows.length ? `<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:var(--surface2);">${heads.map(h=>`<th style="${th}">${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>` : '<div style="color:var(--text3);font-size:11px;">Aucun.</div>';
+  const ok = '<span style="color:var(--accent);font-weight:700;">✓</span>', ko = '<span style="color:var(--red);font-weight:700;">✗ manquante</span>';
+  const temoins = new Set((rec.intercalaire||[]).map(i=>agNormTok(i.nomTemoin).join(' ')));
+  const ce = members.find(pvIsCE);
+  // Contrôles automatiques
+  const res = terrRdcControls(d, rec), col = {err:'var(--red)',warn:'var(--amber-txt)',info:'var(--text3)'}, ic = {err:'✗',warn:'⚠',info:'ℹ'};
+  let h = sec('Contrôles automatiques', res.length ? '<div style="font-size:11px;">'+res.map(x=>`<div style="padding:3px 0;color:${col[x.s]};">${ic[x.s]} ${E(x.t)}</div>`).join('')+'</div>' : '<div style="color:var(--accent);font-size:11px;">✓ Aucune anomalie détectée automatiquement.</div>');
+  h += sec('Identification', `<div style="font-size:11px;">N° du PV : <b>${E(tabNormCode(rec.minutesNumber))}</b> · date : <b>${E(terrRecDate(rec,'rdc')?terrRecDate(rec,'rdc').split('-').reverse().join('/'):'—')}</b> · Commissaire-enquêteur : <b>${E(ce?pvName(ce):'—')}</b></div>`);
+  h += sec('Fiche démographique ('+people.length+')', tbl(['N°','Qualité','Nom et prénoms','Nationalité','Pièce d\'identité','Audition'], people.map((p,i)=>{ const aud = pvIsHolder(p) || temoins.has(agNormTok(pvName(p)).join(' ')) ? 'Auditionné' : 'Non auditionné';
+    return `<tr><td style="${td}">${i+1}</td><td style="${td}">${E(pvRole(p))}</td><td style="${td}font-weight:500;">${E(pvName(p))||'<span style="color:var(--red);">— sans nom —</span>'}</td><td style="${td}">${E(p.nationality||'')}</td><td style="${td}">${E(p.identityDocumentType||'')} ${E(p.identityDocumentNumber||'')}${p.identityDocumentPhoto?' <span title="photo de la pièce présente" style="color:var(--text3);">📷</span>':''}</td><td style="${td}color:${aud==='Auditionné'?'var(--accent)':'var(--text3)'};">${aud}</td></tr>`; })));
+  h += sec('Équipe d\'enquête ('+members.length+')', tbl(['N°','Nom et prénoms','Qualité','Téléphone','Signature'], members.map((m,i)=>`<tr><td style="${td}">${i+1}</td><td style="${td}font-weight:500;">${E(pvName(m))}</td><td style="${td}">${E(pvRole(m))}</td><td style="${td}${pvPhoneBad(m.phoneNumber)?'color:var(--amber-txt);':''}">${E(m.phoneNumber||'—')}</td><td style="${td}">${m.signatoryPhoto?ok:ko}</td></tr>`)));
+  // Déclarations du demandeur
+  const kv = (l,v)=> (v==null||v==='') ? '' : `<div style="display:flex;justify-content:space-between;gap:10px;padding:2px 0;border-bottom:1px dotted var(--border);"><span style="color:var(--text2);">${l}</span><span style="text-align:right;font-weight:500;">${E(v)}</span></div>`;
+  const nr = '<span style="color:var(--text3);font-style:italic;">Non renseigné</span>';
+  const r1=rec.response1, r2=rec.response2, r3=rec.response3, r4=rec.response4;
+  let dec = `<div style="font-size:11px;">
+    <div style="font-weight:600;margin-top:4px;">1) Quels sont les droits que vous prétendez exercer sur cette parcelle ?</div>${r1?`<div style="padding-left:10px;">${r1.qresponse1?E(r1.qresponse1):nr}${r1.qresponse2?'<br>'+E(r1.qresponse2):''}</div>`:'<div style="padding-left:10px;">'+nr+'</div>'}
+    <div style="font-weight:600;margin-top:6px;">2) Êtes-vous seuls à exercer ces droits ?</div>${r2?`<div style="padding-left:10px;">${((r2.brotherOrSisters||[]).length||r2.numberOfBrothersAndSisters>0)?'Non — '+E((r2.brotherOrSisters||[]).length||r2.numberOfBrothersAndSisters)+' frère(s)/sœur(s) associé(s)':'Oui, seul(e)'}${(r2.brotherOrSisters||[]).length?'<br>'+(r2.brotherOrSisters||[]).map(b=>E(((b.firstname||'')+' '+(b.lastname||'')).trim())+(b.age?' ('+b.age+' ans)':'')).join(' ; '):''}</div>`:'<div style="padding-left:10px;">'+nr+'</div>'}
+    <div style="font-weight:600;margin-top:6px;">3) Quelle est l'origine de ces droits ?</div>`;
+  if(r3){ const lab={CAS_HERITAGE:'Héritage',CAS_ACHAT:'Achat',CAS_DON:'Don'}[r3.howDidYouGetThisParcel]||r3.howDidYouGetThisParcel||'—';
+    dec += `<div style="padding-left:10px;"><b>${E(lab)}</b>${r3.qresponse?'<br>'+E(r3.qresponse):''}`;
+    ['sellerAudition','transferorFamilyAudition','applicantAudition'].forEach(k=>{ if(r3[k]) dec += '<div style="margin-top:4px;padding:4px 8px;background:var(--surface2);border-radius:6px;">'+terrRenderNode(r3[k],1)+'</div>'; });
+    dec += '</div>'; } else dec += '<div style="padding-left:10px;">'+nr+'</div>';
+  dec += `<div style="font-weight:600;margin-top:6px;">4) Quels sont les occupants de la parcelle ?</div>`;
+  if(r4){ dec += `<div style="padding-left:10px;">${String(r4.occuper)==='1'?'Oui — '+E(r4.numberOfOccupants||(r4.occupants||[]).length)+' occupant(s)':'Non, aucun occupant'}${(r4.occupants||[]).length?'<br>'+(r4.occupants||[]).map(o=>E([o.nameOccupant,o.occupantType,o.cultureType,o.superficie?o.superficie+' ha':''].filter(Boolean).join(' · '))).join('<br>'):''}</div>`; } else dec += '<div style="padding-left:10px;">'+nr+'</div>';
+  dec += '</div>';
+  h += sec('Déclaration du demandeur', dec);
+  // Déclarations des voisins et témoins
+  const grp = {}; (rec.intercalaire||[]).forEach(i=>{ (grp[i.nomTemoin||'(sans nom)']=grp[i.nomTemoin||'(sans nom)']||[]).push(i); });
+  h += sec('Déclarations des voisins et témoins ('+Object.keys(grp).length+')', Object.keys(grp).length ? Object.keys(grp).map(n=>`<div style="margin:4px 0;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;"><b>${E(n)}</b>${grp[n].map(i=>`<div style="margin-top:3px;"><i style="color:var(--text2);">${E(i.question||'')}</i><div style="padding-left:10px;">${(i.reponse||'').trim()?E(i.reponse):'<span style="color:var(--red);">— vide —</span>'}</div></div>`).join('')}</div>`).join('') : '<div style="color:var(--text3);font-size:11px;">Aucune déclaration.</div>');
+  // Annexes
+  const list = (arr)=> (arr&&arr.length) ? arr.map(x=>'<div style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;margin:3px 0;font-size:11px;">'+terrRenderNode(x,1)+'</div>').join('') : '<div style="color:var(--text3);font-size:11px;">Aucun.</div>';
+  h += sec('Litiges fonciers', list(rec.complainants)) + sec('Servitudes et droits d\'usage', list(rec.listEasements)) + sec('Droits de propriété / concession accordés par l\'administration', list(rec.concessionRights));
+  if(rec.manager) h += sec('Gestionnaire du groupement', '<div style="font-size:11px;">'+terrRenderNode(rec.manager,1)+'</div>');
+  if((rec.entitledPeople||[]).length) h += sec('Ayants droit ('+rec.entitledPeople.length+')', list(rec.entitledPeople));
+  h += `<details style="margin-top:12px;"><summary style="cursor:pointer;font-size:11px;color:var(--text3);">Toutes les données brutes de la fiche</summary><div style="margin-top:6px;">${terrRenderNode(rec,0)}</div></details>`;
+  return h;
 }
 
 setTimeout(()=>{ try{ terrLoadChecks(); }catch(e){} }, 2800);
@@ -11558,7 +11708,7 @@ async function tabImportZips(){
         if(!tabletteData[stage.key][key]) nouveaux++; else majs++;
         const exist = tabletteData[stage.key][key];
         if(exist && tabRecordRank(exist, stage.key) > tabRecordRank(rec, stage.key)){ conserves++; return; } // l'existant est plus avancé/récent
-        tabletteData[stage.key][key] = Object.assign({}, rec, {_tablette: nomTablette, _importedAt: new Date().toISOString()});
+        tabletteData[stage.key][key] = Object.assign({}, tabSlimRecord(rec), {_tablette: nomTablette, _importedAt: new Date().toISOString()});
       });
       totalNouveaux += nouveaux; totalMisAJour += majs; fichiersLus++;
       rapportParEtape.push(stage.label+' : '+records.length+' enregistrement(s) ('+nouveaux+' nouveaux, '+majs+' mis à jour'+(conserves?', '+conserves+' déjà plus récents conservés':'')+')');
