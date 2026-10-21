@@ -430,7 +430,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-z</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-aa</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -6047,28 +6047,36 @@ function indRenderAll(){
   ];
   // Calcule les répartitions âge/nationalité réelles à partir des correspondances avec les données tablette
   const computeAgeNat = (liste)=>{
-    let matched = 0;
+    let matched = 0, matchedRdc = 0;
     const ageCounts = AGE_BRACKETS.map(()=>0);
     const natCounts = {};
     liste.forEach(d=>{
       const tab = tabMatchForDossier(d);
       const applicant = tab && tab.requests && tab.requests.applicant;
-      if(!applicant) return;
-      matched++;
-      const age = tabCalcAge(applicant.birthdate);
-      if(age!=null){
-        const idx = AGE_BRACKETS.findIndex(b=>b.test(age));
-        if(idx>=0) ageCounts[idx]++;
+      if(applicant){
+        matched++;
+        const age = tabCalcAge(applicant.birthdate);
+        if(age!=null){
+          const idx = AGE_BRACKETS.findIndex(b=>b.test(age));
+          if(idx>=0) ageCounts[idx]++;
+        }
+        const nat = (applicant.nationality||'').trim();
+        if(nat){ natCounts[nat] = (natCounts[nat]||0)+1; return; }
       }
-      const nat = (applicant.nationality||'').trim();
-      if(nat) natCounts[nat] = (natCounts[nat]||0)+1;
+      // Repli : nationalité du détenteur dans le RDC (le RDC ne contient pas la date de naissance)
+      const rdc = tab && tab.minutes;
+      if(rdc){
+        const ppl = [].concat(rdc.interviewedPeople||[], rdc.entitledPeople||[]);
+        const h = ppl.find(p=>p && pvIsHolder(p) && String(p.nationality||'').trim()) || ppl.find(p=>p && String(p.nationality||'').trim());
+        if(h){ if(!applicant) matchedRdc++; const nat = String(h.nationality).trim().replace(/Burkinabé/i,'Burkinabè'); natCounts[nat] = (natCounts[nat]||0)+1; }
+      }
     });
     // Garder les 3 nationalités les plus fréquentes, regrouper le reste dans "Autres"
     const natSorted = Object.entries(natCounts).sort((a,b)=>b[1]-a[1]);
     const natTop = natSorted.slice(0,3);
     const natAutres = natSorted.slice(3).reduce((s,[,v])=>s+v,0);
     if(natAutres>0) natTop.push(['Autres', natAutres]);
-    return {matched, total:liste.length, ageCounts, natTop};
+    return {matched, matchedRdc, total:liste.length, ageCounts, natTop, natTotal:natSorted.reduce((t,[,v])=>t+v,0)};
   };
 
   const panel = (titre, liste, cvsId)=>{
@@ -6128,7 +6136,7 @@ function indRenderAll(){
             </tr></thead>
             <tbody>
               ${an.natTop.length ? an.natTop.map(([nat,n])=>{
-                const p = an.matched>0 ? Math.round(n/an.matched*100) : 0;
+                const p = an.natTotal>0 ? Math.round(n/an.natTotal*100) : 0;
                 return `<tr style="border-bottom:1px solid var(--border);">
                   <td style="padding:5px 8px;color:var(--text2);">${nat}</td>
                   <td style="padding:5px 8px;text-align:right;font-weight:600;">${n}</td>
@@ -6139,7 +6147,7 @@ function indRenderAll(){
               }).join('') : '<tr><td colspan="3" style="padding:8px;text-align:center;color:var(--text3);">Aucune correspondance tablette pour l&#39;instant</td></tr>'}
             </tbody>
           </table>
-          <p style="font-size:10px;color:var(--text3);margin:8px 0 0;">${an.matched.toLocaleString('fr-FR')} dossier(s) sur ${an.total.toLocaleString('fr-FR')} avec une correspondance dans les données tablette importées (${Object.keys(tabletteData.requests||{}).length.toLocaleString('fr-FR')} demande(s) tablette en mémoire).</p>${Object.keys(tabletteData.requests||{}).length===0?`<p style="font-size:10px;color:var(--red);margin:4px 0 0;">⚠ Aucune donnée tablette en mémoire — Firebase : ${tabFbStatus}. Réimportez les ZIP tablette (ils seront de nouveau sauvegardés).</p>`:''}
+          <p style="font-size:10px;color:var(--text3);margin:8px 0 0;">${an.matchedRdc?`Nationalité complétée par ${an.matchedRdc.toLocaleString('fr-FR')} RDC (sans demande tablette). `:''}${an.matched.toLocaleString('fr-FR')} dossier(s) sur ${an.total.toLocaleString('fr-FR')} avec une correspondance dans les données tablette importées (${Object.keys(tabletteData.requests||{}).length.toLocaleString('fr-FR')} demande(s) tablette en mémoire).</p>${Object.keys(tabletteData.requests||{}).length===0?(Object.keys(tabletteData.minutes||{}).length?`<p style="font-size:10px;color:var(--amber-txt);margin:4px 0 0;">ℹ Aucune demande (01_requests) en mémoire : la répartition par âge est vide, car la date de naissance n'est que dans les demandes. Importez l'archive <b>01_requests…zip</b> pour l'obtenir. La nationalité est lue dans les RDC (${Object.keys(tabletteData.minutes).length.toLocaleString('fr-FR')} en mémoire).</p>`:`<p style="font-size:10px;color:var(--red);margin:4px 0 0;">⚠ Aucune donnée tablette en mémoire — Firebase : ${tabFbStatus}. Réimportez les ZIP tablette (ils seront de nouveau sauvegardés).</p>`):''}
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 16px;">
           <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;">
@@ -11970,7 +11978,7 @@ function tabLoadFromStorage(){
     if(h) tabletteImports = JSON.parse(h);
   }catch(e){ console.error('tabLoadFromStorage:', e); }
 }
-function tabIdb(){ return new Promise((res,rej)=>{ const r=indexedDB.open('presfor_tab',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+function tabIdb(){ return new Promise((res,rej)=>{ const to=setTimeout(()=>rej(new Error('IndexedDB indisponible (délai dépassé)')),4000); try{ const r=indexedDB.open('presfor_tab',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>{ clearTimeout(to); res(r.result); }; r.onerror=()=>{ clearTimeout(to); rej(r.error); }; r.onblocked=()=>{ clearTimeout(to); rej(new Error('IndexedDB bloqué')); }; }catch(e){ clearTimeout(to); rej(e); } }); }
 async function tabSaveToIDB(){
   try{
     const db = await tabIdb();
