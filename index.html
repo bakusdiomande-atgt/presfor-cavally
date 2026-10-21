@@ -430,7 +430,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-w</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-x</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -7058,7 +7058,7 @@ setTimeout(()=>{ try{ planReindex(); planLoadChecks(); planLoadMeta(); }catch(e)
 // Firebase : terr_checks/{dossier} = {rdc:{…}, pvcl:{…}} · local : presfor_terr_checks
 // ═══════════════════════════════════════════════════════════════
 let terrChecks = {};
-let terrFilter = {q:'', type:'', statut:'', anom:'', page:0};
+let terrFilter = {q:'', type:'', statut:'', anom:'', rej:'', page:0};
 function terrCtlBadge(x, k){ k=k||'ctl'; x=Object.assign({}, x, {ctl:x[k]}); if(!x.ctl) return '<span style="color:var(--text3);">—</span>'; return x.ctl.err||x.ctl.warn ? (x.ctl.err?`<span style="color:var(--red);font-weight:700;">${x.ctl.err} grave(s)</span> `:'')+(x.ctl.warn?`<span style="color:var(--amber-txt);">${x.ctl.warn} alerte(s)</span>`:'') : '<span style="color:var(--accent);">✓ RAS</span>'; }
 const TERR_PAGE = 100;
 const TERR_TYPES = {
@@ -7095,6 +7095,8 @@ function terrStatut(id, type){ const c = terrChecks[id] && terrChecks[id][type];
 function terrBadge(d, type){
   if(!terrRec(d,type)) return '<span style="color:var(--text3);">— pas de fiche</span>';
   const s = terrStatut(d.id,type);
+  const kk = terrChecks[d.id] && terrChecks[d.id][type];
+  if(s==='a_verifier' && kk && kk.refait) return '<span style="color:var(--amber-txt);font-weight:700;">↻ Refait — à re-vérifier</span>';
   return s==='conforme'?'<span style="color:var(--accent);font-weight:700;">✓ Conforme</span>':s==='incoherent'?'<span style="color:var(--red);font-weight:700;">⚠ Incohérent</span>':'<span style="color:var(--text3);">À vérifier</span>';
 }
 
@@ -7185,7 +7187,7 @@ function terrOpen(id, focus){
       <div style="width:340px;max-width:38%;border-left:1px solid var(--border);overflow-y:auto;padding:14px;font-size:12px;">
         <div style="font-weight:700;color:var(--blue);margin-bottom:4px;">Dossier AFOR (référence)</div>
         ${line('Demandeur', planEsc(nomDem||'—'))}${line('Village / SP', planEsc((d.village||'—')+' / '+(d.sp||'—')))}${line('Agent', planEsc(d.agent||'—'))}
-        ${line('Étape', planEsc(d.etape||'—'))}${line('Date demande', d.date_DD?d.date_DD.split('-').reverse().join('/'):'—')}${line('Date RDC', d.date_RDC?d.date_RDC.split('-').reverse().join('/'):'—')}${line('Date PVCL', d.date_CL?d.date_CL.split('-').reverse().join('/'):'—')}
+        ${line('Statut AFOR', planEsc(d.statut_txt||'—'))}${line('Rejet / CQ', rejBadge(d))}${line('Étape', planEsc(d.etape||'—'))}${line('Date demande', d.date_DD?d.date_DD.split('-').reverse().join('/'):'—')}${line('Date RDC', d.date_RDC?d.date_RDC.split('-').reverse().join('/'):'—')}${line('Date PVCL', d.date_CL?d.date_CL.split('-').reverse().join('/'):'—')}
         ${line('Superficie déclarée', d.superficie_declaree?d.superficie_declaree+' ha':'—')}${line('Superficie GNSS', gi?gi.superficie.toFixed(2)+' ha':'—')}
         <div style="font-weight:700;color:var(--blue);margin:12px 0 4px;">Voisins déclarés (${planEsc(vois.src)})</div>
         ${vois.list.length?vois.list.map(v=>line(planEsc(v.position||'—'), '<b>'+planEsc(v.nom)+'</b>')).join(''):'<div style="color:var(--text3);">Aucun voisin enregistré.</div>'}
@@ -7198,12 +7200,120 @@ async function terrSubmit(id, type){
   const comm = ((document.getElementById('terr-'+type+'-comm')||{}).value||'').trim();
   if(!st){ showToast('Choisissez un résultat : conforme ou incohérent.'); return; }
   if(st==='incoherent' && !comm){ showToast('Indiquez en commentaire ce qui est incohérent.'); return; }
-  await terrSaveCheck(id, type, {statut:st, commentaire:comm, par:planWho(), date:cqeToday()});
-  showToast(TERR_TYPES[type].label+' '+id+' : '+(st==='conforme'?'conforme.':'incohérence signalée.'));
+  const dd = (dossiersAFOR||[]).find(x=>String(x.id)===String(id));
+  const chk = {statut:st, commentaire:comm, par:planWho(), date:cqeToday(), sig:terrSig(dd?terrRec(dd,type):null)};
+  await terrSaveCheck(id, type, chk);
+  const rej = terrApplyRejet(id, type, chk);
+  showToast(TERR_TYPES[type].label+' '+id+' : '+(st==='conforme'?'conforme.':'incohérence signalée — dossier rejeté au CQ pour correction.')+(st==='conforme'&&rej?' Rejet clos.':''));
+  try{ if(typeof cqeRenderAll==='function') cqeRenderAll(); }catch(e){}
   terrOpen(id);
   terrRenderTabKeep();
 }
 function terrRenderTabKeep(){ if(typeof cqeTab!=='undefined' && cqeTab==='terrain') terrRenderTab(); }
+
+// ═══════════════════════════════════════════════════════════════
+// REJETS : AFOR (fichier) / CQ plan / CQ RDC / CQ PVCL — état par dossier, lien contrôle tablette → rejet CQ,
+// détection des fiches refaites (re-vérification), compteur unifié.
+// ═══════════════════════════════════════════════════════════════
+function terrSig(rec){
+  if(!rec) return '';
+  let s=''; try{ s=JSON.stringify(rec,(k,v)=>(k&&k.charAt(0)==='_')?undefined:v); }catch(e){ return ''; }
+  let h=5381; for(let i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))|0; }
+  return s.length+':'+(h>>>0).toString(36);
+}
+// Origine du rejet CQ d'un dossier : 'afor' | 'plan' | 'rdc' | 'pvcl' | 'rdc+pvcl' | null
+function rejOrigine(d){
+  const c = pubCQ && pubCQ[d.id];
+  const afor = /REJET|REFUS/.test(String(d.statut_txt||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,''));
+  if(!c || (!c.rejete && !c.corrige)) return afor ? 'afor' : null;
+  if(c.source!=='app') return 'afor';
+  const t = Object.assign({}, c.terr_orig||{}, c.terr||{}), a=!!t.rdc, b=!!t.pvcl;
+  return a&&b ? 'rdc+pvcl' : a ? 'rdc' : b ? 'pvcl' : 'plan';
+}
+const REJ_LIB = {afor:'AFOR (fichier)', plan:'CQ — plan', rdc:'CQ — RDC', pvcl:'CQ — PVCL', 'rdc+pvcl':'CQ — RDC + PVCL'};
+function rejEtat(d){
+  const c = pubCQ && pubCQ[d.id], o = rejOrigine(d);
+  let etat = 'ok';
+  if(c && c.rejete && !c.corrige) etat = 'rejete';
+  else if(c && c.rejete && c.corrige) etat = 'corrige';
+  else if(c && c.corrige) etat = 'corrige';
+  else if(o==='afor') etat = 'rejete';
+  return {origine:o, etat, cq:c||null, jours:(c&&c.rejete&&!c.corrige&&c.date_rejet)?cqeDaysBetween(c.date_rejet,cqeToday()):null};
+}
+function rejBadge(d){
+  const e = rejEtat(d);
+  if(!e.origine && e.etat==='ok') return '<span style="color:var(--text3);">—</span>';
+  const col = e.etat==='rejete' ? 'var(--red)' : e.etat==='corrige' ? 'var(--accent)' : 'var(--text3)';
+  const lab = e.etat==='rejete' ? 'Rejeté' : 'Rejeté puis corrigé';
+  return `<span style="color:${col};font-weight:700;">${lab}</span><div style="font-size:10px;color:var(--text3);">${planEsc(REJ_LIB[e.origine]||'')}${e.jours!=null?' · '+e.jours+' j':''}</div>`;
+}
+function rejCompteurs(ds){
+  const r = {total:0, afor:0, plan:0, rdc:0, pvcl:0, corriges:0};
+  (ds||[]).forEach(d=>{ const e=rejEtat(d); if(e.etat==='rejete'){ r.total++; const o=e.origine; if(o==='afor') r.afor++; else if(o==='plan') r.plan++; else { if(/rdc/.test(o)) r.rdc++; if(/pvcl/.test(o)) r.pvcl++; } } else if(e.etat==='corrige') r.corriges++; });
+  return r;
+}
+// Un contrôle tablette « incohérent » crée (ou met à jour) un rejet CQ ; « conforme » clôt le rejet issu de ce contrôle.
+function terrApplyRejet(id, type, chk){
+  const T = TERR_TYPES[type], t = cqeToday(), by = chk.par || cqeWho() || '(inconnu)';
+  let c = pubCQ[id], changed = false;
+  const motif = T.label+' incohérent : '+(chk.commentaire||'');
+  if(chk.statut==='incoherent'){
+    if(!c){ c = pubCQ[id] = {niveau:null,statut_cq:'REJETÉ (contrôle '+T.label+')',rejete:true,motif_qc1:null,motif_qc2:null,motif_final:motif,superf:null,date_rejet:t,source:'app',terr:{},ev:[{t:'rejet_app',d:t,by}]}; changed = true; }
+    else if(!c.rejete || c.corrige){ c.rejete=true; c.corrige=false; c.date_correction=null; c.corrige_par=null; c.motif_final=motif; c.date_rejet=t; delete c.date_rejet_est; c.statut_cq='REJETÉ (contrôle '+T.label+')'; if(c.source!=='app'){ c.source='app'; c.terr={}; } cqeLogEvent(id,'rejet_app'); changed = true; }
+    else { c.motif_final = c.motif_final ? (c.motif_final.indexOf(motif)>=0 ? c.motif_final : c.motif_final+' | '+motif) : motif; cqeLogEvent(id,'rejet_app'); changed = true; }
+    c.terr = c.terr||{}; c.terr[type] = {d:t,by,motif:chk.commentaire||''};
+  } else if(chk.statut==='conforme' && c && c.terr && c.terr[type]){
+    c.terr_orig = Object.assign(c.terr_orig||{}, {[type]:true}); delete c.terr[type];
+    if(!Object.keys(c.terr).length && c.rejete && !c.corrige && c.source==='app'){
+      cqeLogEvent(id,'corrige'); c.corrige=true; c.date_correction=t; c.corrige_par=by; c.terr_clos=true;
+    }
+    changed = true;
+  }
+  if(changed) pubSave();
+  return changed;
+}
+// Après un import AFOR (qui réécrit pubCQ), réapplique les rejets issus des contrôles tablette encore « incohérents ».
+function terrSyncRejets(){
+  let n=0;
+  Object.keys(terrChecks||{}).forEach(id=>{
+    ['rdc','pvcl'].forEach(type=>{
+      const k = terrChecks[id] && terrChecks[id][type];
+      if(!k || k.statut!=='incoherent') return;
+      const c = pubCQ[id];
+      if(c && (c.rejete || c.corrige)) { if(c.rejete && c.source==='app'){ c.terr=c.terr||{}; if(!c.terr[type]){ c.terr[type]={d:k.date,by:k.par,motif:k.commentaire||''}; n++; } } return; }
+      if(terrApplyRejet(id,type,k)) n++;
+    });
+  });
+  return n;
+}
+// Fiche refaite : si le contenu tablette a changé depuis le dernier contrôle, le contrôle repasse « à vérifier ».
+function terrDetectRefaits(){
+  const upd = {}; let nb = 0;
+  (dossiersAFOR||[]).forEach(d=>{
+    const ck = terrChecks[d.id]; if(!ck) return;
+    ['rdc','pvcl'].forEach(type=>{
+      const k = ck[type]; if(!k) return;
+      const rec = terrRec(d,type); if(!rec) return;
+      const sig = terrSig(rec); if(!sig) return;
+      if(!k.sig){ k.sig = sig; upd[d.id+'/'+type] = k; return; }
+      if(k.sig===sig) return;
+      const t = cqeToday();
+      const nk = {statut:'a_verifier', commentaire:k.commentaire||'', par:k.par, date:k.date, sig, refait:t, avant:k.statut,
+                  hist:((k.hist||[]).concat([{d:t,by:'import tablette',s:'refait'}])).slice(-10)};
+      ck[type] = nk; upd[d.id+'/'+type] = nk; nb++;
+      const c = pubCQ[d.id];
+      if(c && c.terr && c.terr[type]){ c.terr[type].refait = t; }
+    });
+  });
+  const keys = Object.keys(upd);
+  if(keys.length){
+    try{ localStorage.setItem('presfor_terr_checks', JSON.stringify(terrChecks)); }catch(e){}
+    const body = {}; keys.forEach(k=>{ body[encodeURIComponent(k.split('/')[0])+'/'+k.split('/')[1]] = upd[k]; });
+    fetch(FIREBASE_URL+'/presfor/terr_checks.json',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(20000)}).catch(e=>console.warn('terrDetectRefaits:',e.message));
+    if(nb) try{ pubSave(); }catch(e){}
+  }
+  return nb;
+}
 
 
 function terrInventaire(){
@@ -7232,6 +7342,7 @@ function terrRenderTab(){
   afor.forEach(d=>{ const r=terrRec(d,'rdc'), p=terrRec(d,'pvcl'); if(r||p) rows.push({d,r,p}); });
   rows.forEach(x=>{ x.ctl = (x.r && terrIsPV(x.r)) ? pvCtlCounts(terrRdcControls(x.d,x.r)) : null; x.ctlP = (x.p && terrIsPVCL(x.p)) ? pvCtlCounts(terrPvclControls(x.d,x.p)) : null; });
   const cnt = (type,s)=>rows.filter(x=>x[type==='rdc'?'r':'p'] && terrStatut(x.d.id,type)===s).length;
+  const rc = rejCompteurs(afor);
   const nbR = rows.filter(x=>x.r).length, nbP = rows.filter(x=>x.p).length;
   const idsAfor = new Set(); (dossiersAFOR||[]).forEach(d=>{ tabKeyVariants(d.id).forEach(v=>idsAfor.add(v)); tabKeyVariants(d.code_parcelle).forEach(v=>idsAfor.add(v)); });
   const orph = (stage)=>Object.keys((tabletteData&&tabletteData[stage])||{}).filter(k=>!tabKeyVariants(k).some(v=>idsAfor.has(v))).length;
@@ -7242,6 +7353,7 @@ function terrRenderTab(){
     <div class="kpi ${rows.filter(x=>x.ctl&&x.ctl.err).length?'red':''}"><div class="kpi-l">RDC avec anomalie grave</div><div class="kpi-v">${rows.filter(x=>x.ctl&&x.ctl.err).length}</div><div class="kpi-s">${rows.filter(x=>x.ctl&&!x.ctl.err&&x.ctl.warn).length} avec alertes seulement</div></div>
     <div class="kpi ${rows.filter(x=>x.ctlP&&x.ctlP.err).length?'red':''}"><div class="kpi-l">PVCL avec anomalie grave</div><div class="kpi-v">${rows.filter(x=>x.ctlP&&x.ctlP.err).length}</div><div class="kpi-s">${rows.filter(x=>x.ctlP&&!x.ctlP.err&&x.ctlP.warn).length} avec alertes seulement</div></div>
     <div class="kpi"><div class="kpi-l">PVCL à vérifier</div><div class="kpi-v">${cnt('pvcl','a_verifier')}</div></div>
+    <div class="kpi ${rc.total?'red':''}"><div class="kpi-l">Dossiers rejetés (à corriger)</div><div class="kpi-v">${rc.total}</div><div class="kpi-s">AFOR ${rc.afor} · plan ${rc.plan} · RDC ${rc.rdc} · PVCL ${rc.pvcl} · ${rc.corriges} corrigé(s)</div></div>
     <div class="kpi ${(orph('minutes')+orph('observations'))?'amber':''}"><div class="kpi-l">Fiches sans dossier</div><div class="kpi-v">${orph('minutes')+orph('observations')}</div><div class="kpi-s">${orph('minutes')} RDC · ${orph('observations')} PVCL non rattachés</div></div>`;
   if(!rows.length){
     contentEl.innerHTML = terrInventaire() + '<div class="empty-state"><p style="font-size:13px;">Aucune fiche RDC ou PVCL de tablette n\'est rattachée à un dossier. Importez les ZIP de tablette (Imports → Données tablette).</p><p style="margin-top:10px;"><button class="btn-s" onclick="terrShowStructure()">🔎 Analyser la structure des fiches</button></p></div>';
@@ -7251,6 +7363,9 @@ function terrRenderTab(){
   let list = rows.filter(x=>{
     if(terrFilter.anom==='err' && !((x.ctl&&x.ctl.err)||(x.ctlP&&x.ctlP.err))) return false;
     if(terrFilter.anom==='warn' && !((x.ctl&&(x.ctl.err||x.ctl.warn))||(x.ctlP&&(x.ctlP.err||x.ctlP.warn)))) return false;
+    if(terrFilter.rej==='rej' && rejEtat(x.d).etat!=='rejete') return false;
+    if(terrFilter.rej==='corr' && rejEtat(x.d).etat!=='corrige') return false;
+    if(terrFilter.rej==='refait' && !['rdc','pvcl'].some(t=>{ const k=(terrChecks[x.d.id]||{})[t]; return k&&k.refait&&k.statut==='a_verifier'; })) return false;
     if(tf==='rdc' && !x.r) return false;
     if(tf==='pvcl' && !x.p) return false;
     if(sf){
@@ -7269,12 +7384,13 @@ function terrRenderTab(){
       <select onchange="terrFilter.type=this.value;terrFilter.page=0;terrRenderTab()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">${[['','RDC et PVCL'],['rdc','RDC seulement'],['pvcl','PVCL seulement']].map(o=>`<option value="${o[0]}" ${tf===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>
       <select onchange="terrFilter.anom=this.value;terrFilter.page=0;terrRenderTab()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">${[['','Toutes les fiches'],['err','Anomalie grave'],['warn','Anomalie ou alerte']].map(o=>`<option value="${o[0]}" ${terrFilter.anom===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>
       <select onchange="terrFilter.statut=this.value;terrFilter.page=0;terrRenderTab()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">${[['','Tous les statuts'],['a_verifier','À vérifier'],['conforme','Conformes'],['incoherent','Incohérents']].map(o=>`<option value="${o[0]}" ${sf===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>
+      <select onchange="terrFilter.rej=this.value;terrFilter.page=0;terrRenderTab()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">${[['','Rejets : tous'],['rej','Dossiers rejetés (à corriger)'],['corr','Rejetés puis corrigés'],['refait','Fiches refaites à re-vérifier']].map(o=>`<option value="${o[0]}" ${terrFilter.rej===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>
       <span style="font-size:11px;color:var(--text3);align-self:center;">${total.toLocaleString('fr-FR')} dossier(s)</span>
       <span style="margin-left:auto;display:flex;gap:6px;"><button class="btn-s" onclick="tabShowRecoupement()">⇄ Recoupement AFOR ↔ tablette</button><button class="btn-s" onclick="terrShowStructure()">🔎 Analyser la structure des fiches</button></span>
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--surface2);">
-      <th style="text-align:left;padding:7px 10px;">Dossier</th><th style="text-align:left;padding:7px 10px;">Demandeur</th><th style="text-align:left;padding:7px 10px;">Village</th><th style="text-align:left;padding:7px 10px;">Agent</th><th style="text-align:left;padding:7px 10px;">RDC</th><th style="text-align:left;padding:7px 10px;">Contrôles auto (RDC)</th><th style="text-align:left;padding:7px 10px;">PVCL</th><th style="text-align:left;padding:7px 10px;">Contrôles auto (PVCL)</th><th style="padding:7px 10px;"></th></tr></thead>
-      <tbody>${list.map(x=>`<tr style="border-top:1px solid var(--border);"><td style="padding:6px 10px;font-family:'DM Mono',monospace;">${planEsc(x.d.id)}</td><td style="padding:6px 10px;">${planEsc(((x.d.prenom||'')+' '+(x.d.nom_demandeur||'')).trim())}</td><td style="padding:6px 10px;">${planEsc(x.d.village||'')}</td><td style="padding:6px 10px;">${planEsc(x.d.agent||'')}</td><td style="padding:6px 10px;">${terrBadge(x.d,'rdc')}</td><td style="padding:6px 10px;">${terrCtlBadge(x)}</td><td style="padding:6px 10px;">${terrBadge(x.d,'pvcl')}</td><td style="padding:6px 10px;">${terrCtlBadge(x,'ctlP')}</td><td style="padding:6px 10px;text-align:right;"><button class="btn-s" onclick="terrOpen('${String(x.d.id).replace(/'/g,"\\'")}')">Ouvrir</button></td></tr>`).join('')||'<tr><td colspan="9" style="padding:16px;text-align:center;color:var(--text3);">Aucune fiche ne correspond.</td></tr>'}</tbody></table>
+      <th style="text-align:left;padding:7px 10px;">Dossier</th><th style="text-align:left;padding:7px 10px;">Demandeur</th><th style="text-align:left;padding:7px 10px;">Village</th><th style="text-align:left;padding:7px 10px;">Agent</th><th style="text-align:left;padding:7px 10px;">RDC</th><th style="text-align:left;padding:7px 10px;">Contrôles auto (RDC)</th><th style="text-align:left;padding:7px 10px;">PVCL</th><th style="text-align:left;padding:7px 10px;">Contrôles auto (PVCL)</th><th style="text-align:left;padding:7px 10px;">Rejet / CQ</th><th style="padding:7px 10px;"></th></tr></thead>
+      <tbody>${list.map(x=>`<tr style="border-top:1px solid var(--border);"><td style="padding:6px 10px;font-family:'DM Mono',monospace;">${planEsc(x.d.id)}</td><td style="padding:6px 10px;">${planEsc(((x.d.prenom||'')+' '+(x.d.nom_demandeur||'')).trim())}</td><td style="padding:6px 10px;">${planEsc(x.d.village||'')}</td><td style="padding:6px 10px;">${planEsc(x.d.agent||'')}</td><td style="padding:6px 10px;">${terrBadge(x.d,'rdc')}</td><td style="padding:6px 10px;">${terrCtlBadge(x)}</td><td style="padding:6px 10px;">${terrBadge(x.d,'pvcl')}</td><td style="padding:6px 10px;">${terrCtlBadge(x,'ctlP')}</td><td style="padding:6px 10px;">${rejBadge(x.d)}</td><td style="padding:6px 10px;text-align:right;"><button class="btn-s" onclick="terrOpen('${String(x.d.id).replace(/'/g,"\\'")}')">Ouvrir</button></td></tr>`).join('')||'<tr><td colspan="10" style="padding:16px;text-align:center;color:var(--text3);">Aucune fiche ne correspond.</td></tr>'}</tbody></table>
     ${pages>1?`<div style="padding:8px 16px;display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);font-size:11px;"><button class="btn-s" ${terrFilter.page===0?'disabled':''} onclick="terrFilter.page--;terrRenderTab()">← Précédent</button> Page ${terrFilter.page+1} / ${pages} <button class="btn-s" ${terrFilter.page>=pages-1?'disabled':''} onclick="terrFilter.page++;terrRenderTab()">Suivant →</button></div>`:''}
   </div>`;
 }
@@ -10600,6 +10716,7 @@ function aforImportExcel(input){
           voisins: (row[AFOR_COLS.voisins]||'').toString().replace(/\s+/g,' ').trim() || undefined,
           nb_voisins: (()=>{ const v=parseInt(row[AFOR_COLS.nb_voisins]); return isNaN(v)?undefined:v; })(),
         };
+        dos.statut_txt = String(row[AFOR_COLS.statut]||'').trim();
         { const _st=String(row[AFOR_COLS.statut]||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); dos.statut_valide = /VALID|APPROUV|ACCEPT/.test(_st) && !/REJET|REFUS|INVALID|ATTENTE|NON VALID/.test(_st); }
         { const NEG=/^(NON|NO|0|FAUX|-|—|N\/A|NULL|NAN|FALSE)$/i; let sig=!!dos.date_SIG;
           _sigHdrs.forEach(h=>{ const v=row[h]; if(v!=null && String(v).trim()!=='' && !NEG.test(String(v).trim())){ sig=true; if(!dos.date_SIG){ const dd=fmtD(v); if(dd) dos.date_SIG=dd; } } });
@@ -10708,6 +10825,7 @@ function aforImportExcel(input){
       const msg = `Base AFOR actualisée : ${nbNouveaux} nouveaux · ${nbMaj} mis à jour · ${nbInchanges} inchangés · ${conserves.length} conservés · ${nbDoublons} doublons supprimés`;
       // Persister pubCQ (contrôle qualité), peuplé plus haut depuis les colonnes du même fichier AFOR —
       // sinon ces données de rejet/motifs ne survivraient qu'en mémoire, perdues au rechargement.
+      try{ terrSyncRejets(); }catch(e){ console.warn('terrSyncRejets', e); }
       pubSave();
       // ── Persister localement ET dans Firebase ──
       try{
@@ -11869,6 +11987,7 @@ async function tabImportZips(){
   filesInput.value = '';
   document.getElementById('tab-import-pwd').value = '';
   tabRenderImportHistory();
+  try{ const nRef = terrDetectRefaits(); if(nRef) showToast(nRef+' fiche(s) RDC/PVCL refaite(s) : à re-vérifier.'); }catch(e){ console.warn(e); }
   try{ if(typeof cqeRenderAll==='function') cqeRenderAll(); }catch(e){}
   try{ if(typeof agRenderPerf==='function'){ agRenderPerf(); agRenderPerf('ind-ag'); } if(typeof agRenderKPI==='function'){ agRenderKPI(); agRenderKPI('ind-ag'); } }catch(e){}
   showToast('Données tablette importées : '+nomTablette);
