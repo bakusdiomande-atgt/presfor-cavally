@@ -65,6 +65,20 @@ body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--t
 .module{display:none;}
 @media(max-width:1700px){.tb-mod{padding:0 8px;gap:4px;font-size:11px;}#hdate{display:none;}}
 @media(max-width:1300px){.tb-mod svg{display:none;}.topbar{padding:0 8px;}}
+/* Contrôleur qualité : seuls le tableau de bord (lecture) et le CQE sont accessibles */
+body.role-cqe .tb-mod:not(#tab-accueil):not(#tab-cqe){display:none !important;}
+body.role-cqe #tb-admin-btn{display:none !important;}
+body.role-cqe #module-accueil [onclick*="dashOpenSettings"], body.role-cqe #module-accueil .btn-p{display:none !important;}
+/* Affichage plus compact du CQE */
+#module-cqe .main{padding:12px 16px;}
+#module-cqe .page-head{margin-bottom:10px;}
+#module-cqe .page-head h2{font-size:16px;}
+#module-cqe .page-head p{font-size:11px;}
+#module-cqe .kpi-bar{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-bottom:10px;}
+#module-cqe .kpi{padding:8px 12px;}
+#module-cqe .kpi-v{font-size:18px;}
+#module-cqe .kpi-s{font-size:10px;margin-top:2px;}
+#module-cqe .tw table th, #module-cqe .tw table td{padding-top:5px;padding-bottom:5px;}
 #module-cqe .page-head{flex-wrap:wrap;gap:8px 12px;}
 #module-cqe .page-head .btn-row{flex-wrap:wrap;gap:6px;}
 #module-cqe .main{min-width:0;max-width:100%;overflow-x:hidden;}
@@ -436,7 +450,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-aj</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-al</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -1712,6 +1726,7 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 
 // ── Navigation modules ──
 function switchModule(id){
+  if(currentUser && currentUser.role==='cqe' && id!=='accueil' && id!=='cqe') id='cqe';   // contrôleur qualité : CQE et tableau de bord seulement
   document.querySelectorAll('.module').forEach(m=>{m.style.display='none';m.classList.remove('active');});
   document.querySelectorAll('.tb-mod').forEach(b=>b.classList.remove('active'));
   const m=document.getElementById('module-'+id);
@@ -4320,6 +4335,7 @@ function dashObjectifsForFilter(zoneFilter){
   return dashObjectifs[zoneFilter] || dashObjectifs.cavally;
 }
 function dashOpenSettings(){
+  if(currentUser && currentUser.role==='cqe'){ showToast('Lecture seule pour le contrôle qualité.'); return; }
   let modal = document.getElementById('dash-obj-modal');
   if(!modal){
     modal = document.createElement('div');
@@ -6437,6 +6453,8 @@ function cqeAdminBarRender(){
     <b>Contrôles CQ</b> · cet ordinateur : ${Object.keys(pubCQ||{}).length.toLocaleString('fr-FR')} · Firebase : ${planEsc(pubLoadStatus)} · envoi : ${planEsc(pubSaveStatus)}
     <button class="btn-s" onclick="cqeRepublish(this)">↑ Envoyer sur Firebase (visible par les contrôleurs)</button>
     · Dossiers AFOR : ${(dossiersAFOR||[]).length.toLocaleString('fr-FR')} (${planEsc(aforLoadStatus)})
+    · GNSS : ${(gnssData||[]).length.toLocaleString('fr-FR')} parcelles, ${Math.round((gnssData||[]).reduce((t,g)=>t+(g.superficie||0),0)).toLocaleString('fr-FR')} ha (${planEsc(gnssLoadStatus)} · envoi : ${planEsc(gnssSaveStatus)})
+    <button class="btn-s" onclick="gnssSaveToFirebase().then(()=>showToast('GNSS envoyé sur Firebase ✓')).catch(e=>showToast('Envoi GNSS impossible : '+e.message))">↑ Envoyer le GNSS sur Firebase</button>
     <button class="btn-s" onclick="cqeSendAfor(this)">↑ Envoyer les dossiers AFOR sur Firebase</button>
     <button class="btn-s" onclick="cqeReloadData(this)">↓ Recharger</button></div>`;
 }
@@ -6533,23 +6551,32 @@ function cqeRenderAll(){
   </div>` : '';
 
   // Filtres (persistés dans cqeFilterState pour survivre aux ré-affichages)
-  const vueCorriges = cqeFilterState.vue === 'corriges';
+  const vue = cqeFilterState.vue || 'rejetes';
+  const vueCorriges = vue === 'corriges';
+  const vueAutre = ['conformes','non','tous'].includes(vue);
   const q = (cqeFilterState.q||'').toLowerCase();
+  const fVillage = cqeFilterState.village||'';
   const fDept = cqeFilterState.dept||'';
   const fAgent = cqeFilterState.agent||'';
-  const sourceListe = vueCorriges ? corriges : rejetes;
+  const _rejSet = new Set(rejetes.map(d=>d.id));
+  const nonControles = afor.filter(d=>!pubCQ[d.id]);
+  const conformes = cqDossiers.filter(d=>!_rejSet.has(d.id));
+  const sourceListe = vue==='corriges' ? corriges : vue==='conformes' ? conformes : vue==='non' ? nonControles : vue==='tous' ? afor : rejetes;
+  const villagesListe = [...new Set(sourceListe.map(d=>d.village).filter(Boolean))].sort();
+  const etatTxt = d=>{ const c=pubCQ[d.id]; return !c ? '<span style="color:var(--text3);">Non contrôlé</span>' : (c.rejete && !c.corrige) ? '<span style="color:var(--red);font-weight:700;">Rejeté</span>' : c.rejete ? '<span style="color:var(--accent);font-weight:700;">Rejeté puis corrigé</span>' : '<span style="color:var(--accent);">Conforme</span>'; };
   const depts = [...new Set(sourceListe.map(d=>d.dept).filter(Boolean))].sort();
   const agentsListe = [...new Set(sourceListe.map(d=>d.agent).filter(Boolean))].sort();
   const filtered = sourceListe.filter(d=>{
     const mq = !q || String(d.id).toLowerCase().includes(q) || ((d.prenom||'')+' '+(d.nom_demandeur||'')).toLowerCase().includes(q) || (d.village||'').toLowerCase().includes(q);
     const mDept = !fDept || d.dept===fDept;
     const mAgent = !fAgent || d.agent===fAgent;
-    return mq && mDept && mAgent;
+    const mVil = !fVillage || d.village===fVillage;
+    return mq && mDept && mAgent && mVil;
   });
 
   const rows = filtered.slice(0,200).map(d=>{
     const cq = pubCQ[d.id];
-    const derniereColonne = vueCorriges
+    const derniereColonne = vueAutre ? `<td style="padding:8px 12px;">${etatTxt(d)}</td>` : vueCorriges
       ? `<td style="padding:8px 12px;color:var(--text2);">${cq.corrige_par||'—'} <span style="color:var(--text3);">· ${fmtDate(cq.date_correction)}</span></td>`
       : `<td style="padding:8px 12px;color:var(--text2);">${cq.date_rejet?fmtDate(cq.date_rejet)+' <span style="color:var(--text3);">· '+(cqeDaysBetween(cq.date_rejet,cqeToday())||0)+' j</span>':'—'}</td>`;
     return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="cqeShowDossierDetail('${String(d.id).replace(/'/g,"\\'")}')">
@@ -6564,12 +6591,19 @@ function cqeRenderAll(){
     <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:6px;">
       <button class="btn-s ${!vueCorriges?'active':''}" style="${!vueCorriges?'background:var(--red-lt);color:var(--red);border-color:var(--red);':''}" onclick="cqeSetFilter('vue','rejetes')">Rejetés (${rejetes.length})</button>
       <button class="btn-s ${vueCorriges?'active':''}" style="${vueCorriges?'background:var(--accent-lt);color:var(--accent);border-color:var(--accent);':''}" onclick="cqeSetFilter('vue','corriges')">Corrigés (${corriges.length})</button>
+      <button class="btn-s" style="${vue==='conformes'?'background:var(--accent-lt);color:var(--accent);border-color:var(--accent);':''}" onclick="cqeSetFilter('vue','conformes')">Conformes (${conformes.length})</button>
+      <button class="btn-s" style="${vue==='non'?'background:var(--amber-lt);color:var(--amber-txt);border-color:var(--amber);':''}" onclick="cqeSetFilter('vue','non')">Non contrôlés (${nonControles.length})</button>
+      <button class="btn-s" style="${vue==='tous'?'background:var(--surface2);border-color:var(--text3);':''}" onclick="cqeSetFilter('vue','tous')">Tous (${afor.length})</button>
     </div>
     <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
       <input type="text" id="cqe-f-q" placeholder="Rechercher (n° dossier, nom, village)" value="${(cqeFilterState.q||'').replace(/"/g,'&quot;')}" oninput="cqeSetFilter('q',this.value)" style="flex:1;min-width:180px;border:1px solid var(--border-med);border-radius:6px;padding:6px 10px;font-size:12px;">
       <select onchange="cqeSetFilter('dept',this.value)" style="border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;">
         <option value="">Tous départements</option>
         ${depts.map(dp=>`<option value="${dp}" ${fDept===dp?'selected':''}>${dp}</option>`).join('')}
+      </select>
+      <select onchange="cqeSetFilter('village',this.value)" style="border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;max-width:170px;">
+        <option value="">Tous villages</option>
+        ${villagesListe.map(v=>`<option value="${planEsc(v)}" ${fVillage===v?'selected':''}>${planEsc(v)}</option>`).join('')}
       </select>
       <select onchange="cqeSetFilter('agent',this.value)" style="border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;">
         <option value="">Tous agents</option>
@@ -6580,12 +6614,12 @@ function cqeRenderAll(){
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
         Exporter CSV
       </button>
-      ${!vueCorriges ? `<button class="btn-p" onclick="cqeExportCorrections()" title="Classeur Excel : un onglet par agent, avec les motifs de rejet et une colonne pour la correction" style="display:inline-flex;align-items:center;gap:5px;background:var(--accent);">⬇ Fiches de correction (Excel par agent)</button>` : ''}
+      ${(!vueCorriges && !vueAutre) ? `<button class="btn-p" onclick="cqeExportCorrections()" title="Classeur Excel : un onglet par agent, avec les motifs de rejet et une colonne pour la correction" style="display:inline-flex;align-items:center;gap:5px;background:var(--accent);">⬇ Fiches de correction (Excel par agent)</button>` : ''}
     </div>
-    <div style="padding:8px 16px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);">${vueCorriges?'Dossiers corrigés':'Dossiers rejetés'} (contrôle qualité) — ${filtered.length.toLocaleString('fr-FR')} résultat(s)</div>
+    <div style="padding:8px 16px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);">${vue==='conformes'?'Dossiers conformes':vue==='non'?'Dossiers non contrôlés':vue==='tous'?'Tous les dossiers':vueCorriges?'Dossiers corrigés':'Dossiers rejetés'} (contrôle qualité) — ${filtered.length.toLocaleString('fr-FR')} résultat(s)</div>
     <div style="overflow-x:auto;">
     <table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">N° Dossier</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Demandeur</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Village</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Agent</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">${vueCorriges?'Corrigé par':'Rejeté le'}</th></tr></thead>
+      <thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">N° Dossier</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Demandeur</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Village</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Agent</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">${vueAutre?'État':vueCorriges?'Corrigé par':'Rejeté le'}</th></tr></thead>
       <tbody>${rows || '<tr><td colspan="5" style="padding:16px;text-align:center;color:var(--text3);">Aucun résultat pour ces filtres</td></tr>'}</tbody>
     </table>
     </div>
@@ -11627,6 +11661,7 @@ function gnssImportExcel(input){
         localStorage.setItem('presfor_gnss_ts', new Date().toISOString());
         console.log('GNSS sauvegardé local:', gnssData.length, 'parcelles,', Math.round(gnssJson.length/1024), 'ko');
       }catch(ex){ console.warn('localStorage GNSS:', ex.message); }
+      gnssSaveToIDB();
       syncPendingStart();
       gnssSaveToFirebase().catch(e=>{ console.warn('GNSS Firebase save:', e.message); updateSyncIndicator('error'); }).finally(syncPendingEnd);
 
@@ -12422,30 +12457,67 @@ async function aforWipeFirebase(){
 
 
 // ── Persistance Firebase pour gnssData (partagé tous comptes) ──
+let gnssSaveStatus = '—', gnssLoadStatus = 'non tenté';
+async function gnssSaveToIDB(){
+  try{ const db=await tabIdb(); await new Promise((res,rej)=>{ const tx=db.transaction('kv','readwrite'); tx.objectStore('kv').put({data:gnssData, ts:localStorage.getItem('presfor_gnss_ts')||new Date().toISOString()},'gnss'); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); db.close(); return true; }catch(e){ console.warn('gnssSaveToIDB:', e); return false; }
+}
+async function gnssLoadFromIDB(){
+  try{
+    const db=await tabIdb(); const v=await new Promise((res,rej)=>{ const q=db.transaction('kv').objectStore('kv').get('gnss'); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); db.close();
+    if(v && Array.isArray(v.data) && v.data.length > (gnssData||[]).length){
+      gnssData = v.data; gnssIndex={}; gnssIndexFull={}; gnssIndexNomVil={};
+      gnssData.forEach(g=>{
+        if(g.n_demcge){ const k=gnssNorm(g.n_demcge); (gnssIndex[k]=gnssIndex[k]||[]).push(g); }
+        const k2=gnssKeyFullName(g.nom_demand||'', g.village||'', g.sp||'', g.dept||''); (gnssIndexFull[k2]=gnssIndexFull[k2]||[]).push(g);
+        const k3=gnssKeyNomVillage(g.nom_demand||'', g.village||''); (gnssIndexNomVil[k3]=gnssIndexNomVil[k3]||[]).push(g);
+      });
+      try{ if(v.ts) localStorage.setItem('presfor_gnss_ts', v.ts); }catch(e){}
+      try{ if(typeof zvRefreshAll==='function') zvRefreshAll(); }catch(e){}
+      return true;
+    }
+  }catch(e){ console.warn('gnssLoadFromIDB:', e); }
+  return false;
+}
 async function gnssSaveToFirebase(){
   const ts = new Date().toISOString();
   const payload = { data: gnssData, ts, count: gnssData.length };
-  const r = await fetch(FIREBASE_URL + '/presfor/gnss_data.json', {
-    method: 'PUT',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(30000)
-  });
-  if(!r.ok) throw new Error('HTTP ' + r.status);
+  const body = JSON.stringify(payload);
+  gnssSaveStatus = 'envoi Firebase en cours… ('+gnssData.length.toLocaleString('fr-FR')+' parcelles)';
+  let lastErr = null, done = false;
+  for(let t=0;t<3 && !done;t++){
+    try{
+      const r = await fetch(FIREBASE_URL + '/presfor/gnss_data.json', { method:'PUT', headers:{'Content-Type':'application/json'}, body, signal: AbortSignal.timeout(120000) });
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      done = true;
+    }catch(e){ lastErr = e; await new Promise(res=>setTimeout(res, 2000*(t+1))); }
+  }
+  if(!done){ gnssSaveStatus = '✗ envoi Firebase échoué : '+(lastErr&&lastErr.message); try{ cqeAdminBarRender(); }catch(e){} throw lastErr; }
+  gnssSaveStatus = '✓ envoyé sur Firebase le '+new Date().toLocaleString('fr-FR')+' ('+gnssData.length.toLocaleString('fr-FR')+' parcelles)';
+  try{ localStorage.setItem('presfor_gnss_ts', ts); }catch(e){}
+  try{ cqeAdminBarRender(); }catch(e){}
   console.log('GNSS sauvegardé Firebase:', gnssData.length, 'parcelles');
   showToast('GNSS synchronisé ✓ (' + gnssData.length.toLocaleString('fr-FR') + ' parcelles)');
 }
 
 async function gnssLoadFromFirebase(){
   try{
-    const r = await fetch(FIREBASE_URL + '/presfor/gnss_data.json', {
-      signal: AbortSignal.timeout(15000)
-    });
-    if(!r.ok) return false;
-    const d = await r.json();
-    if(!d || !Array.isArray(d.data) || !d.data.length) return false;
+    gnssLoadStatus = 'chargement…';
+    let d = null, err = null;
+    for(let t=0;t<3 && !d;t++){
+      try{ const r = await fetch(FIREBASE_URL + '/presfor/gnss_data.json', { signal: AbortSignal.timeout(90000) }); if(!r.ok) throw new Error('HTTP '+r.status); d = await r.json(); if(!d) break; }
+      catch(e){ err = e; await new Promise(res=>setTimeout(res, 1500*(t+1))); }
+    }
+    if(!d && err){ gnssLoadStatus = '✗ lecture impossible : '+err.message; return false; }
+    if(!d || !Array.isArray(d.data) || !d.data.length){ gnssLoadStatus = 'aucune donnée GNSS sur Firebase'; return false; }
+    gnssLoadStatus = '✓ Firebase : '+d.data.length.toLocaleString('fr-FR')+' parcelles'+(d.ts?' ('+new Date(d.ts).toLocaleString('fr-FR')+')':'');
     const localTs  = localStorage.getItem('presfor_gnss_ts') || '1970-01-01';
     const remoteTs = d.ts || '1970-01-01';
+    if(gnssData.length > d.data.length && gnssData.length > 0){
+      // La copie de cet ordinateur est plus complète que celle de Firebase : on la garde et on la renvoie
+      gnssLoadStatus += ' — copie locale plus complète ('+gnssData.length.toLocaleString('fr-FR')+'), renvoi en cours';
+      gnssSaveToFirebase().catch(()=>{});
+      return false;
+    }
     if(remoteTs > localTs || gnssData.length === 0){
       gnssData = d.data;
       // Reconstruire les index
@@ -12458,6 +12530,7 @@ async function gnssLoadFromFirebase(){
         if(!gnssIndexNomVil[k3]) gnssIndexNomVil[k3]=[]; gnssIndexNomVil[k3].push(g);
       });
       try{ localStorage.setItem('presfor_gnss_data', JSON.stringify(gnssData)); localStorage.setItem('presfor_gnss_ts', d.ts); }catch(e){}
+      gnssSaveToIDB();
       console.log('GNSS chargé Firebase:', gnssData.length, 'parcelles');
       try{ if(typeof zvRefreshAll==='function') zvRefreshAll(); }catch(e){}
       return true;
@@ -12968,8 +13041,8 @@ serverLoad().then(ok => {
   // Même logique que pour AFOR : toujours consulter Firebase, la fonction compare déjà
   // les horodatages en interne et ne remplace les données locales que si nécessaire.
   gnssUpdateBtnLabel(); dashRenderCardGNSS();
-  gnssLoadFromFirebase().then(loaded=>{
-    if(loaded){ gnssUpdateBtnLabel(); dashRenderCardGNSS(); dosRenderAll(); cqeRefreshIfOpen(); }
+  gnssLoadFromIDB().then(fromIdb=>{ if(fromIdb){ gnssUpdateBtnLabel(); dashRenderCardGNSS(); try{ dashRenderAll(); }catch(e){} } return gnssLoadFromFirebase(); }).then(loaded=>{
+    if(loaded){ gnssUpdateBtnLabel(); dashRenderCardGNSS(); dosRenderAll(); try{ dashRenderAll(); }catch(e){} cqeRefreshIfOpen(); }
   });
   authInit();
 });
