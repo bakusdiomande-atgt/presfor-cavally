@@ -436,7 +436,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-af</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-ag</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -6402,12 +6402,22 @@ async function cqeRepublish(btn){
   cqeAdminBarRender();
   showToast(r.ok ? 'Contrôles CQ envoyés sur Firebase ✓' : ('Envoi incomplet : '+pubSaveStatus));
 }
+async function cqeSendAfor(btn){
+  if(!currentUser || currentUser.role!=='admin'){ showToast('Réservé à l\'administrateur.'); return; }
+  const n=(dossiersAFOR||[]).length; if(!n){ showToast('Aucun dossier AFOR en mémoire sur cet ordinateur.'); return; }
+  if(!confirm('Envoyer les '+n.toLocaleString('fr-FR')+' dossiers AFOR de cet ordinateur vers Firebase (fusion, rien n\'est supprimé) ?')) return;
+  if(btn) btn.disabled=true;
+  try{ await aforSaveToFirebase(); aforLoadStatus='✓ envoyé : '+n.toLocaleString('fr-FR')+' dossiers'; }catch(e){ showToast('Envoi impossible : '+e.message); aforLoadStatus='✗ envoi : '+e.message; }
+  if(btn) btn.disabled=false; cqeAdminBarRender();
+}
 function cqeAdminBarRender(){
   const el = document.getElementById('cqe-admin-bar'); if(!el) return;
   if(!currentUser || currentUser.role!=='admin'){ el.innerHTML=''; return; }
   el.innerHTML = `<div style="padding:6px 16px;margin:0 0 8px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);font-size:11px;color:var(--text2);display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
     <b>Contrôles CQ</b> · cet ordinateur : ${Object.keys(pubCQ||{}).length.toLocaleString('fr-FR')} · Firebase : ${planEsc(pubLoadStatus)} · envoi : ${planEsc(pubSaveStatus)}
     <button class="btn-s" onclick="cqeRepublish(this)">↑ Envoyer sur Firebase (visible par les contrôleurs)</button>
+    · Dossiers AFOR : ${(dossiersAFOR||[]).length.toLocaleString('fr-FR')} (${planEsc(aforLoadStatus)})
+    <button class="btn-s" onclick="cqeSendAfor(this)">↑ Envoyer les dossiers AFOR sur Firebase</button>
     <button class="btn-s" onclick="cqeReloadData(this)">↓ Recharger</button></div>`;
 }
 async function cqeReloadData(btn){
@@ -6449,7 +6459,7 @@ function cqeRenderAll(){
     <div class="kpi"><div class="kpi-l">Non encore contrôlés</div><div class="kpi-v">${(afor.length-cqDossiers.length).toLocaleString('fr-FR')}</div></div>
     <div class="kpi ${sansGnssApresPub.length>0?'amber':''}"><div class="kpi-l">Publicité sans GNSS</div><div class="kpi-v">${sansGnssApresPub.length.toLocaleString('fr-FR')}</div><div class="kpi-s">${sansGnssApresPub.length>0?'À vérifier':'Cohérent'}</div></div>`;
   if(!cqDossiers.length){
-    contentEl.innerHTML = `<div class="empty-state"><p style="font-size:13px;">Aucun dossier n'est encore passé par le contrôle qualité.</p><p style="font-size:11px;color:var(--text3);margin-top:6px;">${(dossiersAFOR||[]).length?'':'La base des dossiers n\'est pas encore chargée. '}Si vous vous attendiez à voir des dossiers, rechargez les données depuis le serveur.</p><p style="font-size:10px;color:var(--text3);margin-top:4px;">Contrôles CQ — ${planEsc(pubLoadStatus)} · en mémoire sur cet ordinateur : ${Object.keys(pubCQ||{}).length.toLocaleString('fr-FR')}</p>${(currentUser&&currentUser.role==='admin'&&Object.keys(pubCQ||{}).length)?'<p style="margin-top:6px;"><button class="btn-s" onclick="cqeRepublish(this)">↑ Envoyer les contrôles CQ de cet ordinateur sur Firebase</button></p>':''}<p style="margin-top:8px;"><button class="btn-s" onclick="cqeReloadData(this)">↻ Recharger les données</button></p></div>`;
+    contentEl.innerHTML = `<div class="empty-state"><p style="font-size:13px;">Aucun dossier n'est encore passé par le contrôle qualité.</p><p style="font-size:11px;color:var(--text3);margin-top:6px;">${(dossiersAFOR||[]).length?'':'La base des dossiers n\'est pas encore chargée ('+planEsc(aforLoadStatus)+'). '}Si vous vous attendiez à voir des dossiers, rechargez les données depuis le serveur.</p><p style="font-size:10px;color:var(--text3);margin-top:4px;">Contrôles CQ — ${planEsc(pubLoadStatus)} · en mémoire sur cet ordinateur : ${Object.keys(pubCQ||{}).length.toLocaleString('fr-FR')}</p>${(currentUser&&currentUser.role==='admin'&&Object.keys(pubCQ||{}).length)?'<p style="margin-top:6px;"><button class="btn-s" onclick="cqeRepublish(this)">↑ Envoyer les contrôles CQ de cet ordinateur sur Firebase</button></p>':''}<p style="margin-top:8px;"><button class="btn-s" onclick="cqeReloadData(this)">↻ Recharger les données</button></p></div>`;
     return;
   }
   // Motif retenu par dossier : le plus "avancé" disponible (validation finale > QC2 > QC1)
@@ -11907,14 +11917,46 @@ async function aforSaveToFirebase(){
   showToast('Base AFOR synchronisée ✓ (' + total.toLocaleString('fr-FR') + ' dossiers, ' + nbChunks + ' lot(s))');
 }
 
+let aforLoadStatus = 'non tenté';
+async function aforFetchRetry(url, ms){
+  let err = null;
+  for(let t=0;t<3;t++){
+    try{ const r = await fetch(url, {signal: AbortSignal.timeout(ms||60000)}); if(!r.ok) throw new Error('HTTP '+r.status); return await r.json(); }
+    catch(e){ err = e; await new Promise(res=>setTimeout(res, 1500*(t+1))); }
+  }
+  throw err;
+}
+// Lecture par pages de 500 dossiers (une lecture unique de plusieurs Mo expirait sur les connexions lentes :
+// les contrôleurs sans copie locale se retrouvaient sans aucun dossier).
+async function aforFetchPaged(){
+  const base = FIREBASE_URL + '/presfor/afor_cf';
+  const meta = await aforFetchRetry(base+'/meta.json', 20000);
+  if(!meta || !meta.count) return null;
+  const data = {}; let last = null;
+  for(let page=0; page<60; page++){
+    let url = base+'/data.json?orderBy=%22%24key%22&limitToFirst=500';
+    if(last!==null) url += '&startAt='+encodeURIComponent(JSON.stringify(last));
+    const part = await aforFetchRetry(url, 60000);
+    const keys = Object.keys(part||{});
+    let nouveaux = 0;
+    keys.forEach(k=>{ if(!(k in data)){ data[k] = part[k]; nouveaux++; } });
+    aforLoadStatus = 'chargement… '+Object.keys(data).length.toLocaleString('fr-FR')+' / '+Number(meta.count).toLocaleString('fr-FR')+' dossiers';
+    try{ cqeAdminBarRender(); }catch(e){}
+    if(!nouveaux || keys.length<500) break;
+    last = keys[keys.length-1];
+  }
+  return {meta, data};
+}
 async function aforLoadFromFirebase(){
   try{
-    const r = await fetch(FIREBASE_URL + '/presfor/afor_cf.json', {
-      signal: AbortSignal.timeout(20000)
-    });
-    if(!r.ok) return false;
-    const d = await r.json();
-    if(!d) return false;
+    aforLoadStatus = 'chargement…';
+    let d = null;
+    try{ d = await aforFetchPaged(); }catch(e){ console.warn('aforFetchPaged:', e.message); aforLoadStatus = 'lecture par pages impossible ('+e.message+'), nouvelle tentative en lecture directe…'; }
+    if(!d){
+      try{ d = await aforFetchRetry(FIREBASE_URL + '/presfor/afor_cf.json', 90000); }
+      catch(e){ aforLoadStatus = '✗ lecture des dossiers impossible : '+e.message; return false; }
+    }
+    if(!d){ aforLoadStatus = 'aucun dossier sur Firebase'; return false; }
     // Supporter plusieurs formats :
     // 1) Nouveau format : { meta:{ts,count}, data:{id1:{...}, id2:{...}} }
     // 2) Ancien format  : { data:[...], ts }
@@ -11930,7 +11972,7 @@ async function aforLoadFromFirebase(){
     } else if(typeof d === 'object' && !Array.isArray(d) && !d.data){
       dataArr = Object.values(d).filter(v => v && typeof v === 'object' && v.id);
     }
-    if(!dataArr.length) return false;
+    if(!dataArr.length){ aforLoadStatus = 'aucun dossier sur Firebase'; return false; }
     remoteTs = remoteTs || new Date().toISOString();
     const localTs  = localStorage.getItem('presfor_afor_ts') || '1970-01-01';
     if(remoteTs >= localTs || dossiersAFOR.length === 0){
@@ -11943,10 +11985,12 @@ async function aforLoadFromFirebase(){
         localStorage.setItem('presfor_afor_ts', remoteTs);
       }catch(e){}
       console.log('AFOR chargé Firebase:', dossiersAFOR.length, 'dossiers ('+nb+' doublons supprimés)');
+      aforLoadStatus = '✓ '+dossiersAFOR.length.toLocaleString('fr-FR')+' dossiers chargés';
       return true;
     }
+    aforLoadStatus = '✓ '+dossiersAFOR.length.toLocaleString('fr-FR')+' dossiers (copie locale à jour)';
     return false;
-  }catch(e){ console.warn('aforLoadFromFirebase:', e.message); return false; }
+  }catch(e){ aforLoadStatus = '✗ '+e.message; console.warn('aforLoadFromFirebase:', e.message); return false; }
 }
 
 // ── Purge complète de la base AFOR sur Firebase (admin uniquement) ──
