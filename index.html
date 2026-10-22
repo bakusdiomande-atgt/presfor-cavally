@@ -450,7 +450,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-am</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-an</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -6613,7 +6613,7 @@ setInterval(async ()=>{
   try{
     const m=document.getElementById('module-cqe'); if(!m || !m.classList.contains('active') || document.hidden) return;
     if(_pubPushing) return;
-    const nAs = (await cqeAssignLoad()) + (await cqeGrilleLoad());
+    const nAs = (await cqeAssignLoad()) + (await cqeGrilleLoad()) + (await cqeSuiviLoad());
     await pubLoadFromFirebase();
     if(pubRemoteChanged>0 || nAs>0){
       const modalOpen = ['terr-modal','cqe-dossier-modal','terr-struct'].some(id=>{ const e=document.getElementById(id); return e && e.style.display!=='none'; });
@@ -7518,7 +7518,7 @@ function terrRenderTabKeep(){ if(typeof cqeTab!=='undefined' && cqeTab==='terrai
 // ONGLET « Rejets & suivi » — tous les dossiers rejetés (fichier AFOR, statut AFOR, contrôleurs CQ),
 // avec responsable CQ (portefeuille), suivi des corrections et délais.
 // ═══════════════════════════════════════════════════════════════
-let rejFilter = {q:'', origine:'', etat:'a_corriger', resp:'', dept:'', page:0};
+let rejFilter = {q:'', origine:'', etat:'a_corriger', resp:'', dept:'', agent:'', page:0};
 const REJ_PAGE = 100;
 // Attributions : stockage dédié (/presfor/cq_assign/{dossier}), une écriture par attribution. Indépendant des contrôles CQ,
 // donc jamais écrasé par un import AFOR, une fusion ou un rechargement.
@@ -7556,7 +7556,7 @@ function rejMotif(d){ const c=pubCQ[d.id]; if(!c) return d.statut_txt?('Statut A
 function rejRows(){
   const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
   const rows = [];
-  afor.forEach(d=>{ const e = rejEtat(d); if(e.etat==='ok') return; rows.push({d, e, resp:rejResponsable(d)}); });
+  afor.forEach(d=>{ const e = rejEtat(d); if(e.etat==='ok') return; rows.push({d, e, resp:rejResponsable(d), s:rejSuivi(d)}); });
   return rows;
 }
 function rejSetFilter(k,v){ rejFilter[k]=v; rejFilter.page=0; cqeRenderRejets(); }
@@ -7598,17 +7598,19 @@ function cqeRenderRejets(){
   const orig = o=>aCorr.filter(x=>x.e.origine===o||(o==='rdc'&&x.e.origine==='rdc+pvcl')||(o==='pvcl'&&x.e.origine==='rdc+pvcl')).length;
   kpiEl.innerHTML = `
     <div class="kpi ${aCorr.length?'red':''}"><div class="kpi-l">Rejetés à corriger</div><div class="kpi-v">${aCorr.length.toLocaleString('fr-FR')}</div><div class="kpi-s">AFOR ${orig('afor')} · plan ${orig('plan')} · grille ${orig('grille')} · RDC ${orig('rdc')} · PVCL ${orig('pvcl')}</div></div>
-    <div class="kpi"><div class="kpi-l">Rejetés puis corrigés</div><div class="kpi-v">${corr.length.toLocaleString('fr-FR')}</div></div>
+    <div class="kpi"><div class="kpi-l">Suivi des corrections</div><div class="kpi-v">${all.filter(x=>x.s==='corrige_agent').length}</div><div class="kpi-s">à vérifier · ${all.filter(x=>x.s==='rejete').length} à transmettre · ${all.filter(x=>x.s==='transmis').length} transmis · ${corr.length} vérifiés</div></div>
     <div class="kpi ${nonAss?'amber':''}"><div class="kpi-l">Sans responsable CQ</div><div class="kpi-v">${nonAss.toLocaleString('fr-FR')}</div><div class="kpi-s">à attribuer à un contrôleur</div></div>
     <div class="kpi ${crit?'red':alr?'amber':''}"><div class="kpi-l">En retard de correction</div><div class="kpi-v">${crit+alr}</div><div class="kpi-s">${crit} ≥ ${CQE_CRIT_DAYS} j · ${alr} ≥ ${CQE_ALERT_DAYS} j</div></div>`;
   // Portefeuille par contrôleur
   const names = Array.from(new Set(getControleursQualite().concat(all.map(x=>x.resp).filter(Boolean)))).sort();
   const port = names.map(n=>{ const a=all.filter(x=>x.resp===n); const ac=a.filter(x=>x.e.etat==='rejete'); const j=ac.map(x=>x.e.jours).filter(v=>v!=null); return {n, ac:ac.length, co:a.length-ac.length, ret:ac.filter(x=>x.e.jours!=null&&x.e.jours>=CQE_ALERT_DAYS).length, max:j.length?Math.max(...j):null}; });
   const depts = Array.from(new Set(all.map(x=>x.d.dept).filter(Boolean))).sort();
+  const agentsRej = Array.from(new Set(all.map(x=>x.d.agent).filter(Boolean))).sort();
   const q = planNorm(rejFilter.q);
   let list = all.filter(x=>{
-    if(rejFilter.etat==='a_corriger' && x.e.etat!=='rejete') return false;
-    if(rejFilter.etat==='corrige' && x.e.etat!=='corrige') return false;
+    if(rejFilter.etat==='a_corriger' && x.s==='verifie') return false;
+    if(['rejete','transmis','corrige_agent','verifie'].includes(rejFilter.etat) && x.s!==rejFilter.etat) return false;
+    if(rejFilter.agent && x.d.agent!==rejFilter.agent) return false;
     if(rejFilter.origine && !(x.e.origine===rejFilter.origine || (x.e.origine==='rdc+pvcl' && /rdc|pvcl/.test(rejFilter.origine)))) return false;
     if(rejFilter.resp==='__none' && x.resp) return false;
     if(rejFilter.resp && rejFilter.resp!=='__none' && x.resp!==rejFilter.resp) return false;
@@ -7631,12 +7633,13 @@ function cqeRenderRejets(){
   <div class="tw" style="overflow:hidden;">
     <div style="padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);align-items:center;">
       <input type="text" placeholder="N° dossier, nom, village, agent, contrôleur…" value="${planEsc(rejFilter.q)}" oninput="rejFilter.q=this.value;rejFilter.page=0;clearTimeout(window._rjT);window._rjT=setTimeout(cqeRenderRejets,250);" style="${S}min-width:220px;">
-      <select onchange="rejSetFilter('etat',this.value)" style="${S}">${opt([['a_corriger','À corriger'],['corrige','Corrigés'],['','Tous']],rejFilter.etat)}</select>
+      <select onchange="rejSetFilter('etat',this.value)" style="${S}">${opt([['a_corriger','En cours (non vérifiés)'],['rejete','À transmettre'],['transmis','Transmis à l\'agent'],['corrige_agent','Corrigés par l\'agent (à vérifier)'],['verifie','Correction vérifiée'],['','Tous']],rejFilter.etat)}</select>
       <select onchange="rejSetFilter('origine',this.value)" style="${S}">${opt([['','Toutes origines'],['afor','AFOR (fichier / statut)'],['grille','CQ — grille'],['plan','CQ — plan'],['rdc','CQ — RDC'],['pvcl','CQ — PVCL']],rejFilter.origine)}</select>
       <select onchange="rejSetFilter('resp',this.value)" style="${S}">${opt([['','Tous les responsables'],['__none','Sans responsable']].concat(me?[[me,'Mon portefeuille']]:[]).concat(names.filter(n=>n!==me).map(n=>[n,n])),rejFilter.resp)}</select>
+      <select onchange="rejSetFilter('agent',this.value)" style="${S}max-width:200px;">${opt([['','Tous les agents']].concat(agentsRej.map(x=>[x,x])),rejFilter.agent)}</select>
       <select onchange="rejSetFilter('dept',this.value)" style="${S}">${opt([['','Tous départements']].concat(depts.map(x=>[x,x])),rejFilter.dept)}</select>
       <span style="font-size:11px;color:var(--text3);">${total.toLocaleString('fr-FR')} dossier(s)</span>
-      <span style="margin-left:auto;"><button class="btn-s" onclick="rejExport()">⬇ Exporter (CSV)</button></span>
+      <span style="margin-left:auto;display:flex;gap:6px;">${can?'<button class="btn-s" onclick="rejMarkTransmis()" title="Marque comme transmis à l\'agent tous les dossiers « à transmettre » de la sélection affichée">✉ Marquer la sélection comme transmise</button>':''}<button class="btn-p" onclick="rejExportXlsx()">⬇ Exporter Excel</button><button class="btn-s" onclick="rejExport()">CSV</button></span>
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--surface2);">
       ${['Dossier','Demandeur','Village','Agent','Origine','Motif','Rejeté le','Délai','État','Responsable CQ',''].map(h=>`<th style="text-align:left;padding:7px 10px;">${h}</th>`).join('')}</tr></thead>
@@ -7644,12 +7647,115 @@ function cqeRenderRejets(){
       return `<tr style="border-top:1px solid var(--border);"><td style="padding:6px 10px;font-family:'DM Mono',monospace;">${planEsc(x.d.id)}</td><td style="padding:6px 10px;">${planEsc(((x.d.prenom||'')+' '+(x.d.nom_demandeur||'')).trim())}</td><td style="padding:6px 10px;">${planEsc(x.d.village||'')}</td><td style="padding:6px 10px;">${planEsc(x.d.agent||'')}</td>
       <td style="padding:6px 10px;">${planEsc(REJ_LIB[x.e.origine]||'')}</td><td style="padding:6px 10px;max-width:260px;font-size:11px;">${planEsc(rejMotif(x.d)).slice(0,160)}</td>
       <td style="padding:6px 10px;white-space:nowrap;">${c&&c.date_rejet?planEsc(c.date_rejet.split('-').reverse().join('/')):'—'}</td><td style="padding:6px 10px;color:${jc};font-weight:${jc!=='inherit'?700:400};">${j==null?'—':j+' j'}</td>
-      <td style="padding:6px 10px;">${x.e.etat==='rejete'?'<span style="color:var(--red);font-weight:700;">À corriger</span>':'<span style="color:var(--accent);font-weight:700;">Corrigé</span>'}</td>
+      <td style="padding:6px 10px;"><span style="color:${SUIVI_COL[x.s]||'inherit'};font-weight:700;">${SUIVI_LIB[x.s]||''}</span></td>
       <td style="padding:6px 10px;">${ctlSel(x.d.id,x.resp)}</td>
-      <td style="padding:6px 10px;white-space:nowrap;text-align:right;">${can&&x.e.etat==='rejete'?`${(x.resp===me||(x.resp&&!rejIsAdmin()))?'':`<button class="btn-s" onclick="rejPrendre('${id}')">Prendre en charge</button> `}${(c&&(rejIsAdmin()||x.resp===me))?`<button class="btn-s" onclick="rejCorrige('${id}')">✓ Corrigé</button> `:''}`:''}<button class="btn-s" onclick="grilleOpen('${id}')">Grille</button> <button class="btn-s" onclick="terrOpen('${id}')">Fiche</button></td></tr>`; }).join('')||'<tr><td colspan="11" style="padding:16px;text-align:center;color:var(--text3);">Aucun dossier ne correspond.</td></tr>'}</tbody></table>
+      <td style="padding:6px 10px;white-space:nowrap;text-align:right;">${can&&x.e.etat==='rejete'?`${(x.resp===me||(x.resp&&!rejIsAdmin()))?'':`<button class="btn-s" onclick="rejPrendre('${id}')">Prendre en charge</button> `}${rejCanAct(x.d.id)&&c?(x.s==='rejete'?`<button class="btn-s" onclick="rejSuiviAction('${id}','transmettre')">✉ Transmis à l'agent</button> `:x.s==='transmis'?`<button class="btn-s" onclick="rejSuiviAction('${id}','corrige_agent')">Agent a corrigé</button> `:x.s==='corrige_agent'?`<button class="btn-s" onclick="rejSuiviAction('${id}','verifier')">✓ Vérifier la correction</button> <button class="btn-s" onclick="rejSuiviAction('${id}','retransmettre')">↩ Retransmettre</button> `:''):''}`:''}<button class="btn-s" onclick="grilleOpen('${id}')">Grille</button> <button class="btn-s" onclick="terrOpen('${id}')">Fiche</button></td></tr>`; }).join('')||'<tr><td colspan="11" style="padding:16px;text-align:center;color:var(--text3);">Aucun dossier ne correspond.</td></tr>'}</tbody></table>
     ${pages>1?`<div style="padding:8px 16px;display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);font-size:11px;"><button class="btn-s" ${rejFilter.page===0?'disabled':''} onclick="rejFilter.page--;cqeRenderRejets()">← Précédent</button> Page ${rejFilter.page+1} / ${pages} <button class="btn-s" ${rejFilter.page>=pages-1?'disabled':''} onclick="rejFilter.page++;cqeRenderRejets()">Suivant →</button></div>`:''}
   </div>`;
 }
+
+// ═══════════════════════════════════════════════════════════════
+// SUIVI DES CORRECTIONS — rejeté → transmis à l'agent → corrigé par l'agent → correction vérifiée.
+// Le contrôleur qualité identifie les rejets et suit les corrections ; il ne corrige pas lui-même.
+// Stockage dédié : /presfor/cq_suivi/{dossier} (une écriture par dossier, jamais écrasée par un import).
+// ═══════════════════════════════════════════════════════════════
+let cqeSuivi = {};
+try{ const x=localStorage.getItem('presfor_cq_suivi'); if(x) cqeSuivi=JSON.parse(x); }catch(e){}
+function cqeSuiviSaveLocal(){ try{ localStorage.setItem('presfor_cq_suivi', JSON.stringify(cqeSuivi)); }catch(e){} }
+function cqeSuiviSet(id, s){
+  const t=cqeToday(), by=cqeWho()||'', prev=cqeSuivi[id];
+  const rec={s, d:t, by, _u:new Date().toISOString(), h:((prev&&prev.h)||[]).concat([{s,d:t,by}]).slice(-12)};
+  cqeSuivi[id]=rec; cqeSuiviSaveLocal(); cqeFbPut('cq_suivi/'+encodeURIComponent(id), rec);
+}
+async function cqeSuiviLoad(){
+  let n=0;
+  try{
+    const r=await fetch(FIREBASE_URL+'/presfor/cq_suivi.json',{signal:AbortSignal.timeout(60000)}); if(!r.ok) return 0;
+    const d=await r.json()||{};
+    Object.keys(d).forEach(k=>{ const rem=d[k], loc=cqeSuivi[k]; if(!loc || String(rem._u||'')>String(loc._u||'')){ if(!loc || loc.s!==rem.s) n++; cqeSuivi[k]=rem; } });
+    Object.keys(cqeSuivi).forEach(k=>{ const loc=cqeSuivi[k], rem=d[k]; if(!rem || String(loc._u||'')>String(rem._u||'')) cqeFbPut('cq_suivi/'+encodeURIComponent(k), loc); });
+    cqeSuiviSaveLocal();
+  }catch(e){}
+  return n;
+}
+const SUIVI_LIB = {rejete:'À transmettre', transmis:'Transmis à l\'agent', corrige_agent:'Corrigé par l\'agent', verifie:'Correction vérifiée'};
+const SUIVI_COL = {rejete:'var(--red)', transmis:'var(--amber-txt)', corrige_agent:'var(--blue)', verifie:'var(--accent)'};
+function rejSuivi(d){
+  const e = rejEtat(d);
+  if(e.etat==='ok') return '';
+  if(e.etat==='corrige') return 'verifie';
+  const sv = cqeSuivi[d.id], c = e.cq;
+  if(sv && (sv.s==='transmis'||sv.s==='corrige_agent')){
+    if(c && c.date_rejet && sv.d && sv.d < c.date_rejet) return 'rejete';   // nouveau rejet depuis : le suivi repart de zéro
+    return sv.s;
+  }
+  return 'rejete';
+}
+function rejCanAct(id){
+  if(rejIsAdmin()) return true;
+  if(!rejIsCqe()) return false;
+  const me=cqeWho()||''; const cur=(cqeAssign[id]&&cqeAssign[id].a)||(pubCQ[id]&&pubCQ[id].assigne_a)||'';
+  return cur===me;
+}
+function rejSuiviAction(id, act){
+  if(!rejCanAct(id)){ showToast('Ce dossier n\'est pas dans votre portefeuille : prenez-le en charge d\'abord.'); return; }
+  if(act==='transmettre' || act==='retransmettre'){ cqeSuiviSet(id,'transmis'); }
+  else if(act==='corrige_agent'){ cqeSuiviSet(id,'corrige_agent'); }
+  else if(act==='verifier'){
+    const c=pubCQ[id]; if(!c) return;
+    if(c.rejete && !c.corrige){ cqeLogEvent(id,'corrige'); c.corrige=true; c.date_correction=cqeToday(); c.corrige_par=cqeWho()||null; pubSave(); }
+    cqeSuiviSet(id,'verifie');
+  }
+  cqeRenderAll();
+}
+function rejMarkTransmis(){
+  const list=(window._rejList||[]).filter(x=>x.s==='rejete' && rejCanAct(x.d.id));
+  if(!list.length){ showToast('Aucun dossier « à transmettre » dans votre sélection.'); return; }
+  if(!confirm('Marquer '+list.length+' dossier(s) comme transmis aux agents ?')) return;
+  list.forEach(x=>cqeSuiviSet(x.d.id,'transmis'));
+  showToast(list.length+' dossier(s) marqué(s) comme transmis.'); cqeRenderAll();
+}
+// Export Excel de la sélection affichée (filtrée, notamment par agent responsable des données).
+function rejExportXlsx(){
+  if(typeof XLSX==='undefined'){ showToast('Bibliothèque Excel non chargée.'); return; }
+  const list = window._rejList||[];
+  if(!list.length){ showToast('Rien à exporter pour ces filtres.'); return; }
+  const cat = grilleCatalogue(), pieceCode = {}; cat.forEach(p=>{ pieceCode[p.id]=p.id+'-'+p.code; });
+  const libMotif = mid=>{ const pid=grillePieceDeMotif(mid); return (pieceCode[pid]||'Autre')+' · '+grilleMotifTexte(mid); };
+  // colonnes de motifs : uniquement ceux cochés dans la sélection (fichier lisible)
+  const used = new Map();
+  list.forEach(x=>{ const g=cqeGrille[x.d.id]; ((g&&g.c)||[]).forEach(mid=>{ if(!used.has(mid)) used.set(mid, libMotif(mid)); }); });
+  const motifCols = [...used.entries()].sort((a,b)=>a[1].localeCompare(b[1],'fr',{numeric:true}));
+  const head = ['N° dossier','Demandeur','Département','Sous-préfecture','Village','Agent (données)','Origine du rejet','Suivi','Date de rejet','Délai (j)','Responsable CQ','Transmis le','Corrigé par l\'agent le','Correction vérifiée le','Motifs de rejet','Commentaire du contrôleur', ...motifCols.map(m=>m[1])];
+  const rowOf = x=>{
+    const d=x.d, c=x.e.cq||{}, g=cqeGrille[d.id], sv=cqeSuivi[d.id]||{}, h=sv.h||[];
+    const dateOf = st=>{ const e=[...h].reverse().find(z=>z.s===st); return e?e.d:''; };
+    const ids=(g&&g.c)||[];
+    const motifs = ids.length ? ids.map(m=>'• '+libMotif(m)).join('\n') : (rejMotif(d)||'');
+    return [d.id||'', ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim(), d.dept||'', d.sp||'', d.village||'', d.agent||'', REJ_LIB[x.e.origine]||'', SUIVI_LIB[x.s]||'', c.date_rejet||'', x.e.jours==null?'':x.e.jours, x.resp||'', dateOf('transmis'), dateOf('corrige_agent'), x.s==='verifie'?(c.date_correction||dateOf('verifie')):'', motifs, (g&&g.comm)||'', ...motifCols.map(m=>ids.includes(m[0])?'X':'')];
+  };
+  const rows = list.map(rowOf);
+  const widths = [16,24,13,16,18,24,16,20,12,9,20,12,14,14,60,36, ...motifCols.map(()=>14)].map(w=>({wch:w}));
+  const mk = rs=>{ const ws=XLSX.utils.aoa_to_sheet([head, ...rs]); ws['!cols']=widths; ws['!freeze']={xSplit:0,ySplit:1}; ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rs.length,c:head.length-1}})}; return ws; };
+  const wb = XLSX.utils.book_new(), today = new Date().toISOString().split('T')[0];
+  // Synthèse par agent
+  const parAgent = {}; list.forEach((x,i)=>{ const a=x.d.agent||'(agent non renseigné)'; (parAgent[a]=parAgent[a]||[]).push(i); });
+  const agents = Object.keys(parAgent).sort((a,b)=>parAgent[b].length-parAgent[a].length||a.localeCompare(b));
+  const syn = [['Rejets et suivi des corrections — SSE_PRESFOR_CAG'],['Édité le '+today+(currentUser&&currentUser.nom?' par '+currentUser.nom.split('—')[0].trim():'')],[],['Agent','Dossiers rejetés','À transmettre','Transmis','Corrigés par l\'agent','Corrections vérifiées']];
+  agents.forEach(a=>{ const ix=parAgent[a]; const c=st=>ix.filter(i=>list[i].s===st).length; syn.push([a, ix.length, c('rejete'), c('transmis'), c('corrige_agent'), c('verifie')]); });
+  syn.push([],['Total', list.length, list.filter(x=>x.s==='rejete').length, list.filter(x=>x.s==='transmis').length, list.filter(x=>x.s==='corrige_agent').length, list.filter(x=>x.s==='verifie').length]);
+  const wsS = XLSX.utils.aoa_to_sheet(syn); wsS['!cols']=[{wch:38},{wch:16},{wch:14},{wch:12},{wch:20},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, wsS, 'Synthèse');
+  XLSX.utils.book_append_sheet(wb, mk(rows), 'Tous les rejets');
+  if(agents.length>1){
+    const usedNames = new Set(['Synthèse','Tous les rejets']);
+    agents.forEach((a,i)=>{ let nm=a.replace(/[\\/?*\[\]:]/g,' ').trim().slice(0,28)||'Agent'+(i+1); const base=nm; let k=2; while(usedNames.has(nm)) nm=base.slice(0,26)+' '+k++; usedNames.add(nm); XLSX.utils.book_append_sheet(wb, mk(parAgent[a].map(ix=>rows[ix])), nm); });
+  }
+  const fAg = rejFilter.agent ? '_'+rejFilter.agent.replace(/[^A-Za-z0-9]+/g,'_').slice(0,30) : '';
+  XLSX.writeFile(wb, 'SSE_PRESFOR_CAG_rejets_suivi'+fAg+'_'+today+'.xlsx');
+  showToast(list.length+' dossier(s) exporté(s) — '+agents.length+' agent(s), '+motifCols.length+' motif(s) en colonnes.');
+}
+
 function rejExport(){
   const list = window._rejList||[];
   if(!list.length){ showToast('Rien à exporter.'); return; }
@@ -13178,6 +13284,7 @@ serverLoad().then(ok => {
   pubLoadFromFirebase().then(()=>{ cqeRefreshIfOpen(); });
   cqeAssignLoad().then(()=>cqeRefreshIfOpen());
   cqeGrilleLoad().then(()=>cqeRefreshIfOpen());
+  cqeSuiviLoad().then(()=>cqeRefreshIfOpen());
   aforLoadFromFirebase().then(loaded=>{
     if(loaded){ aforRenderAll(); dosRenderAll(); cqeRefreshIfOpen(); }
     else if(!dossiersAFOR.length){ setTimeout(()=>aforLoadFromFirebase().then(l2=>{ if(l2){ aforRenderAll(); dosRenderAll(); cqeRefreshIfOpen(); } }), 8000); }
