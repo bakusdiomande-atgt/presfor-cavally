@@ -436,7 +436,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-ae</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-af</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -1230,6 +1230,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
           <button class="btn-s" id="cqe-tab-pilotage" onclick="cqeSetTab('pilotage')">Pilotage CQE <span id="cqe-pilot-badge" style="display:none;background:#dc2626;color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:3px;"></span></button>
         </div>
       </div>
+      <div id="cqe-admin-bar"></div>
       <div class="kpi-bar" id="cqe-kpi"></div>
       <div id="cqe-content"></div>
     </div>
@@ -5066,26 +5067,52 @@ try {
   if(savedCtl) cqeCtl = JSON.parse(savedCtl);
 } catch(e) {}
 
+let pubSaveStatus = '—', _pubSent = {}, _pubPushing = false, _pubPushAgain = false;
 function pubSave(){
   try {
     localStorage.setItem('presfor_pub_oppositions', JSON.stringify(pubOppositions));
     localStorage.setItem('presfor_pub_cq', JSON.stringify(pubCQ));
     localStorage.setItem('presfor_cqe_ctl', JSON.stringify(cqeCtl));
   } catch(e) {}
-  // Sauvegarder sur Firebase
+  pubPushToFirebase(false);
+}
+// Envoi vers Firebase par lots (fusion par dossier, jamais de remplacement global). Seules les entrées modifiées
+// depuis le dernier envoi sont envoyées, sauf force=true (republication complète). L'ancien envoi unique de
+// plusieurs Mo expirait en silence : les contrôles restaient seulement sur l'ordinateur qui les avait créés.
+async function pubPushToFirebase(force){
+  if(_pubPushing){ _pubPushAgain = true; return {ok:false, busy:true}; }
+  _pubPushing = true;
   if(typeof syncPendingStart==='function') syncPendingStart();
-  // Fusion (PATCH par dossier) : une sauvegarde ne peut plus effacer les contrôles d'autres dossiers
-  // présents sur Firebase mais absents de cet ordinateur (ancien comportement : remplacement complet).
-  const body = { ts: new Date().toISOString() };
-  const put = (pref, obj)=>{ Object.keys(obj||{}).forEach(k=>{ body[pref+'/'+k] = obj[k]; }); };
-  put('cq', pubCQ); put('ctl', cqeCtl); put('oppositions', pubOppositions);
-  fetch(FIREBASE_URL + '/presfor/pub_data.json', {
-    method: 'PATCH',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(60000)
-  }).catch(e => { console.warn('pubSave Firebase:', e.message); if(typeof updateSyncIndicator==='function') updateSyncIndicator('error'); })
-    .finally(()=>{ if(typeof syncPendingEnd==='function') syncPendingEnd(); });
+  const items = [];
+  const add = (pref, obj)=>Object.keys(obj||{}).forEach(k=>{ const v = JSON.stringify(obj[k]); if(force || _pubSent[pref+'/'+k]!==v) items.push([pref+'/'+k, v]); });
+  add('cq', pubCQ); add('ctl', cqeCtl); add('oppositions', pubOppositions);
+  const CH = 150; let sent = 0, failed = 0;
+  pubSaveStatus = items.length ? 'envoi Firebase en cours… (0/'+items.length+')' : '✓ à jour sur Firebase';
+  try{
+    for(let i=0;i<items.length;i+=CH){
+      const part = items.slice(i,i+CH);
+      const body = {}; part.forEach(([k,v])=>{ body[k] = JSON.parse(v); });
+      let ok = false;
+      for(let t=0;t<3 && !ok;t++){
+        try{
+          const r = await fetch(FIREBASE_URL + '/presfor/pub_data.json', {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body), signal:AbortSignal.timeout(60000)});
+          if(r.ok) ok = true; else throw new Error('HTTP '+r.status);
+        }catch(e){ if(t===2) pubSaveStatus = '✗ envoi Firebase échoué : '+e.message; }
+      }
+      if(ok){ part.forEach(([k,v])=>{ _pubSent[k]=v; }); sent += part.length; pubSaveStatus = 'envoi Firebase en cours… ('+sent+'/'+items.length+')'; }
+      else { failed += part.length; break; }
+    }
+    if(!failed){
+      try{ await fetch(FIREBASE_URL + '/presfor/pub_data/ts.json', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(new Date().toISOString()), signal:AbortSignal.timeout(20000)}); }catch(e){}
+      pubSaveStatus = '✓ envoyé sur Firebase le '+new Date().toLocaleString('fr-FR')+' ('+sent+' entrée(s))';
+    } else if(typeof updateSyncIndicator==='function') updateSyncIndicator('error');
+  } finally {
+    _pubPushing = false;
+    if(typeof syncPendingEnd==='function') syncPendingEnd();
+    try{ cqeAdminBarRender(); }catch(e){}
+    if(_pubPushAgain){ _pubPushAgain = false; setTimeout(()=>pubPushToFirebase(false), 200); }
+  }
+  return {ok:!failed, sent, failed};
 }
 
 let pubLoadStatus = 'non tenté', pubRemoteLoaded = false;
@@ -5096,6 +5123,7 @@ async function pubLoadFromFirebase(){
     const d = await r.json();
     pubLoadStatus = (d && d.cq) ? ('chargé : '+Object.keys(d.cq).length.toLocaleString('fr-FR')+' contrôle(s) CQ sur Firebase'+(d.ts?' (dernière sauvegarde '+new Date(d.ts).toLocaleString('fr-FR')+')':'')) : 'Firebase ne contient aucun contrôle CQ';
     pubRemoteLoaded = true;
+    try{ ['cq','ctl','oppositions'].forEach(pf=>{ const o=d&&d[pf]; if(o) Object.keys(o).forEach(k=>{ _pubSent[pf+'/'+k]=JSON.stringify(o[k]); }); }); }catch(e){}
     if(d && d.oppositions) pubOppositions = Object.assign({}, d.oppositions, pubOppositions);
     if(d && d.cq) pubCQ = Object.assign({}, d.cq, pubCQ);
     if(d && d.ctl) cqeCtl = Object.assign({}, d.ctl, cqeCtl);
@@ -6361,12 +6389,26 @@ function indRenderGenre(){
   indGenreDonut('ind-genre-card-5', iconPerson, 'Exploitantes', 0, 0, 'contrats', 0);
 }
 
-function cqeRepublish(){
+async function cqeRepublish(btn){
   if(!currentUser || currentUser.role!=='admin'){ showToast('Réservé à l\'administrateur.'); return; }
   const n=Object.keys(pubCQ||{}).length;
   if(!n){ showToast('Aucun contrôle CQ en mémoire sur cet ordinateur.'); return; }
-  if(!confirm('Republier '+n.toLocaleString('fr-FR')+' contrôle(s) CQ de cet ordinateur sur Firebase ?\n(Fusion : rien n\'est supprimé sur Firebase.)')) return;
-  pubSave(); showToast(n.toLocaleString('fr-FR')+' contrôles CQ republiés.');
+  if(!confirm('Envoyer '+n.toLocaleString('fr-FR')+' contrôle(s) CQ de cet ordinateur vers Firebase, pour que les contrôleurs qualité les voient ?\n(Fusion : rien n\'est supprimé sur Firebase. Cela peut prendre une minute.)')) return;
+  if(btn){ btn.disabled=true; }
+  showToast('Envoi en cours…');
+  const r = await pubPushToFirebase(true);
+  if(btn) btn.disabled=false;
+  try{ await pubLoadFromFirebase(); }catch(e){}
+  cqeAdminBarRender();
+  showToast(r.ok ? 'Contrôles CQ envoyés sur Firebase ✓' : ('Envoi incomplet : '+pubSaveStatus));
+}
+function cqeAdminBarRender(){
+  const el = document.getElementById('cqe-admin-bar'); if(!el) return;
+  if(!currentUser || currentUser.role!=='admin'){ el.innerHTML=''; return; }
+  el.innerHTML = `<div style="padding:6px 16px;margin:0 0 8px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);font-size:11px;color:var(--text2);display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <b>Contrôles CQ</b> · cet ordinateur : ${Object.keys(pubCQ||{}).length.toLocaleString('fr-FR')} · Firebase : ${planEsc(pubLoadStatus)} · envoi : ${planEsc(pubSaveStatus)}
+    <button class="btn-s" onclick="cqeRepublish(this)">↑ Envoyer sur Firebase (visible par les contrôleurs)</button>
+    <button class="btn-s" onclick="cqeReloadData(this)">↓ Recharger</button></div>`;
 }
 async function cqeReloadData(btn){
   if(btn){ btn.disabled=true; btn.textContent='Chargement…'; }
@@ -6381,7 +6423,7 @@ function cqeRenderAll(){
   const kpiEl = document.getElementById('cqe-kpi');
   const contentEl = document.getElementById('cqe-content');
   if(!kpiEl || !contentEl) return;
-  cqeEnsureDates(); cqeUpdateBadge();
+  cqeEnsureDates(); cqeUpdateBadge(); try{ cqeAdminBarRender(); }catch(e){}
   if(typeof cqeTab!=='undefined' && cqeTab==='plans'){ planRenderTab(); return; }
   if(typeof cqeTab!=='undefined' && cqeTab==='terrain'){ terrRenderTab(); return; }
   if(typeof cqeTab!=='undefined' && cqeTab==='rejets'){ cqeRenderRejets(); return; }
@@ -6407,7 +6449,7 @@ function cqeRenderAll(){
     <div class="kpi"><div class="kpi-l">Non encore contrôlés</div><div class="kpi-v">${(afor.length-cqDossiers.length).toLocaleString('fr-FR')}</div></div>
     <div class="kpi ${sansGnssApresPub.length>0?'amber':''}"><div class="kpi-l">Publicité sans GNSS</div><div class="kpi-v">${sansGnssApresPub.length.toLocaleString('fr-FR')}</div><div class="kpi-s">${sansGnssApresPub.length>0?'À vérifier':'Cohérent'}</div></div>`;
   if(!cqDossiers.length){
-    contentEl.innerHTML = `<div class="empty-state"><p style="font-size:13px;">Aucun dossier n'est encore passé par le contrôle qualité.</p><p style="font-size:11px;color:var(--text3);margin-top:6px;">${(dossiersAFOR||[]).length?'':'La base des dossiers n\'est pas encore chargée. '}Si vous vous attendiez à voir des dossiers, rechargez les données depuis le serveur.</p><p style="font-size:10px;color:var(--text3);margin-top:4px;">Contrôles CQ — ${planEsc(pubLoadStatus)} · en mémoire sur cet ordinateur : ${Object.keys(pubCQ||{}).length.toLocaleString('fr-FR')}</p>${(currentUser&&currentUser.role==='admin'&&Object.keys(pubCQ||{}).length)?'<p style="margin-top:6px;"><button class="btn-s" onclick="cqeRepublish()">↑ Republier les contrôles CQ de cet ordinateur sur Firebase</button></p>':''}<p style="margin-top:8px;"><button class="btn-s" onclick="cqeReloadData(this)">↻ Recharger les données</button></p></div>`;
+    contentEl.innerHTML = `<div class="empty-state"><p style="font-size:13px;">Aucun dossier n'est encore passé par le contrôle qualité.</p><p style="font-size:11px;color:var(--text3);margin-top:6px;">${(dossiersAFOR||[]).length?'':'La base des dossiers n\'est pas encore chargée. '}Si vous vous attendiez à voir des dossiers, rechargez les données depuis le serveur.</p><p style="font-size:10px;color:var(--text3);margin-top:4px;">Contrôles CQ — ${planEsc(pubLoadStatus)} · en mémoire sur cet ordinateur : ${Object.keys(pubCQ||{}).length.toLocaleString('fr-FR')}</p>${(currentUser&&currentUser.role==='admin'&&Object.keys(pubCQ||{}).length)?'<p style="margin-top:6px;"><button class="btn-s" onclick="cqeRepublish(this)">↑ Envoyer les contrôles CQ de cet ordinateur sur Firebase</button></p>':''}<p style="margin-top:8px;"><button class="btn-s" onclick="cqeReloadData(this)">↻ Recharger les données</button></p></div>`;
     return;
   }
   // Motif retenu par dossier : le plus "avancé" disponible (validation finale > QC2 > QC1)
