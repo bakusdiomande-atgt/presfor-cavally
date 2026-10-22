@@ -430,7 +430,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-aa</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-ab</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -1719,7 +1719,7 @@ function switchModule(id){
   if(id==='pub'){try{pubInit();}catch(e){console.error('pub render:',e);}}
   if(id==='activites'){try{actRenderNav();actRenderAll();}catch(e){console.error('activites render:',e);}}
   if(id==='indicateurs'){try{indRenderNav();indRenderAll();}catch(e){console.error('indicateurs render:',e);}}
-  if(id==='cqe'){try{cqeRenderAll();}catch(e){console.error('cqe render:',e);}}
+  if(id==='cqe'){try{cqeRenderAll();}catch(e){console.error('cqe render:',e);} try{ pubLoadFromFirebase().then(()=>cqeRefreshIfOpen()); }catch(e){} }
   if(id==='imports'){try{tabRenderImportHistory();}catch(e){console.error('imports render:',e);}}
   setTimeout(()=>{ if(typeof isViewer==='function'&&isViewer()) applyViewerRestrictions(); },200);
 }
@@ -5079,7 +5079,7 @@ function pubSave(){
 
 async function pubLoadFromFirebase(){
   try {
-    const r = await fetch(FIREBASE_URL + '/presfor/pub_data.json', { signal: AbortSignal.timeout(10000) });
+    const r = await fetch(FIREBASE_URL + '/presfor/pub_data.json', { signal: AbortSignal.timeout(40000) });
     if(!r.ok) return;
     const d = await r.json();
     if(d && d.oppositions) pubOppositions = Object.assign({}, d.oppositions, pubOppositions);
@@ -6347,6 +6347,15 @@ function indRenderGenre(){
   indGenreDonut('ind-genre-card-5', iconPerson, 'Exploitantes', 0, 0, 'contrats', 0);
 }
 
+async function cqeReloadData(btn){
+  if(btn){ btn.disabled=true; btn.textContent='Chargement…'; }
+  try{ await pubLoadFromFirebase(); }catch(e){}
+  try{ const ok = await aforLoadFromFirebase(); if(ok){ aforRenderAll(); dosRenderAll(); } }catch(e){}
+  try{ await gnssLoadFromFirebase(); }catch(e){}
+  cqeRenderAll();
+  showToast('Données rechargées : '+(dossiersAFOR||[]).length.toLocaleString('fr-FR')+' dossiers, '+Object.keys(pubCQ||{}).length.toLocaleString('fr-FR')+' contrôles CQ.');
+}
+function cqeRefreshIfOpen(){ try{ const m=document.getElementById('module-cqe'); if(m && m.classList.contains('active')) cqeRenderAll(); }catch(e){ console.warn('cqeRefreshIfOpen', e); } }
 function cqeRenderAll(){
   const kpiEl = document.getElementById('cqe-kpi');
   const contentEl = document.getElementById('cqe-content');
@@ -6377,7 +6386,7 @@ function cqeRenderAll(){
     <div class="kpi"><div class="kpi-l">Non encore contrôlés</div><div class="kpi-v">${(afor.length-cqDossiers.length).toLocaleString('fr-FR')}</div></div>
     <div class="kpi ${sansGnssApresPub.length>0?'amber':''}"><div class="kpi-l">Publicité sans GNSS</div><div class="kpi-v">${sansGnssApresPub.length.toLocaleString('fr-FR')}</div><div class="kpi-s">${sansGnssApresPub.length>0?'À vérifier':'Cohérent'}</div></div>`;
   if(!cqDossiers.length){
-    contentEl.innerHTML = `<div class="empty-state"><p style="font-size:13px;">Aucun dossier n'est encore passé par le contrôle qualité.</p></div>`;
+    contentEl.innerHTML = `<div class="empty-state"><p style="font-size:13px;">Aucun dossier n'est encore passé par le contrôle qualité.</p><p style="font-size:11px;color:var(--text3);margin-top:6px;">${(dossiersAFOR||[]).length?'':'La base des dossiers n\'est pas encore chargée. '}Si vous vous attendiez à voir des dossiers, rechargez les données depuis le serveur.</p><p style="margin-top:8px;"><button class="btn-s" onclick="cqeReloadData(this)">↻ Recharger les données</button></p></div>`;
     return;
   }
   // Motif retenu par dossier : le plus "avancé" disponible (validation finale > QC2 > QC1)
@@ -12763,14 +12772,18 @@ serverLoad().then(ok => {
   // ancienne version (ex. si le dernier import a réussi sur Firebase mais échoué en local, faute de
   // place — silencieux sinon).
   aforRenderAll();
+  // Le contrôle qualité (rejets, conformes, contrôles) n'était chargé que par le module Publicité :
+  // un contrôleur arrivant directement sur CQE sans copie locale voyait une liste vide.
+  pubLoadFromFirebase().then(()=>{ cqeRefreshIfOpen(); });
   aforLoadFromFirebase().then(loaded=>{
-    if(loaded){ aforRenderAll(); dosRenderAll(); }
+    if(loaded){ aforRenderAll(); dosRenderAll(); cqeRefreshIfOpen(); }
+    else if(!dossiersAFOR.length){ setTimeout(()=>aforLoadFromFirebase().then(l2=>{ if(l2){ aforRenderAll(); dosRenderAll(); cqeRefreshIfOpen(); } }), 8000); }
   });
   // Même logique que pour AFOR : toujours consulter Firebase, la fonction compare déjà
   // les horodatages en interne et ne remplace les données locales que si nécessaire.
   gnssUpdateBtnLabel(); dashRenderCardGNSS();
   gnssLoadFromFirebase().then(loaded=>{
-    if(loaded){ gnssUpdateBtnLabel(); dashRenderCardGNSS(); dosRenderAll(); }
+    if(loaded){ gnssUpdateBtnLabel(); dashRenderCardGNSS(); dosRenderAll(); cqeRefreshIfOpen(); }
   });
   authInit();
 });
