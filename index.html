@@ -436,7 +436,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-ag</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-ah</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -5115,7 +5115,7 @@ async function pubPushToFirebase(force){
   return {ok:!failed, sent, failed};
 }
 
-let pubLoadStatus = 'non tenté', pubRemoteLoaded = false;
+let pubLoadStatus = 'non tenté', pubRemoteLoaded = false, pubRemoteChanged = 0;
 async function pubLoadFromFirebase(){
   try {
     const r = await fetch(FIREBASE_URL + '/presfor/pub_data.json', { signal: AbortSignal.timeout(40000) });
@@ -5125,7 +5125,17 @@ async function pubLoadFromFirebase(){
     pubRemoteLoaded = true;
     try{ ['cq','ctl','oppositions'].forEach(pf=>{ const o=d&&d[pf]; if(o) Object.keys(o).forEach(k=>{ _pubSent[pf+'/'+k]=JSON.stringify(o[k]); }); }); }catch(e){}
     if(d && d.oppositions) pubOppositions = Object.assign({}, d.oppositions, pubOppositions);
-    if(d && d.cq) pubCQ = Object.assign({}, d.cq, pubCQ);
+    pubRemoteChanged = 0;
+    if(d && d.cq){
+      // Fusion par dossier : la version la plus récente (champ _u) l'emporte. Avant, la copie locale gagnait toujours :
+      // une attribution ou un rejet fait par un autre utilisateur n'apparaissait jamais chez les contrôleurs.
+      Object.keys(d.cq).forEach(k=>{
+        const r = d.cq[k], l = pubCQ[k];
+        if(!l){ pubCQ[k] = r; pubRemoteChanged++; return; }
+        if(String(l._u||'') > String((r&&r._u)||'')) return;
+        if(JSON.stringify(l)!==JSON.stringify(r)){ pubCQ[k] = r; pubRemoteChanged++; }
+      });
+    }
     if(d && d.ctl) cqeCtl = Object.assign({}, d.ctl, cqeCtl);
     try {
       localStorage.setItem('presfor_pub_oppositions', JSON.stringify(pubOppositions));
@@ -6428,6 +6438,18 @@ async function cqeReloadData(btn){
   cqeRenderAll();
   showToast('Données rechargées : '+(dossiersAFOR||[]).length.toLocaleString('fr-FR')+' dossiers, '+Object.keys(pubCQ||{}).length.toLocaleString('fr-FR')+' contrôles CQ.');
 }
+// Actualisation automatique : un contrôleur voit les attributions et rejets faits par d'autres sans recharger la page.
+setInterval(async ()=>{
+  try{
+    const m=document.getElementById('module-cqe'); if(!m || !m.classList.contains('active') || document.hidden) return;
+    if(_pubPushing) return;
+    await pubLoadFromFirebase();
+    if(pubRemoteChanged>0){
+      const modalOpen = ['terr-modal','cqe-dossier-modal','terr-struct'].some(id=>{ const e=document.getElementById(id); return e && e.style.display!=='none'; });
+      if(!modalOpen){ const f=document.activeElement; if(!(f && /^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName))) cqeRenderAll(); }
+    }
+  }catch(e){}
+}, 60000);
 function cqeRefreshIfOpen(){ try{ const m=document.getElementById('module-cqe'); if(m && m.classList.contains('active')) cqeRenderAll(); }catch(e){ console.warn('cqeRefreshIfOpen', e); } }
 function cqeRenderAll(){
   const kpiEl = document.getElementById('cqe-kpi');
@@ -7336,7 +7358,7 @@ function rejAssign(id, who){
   const d = (dossiersAFOR||[]).find(x=>String(x.id)===String(id)); if(!d) return;
   const t = cqeToday();
   let c = pubCQ[id];
-  if(!c){ c = pubCQ[id] = {niveau:null,statut_cq:'REJETÉ (statut AFOR)',rejete:true,motif_qc1:null,motif_qc2:null,motif_final:'Statut AFOR : '+(d.statut_txt||'rejeté'),superf:null,date_rejet:t,source:'afor_statut',ev:[]}; }
+  if(!c){ c = pubCQ[id] = {niveau:null,statut_cq:'REJETÉ (statut AFOR)',rejete:true,motif_qc1:null,motif_qc2:null,motif_final:'Statut AFOR : '+(d.statut_txt||'rejeté'),superf:null,date_rejet:t,source:'afor_statut',ev:[],_u:new Date().toISOString()}; }
   c.assigne_a = who || ''; c.assigne_date = who ? t : null;
   cqeLogEvent(id, who ? 'assigne' : 'desassigne');
   pubSave();
@@ -7469,7 +7491,7 @@ function terrApplyRejet(id, type, chk){
   let c = pubCQ[id], changed = false;
   const motif = T.label+' incohérent : '+(chk.commentaire||'');
   if(chk.statut==='incoherent'){
-    if(!c){ c = pubCQ[id] = {niveau:null,statut_cq:'REJETÉ (contrôle '+T.label+')',rejete:true,motif_qc1:null,motif_qc2:null,motif_final:motif,superf:null,date_rejet:t,source:'app',terr:{},ev:[{t:'rejet_app',d:t,by}]}; changed = true; }
+    if(!c){ c = pubCQ[id] = {niveau:null,statut_cq:'REJETÉ (contrôle '+T.label+')',rejete:true,motif_qc1:null,motif_qc2:null,motif_final:motif,superf:null,date_rejet:t,source:'app',terr:{},_u:new Date().toISOString(),ev:[{t:'rejet_app',d:t,by}]}; changed = true; }
     else if(!c.rejete || c.corrige){ c.rejete=true; c.corrige=false; c.date_correction=null; c.corrige_par=null; c.motif_final=motif; c.date_rejet=t; delete c.date_rejet_est; c.statut_cq='REJETÉ (contrôle '+T.label+')'; if(c.source!=='app'){ c.source='app'; c.terr={}; } cqeLogEvent(id,'rejet_app'); changed = true; }
     else { c.motif_final = c.motif_final ? (c.motif_final.indexOf(motif)>=0 ? c.motif_final : c.motif_final+' | '+motif) : motif; cqeLogEvent(id,'rejet_app'); changed = true; }
     c.terr = c.terr||{}; c.terr[type] = {d:t,by,motif:chk.commentaire||''};
@@ -8683,6 +8705,7 @@ function cqeWho(){ return (currentUser && currentUser.nom) ? currentUser.nom.spl
 function cqeToday(){ return new Date().toISOString().split('T')[0]; }
 function cqeLogEvent(id, t){
   const cq = pubCQ[id]; if(!cq) return;
+  cq._u = new Date().toISOString();
   (cq.ev = cq.ev||[]).push({t, d:cqeToday(), by:cqeWho()});
   if(cq.ev.length>20) cq.ev = cq.ev.slice(-20);
 }
@@ -9352,10 +9375,10 @@ function pubSaveCorrection(id){
   };
   // Mettre à jour le statut principal si validé
   if(statut === 'VALIDE'){
-    pubCQ[id].rejete = false;
+    pubCQ[id]._u = new Date().toISOString(); pubCQ[id].rejete = false;
     pubCQ[id].statut_cq = 'VALIDE';
   } else if(statut === 'EN_COURS'){
-    pubCQ[id].rejete = false; // En cours de correction = plus rejeté bloquant
+    pubCQ[id]._u = new Date().toISOString(); pubCQ[id].rejete = false; // En cours de correction = plus rejeté bloquant
   }
   pubSave();
   pubRenderList();
