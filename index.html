@@ -436,7 +436,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-ai</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-aj</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -6453,8 +6453,9 @@ setInterval(async ()=>{
   try{
     const m=document.getElementById('module-cqe'); if(!m || !m.classList.contains('active') || document.hidden) return;
     if(_pubPushing) return;
+    const nAs = await cqeAssignLoad();
     await pubLoadFromFirebase();
-    if(pubRemoteChanged>0){
+    if(pubRemoteChanged>0 || nAs>0){
       const modalOpen = ['terr-modal','cqe-dossier-modal','terr-struct'].some(id=>{ const e=document.getElementById(id); return e && e.style.display!=='none'; });
       if(!modalOpen){ const f=document.activeElement; if(!(f && /^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName))) cqeRenderAll(); }
     }
@@ -7342,7 +7343,34 @@ function terrRenderTabKeep(){ if(typeof cqeTab!=='undefined' && cqeTab==='terrai
 // ═══════════════════════════════════════════════════════════════
 let rejFilter = {q:'', origine:'', etat:'a_corriger', resp:'', dept:'', page:0};
 const REJ_PAGE = 100;
+// Attributions : stockage dédié (/presfor/cq_assign/{dossier}), une écriture par attribution. Indépendant des contrôles CQ,
+// donc jamais écrasé par un import AFOR, une fusion ou un rechargement.
+let cqeAssign = {};
+try{ const x=localStorage.getItem('presfor_cq_assign'); if(x) cqeAssign=JSON.parse(x); }catch(e){}
+function cqeAssignSaveLocal(){ try{ localStorage.setItem('presfor_cq_assign', JSON.stringify(cqeAssign)); }catch(e){} }
+async function cqeAssignPut(id, rec){
+  for(let t=0;t<3;t++){
+    try{ const r=await fetch(FIREBASE_URL+'/presfor/cq_assign/'+encodeURIComponent(id)+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec),signal:AbortSignal.timeout(20000)}); if(r.ok) return true; }catch(e){}
+    await new Promise(res=>setTimeout(res,1200*(t+1)));
+  }
+  showToast('⚠ Attribution enregistrée sur cet ordinateur seulement (Firebase injoignable). Elle sera renvoyée au prochain chargement.');
+  return false;
+}
+let cqeAssignPending = {};
+async function cqeAssignLoad(){
+  try{
+    const r = await fetch(FIREBASE_URL+'/presfor/cq_assign.json',{signal:AbortSignal.timeout(40000)});
+    if(!r.ok) return 0;
+    const d = await r.json() || {}; let n=0;
+    Object.keys(d).forEach(k=>{ const rem=d[k], loc=cqeAssign[k]; if(!loc || String(rem._u||'')>String(loc._u||'')){ if(!loc || loc.a!==rem.a) n++; cqeAssign[k]=rem; delete cqeAssignPending[k]; } });
+    // Attributions locales plus récentes (ou absentes de Firebase) : renvoyées
+    Object.keys(cqeAssign).forEach(k=>{ const loc=cqeAssign[k], rem=d[k]; if(!rem || String(loc._u||'')>String(rem._u||'')){ cqeAssignPut(k, loc); } });
+    cqeAssignSaveLocal(); return n;
+  }catch(e){ return 0; }
+}
+function cqeAssignSet(id, who){ const t=cqeToday(); const rec={a:who||'', d:t, by:cqeWho()||'', _u:new Date().toISOString()}; cqeAssign[id]=rec; cqeAssignSaveLocal(); cqeAssignPut(id, rec); }
 function rejResponsable(d){
+  const as = cqeAssign[d.id]; if(as) return as.a || '';
   const c = pubCQ[d.id]; if(!c) return '';
   if(c.assigne_a) return c.assigne_a;
   const e = (c.ev||[]).find(x=>x.t==='rejet_app' && x.by); return e ? e.by : '';
@@ -7359,7 +7387,7 @@ function rejSetFilter(k,v){ rejFilter[k]=v; rejFilter.page=0; cqeRenderRejets();
 function rejIsAdmin(){ return !!currentUser && currentUser.role==='admin'; }
 function rejIsCqe(){ return !!currentUser && currentUser.role==='cqe'; }
 function rejAssign(id, who){
-  const me = cqeWho()||'', cur = (pubCQ[id]&&pubCQ[id].assigne_a)||'';
+  const me = cqeWho()||'', cur = (cqeAssign[id]&&cqeAssign[id].a)||(pubCQ[id]&&pubCQ[id].assigne_a)||'';
   if(!rejIsAdmin()){
     // Contrôleur qualité : seulement se prendre en charge un dossier libre (ou se libérer de son propre dossier)
     const ok = rejIsCqe() && ((who===me && !cur) || (!who && cur===me));
@@ -7371,14 +7399,15 @@ function rejAssign(id, who){
   if(!c){ c = pubCQ[id] = {niveau:null,statut_cq:'REJETÉ (statut AFOR)',rejete:true,motif_qc1:null,motif_qc2:null,motif_final:'Statut AFOR : '+(d.statut_txt||'rejeté'),superf:null,date_rejet:t,source:'afor_statut',ev:[],_u:new Date().toISOString()}; }
   c.assigne_a = who || ''; c.assigne_date = who ? t : null;
   cqeLogEvent(id, who ? 'assigne' : 'desassigne');
+  { const rec = {a:who||'', d:t, by:cqeWho()||'', _u:new Date().toISOString()}; cqeAssign[id]=rec; cqeAssignSaveLocal(); cqeAssignPut(id, rec); }
   pubSave();
   cqeRenderAll();
 }
 function rejPrendre(id){ rejAssign(id, cqeWho()||''); }
 function rejCorrige(id){
   if(!pubCQ[id]) return;
-  if(!rejIsAdmin() && !(rejIsCqe() && pubCQ[id].assigne_a===(cqeWho()||''))){ showToast('Ce dossier n\'est pas dans votre portefeuille : prenez-le en charge d\'abord.'); return; }
-  if(!pubCQ[id].assigne_a) pubCQ[id].assigne_a = cqeWho()||'';
+  if(!rejIsAdmin() && !(rejIsCqe() && ((cqeAssign[id]&&cqeAssign[id].a)||pubCQ[id].assigne_a)===(cqeWho()||''))){ showToast('Ce dossier n\'est pas dans votre portefeuille : prenez-le en charge d\'abord.'); return; }
+  if(!pubCQ[id].assigne_a && !cqeAssign[id]){ pubCQ[id].assigne_a = cqeWho()||''; cqeAssignSet(id, cqeWho()||''); }
   cqeMarquerCorrige(id);
 }
 function cqeRenderRejets(){
@@ -7505,7 +7534,7 @@ function terrApplyRejet(id, type, chk){
     else if(!c.rejete || c.corrige){ c.rejete=true; c.corrige=false; c.date_correction=null; c.corrige_par=null; c.motif_final=motif; c.date_rejet=t; delete c.date_rejet_est; c.statut_cq='REJETÉ (contrôle '+T.label+')'; if(c.source!=='app'){ c.source='app'; c.terr={}; } cqeLogEvent(id,'rejet_app'); changed = true; }
     else { c.motif_final = c.motif_final ? (c.motif_final.indexOf(motif)>=0 ? c.motif_final : c.motif_final+' | '+motif) : motif; cqeLogEvent(id,'rejet_app'); changed = true; }
     c.terr = c.terr||{}; c.terr[type] = {d:t,by,motif:chk.commentaire||''};
-    if(!c.assigne_a){ c.assigne_a = by; c.assigne_date = t; }
+    if(!c.assigne_a && !cqeAssign[id]){ c.assigne_a = by; c.assigne_date = t; const rec={a:by,d:t,by,_u:new Date().toISOString()}; cqeAssign[id]=rec; cqeAssignSaveLocal(); cqeAssignPut(id,rec); }
   } else if(chk.statut==='conforme' && c && c.terr && c.terr[type]){
     c.terr_orig = Object.assign(c.terr_orig||{}, {[type]:true}); delete c.terr[type];
     if(!Object.keys(c.terr).length && c.rejete && !c.corrige && c.source==='app'){
@@ -8276,7 +8305,7 @@ function cqeCtlSubmit(id,statut){
     else if(!c.rejete || c.corrige){ c.rejete=true; c.corrige=false; c.date_correction=null; c.corrige_par=null; c.motif_final=motif; c.date_rejet=t; delete c.date_rejet_est; cqeLogEvent(id,'rejet_app'); }
     else { cqeLogEvent(id,'rejet_app'); }
   }
-  if(statut==='rejete' && pubCQ[id] && !pubCQ[id].assigne_a){ pubCQ[id].assigne_a = by; pubCQ[id].assigne_date = t; }
+  if(statut==='rejete' && pubCQ[id] && !pubCQ[id].assigne_a && !cqeAssign[id]){ pubCQ[id].assigne_a = by; pubCQ[id].assigne_date = t; cqeAssignSet(id, by); }
   pubSave();
   cqeCtlClose();
   showToast(statut==='conforme'?'Dossier '+id+' : conforme.':'Dossier '+id+' rejeté — il apparaît dans « Dossiers CQ » pour correction.');
@@ -12144,7 +12173,8 @@ async function tabSaveToIDB(){
     const db = await tabIdb();
     await new Promise((res,rej)=>{ const tx=db.transaction('kv','readwrite'); tx.objectStore('kv').put({data:tabletteData, imports:tabletteImports, ts:localStorage.getItem('presfor_tablette_ts')||new Date().toISOString()},'tablette'); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); });
     db.close();
-  }catch(e){ console.warn('tabSaveToIDB:', e); }
+    return true;
+  }catch(e){ console.warn('tabSaveToIDB:', e); return false; }
 }
 async function tabLoadFromIDB(){
   try{
@@ -12152,9 +12182,13 @@ async function tabLoadFromIDB(){
     const v = await new Promise((res,rej)=>{ const q=db.transaction('kv').objectStore('kv').get('tablette'); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); });
     db.close();
     const has = o=>Object.values(o||{}).some(x=>Object.keys(x||{}).length>0);
-    if(v && has(v.data) && !has(tabletteData)){
-      tabletteData = Object.assign({ requests:{}, minutes:{}, observations:{}, advertising:{}, openAdvertising:{}, closeAdvertising:{}, existence:{}, validation:{} }, v.data);
-      if(v.imports) tabletteImports = v.imports;
+    if(v && has(v.data)){
+      // Fusion étape par étape : une ancienne copie partielle dans localStorage (quota dépassé) ne doit jamais
+      // masquer la copie complète d'IndexedDB (ancien comportement : IndexedDB ignoré dès que localStorage avait quelque chose).
+      const merged = { requests:{}, minutes:{}, observations:{}, advertising:{}, openAdvertising:{}, closeAdvertising:{}, existence:{}, validation:{} };
+      Object.keys(merged).forEach(k=>{ merged[k] = Object.assign({}, (v.data&&v.data[k])||{}, (tabletteData&&tabletteData[k])||{}); });
+      tabletteData = merged;
+      if(v.imports && v.imports.length >= (tabletteImports||[]).length) tabletteImports = v.imports;
       try{ if(v.ts) localStorage.setItem('presfor_tablette_ts', v.ts); }catch(e){}
       tabInvalidateIndex(); return true;
     }
@@ -12181,11 +12215,11 @@ async function tabReloadFromFirebase(){
   try{ cqeRenderAll(); }catch(e){}
 }
 function tabSaveToStorage(){
-  tabSaveToIDB();
-  try{
-    localStorage.setItem('presfor_tablette_data', JSON.stringify(tabletteData));
-    localStorage.setItem('presfor_tablette_imports', JSON.stringify(tabletteImports));
-  }catch(e){ console.error('tabSaveToStorage (quota ?):', e); }
+  try{ localStorage.setItem('presfor_tablette_imports', JSON.stringify(tabletteImports)); }catch(e){}
+  tabSaveToIDB().then(ok=>{
+    if(ok){ try{ localStorage.removeItem('presfor_tablette_data'); }catch(e){} }   // IndexedDB fait foi : plus de copie partielle périmée
+    else { try{ localStorage.setItem('presfor_tablette_data', JSON.stringify(tabletteData)); }catch(e){ console.error('tabSaveToStorage (quota ?):', e); } }
+  });
 }
 
 // Normalise un code d'étape ("PVCL094-006-000001") en identifiant commun ("094-006-000001")
@@ -12926,6 +12960,7 @@ serverLoad().then(ok => {
   // Le contrôle qualité (rejets, conformes, contrôles) n'était chargé que par le module Publicité :
   // un contrôleur arrivant directement sur CQE sans copie locale voyait une liste vide.
   pubLoadFromFirebase().then(()=>{ cqeRefreshIfOpen(); });
+  cqeAssignLoad().then(()=>cqeRefreshIfOpen());
   aforLoadFromFirebase().then(loaded=>{
     if(loaded){ aforRenderAll(); dosRenderAll(); cqeRefreshIfOpen(); }
     else if(!dossiersAFOR.length){ setTimeout(()=>aforLoadFromFirebase().then(l2=>{ if(l2){ aforRenderAll(); dosRenderAll(); cqeRefreshIfOpen(); } }), 8000); }
