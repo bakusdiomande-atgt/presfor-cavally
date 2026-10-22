@@ -450,7 +450,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-al</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-am</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -5161,7 +5161,7 @@ async function pubLoadFromFirebase(){
         if(JSON.stringify(l)!==JSON.stringify(r)){ pubCQ[k] = r; pubRemoteChanged++; }
       });
     }
-    if(d && d.ctl) cqeCtl = Object.assign({}, d.ctl, cqeCtl);
+    if(d && d.ctl) Object.keys(d.ctl).forEach(k=>{ const r=d.ctl[k], l=cqeCtl[k]; if(!l){ cqeCtl[k]=r; return; } const lu=String(l._u||l.date||''), ru=String((r&&(r._u||r.date))||''); if(ru>lu) cqeCtl[k]=r; });
     try {
       localStorage.setItem('presfor_pub_oppositions', JSON.stringify(pubOppositions));
       localStorage.setItem('presfor_pub_cq', JSON.stringify(pubCQ));
@@ -6466,12 +6466,154 @@ async function cqeReloadData(btn){
   cqeRenderAll();
   showToast('Données rechargées : '+(dossiersAFOR||[]).length.toLocaleString('fr-FR')+' dossiers, '+Object.keys(pubCQ||{}).length.toLocaleString('fr-FR')+' contrôles CQ.');
 }
+
+// ═══════════════════════════════════════════════════════════════
+// GRILLE DE CONTRÔLE QUALITÉ — catalogue des points de contrôle du dossier définitif de CF (14 pièces).
+// Le contrôleur coche les motifs de rejet pour chaque dossier ; il peut ajouter ses propres motifs.
+// Stockage dédié : /presfor/cq_grille/{dossier} (une écriture par dossier) et /presfor/cq_motifs/{id} (motifs ajoutés).
+// ═══════════════════════════════════════════════════════════════
+const GRILLE_CQ = [{"id":"1","code":"DCF","e":[{"id":"1a","t":"Demande d’enquête en vue de l’établissement d’un CF","m":["Document scanné illisible","Absence de dates requises","Absence du numéro d’enregistrement de la demande","Absence de signature du demandeur","Erreur sur les informations concernant l’identification du demandeur ou du gestionnaire (nom, âge, lieu de naissance, nationalité…)","Absence du numéro de la pièce d’identification","Absence d’informations sur l’Opérateur Technique Agréé ou Opérateur Foncier"]}]},{"id":"2","code":"ID","e":[{"id":"2a","t":"La pièce d’identité","m":["Absence de CNI et de tout autre document d’identité (passeport, attestation d’identité, carte consulaire…). Pas motif de rejet pour paiement à l’OF","Photocopie pièce d’identité illisible","Absence du numéro de la pièce d’identité"]}]},{"id":"3","code":"RDC","e":[{"id":"3a","t":"Procès-Verbal de Recensement des Droits Coutumiers","m":["Documents illisibles","Absence de signatures requises","Absence de dates requises ou dates fantaisistes"]},{"id":"3b","t":"Fiche démographique","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Non mention de la qualité des personnes auditionnées","Absence sur la fiche des personnes ayant fait des déclarations"]},{"id":"3c","t":"Déclarations de toutes les personnes auditionnées","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Déclarant n°1 n’est pas le demandeur","Insuffisance d’informations sur la nature des droits (l’usage que peut faire le demandeur de la parcelle) et/ou l’origine des droits du demandeur (comment est-il devenu le propriétaire de la parcelle ?)","Absence de date et de signature du déclarant","Absence audition d’au moins un référent qualifié (parents du demandeur) cas d’héritage","Absence d’audition du cédant (ou d’un référent qualifié) en cas d’achat ou don","Absence d’information sur les occupants ou non de la parcelle","Absence de contrat, déclaration ou de preuve d’achat pour une cession réalisée avant le 14 octobre 2019","Cession réalisée après le 14 octobre 2019, sans CF de la parcelle cédée"]},{"id":"3d","t":"Fiche d’identification des litiges fonciers","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises"]},{"id":"3e","t":"Liste des détenteurs de droits coutumiers collectifs","m":["Document scanné illisible","Absence de date et signature requise","Insuffisance d’information (nom et prénoms, date et lieu de naissance, nature et n° de la pièce d’identité ou du titre d’identité, etc…) sur l’un des détenteurs de droits coutumiers collectifs (pas un motif de rejet)"]},{"id":"3f","t":"Désignation du gestionnaire d’un bien foncier rural collectif","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises"]},{"id":"3g","t":"Etat des droits de propriété ou de droits de concession ou d’occupation accordés par l’Administration (sur tout ou partie de la parcelle objet de la demande de CF)","m":["Document scanné illisible","Absence de la date et signature du commissaire enquêteur","Tableau de l’état insuffisamment renseigné"]},{"id":"3h","t":"Liste des servitudes ou droits d’usage, leur nature et le nom ou la caractérisation des détenteurs de ces droits","m":["Document scanné illisible","Absence de la date et signature du commissaire enquêteur","Liste des servitudes insuffisamment renseigné (information manquante sur la nature, la localisation, le nom ou la caractérisation des détenteurs)"]}]},{"id":"4","code":"PVCL","e":[{"id":"4a","t":"Procès-Verbal des Constats de limites parcelle","m":["Document scanné illisible","Absence de signatures requises (CE, Topographes, voisins limitrophes …)","Absence de dates requises","Absence signature d’un voisin ou son représentant sur le PVCL, avec absence du formulaire de carence de participation du voisin limitrophe concerné","Incohérence entre les noms des voisins inscrits sur le PVCL (PV des constats de limites) et le plan","La qualité \"voisin\" des limitrophes sur la liste de présence du PVCL non mentionnée","Indication de la ligne haute ou moyenne tension électrique comme limite d’une parcelle (spécifiquement l’indication de bandes de lignes de haute et moyenne tension n’est pas un motif de rejet), Indication de voie ferrée comme limite d’une parcelle Indication de piste comme limite d’une parcelle, (indication de route avec emprise n’est pas un motif de rejet) Indication de ruisseaux et cours non permanent comme limite d’une parcelle (l’indication de cours d’eau avec emprise n’est pas un motif de rejet) Non inscription du nom du cours d’eau sur le PV Indication de village, de terre communautaire (sans préciser le nom de la communauté), de basfonds ou de plantation comme limite d’une parcelle"]}]},{"id":"5","code":"PPROV","e":[{"id":"5a","t":"Plan provisoire","m":["Document scanné illisible","Plan de situation non conforme","Indication de la ligne haute ou moyenne tension électrique comme limite d’une parcelle (spécifiquement l’indication de bandes de lignes de haute et moyenne tension n’est pas un motif de rejet), Indication de voie ferrée comme limite d’une parcelle Indication de piste comme limite d’une parcelle, (indication de route avec emprise n’est pas un motif de rejet) Indication de ruisseaux et cours non permanent comme limite d’une parcelle (l’indication de cours d’eau avec emprise n’est pas un motif de rejet) Non inscription du nom du cours d’eau sur le PV Indication de village, de terre communautaire (sans préciser le nom de la communauté), de basfonds ou de plantation comme limite d’une parcelle","Incohérence entre les noms des voisins inscrits sur le PVCL (PV des constats de limites) et le plan","Date d’édition du plan antérieure à celle du PV de constat de limite","Date d’édition du plan postérieure à celle du PV de Clôture de la publicité"]}]},{"id":"6","code":"SHP PPROV","e":[{"id":"6a","t":"Fichier Shp (Shapefile) du Plan provisoire","m":["Absence de fichier Shape (polygone et ou point)","Table attributaire mal renseignée (astérix et autres...)","Chevauchement ou espacement entre parcelles mitoyennes","Parcelles empiétant sur un domaine concurrent au domaine foncier rural, sur un Titre Foncier ou certificat foncier","Incohérence de superficie sur le Shp et sur le plan","Incohérence entre les noms des voisins limitrophes sur le plan et sur le Shp","Parcelle CF située hors polygonale de la DTV"]}]},{"id":"7","code":"AFPUB","e":[{"id":"7a","t":"Annonce de la présentation publique des résultats des enquêtes foncières rurales officielles","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Absence de date sur la fiche d’annonce de publicité","Inconformité du numéro du dossier à présenter en publicité","Absence de plan provisoire à mettre publicité","Inconformité de la superficie sur le Plan Prov et sur la liste des enquêtes faisant l’objet de publicité","Absence du nom du demandeur ou du groupement sur la liste des dossiers à présenter"]}]},{"id":"8","code":"PVOPUB","e":[{"id":"8a","t":"Procès-Verbal d’ouverture de publicité","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Absence du numéro et date de la séance d’ouverture de la publicité","Non-respect du délai d’au moins 1 jour entre l’annonce et l’ouverture de la publicité","Inconformité du numéro du dossier présenté en publicité","Absence du nom du demandeur ou du groupement sur la liste des dossiers présentés","Absence de la liste de présence comportant le nom complet, les qualités et les signatures des personnes présentes (le faible nombre de personnes présentes n’est pas un motif de rejet)"]}]},{"id":"9","code":"PVCPUB","e":[{"id":"9a","t":"Procès-Verbal de Clôture de publicité des résultats des enquêtes foncières rurales officielles","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Absence d’un des documents à annexer au PV","Inconformité du numéro du dossier présenté en publicité","Absence du nom du demandeur sur une des listes","Absence de la liste de présence comportant le nom complet, les qualités et les signatures des personnes présentes (le faible nombre de personnes présentes n’est pas un motif de rejet)","Non description d’une opposition identifiée","Délai de publicité inférieur à 1 mois calendaire"]}]},{"id":"10","code":"CECPDC","e":[{"id":"10a","t":"Constat d’existence continue et paisible des droits coutumiers","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Le quorum des membres signataires n’est pas atteint","Fiche n°1 du PV de constat d’existence continue non signée par le Président du CVGFR","Absence de date et numéro de la demande sur la liste des participants","Absence du formulaire de carence de participation d’un voisin limitrophe (cas de non-signature d’un voisin limitrophe sur le PV de Constat des limites)","L’absence de PV de règlement d’un litige persistant après la clôture de publicité"]}]},{"id":"11","code":"A.VAL","e":[{"id":"11a","t":"Attestation de validation","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Absence de la liste de présence annexée à la validation"]}]},{"id":"12","code":"P DEF","e":[{"id":"12a","t":"Plan définitif","m":["Superficie sur le plan définitif différente de la superficie sur le certificat foncier, inconformité du nom de l’entité sur le plan définitif et le shapefile. Inconformité du nom de village sur le CF et sur le plan","Date d’établissement du Plan définitif antérieure à la date de signature du PV de constat de limite","Date d’édition du Plan définitif postérieure à la date de signature du CF","Absence de signature et du cachet du géomètre-expert"]}]},{"id":"13","code":"SHP P DEF","e":[{"id":"13a","t":"Fichier SHAPE du Plan définitif","m":["Absence de fichier Shape (polygone et ou point)","Table attributaire mal renseignée (astérix et autres...)","Chevauchement ou espacement entre parcelles mitoyennes","Parcelles empiétant sur un domaine concurrent au domaine foncier rural, sur un Titre Foncier ou certificat foncier","Incohérence entre le Shp et le plan (superficie)","Incohérence entre les noms des voisins limitrophes sur le plan et le Shp"]}]},{"id":"14","code":"CF","e":[{"id":"14a","t":"Certificat foncier","m":["Document scanné illisible","Absence des signatures requises","Absence du cachet et du nom du préfet","Absence du nom d’un ayant-droit sur le CFC","Absence de timbres ou insuffisance du montant du timbrage","Absence de dates et toutes informations requises sur le CF","Superficie sur le plan définitif différente de la superficie sur le certificat foncier"]}]}];
+let cqeGrille = {}, cqeMotifs = {};
+try{ const x=localStorage.getItem('presfor_cq_grille'); if(x) cqeGrille=JSON.parse(x); const y=localStorage.getItem('presfor_cq_motifs'); if(y) cqeMotifs=JSON.parse(y); }catch(e){}
+function cqeGrilleSaveLocal(){ try{ localStorage.setItem('presfor_cq_grille', JSON.stringify(cqeGrille)); localStorage.setItem('presfor_cq_motifs', JSON.stringify(cqeMotifs)); }catch(e){} }
+async function cqeFbPut(path, rec){
+  for(let t=0;t<3;t++){
+    try{ const r=await fetch(FIREBASE_URL+'/presfor/'+path+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec),signal:AbortSignal.timeout(20000)}); if(r.ok) return true; }catch(e){}
+    await new Promise(res=>setTimeout(res,1200*(t+1)));
+  }
+  showToast('⚠ Enregistré sur cet ordinateur seulement (Firebase injoignable) : renvoi automatique au prochain chargement.');
+  return false;
+}
+async function cqeGrilleLoad(){
+  let n=0;
+  try{
+    const [g,m] = await Promise.all([
+      fetch(FIREBASE_URL+'/presfor/cq_grille.json',{signal:AbortSignal.timeout(60000)}).then(r=>r.ok?r.json():null).catch(()=>null),
+      fetch(FIREBASE_URL+'/presfor/cq_motifs.json',{signal:AbortSignal.timeout(30000)}).then(r=>r.ok?r.json():null).catch(()=>null)
+    ]);
+    if(g) Object.keys(g).forEach(k=>{ const rem=g[k], loc=cqeGrille[k]; if(!loc || String(rem._u||'')>String(loc._u||'')){ if(!loc || JSON.stringify(loc)!==JSON.stringify(rem)) n++; cqeGrille[k]=rem; } });
+    if(m) Object.keys(m).forEach(k=>{ if(!cqeMotifs[k]){ cqeMotifs[k]=m[k]; n++; } });
+    // renvoi de ce que cet ordinateur a en plus ou de plus récent
+    if(g!==null) Object.keys(cqeGrille).forEach(k=>{ const rem=g&&g[k], loc=cqeGrille[k]; if(!rem || String(loc._u||'')>String(rem._u||'')) cqeFbPut('cq_grille/'+encodeURIComponent(k), loc); });
+    if(m!==null) Object.keys(cqeMotifs).forEach(k=>{ if(!(m&&m[k])) cqeFbPut('cq_motifs/'+encodeURIComponent(k), cqeMotifs[k]); });
+    cqeGrilleSaveLocal();
+  }catch(e){}
+  return n;
+}
+function grilleCatalogue(){
+  // Catalogue de base + motifs ajoutés par les contrôleurs (rattachés à une pièce)
+  return GRILLE_CQ.map(p=>({id:p.id, code:p.code, e:p.e.map(e=>({id:e.id, t:e.t, m:e.m.map((t,i)=>({id:e.id+'-'+(i+1), t}))})), extra:Object.keys(cqeMotifs).filter(k=>cqeMotifs[k].p===p.id).map(k=>({id:k, t:cqeMotifs[k].t, by:cqeMotifs[k].by}))}));
+}
+function grilleMotifTexte(mid){
+  if(cqeMotifs[mid]) return cqeMotifs[mid].t;
+  const m = String(mid).match(/^(\d+[a-z])-(\d+)$/i); if(!m) return mid;
+  for(const p of GRILLE_CQ) for(const e of p.e) if(e.id===m[1]) return e.m[parseInt(m[2],10)-1]||mid;
+  return mid;
+}
+function grillePieceDeMotif(mid){
+  if(cqeMotifs[mid]) return cqeMotifs[mid].p;
+  const m = String(mid).match(/^(\d+)[a-z]-\d+$/i); return m?m[1]:'';
+}
+function grilleResume(id){
+  const g = cqeGrille[id]; if(!g) return null;
+  const ids = g.c||[];
+  return {n:ids.length, textes:ids.map(grilleMotifTexte), g};
+}
+function grilleOpen(id){
+  const d = (dossiersAFOR||[]).find(x=>String(x.id)===String(id)); if(!d){ showToast('Dossier introuvable.'); return; }
+  const g = cqeGrille[d.id];
+  window._gr = {id:d.id, checked:new Set((g&&g.c)||[]), open:new Set()};
+  grilleRender();
+}
+function grilleCan(){ return rejIsAdmin() || rejIsCqe(); }
+function grilleRender(){
+  const S = window._gr; if(!S) return;
+  const d = (dossiersAFOR||[]).find(x=>String(x.id)===String(S.id)); if(!d) return;
+  const can = grilleCan(), E = planEsc, sid = String(d.id).replace(/'/g,"\\'");
+  const g = cqeGrille[d.id], cat = grilleCatalogue();
+  const old = document.getElementById('grille-modal'); const scroll = old ? (old.querySelector('#grille-main')||{}).scrollTop : 0; if(old) old.remove();
+  const nomDem = ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim();
+  const cnt = p=>{ let n=0; p.e.forEach(e=>e.m.forEach(m=>{ if(S.checked.has(m.id)) n++; })); p.extra.forEach(m=>{ if(S.checked.has(m.id)) n++; }); return n; };
+  const motifRow = m=>`<label style="display:flex;gap:8px;align-items:flex-start;padding:4px 0;font-size:12px;cursor:${can?'pointer':'default'};"><input type="checkbox" ${S.checked.has(m.id)?'checked':''} ${can?'':'disabled'} onchange="grilleToggle('${m.id}',this.checked)" style="margin-top:2px;"><span>${E(m.t)}${m.by?` <span style="color:var(--text3);font-size:10px;">(ajouté par ${E(m.by)})</span>`:''}</span></label>`;
+  const piece = p=>{
+    const n = cnt(p), open = S.open.has(p.id) || n>0;
+    return `<div style="border:1px solid ${n?'var(--red)':'var(--border)'};border-radius:8px;margin-bottom:8px;overflow:hidden;">
+      <div onclick="grilleTogglePiece('${p.id}')" style="cursor:pointer;background:${n?'var(--red-lt)':'var(--surface2)'};padding:7px 12px;display:flex;justify-content:space-between;align-items:center;"><b style="font-size:12px;">${p.id}-${E(p.code)}</b><span style="font-size:11px;color:${n?'var(--red)':'var(--text3)'};font-weight:${n?700:400};">${n?n+' motif(s) coché(s)':'RAS'} ${open?'▾':'▸'}</span></div>
+      ${open?`<div style="padding:6px 12px 10px;">${p.e.map(e=>`<div style="margin-top:6px;font-weight:600;color:var(--blue);font-size:11px;">${E(e.id)} — ${E(e.t)}</div>${e.m.map(motifRow).join('')}`).join('')}
+        ${p.extra.length?`<div style="margin-top:6px;font-weight:600;color:var(--blue);font-size:11px;">Autres motifs</div>${p.extra.map(motifRow).join('')}`:''}
+        ${can?`<div style="display:flex;gap:6px;margin-top:8px;"><input type="text" id="gr-new-${p.id}" placeholder="Ajouter un autre motif de rejet pour cette pièce…" style="flex:1;border:1px solid var(--border-med);border-radius:6px;padding:5px 8px;font-size:12px;"><button class="btn-s" onclick="grilleAddMotif('${p.id}')">+ Ajouter</button></div>`:''}</div>`:''}
+    </div>`;
+  };
+  const total = S.checked.size;
+  const modal = document.createElement('div');
+  modal.id = 'grille-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;display:flex;padding:14px;';
+  modal.innerHTML = `<div style="background:var(--surface);border-radius:12px;width:100%;max-width:980px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <div><h3 style="font-family:'Syne',sans-serif;font-size:14px;margin:0;">Grille de contrôle qualité · dossier ${E(d.id)}</h3><div style="font-size:11px;color:var(--text2);">${E(nomDem)} · ${E(d.village||'')} · agent : ${E(d.agent||'—')}</div></div>
+      <button class="btn-s" onclick="grilleClose()">✕ Fermer</button></div>
+    <div id="grille-main" style="flex:1;overflow:auto;padding:12px 16px;">${cat.map(piece).join('')}</div>
+    <div style="border-top:1px solid var(--border);padding:10px 16px;background:var(--surface2);">
+      <textarea id="gr-comm" rows="2" ${can?'':'disabled'} placeholder="Commentaire du contrôleur (facultatif)" style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:6px;font-size:12px;font-family:inherit;">${E((g&&g.comm)||'')}</textarea>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:10px;flex-wrap:wrap;">
+        <span id="gr-total" style="font-size:12px;"><b>${total}</b> motif(s) coché(s) → ${total?'<span style="color:var(--red);font-weight:700;">dossier rejeté</span>':'<span style="color:var(--accent);font-weight:700;">dossier conforme</span>'}${g?` · dernière grille : ${E(g.par||'—')} le ${E(g.date||'')}`:''}</span>
+        ${can?`<button class="btn-p" onclick="grilleSave('${sid}')">Enregistrer la grille</button>`:'<span style="color:var(--text3);font-size:11px;">Lecture seule pour ce profil.</span>'}
+      </div></div></div>`;
+  document.body.appendChild(modal);
+  const mm = document.getElementById('grille-main'); if(mm && scroll) mm.scrollTop = scroll;
+}
+function grilleClose(){ const m=document.getElementById('grille-modal'); if(m) m.remove(); window._gr=null; }
+function grilleToggle(mid, on){
+  const S=window._gr; if(!S) return; if(on) S.checked.add(mid); else S.checked.delete(mid);
+  const t = document.getElementById('gr-total'); const n=S.checked.size;
+  if(t) t.innerHTML = '<b>'+n+'</b> motif(s) coché(s) → '+(n?'<span style="color:var(--red);font-weight:700;">dossier rejeté</span>':'<span style="color:var(--accent);font-weight:700;">dossier conforme</span>');
+}
+function grilleTogglePiece(pid){ const S=window._gr; if(!S) return; const comm=(document.getElementById('gr-comm')||{}).value; if(S.open.has(pid)) S.open.delete(pid); else S.open.add(pid); grilleKeepComm(comm); }
+function grilleKeepComm(comm){ grilleRender(); const c=document.getElementById('gr-comm'); if(c && comm!=null) c.value=comm; }
+function grilleAddMotif(pid){
+  const S=window._gr; if(!S||!grilleCan()) return;
+  const inp = document.getElementById('gr-new-'+pid); const t=((inp&&inp.value)||'').trim();
+  if(t.length<4){ showToast('Saisissez le motif (4 caractères minimum).'); return; }
+  const dup = Object.keys(cqeMotifs).find(k=>cqeMotifs[k].p===pid && cqeMotifs[k].t.toLowerCase()===t.toLowerCase());
+  const id = dup || ('c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5));
+  if(!dup){ cqeMotifs[id] = {p:pid, t, by:cqeWho()||'', d:cqeToday()}; cqeGrilleSaveLocal(); cqeFbPut('cq_motifs/'+encodeURIComponent(id), cqeMotifs[id]); }
+  S.checked.add(id); S.open.add(pid);
+  const comm=(document.getElementById('gr-comm')||{}).value; grilleKeepComm(comm);
+}
+// Enregistrement : au moins un motif coché = dossier rejeté (circuit CQ habituel) ; aucun = dossier conforme.
+function grilleSave(id){
+  if(!grilleCan()) return;
+  const S=window._gr; if(!S) return;
+  const t=cqeToday(), by=cqeWho()||'(inconnu)', ids=[...S.checked];
+  const comm=((document.getElementById('gr-comm')||{}).value||'').trim();
+  const textes=ids.map(grilleMotifTexte);
+  const statut = ids.length ? 'rejete' : 'conforme';
+  const motif = ids.length ? (textes.slice(0,4).join(' | ')+(textes.length>4?' | (+'+(textes.length-4)+' autre(s) motif(s))':'')) : '';
+  const rec = {c:ids, comm, par:by, date:t, _u:new Date().toISOString()};
+  cqeGrille[id]=rec; cqeGrilleSaveLocal(); cqeFbPut('cq_grille/'+encodeURIComponent(id), rec);
+  const prev=cqeCtl[id];
+  const hist=((prev&&prev.hist)||[]).concat([{d:t,by,s:statut}]).slice(-10);
+  cqeCtl[id]={statut,motif,comm,par:by,date:t,hist,_u:new Date().toISOString(),grille:true};
+  let c=pubCQ[id];
+  if(statut==='rejete'){
+    if(!c) c=pubCQ[id]={niveau:null,statut_cq:'REJETÉ (grille de contrôle)',rejete:true,motif_qc1:null,motif_qc2:null,motif_final:motif,superf:null,date_rejet:t,source:'app',grille:true,_u:new Date().toISOString(),ev:[{t:'rejet_app',d:t,by}]};
+    else if(!c.rejete || c.corrige){ c.rejete=true; c.corrige=false; c.date_correction=null; c.corrige_par=null; c.motif_final=motif; c.date_rejet=t; delete c.date_rejet_est; c.statut_cq='REJETÉ (grille de contrôle)'; if(c.source!=='app'){ c.source='app'; c.terr={}; } c.grille=true; cqeLogEvent(id,'rejet_app'); }
+    else { cqeLogEvent(id,'rejet_app'); if(c.source==='app'){ c.motif_final=motif; c.grille=true; } }
+    if(!cqeAssign[id] && !(c.assigne_a)){ c.assigne_a=by; c.assigne_date=t; cqeAssignSet(id,by); }
+  } else if(c && c.source==='app' && c.rejete && !c.corrige && !(c.terr&&Object.keys(c.terr).length)){
+    cqeLogEvent(id,'corrige'); c.corrige=true; c.date_correction=t; c.corrige_par=by;   // aucun motif restant : le rejet issu de la grille est clos
+  }
+  pubSave();
+  showToast('Grille enregistrée — dossier '+id+' : '+(statut==='rejete'?'rejeté ('+ids.length+' motif(s)).':'conforme.'));
+  grilleClose(); cqeRenderAll();
+}
+
 // Actualisation automatique : un contrôleur voit les attributions et rejets faits par d'autres sans recharger la page.
 setInterval(async ()=>{
   try{
     const m=document.getElementById('module-cqe'); if(!m || !m.classList.contains('active') || document.hidden) return;
     if(_pubPushing) return;
-    const nAs = await cqeAssignLoad();
+    const nAs = (await cqeAssignLoad()) + (await cqeGrilleLoad());
     await pubLoadFromFirebase();
     if(pubRemoteChanged>0 || nAs>0){
       const modalOpen = ['terr-modal','cqe-dossier-modal','terr-struct'].some(id=>{ const e=document.getElementById(id); return e && e.style.display!=='none'; });
@@ -6585,6 +6727,7 @@ function cqeRenderAll(){
     <td style="padding:8px 12px;color:var(--text2);">${d.village||''}</td>
     <td style="padding:8px 12px;">${d.agent||'—'}</td>
     ${derniereColonne}
+    <td style="padding:8px 12px;white-space:nowrap;">${(()=>{ const r=grilleResume(d.id); return (r?`<span style="font-size:10px;color:${r.n?'var(--red)':'var(--accent)'};margin-right:4px;">${r.n?r.n+' motif(s)':'✓'}</span>`:'')+`<button class="btn-s" onclick="event.stopPropagation();grilleOpen('${String(d.id).replace(/'/g,"\\'")}')">Grille</button>`; })()}</td>
   </tr>`;
   }).join('');
   contentEl.innerHTML = motifBreakdownHtml + `<div class="tw" style="overflow:hidden;">
@@ -6619,8 +6762,8 @@ function cqeRenderAll(){
     <div style="padding:8px 16px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);">${vue==='conformes'?'Dossiers conformes':vue==='non'?'Dossiers non contrôlés':vue==='tous'?'Tous les dossiers':vueCorriges?'Dossiers corrigés':'Dossiers rejetés'} (contrôle qualité) — ${filtered.length.toLocaleString('fr-FR')} résultat(s)</div>
     <div style="overflow-x:auto;">
     <table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">N° Dossier</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Demandeur</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Village</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Agent</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">${vueAutre?'État':vueCorriges?'Corrigé par':'Rejeté le'}</th></tr></thead>
-      <tbody>${rows || '<tr><td colspan="5" style="padding:16px;text-align:center;color:var(--text3);">Aucun résultat pour ces filtres</td></tr>'}</tbody>
+      <thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">N° Dossier</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Demandeur</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Village</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Agent</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">${vueAutre?'État':vueCorriges?'Corrigé par':'Rejeté le'}</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Grille</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--text3);">Aucun résultat pour ces filtres</td></tr>'}</tbody>
     </table>
     </div>
     ${filtered.length>200 ? `<div style="padding:8px 16px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);">${filtered.length.toLocaleString('fr-FR')} résultats au total — 200 premiers affichés (affinez les filtres ou exportez le CSV pour tout voir).</div>` : ''}
@@ -7454,7 +7597,7 @@ function cqeRenderRejets(){
   const crit = aCorr.filter(x=>x.e.jours!=null && x.e.jours>=CQE_CRIT_DAYS).length, alr = aCorr.filter(x=>x.e.jours!=null && x.e.jours>=CQE_ALERT_DAYS && x.e.jours<CQE_CRIT_DAYS).length;
   const orig = o=>aCorr.filter(x=>x.e.origine===o||(o==='rdc'&&x.e.origine==='rdc+pvcl')||(o==='pvcl'&&x.e.origine==='rdc+pvcl')).length;
   kpiEl.innerHTML = `
-    <div class="kpi ${aCorr.length?'red':''}"><div class="kpi-l">Rejetés à corriger</div><div class="kpi-v">${aCorr.length.toLocaleString('fr-FR')}</div><div class="kpi-s">AFOR ${orig('afor')} · plan ${orig('plan')} · RDC ${orig('rdc')} · PVCL ${orig('pvcl')}</div></div>
+    <div class="kpi ${aCorr.length?'red':''}"><div class="kpi-l">Rejetés à corriger</div><div class="kpi-v">${aCorr.length.toLocaleString('fr-FR')}</div><div class="kpi-s">AFOR ${orig('afor')} · plan ${orig('plan')} · grille ${orig('grille')} · RDC ${orig('rdc')} · PVCL ${orig('pvcl')}</div></div>
     <div class="kpi"><div class="kpi-l">Rejetés puis corrigés</div><div class="kpi-v">${corr.length.toLocaleString('fr-FR')}</div></div>
     <div class="kpi ${nonAss?'amber':''}"><div class="kpi-l">Sans responsable CQ</div><div class="kpi-v">${nonAss.toLocaleString('fr-FR')}</div><div class="kpi-s">à attribuer à un contrôleur</div></div>
     <div class="kpi ${crit?'red':alr?'amber':''}"><div class="kpi-l">En retard de correction</div><div class="kpi-v">${crit+alr}</div><div class="kpi-s">${crit} ≥ ${CQE_CRIT_DAYS} j · ${alr} ≥ ${CQE_ALERT_DAYS} j</div></div>`;
@@ -7489,7 +7632,7 @@ function cqeRenderRejets(){
     <div style="padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);align-items:center;">
       <input type="text" placeholder="N° dossier, nom, village, agent, contrôleur…" value="${planEsc(rejFilter.q)}" oninput="rejFilter.q=this.value;rejFilter.page=0;clearTimeout(window._rjT);window._rjT=setTimeout(cqeRenderRejets,250);" style="${S}min-width:220px;">
       <select onchange="rejSetFilter('etat',this.value)" style="${S}">${opt([['a_corriger','À corriger'],['corrige','Corrigés'],['','Tous']],rejFilter.etat)}</select>
-      <select onchange="rejSetFilter('origine',this.value)" style="${S}">${opt([['','Toutes origines'],['afor','AFOR (fichier / statut)'],['plan','CQ — plan'],['rdc','CQ — RDC'],['pvcl','CQ — PVCL']],rejFilter.origine)}</select>
+      <select onchange="rejSetFilter('origine',this.value)" style="${S}">${opt([['','Toutes origines'],['afor','AFOR (fichier / statut)'],['grille','CQ — grille'],['plan','CQ — plan'],['rdc','CQ — RDC'],['pvcl','CQ — PVCL']],rejFilter.origine)}</select>
       <select onchange="rejSetFilter('resp',this.value)" style="${S}">${opt([['','Tous les responsables'],['__none','Sans responsable']].concat(me?[[me,'Mon portefeuille']]:[]).concat(names.filter(n=>n!==me).map(n=>[n,n])),rejFilter.resp)}</select>
       <select onchange="rejSetFilter('dept',this.value)" style="${S}">${opt([['','Tous départements']].concat(depts.map(x=>[x,x])),rejFilter.dept)}</select>
       <span style="font-size:11px;color:var(--text3);">${total.toLocaleString('fr-FR')} dossier(s)</span>
@@ -7503,7 +7646,7 @@ function cqeRenderRejets(){
       <td style="padding:6px 10px;white-space:nowrap;">${c&&c.date_rejet?planEsc(c.date_rejet.split('-').reverse().join('/')):'—'}</td><td style="padding:6px 10px;color:${jc};font-weight:${jc!=='inherit'?700:400};">${j==null?'—':j+' j'}</td>
       <td style="padding:6px 10px;">${x.e.etat==='rejete'?'<span style="color:var(--red);font-weight:700;">À corriger</span>':'<span style="color:var(--accent);font-weight:700;">Corrigé</span>'}</td>
       <td style="padding:6px 10px;">${ctlSel(x.d.id,x.resp)}</td>
-      <td style="padding:6px 10px;white-space:nowrap;text-align:right;">${can&&x.e.etat==='rejete'?`${(x.resp===me||(x.resp&&!rejIsAdmin()))?'':`<button class="btn-s" onclick="rejPrendre('${id}')">Prendre en charge</button> `}${(c&&(rejIsAdmin()||x.resp===me))?`<button class="btn-s" onclick="rejCorrige('${id}')">✓ Corrigé</button> `:''}`:''}<button class="btn-s" onclick="terrOpen('${id}')">Fiche</button></td></tr>`; }).join('')||'<tr><td colspan="11" style="padding:16px;text-align:center;color:var(--text3);">Aucun dossier ne correspond.</td></tr>'}</tbody></table>
+      <td style="padding:6px 10px;white-space:nowrap;text-align:right;">${can&&x.e.etat==='rejete'?`${(x.resp===me||(x.resp&&!rejIsAdmin()))?'':`<button class="btn-s" onclick="rejPrendre('${id}')">Prendre en charge</button> `}${(c&&(rejIsAdmin()||x.resp===me))?`<button class="btn-s" onclick="rejCorrige('${id}')">✓ Corrigé</button> `:''}`:''}<button class="btn-s" onclick="grilleOpen('${id}')">Grille</button> <button class="btn-s" onclick="terrOpen('${id}')">Fiche</button></td></tr>`; }).join('')||'<tr><td colspan="11" style="padding:16px;text-align:center;color:var(--text3);">Aucun dossier ne correspond.</td></tr>'}</tbody></table>
     ${pages>1?`<div style="padding:8px 16px;display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);font-size:11px;"><button class="btn-s" ${rejFilter.page===0?'disabled':''} onclick="rejFilter.page--;cqeRenderRejets()">← Précédent</button> Page ${rejFilter.page+1} / ${pages} <button class="btn-s" ${rejFilter.page>=pages-1?'disabled':''} onclick="rejFilter.page++;cqeRenderRejets()">Suivant →</button></div>`:''}
   </div>`;
 }
@@ -7534,9 +7677,9 @@ function rejOrigine(d){
   if(!c || (!c.rejete && !c.corrige)) return afor ? 'afor' : null;
   if(c.source!=='app') return 'afor';
   const t = Object.assign({}, c.terr_orig||{}, c.terr||{}), a=!!t.rdc, b=!!t.pvcl;
-  return a&&b ? 'rdc+pvcl' : a ? 'rdc' : b ? 'pvcl' : 'plan';
+  return a&&b ? 'rdc+pvcl' : a ? 'rdc' : b ? 'pvcl' : c.grille ? 'grille' : 'plan';
 }
-const REJ_LIB = {afor:'AFOR (fichier)', plan:'CQ — plan', rdc:'CQ — RDC', pvcl:'CQ — PVCL', 'rdc+pvcl':'CQ — RDC + PVCL'};
+const REJ_LIB = {afor:'AFOR (fichier)', grille:'CQ — grille', plan:'CQ — plan', rdc:'CQ — RDC', pvcl:'CQ — PVCL', 'rdc+pvcl':'CQ — RDC + PVCL'};
 function rejEtat(d){
   const c = pubCQ && pubCQ[d.id], o = rejOrigine(d);
   let etat = 'ok';
@@ -7554,8 +7697,8 @@ function rejBadge(d){
   return `<span style="color:${col};font-weight:700;">${lab}</span><div style="font-size:10px;color:var(--text3);">${planEsc(REJ_LIB[e.origine]||'')}${e.jours!=null?' · '+e.jours+' j':''}</div>`;
 }
 function rejCompteurs(ds){
-  const r = {total:0, afor:0, plan:0, rdc:0, pvcl:0, corriges:0};
-  (ds||[]).forEach(d=>{ const e=rejEtat(d); if(e.etat==='rejete'){ r.total++; const o=e.origine; if(o==='afor') r.afor++; else if(o==='plan') r.plan++; else { if(/rdc/.test(o)) r.rdc++; if(/pvcl/.test(o)) r.pvcl++; } } else if(e.etat==='corrige') r.corriges++; });
+  const r = {total:0, afor:0, plan:0, grille:0, rdc:0, pvcl:0, corriges:0};
+  (ds||[]).forEach(d=>{ const e=rejEtat(d); if(e.etat==='rejete'){ r.total++; const o=e.origine; if(o==='afor') r.afor++; else if(o==='plan') r.plan++; else if(o==='grille') r.grille++; else { if(/rdc/.test(o)) r.rdc++; if(/pvcl/.test(o)) r.pvcl++; } } else if(e.etat==='corrige') r.corriges++; });
   return r;
 }
 // Un contrôle tablette « incohérent » crée (ou met à jour) un rejet CQ ; « conforme » clôt le rejet issu de ce contrôle.
@@ -7660,7 +7803,7 @@ function terrRenderTab(){
     <div class="kpi ${rows.filter(x=>x.ctl&&x.ctl.err).length?'red':''}"><div class="kpi-l">RDC avec anomalie grave</div><div class="kpi-v">${rows.filter(x=>x.ctl&&x.ctl.err).length}</div><div class="kpi-s">${rows.filter(x=>x.ctl&&!x.ctl.err&&x.ctl.warn).length} avec alertes seulement</div></div>
     <div class="kpi ${rows.filter(x=>x.ctlP&&x.ctlP.err).length?'red':''}"><div class="kpi-l">PVCL avec anomalie grave</div><div class="kpi-v">${rows.filter(x=>x.ctlP&&x.ctlP.err).length}</div><div class="kpi-s">${rows.filter(x=>x.ctlP&&!x.ctlP.err&&x.ctlP.warn).length} avec alertes seulement</div></div>
     <div class="kpi"><div class="kpi-l">PVCL à vérifier</div><div class="kpi-v">${cnt('pvcl','a_verifier')}</div></div>
-    <div class="kpi ${rc.total?'red':''}"><div class="kpi-l">Dossiers rejetés (à corriger)</div><div class="kpi-v">${rc.total}</div><div class="kpi-s">AFOR ${rc.afor} · plan ${rc.plan} · RDC ${rc.rdc} · PVCL ${rc.pvcl} · ${rc.corriges} corrigé(s)</div></div>
+    <div class="kpi ${rc.total?'red':''}"><div class="kpi-l">Dossiers rejetés (à corriger)</div><div class="kpi-v">${rc.total}</div><div class="kpi-s">AFOR ${rc.afor} · plan ${rc.plan} · grille ${rc.grille} · RDC ${rc.rdc} · PVCL ${rc.pvcl} · ${rc.corriges} corrigé(s)</div></div>
     <div class="kpi ${(orph('minutes')+orph('observations'))?'amber':''}"><div class="kpi-l">Fiches sans dossier</div><div class="kpi-v">${orph('minutes')+orph('observations')}</div><div class="kpi-s">${orph('minutes')} RDC · ${orph('observations')} PVCL non rattachés</div></div>`;
   if(!rows.length){
     contentEl.innerHTML = terrInventaire() + '<div class="empty-state"><p style="font-size:13px;">Aucune fiche RDC ou PVCL de tablette n\'est rattachée à un dossier. Importez les ZIP de tablette (Imports → Données tablette).</p><p style="margin-top:10px;"><button class="btn-s" onclick="terrShowStructure()">🔎 Analyser la structure des fiches</button></p></div>';
@@ -13034,6 +13177,7 @@ serverLoad().then(ok => {
   // un contrôleur arrivant directement sur CQE sans copie locale voyait une liste vide.
   pubLoadFromFirebase().then(()=>{ cqeRefreshIfOpen(); });
   cqeAssignLoad().then(()=>cqeRefreshIfOpen());
+  cqeGrilleLoad().then(()=>cqeRefreshIfOpen());
   aforLoadFromFirebase().then(loaded=>{
     if(loaded){ aforRenderAll(); dosRenderAll(); cqeRefreshIfOpen(); }
     else if(!dossiersAFOR.length){ setTimeout(()=>aforLoadFromFirebase().then(l2=>{ if(l2){ aforRenderAll(); dosRenderAll(); cqeRefreshIfOpen(); } }), 8000); }
