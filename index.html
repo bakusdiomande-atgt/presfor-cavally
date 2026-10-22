@@ -63,6 +63,12 @@ body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--t
 
 /* ── Module panels ── */
 .module{display:none;}
+@media(max-width:1700px){.tb-mod{padding:0 8px;gap:4px;font-size:11px;}#hdate{display:none;}}
+@media(max-width:1300px){.tb-mod svg{display:none;}.topbar{padding:0 8px;}}
+#module-cqe .page-head{flex-wrap:wrap;gap:8px 12px;}
+#module-cqe .page-head .btn-row{flex-wrap:wrap;gap:6px;}
+#module-cqe .main{min-width:0;max-width:100%;overflow-x:hidden;}
+#module-cqe .tw{overflow-x:auto;}
 #module-rapport{flex-direction:column;}
 #module-rapport>div{width:100%;box-sizing:border-box;}
 .module.active{display:block;}
@@ -430,7 +436,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-ab</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-ad</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -5068,20 +5074,28 @@ function pubSave(){
   } catch(e) {}
   // Sauvegarder sur Firebase
   if(typeof syncPendingStart==='function') syncPendingStart();
+  // Fusion (PATCH par dossier) : une sauvegarde ne peut plus effacer les contrôles d'autres dossiers
+  // présents sur Firebase mais absents de cet ordinateur (ancien comportement : remplacement complet).
+  const body = { ts: new Date().toISOString() };
+  const put = (pref, obj)=>{ Object.keys(obj||{}).forEach(k=>{ body[pref+'/'+k] = obj[k]; }); };
+  put('cq', pubCQ); put('ctl', cqeCtl); put('oppositions', pubOppositions);
   fetch(FIREBASE_URL + '/presfor/pub_data.json', {
-    method: 'PUT',
+    method: 'PATCH',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ oppositions: pubOppositions, cq: pubCQ, ctl: cqeCtl, ts: new Date().toISOString() }),
-    signal: AbortSignal.timeout(15000)
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60000)
   }).catch(e => { console.warn('pubSave Firebase:', e.message); if(typeof updateSyncIndicator==='function') updateSyncIndicator('error'); })
     .finally(()=>{ if(typeof syncPendingEnd==='function') syncPendingEnd(); });
 }
 
+let pubLoadStatus = 'non tenté', pubRemoteLoaded = false;
 async function pubLoadFromFirebase(){
   try {
     const r = await fetch(FIREBASE_URL + '/presfor/pub_data.json', { signal: AbortSignal.timeout(40000) });
-    if(!r.ok) return;
+    if(!r.ok){ pubLoadStatus='Firebase a refusé la lecture (HTTP '+r.status+')'; return; }
     const d = await r.json();
+    pubLoadStatus = (d && d.cq) ? ('chargé : '+Object.keys(d.cq).length.toLocaleString('fr-FR')+' contrôle(s) CQ sur Firebase'+(d.ts?' (dernière sauvegarde '+new Date(d.ts).toLocaleString('fr-FR')+')':'')) : 'Firebase ne contient aucun contrôle CQ';
+    pubRemoteLoaded = true;
     if(d && d.oppositions) pubOppositions = Object.assign({}, d.oppositions, pubOppositions);
     if(d && d.cq) pubCQ = Object.assign({}, d.cq, pubCQ);
     if(d && d.ctl) cqeCtl = Object.assign({}, d.ctl, cqeCtl);
@@ -5090,7 +5104,7 @@ async function pubLoadFromFirebase(){
       localStorage.setItem('presfor_pub_cq', JSON.stringify(pubCQ));
       localStorage.setItem('presfor_cqe_ctl', JSON.stringify(cqeCtl));
     } catch(e) {}
-  } catch(e) { console.warn('pubLoadFromFirebase:', e.message); }
+  } catch(e) { pubLoadStatus='erreur réseau : '+e.message; console.warn('pubLoadFromFirebase:', e.message); }
 }
 
 // Calculer les infos publicité d'un dossier AFOR
@@ -6347,6 +6361,13 @@ function indRenderGenre(){
   indGenreDonut('ind-genre-card-5', iconPerson, 'Exploitantes', 0, 0, 'contrats', 0);
 }
 
+function cqeRepublish(){
+  if(!currentUser || currentUser.role!=='admin'){ showToast('Réservé à l\'administrateur.'); return; }
+  const n=Object.keys(pubCQ||{}).length;
+  if(!n){ showToast('Aucun contrôle CQ en mémoire sur cet ordinateur.'); return; }
+  if(!confirm('Republier '+n.toLocaleString('fr-FR')+' contrôle(s) CQ de cet ordinateur sur Firebase ?\n(Fusion : rien n\'est supprimé sur Firebase.)')) return;
+  pubSave(); showToast(n.toLocaleString('fr-FR')+' contrôles CQ republiés.');
+}
 async function cqeReloadData(btn){
   if(btn){ btn.disabled=true; btn.textContent='Chargement…'; }
   try{ await pubLoadFromFirebase(); }catch(e){}
@@ -6386,7 +6407,7 @@ function cqeRenderAll(){
     <div class="kpi"><div class="kpi-l">Non encore contrôlés</div><div class="kpi-v">${(afor.length-cqDossiers.length).toLocaleString('fr-FR')}</div></div>
     <div class="kpi ${sansGnssApresPub.length>0?'amber':''}"><div class="kpi-l">Publicité sans GNSS</div><div class="kpi-v">${sansGnssApresPub.length.toLocaleString('fr-FR')}</div><div class="kpi-s">${sansGnssApresPub.length>0?'À vérifier':'Cohérent'}</div></div>`;
   if(!cqDossiers.length){
-    contentEl.innerHTML = `<div class="empty-state"><p style="font-size:13px;">Aucun dossier n'est encore passé par le contrôle qualité.</p><p style="font-size:11px;color:var(--text3);margin-top:6px;">${(dossiersAFOR||[]).length?'':'La base des dossiers n\'est pas encore chargée. '}Si vous vous attendiez à voir des dossiers, rechargez les données depuis le serveur.</p><p style="margin-top:8px;"><button class="btn-s" onclick="cqeReloadData(this)">↻ Recharger les données</button></p></div>`;
+    contentEl.innerHTML = `<div class="empty-state"><p style="font-size:13px;">Aucun dossier n'est encore passé par le contrôle qualité.</p><p style="font-size:11px;color:var(--text3);margin-top:6px;">${(dossiersAFOR||[]).length?'':'La base des dossiers n\'est pas encore chargée. '}Si vous vous attendiez à voir des dossiers, rechargez les données depuis le serveur.</p><p style="font-size:10px;color:var(--text3);margin-top:4px;">Contrôles CQ — ${planEsc(pubLoadStatus)} · en mémoire sur cet ordinateur : ${Object.keys(pubCQ||{}).length.toLocaleString('fr-FR')}</p>${(currentUser&&currentUser.role==='admin'&&Object.keys(pubCQ||{}).length)?'<p style="margin-top:6px;"><button class="btn-s" onclick="cqeRepublish()">↑ Republier les contrôles CQ de cet ordinateur sur Firebase</button></p>':''}<p style="margin-top:8px;"><button class="btn-s" onclick="cqeReloadData(this)">↻ Recharger les données</button></p></div>`;
     return;
   }
   // Motif retenu par dossier : le plus "avancé" disponible (validation finale > QC2 > QC1)
