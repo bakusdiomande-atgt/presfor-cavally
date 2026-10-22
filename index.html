@@ -436,7 +436,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-ah</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-ai</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -5115,7 +5115,7 @@ async function pubPushToFirebase(force){
   return {ok:!failed, sent, failed};
 }
 
-let pubLoadStatus = 'non tenté', pubRemoteLoaded = false, pubRemoteChanged = 0;
+let pubLoadStatus = 'non tenté', pubRemoteLoaded = false, pubRemoteChanged = 0, pubLocalAhead = 0;
 async function pubLoadFromFirebase(){
   try {
     const r = await fetch(FIREBASE_URL + '/presfor/pub_data.json', { signal: AbortSignal.timeout(40000) });
@@ -5125,14 +5125,23 @@ async function pubLoadFromFirebase(){
     pubRemoteLoaded = true;
     try{ ['cq','ctl','oppositions'].forEach(pf=>{ const o=d&&d[pf]; if(o) Object.keys(o).forEach(k=>{ _pubSent[pf+'/'+k]=JSON.stringify(o[k]); }); }); }catch(e){}
     if(d && d.oppositions) pubOppositions = Object.assign({}, d.oppositions, pubOppositions);
-    pubRemoteChanged = 0;
+    pubRemoteChanged = 0; pubLocalAhead = 0;
     if(d && d.cq){
       // Fusion par dossier : la version la plus récente (champ _u) l'emporte. Avant, la copie locale gagnait toujours :
       // une attribution ou un rejet fait par un autre utilisateur n'apparaissait jamais chez les contrôleurs.
       Object.keys(d.cq).forEach(k=>{
         const r = d.cq[k], l = pubCQ[k];
         if(!l){ pubCQ[k] = r; pubRemoteChanged++; return; }
-        if(String(l._u||'') > String((r&&r._u)||'')) return;
+        const lu = String(l._u||''), ru = String((r&&r._u)||'');
+        if(lu > ru){ if(JSON.stringify(l)!==JSON.stringify(r)) pubLocalAhead++; return; }
+        if(!lu && !ru){
+          // Aucune des deux versions n'est datée (modifications antérieures à cette version) : on ne perd rien,
+          // la copie locale prévaut champ par champ et complète avec ce que Firebase a en plus (ex. une attribution).
+          const m = Object.assign({}, r, l);
+          if(JSON.stringify(m)!==JSON.stringify(r)) pubLocalAhead++;
+          if(JSON.stringify(m)!==JSON.stringify(l)){ pubCQ[k] = m; pubRemoteChanged++; }
+          return;
+        }
         if(JSON.stringify(l)!==JSON.stringify(r)){ pubCQ[k] = r; pubRemoteChanged++; }
       });
     }
@@ -5142,6 +5151,7 @@ async function pubLoadFromFirebase(){
       localStorage.setItem('presfor_pub_cq', JSON.stringify(pubCQ));
       localStorage.setItem('presfor_cqe_ctl', JSON.stringify(cqeCtl));
     } catch(e) {}
+    if(pubLocalAhead>0 && typeof pubPushToFirebase==='function'){ setTimeout(()=>pubPushToFirebase(false), 300); }
   } catch(e) { pubLoadStatus='erreur réseau : '+e.message; console.warn('pubLoadFromFirebase:', e.message); }
 }
 
