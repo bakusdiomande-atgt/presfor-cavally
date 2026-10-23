@@ -450,7 +450,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-aq</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-at</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -8341,48 +8341,135 @@ function terrRdcControls(d, rec){
 }
 function pvCtlCounts(res){ return {err:res.filter(x=>x.s==='err').length, warn:res.filter(x=>x.s==='warn').length}; }
 
-function terrRenderPV(d, rec){
-  const E = planEsc, members = rec.investigationMembers||[], people = rec.interviewedPeople||[];
-  const sec = (t,body)=>`<div style="margin:12px 0 4px;font-weight:700;color:var(--blue);font-size:12px;">${t}</div>${body}`;
-  const th = 'text-align:left;padding:4px 8px;font-size:10px;text-transform:uppercase;color:var(--text3);';
-  const td = 'padding:4px 8px;border-top:1px solid var(--border);vertical-align:top;';
-  const tbl = (heads, rows)=> rows.length ? `<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:var(--surface2);">${heads.map(h=>`<th style="${th}">${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>` : '<div style="color:var(--text3);font-size:11px;">Aucun.</div>';
-  const ok = '<span style="color:var(--accent);font-weight:700;">✓</span>', ko = '<span style="color:var(--red);font-weight:700;">✗ manquante</span>';
+// ── PV officiel (format AFOR) reconstitué depuis la fiche tablette — lecture seule ─────────────────
+const PV_MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+function pvMots(n){
+  const U=['zéro','un','deux','trois','quatre','cinq','six','sept','huit','neuf','dix','onze','douze','treize','quatorze','quinze','seize','dix-sept','dix-huit','dix-neuf'];
+  const D=['','','vingt','trente','quarante','cinquante','soixante'];
+  if(n<20) return U[n];
+  if(n<70){ const d=Math.floor(n/10), u=n%10; return D[d]+(u===1?' et un':u?'-'+U[u]:''); }
+  if(n<80){ const u=n-60; return 'soixante'+(u===11?' et onze':'-'+U[u]); }
+  const u=n-80; return u===0?'quatre-vingts':'quatre-vingt-'+U[u];
+}
+function pvDateTexte(iso){
+  const m = String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})/); if(!m) return {an:'',jm:'',fr:''};
+  const y=+m[1], dd=+m[3], mm=+m[2];
+  return {an:(y>=2000&&y<2100)?('deux mil'+(y>2000?' '+pvMots(y-2000):'')):String(y), jm:dd+' '+PV_MOIS[mm-1], fr:m[3]+'/'+m[2]+'/'+m[1]};
+}
+function pvFind(o, re, depth){   // recherche d'une valeur texte/numérique par nom de clé (premier niveau d'abord)
+  depth = depth||0; if(!o || typeof o!=='object' || depth>3) return '';
+  for(const k of Object.keys(o)){ const v=o[k]; if(re.test(k) && (typeof v==='string'||typeof v==='number') && String(v).trim()!=='' && String(v).length<200) return String(v).trim(); if(re.test(k) && v && typeof v==='object' && (v.label||v.name)) return String(v.label||v.name); }
+  for(const k of Object.keys(o)){ const v=o[k]; if(v && typeof v==='object' && !Array.isArray(v)){ const r=pvFind(v,re,depth+1); if(r) return r; } }
+  return '';
+}
+function pvPick(o, re){ if(!o||typeof o!=='object') return ''; for(const k of Object.keys(o)){ if(re.test(k)){ const v=o[k]; if(v==null) continue; if(typeof v==='object') return (v.label||v.name||''); const s=String(v).trim(); if(s && s.length<2000 && !/^data:image/.test(s)) return s; } } return ''; }
+function pvCss(){ return `<style>
+  .pvo{background:#e9ecef;padding:10px;border-radius:8px;}
+  .pvo-page{background:#fff;color:#111;font-family:'Times New Roman',serif;font-size:12px;max-width:820px;margin:0 auto 14px;padding:22px 28px 36px;position:relative;box-shadow:0 1px 4px rgba(0,0,0,.25);page-break-after:always;user-select:none;-webkit-user-select:none;}
+  .pvo-hd{text-align:center;font-size:9px;line-height:1.35;margin-bottom:12px;}
+  .pvo-box{border:2px solid #00a651;padding:10px 16px;font-size:11px;line-height:1.7;margin:0 8px 14px;}
+  .pvo-band{background:#00a651;color:#111;text-align:center;font-weight:700;font-size:13px;padding:10px 8px;margin:0 -28px;}
+  .pvo-body{border:0;padding:14px 4px 10px;font-size:12px;line-height:1.6;}
+  .pvo-f{border-bottom:1px dotted #00a651;padding:0 6px;}
+  .pvo-t{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px;}
+  .pvo-t th{background:#00a651;border:2px solid #fff;padding:7px 5px;text-align:center;font-size:10px;}
+  .pvo-t td{border:1.5px solid #00a651;padding:9px 7px;vertical-align:middle;min-height:30px;}
+  .pvo-eo{position:absolute;left:28px;bottom:10px;border:2px solid #111;padding:3px 14px;font-weight:700;font-size:12px;}
+  .pvo-ul{margin:4px 0 0 18px;font-size:11px;line-height:1.7;} .pvo-nr{color:#999;font-style:italic;}
+  .pvo-ans{margin:2px 0 8px 14px;padding-left:8px;border-left:4px solid #00a651;} .pvo-small{font-size:10px;font-style:italic;margin-top:10px;}
+  .pvo-ok{color:#0a7a3a;font-weight:700;font-size:10px;} .pvo-ko{color:#c62828;font-weight:700;font-size:10px;} .pvo-hr{border:0;border-top:1px dashed #bbb;margin:12px 0;}
+  .pvo-node{font-size:11px;background:#f4f4f4;padding:4px 8px;margin:4px 0;}
+  .pvo-eo2{position:absolute;left:28px;bottom:10px;font-size:11px;}
+  .pvo-pc{background:#fff;color:#111;font-family:'Times New Roman',serif;}
+  @media print{.pvo{background:#fff;padding:0;} .pvo-page{box-shadow:none;margin:0;}}
+  </style>`; }
+function pvOfficielHtml(d, rec){
+  const E=planEsc, members=rec.investigationMembers||[], people=rec.interviewedPeople||[];
+  const t = (typeof tabMatchForDossier==='function') ? tabMatchForDossier(d) : null, req = (t&&t.requests)||{}, pvcl = (t&&t.observations)||{};
+  const ce = members.find(pvIsCE), holder = people.find(pvIsHolder)||members.find(pvIsHolder);
+  const up = s=>String(s||'').toUpperCase();
+  const numPV = tabNormCode(rec.minutesNumber||''), dPV = terrRecDate(rec,'rdc')||'', dtx = pvDateTexte(dPV);
+  const dReq = terrDay(req.requestDate)||terrDay(req.creationDate)||dPV;
+  const fr = iso=>iso?iso.split('-').reverse().join('/'):'';
+  const village = d.village || pvFind(rec,/village/i) || pvFind(req,/village/i);
+  const region = pvFind(rec,/^region/i) || pvFind(req,/^region/i) || 'CAVALLY';
+  const sp = d.sp || pvFind(rec,/cspgfr|sous.?pref/i) || pvFind(req,/cspgfr|sous.?pref/i);
+  const nomDem = holder ? (((holder.lastname||'')+' '+(holder.firstname||'')).trim()) : ((d.nom_demandeur||'')+' '+(d.prenom||'')).trim();
+  const manager = rec.manager ? (rec.manager.fullName || pvName(rec.manager)) : '';
+  const superf = pvFind(pvcl,/estimatedarea|superficie|area/i) || (d.superficie_declaree?String(d.superficie_declaree):'');
+  const lieu = village;
   const temoins = new Set((rec.intercalaire||[]).map(i=>agNormTok(i.nomTemoin).join(' ')));
-  const ce = members.find(pvIsCE);
-  // Contrôles automatiques
-  const res = terrRdcControls(d, rec), col = {err:'var(--red)',warn:'var(--amber-txt)',info:'var(--text3)'}, ic = {err:'✗',warn:'⚠',info:'ℹ'};
-  let h = sec('Contrôles automatiques', res.length ? '<div style="font-size:11px;">'+res.map(x=>`<div style="padding:3px 0;color:${col[x.s]};">${ic[x.s]} ${E(x.t)}</div>`).join('')+'</div>' : '<div style="color:var(--accent);font-size:11px;">✓ Aucune anomalie détectée automatiquement.</div>');
-  h += sec('Identification', `<div style="font-size:11px;">N° du PV : <b>${E(tabNormCode(rec.minutesNumber))}</b> · date : <b>${E(terrRecDate(rec,'rdc')?terrRecDate(rec,'rdc').split('-').reverse().join('/'):'—')}</b> · Commissaire-enquêteur : <b>${E(ce?pvName(ce):'—')}</b></div>`);
-  h += sec('Fiche démographique ('+people.length+')', tbl(['N°','Qualité','Nom et prénoms','Nationalité','Pièce d\'identité','Audition'], people.map((p,i)=>{ const aud = pvIsHolder(p) || temoins.has(agNormTok(pvName(p)).join(' ')) ? 'Auditionné' : 'Non auditionné';
-    return `<tr><td style="${td}">${i+1}</td><td style="${td}">${E(pvRole(p))}</td><td style="${td}font-weight:500;">${E(pvName(p))||'<span style="color:var(--red);">— sans nom —</span>'}</td><td style="${td}">${E(p.nationality||'')}</td><td style="${td}">${E(p.identityDocumentType||'')} ${E(p.identityDocumentNumber||'')}${p.identityDocumentPhoto?' <span title="photo de la pièce présente" style="color:var(--text3);">📷</span>':''}</td><td style="${td}color:${aud==='Auditionné'?'var(--accent)':'var(--text3)'};">${aud}</td></tr>`; })));
-  h += sec('Équipe d\'enquête ('+members.length+')', tbl(['N°','Nom et prénoms','Qualité','Téléphone','Signature'], members.map((m,i)=>`<tr><td style="${td}">${i+1}</td><td style="${td}font-weight:500;">${E(pvName(m))}</td><td style="${td}">${E(pvRole(m))}</td><td style="${td}${pvPhoneBad(m.phoneNumber)?'color:var(--amber-txt);':''}">${E(m.phoneNumber||'—')}</td><td style="${td}">${m.signatoryPhoto?ok:ko}</td></tr>`)));
-  // Déclarations du demandeur
-  const kv = (l,v)=> (v==null||v==='') ? '' : `<div style="display:flex;justify-content:space-between;gap:10px;padding:2px 0;border-bottom:1px dotted var(--border);"><span style="color:var(--text2);">${l}</span><span style="text-align:right;font-weight:500;">${E(v)}</span></div>`;
-  const nr = '<span style="color:var(--text3);font-style:italic;">Non renseigné</span>';
+  const sigs = (rec.signatories||[]).filter(x=>x&&x.signatoryPhoto);
+  const sigDe = (nom, role)=> sigs.some(x=>(!role||role.test(x.description||'')) && pvSim(((x.firstname||'')+' '+(x.lastname||'')).trim(), nom)>=0.6);
+  const nr = '<span class="pvo-nr">Non renseigné</span>';
+  const cadre = `<div class="pvo-hd"><div style="font-weight:700;">RÉPUBLIQUE DE CÔTE D'IVOIRE</div><div>Union - Discipline - Travail</div><div>-------------</div><div style="font-weight:700;">MINISTERE DE L'AGRICULTURE ET DU DEVELOPPEMENT RURAL</div><div>-------------</div><div style="font-weight:700;">AGENCE FONCIÈRE RURALE</div></div>
+  <div class="pvo-box">
+   <div>1. Région de : <b>${E(up(region))}</b></div><div>2. Département de : <b>${E(up(d.dept))}</b></div><div>3. CSPGFR de : <b>${E(up(sp))}</b></div><div>4. CVGFR du Village de : <b>${E(up(village))}</b></div>
+   <div>5. Nom et prénoms du demandeur ou nom du groupement ou de l'entité collective : <br>&nbsp;&nbsp;&nbsp;<b>${E(up(nomDem))}</b></div>
+   ${manager?`<div>6. Nom et prénoms du gestionnaire du groupement ou de l'entité (*) : <b>${E(up(manager))}</b></div>`:''}
+   <div>7. N° et date de la demande d'enquête officielle : <b>${E(numPV)} du ${E(fr(dReq))}</b></div>
+   <div>8. Nom et prénoms du Commissaire-Enquêteur : <b>${E(up(ce?pvName(ce):''))}</b></div>
+   <div>9. N° et date du PV de recensement des droits coutumiers : <b>${E(numPV)} du ${E(fr(dPV))}</b></div></div>`;
+  const page = (eo, titre, corps)=>`<div class="pvo-page">${cadre}<div class="pvo-band">${titre}</div><div class="pvo-body">${corps}</div><div class="pvo-eo">${eo}</div></div>`;
+  const th = h=>`<th>${h}</th>`;
+  const tbl = (heads, rows, minRows)=>{ rows=rows.slice(); while(minRows && rows.length<minRows) rows.push('<tr>'+heads.map(()=>'<td>&nbsp;</td>').join('')+'</tr>'); return `<table class="pvo-t"><thead><tr>${heads.map(th).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`; };
+  const sigOk = m=> (m.signatoryPhoto||m.hasSignatoryPhoto===true) ? '<span class="pvo-ok">✓ signature enregistrée</span>' : '<span class="pvo-ko">✗ signature manquante</span>';
+  let h = '';
+  // EO 3 — PV
+  h += page('EO 3','PROCÈS - VERBAL<br>DE RECENSEMENT DES DROITS COUTUMIERS', `
+    <p>N° <b class="pvo-f">${E(numPV)}</b> du <b class="pvo-f">${E(fr(dPV))}</b></p>
+    <p>L'an deux mil <b class="pvo-f">${E(dtx.an.replace(/^deux mil\s?/,''))}</b> le <b class="pvo-f">${E(dtx.jm)}</b> à <b class="pvo-f">${E(up(lieu))}</b></p>
+    <p>Je, soussigné <b class="pvo-f">${E(up(ce?pvName(ce):''))}</b></p>
+    <p>Commissaire-Enquêteur, désigné pour recenser les droits coutumiers exercés sur la parcelle ci-dessus mentionnée sise à <b class="pvo-f">${E(up(lieu))}</b> d'une superficie estimée de <b class="pvo-f">${E(superf||'—')}</b> ha,</p>
+    <p>me suis rendu au village mentionné et accompagné des membres de l'équipe d'enquête que j'ai constituée.</p>
+    <p>Ensemble, nous avons recueilli les déclarations des personnes ci-après désignées.</p>
+    <p>Procès-verbal clos le <b class="pvo-f">${E(fr(dPV))}</b></p>
+    <p style="margin-top:14px;"><b>Liste des annexes :</b></p>
+    <ul class="pvo-ul"><li>Questionnaire relatif au recensement des droits coutumiers,</li><li>Déclarations de toutes les personnes auditionnées (membres de déclarations : ${(rec.intercalaire?Object.keys((rec.intercalaire||[]).reduce((a,i)=>(a[i.nomTemoin||'']=1,a),{})).length:0)+1}),</li><li>Fiche(s) d'identification des litiges (nombre de litiges : ${(((rec.idLandDispute&&rec.idLandDispute.disputePerson)||rec.complainants||[]).length)}),</li><li>Liste des détenteurs de droits coutumiers collectifs, le cas échéant,</li><li>Liste des détenteurs de droits coutumiers individuels, le cas échéant,</li><li>État des droits de propriété ou de droits de concession ou d'occupation accordés par l'administration,</li><li>Liste des servitudes ou droits d'usage, le cas échéant, le cas de la caractérisation des éléments de ces droits.</li></ul>`);
+  // EO 4 — fiche démographique
+  h += page('EO 4','Annexe au PV<br>FICHE DÉMOGRAPHIQUE', tbl(['N°','Qualité des personnes concernées par l\'enquête','Nom et Prénoms','Nationalité','Nature et N° de la pièce d\'identité','Observations'],
+    people.map((p,i)=>{ const aud = pvIsHolder(p) || temoins.has(agNormTok(pvName(p)).join(' ')); return `<tr><td>${i+1}</td><td>${E(up(pvRole(p)))}</td><td>${E(((p.lastname||'')+' '+(p.firstname||'')).trim())}</td><td>${E(p.nationality||'')}</td><td>${E(((p.identityDocumentType&&(p.identityDocumentType.label||p.identityDocumentType))||'')+' '+(p.identityDocumentNumber||'')).trim()}</td><td>${aud?'Auditionné':'Non auditionné'}</td></tr>`; }), 3));
+  // EO 7 — équipe d'enquête
+  h += page('EO 7','Annexe au PV<br>LISTE DES MEMBRES DE L\'ÉQUIPE D\'ENQUÊTE', tbl(['N°','Nom et Prénoms','Qualité','Téléphone','Signature'],
+    members.map((m,i)=>`<tr><td>${i+1}</td><td>${E(((m.lastname||'')+' '+(m.firstname||'')).trim())}</td><td>${E(pvRole(m))}</td><td>${E(m.phoneNumber||'')}</td><td>${sigOk(m)}</td></tr>`), 3));
+  // EO 5 — questionnaire
+  h += page('EO 5','Annexe au PV<br>QUESTIONNAIRE<br>RELATIF AU RECENSEMENT DES DROITS COUTUMIERS', `<p><b>1) Quels sont les droits que vous prétendez exercer sur cette parcelle ? *</b></p><p><b>2) Êtes-vous seuls à exercer ces droits ? *</b></p><p><b>3) Quelle est l'origine de ces droits ? *</b></p><p><b>4) Quels sont les occupants de la parcelle ? *</b></p><p class="pvo-small">(*) La liste de ces questions n'est pas exhaustive.<br>Le Commissaire-enquêteur est appelé à les approfondir et à les compléter</p>`);
+  // EO 5 bis — déclarations
   const r1=rec.response1, r2=rec.response2, r3=rec.response3, r4=rec.response4;
-  let dec = `<div style="font-size:11px;">
-    <div style="font-weight:600;margin-top:4px;">1) Quels sont les droits que vous prétendez exercer sur cette parcelle ?</div>${r1?`<div style="padding-left:10px;">${r1.qresponse1?E(r1.qresponse1):nr}${r1.qresponse2?'<br>'+E(r1.qresponse2):''}</div>`:'<div style="padding-left:10px;">'+nr+'</div>'}
-    <div style="font-weight:600;margin-top:6px;">2) Êtes-vous seuls à exercer ces droits ?</div>${r2?`<div style="padding-left:10px;">${((r2.brotherOrSisters||[]).length||r2.numberOfBrothersAndSisters>0)?'Non — '+E((r2.brotherOrSisters||[]).length||r2.numberOfBrothersAndSisters)+' frère(s)/sœur(s) associé(s)':'Oui, seul(e)'}${(r2.brotherOrSisters||[]).length?'<br>'+(r2.brotherOrSisters||[]).map(b=>E(((b.firstname||'')+' '+(b.lastname||'')).trim())+(b.age?' ('+b.age+' ans)':'')).join(' ; '):''}</div>`:'<div style="padding-left:10px;">'+nr+'</div>'}
-    <div style="font-weight:600;margin-top:6px;">3) Quelle est l'origine de ces droits ?</div>`;
-  if(r3){ const lab={CAS_HERITAGE:'Héritage',CAS_ACHAT:'Achat',CAS_DON:'Don'}[r3.howDidYouGetThisParcel]||r3.howDidYouGetThisParcel||'—';
-    dec += `<div style="padding-left:10px;"><b>${E(lab)}</b>${r3.qresponse?'<br>'+E(r3.qresponse):''}`;
-    ['sellerAudition','transferorFamilyAudition','applicantAudition'].forEach(k=>{ if(r3[k]) dec += '<div style="margin-top:4px;padding:4px 8px;background:var(--surface2);border-radius:6px;">'+terrRenderNode(r3[k],1)+'</div>'; });
-    dec += '</div>'; } else dec += '<div style="padding-left:10px;">'+nr+'</div>';
-  dec += `<div style="font-weight:600;margin-top:6px;">4) Quels sont les occupants de la parcelle ?</div>`;
-  if(r4){ dec += `<div style="padding-left:10px;">${String(r4.occuper)==='1'?'Oui — '+E(r4.numberOfOccupants||(r4.occupants||[]).length)+' occupant(s)':'Non, aucun occupant'}${(r4.occupants||[]).length?'<br>'+(r4.occupants||[]).map(o=>E([o.nameOccupant,o.occupantType,o.cultureType,o.superficie?o.superficie+' ha':''].filter(Boolean).join(' · '))).join('<br>'):''}</div>`; } else dec += '<div style="padding-left:10px;">'+nr+'</div>';
-  dec += '</div>';
-  h += sec('Déclaration du demandeur', dec);
-  // Déclarations des voisins et témoins
+  const node = x=>'<div class="pvo-node">'+terrRenderNode(x,1)+'</div>';
+  let dec = `<p><b>Déclarant N°1 (Le demandeur) :</b></p>
+    <p><b>1) Quels sont les droits que vous prétendez exercer sur cette parcelle ?</b></p><div class="pvo-ans">${r1&&(r1.qresponse1||r1.qresponse2)?[r1.qresponse1,r1.qresponse2].filter(Boolean).map(x=>'<div>'+E(x)+'</div>').join(''):nr}</div>
+    <p><b>2) Êtes-vous seuls à exercer ces droits ?</b></p><div class="pvo-ans">${r2?((r2.haveBrothersAndSisters===true||(r2.brotherOrSisters||[]).length)?'Non — '+E((r2.brotherOrSisters||[]).length||r2.numberOfBrothersAndSisters)+' frère(s)/sœur(s) associé(s)'+((r2.brotherOrSisters||[]).length?'<br>'+(r2.brotherOrSisters||[]).map(b=>E(((b.lastname||'')+' '+(b.firstname||'')).trim()+(b.age?' ('+b.age+' ans)':'')+(b.residence?' — '+b.residence:''))).join('<br>'):''):'Oui, seul(e)'):nr}</div>
+    <p><b>3) Quelle est l'origine de ces droits ?</b></p><div class="pvo-ans">`;
+  if(r3){ const lab={CAS_HERITAGE:'Héritage',CAS_ACHAT:'Achat',CAS_DON:'Don'}[r3.howDidYouGetThisParcel]||r3.howDidYouGetThisParcel||''; dec += `<b>${E(lab)}</b>${r3.qresponse?'<div>'+E(r3.qresponse)+'</div>':''}`; ['sellerAudition','transferorFamilyAudition','applicantAudition'].forEach(k=>{ if(r3[k]) dec += node(r3[k]); }); } else dec += nr;
+  dec += `</div><p><b>4) Quels sont les occupants de la parcelle ?</b></p><div class="pvo-ans">${r4?(String(r4.occuper)==='1'?'Oui — '+E(r4.numberOfOccupants||(r4.occupants||[]).length)+' occupant(s)'+((r4.occupants||[]).length?'<br>'+(r4.occupants||[]).map(o=>E([o.nameOccupant,o.occupantType,o.cultureType,o.superficie?o.superficie+' ha':''].filter(Boolean).join(' · '))).join('<br>'):''):'Non'):nr}</div>
+    <p>« Lecture faite à M. <b>${E(up(nomDem))}</b> qui persiste et signe le <b>${E(fr(dPV))}</b> à <b>${E(up(lieu))}</b></p>
+    <p>${(holder&&(holder.signatoryPhoto||holder.hasSignatoryPhoto===true)) || sigDe(nomDem,/demandeur|gestionnaire/i) || sigs.some(x=>/demandeur|gestionnaire/i.test(x.description||''))?'<span class="pvo-ok">✓ signature enregistrée sur la tablette</span>':'<span class="pvo-ko">✗ signature du demandeur manquante</span>'}</p><p class="pvo-small">N° de la demande <b>${E(numPV)}</b></p>`;
   const grp = {}; (rec.intercalaire||[]).forEach(i=>{ (grp[i.nomTemoin||'(sans nom)']=grp[i.nomTemoin||'(sans nom)']||[]).push(i); });
-  h += sec('Déclarations des voisins et témoins ('+Object.keys(grp).length+')', Object.keys(grp).length ? Object.keys(grp).map(n=>`<div style="margin:4px 0;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;"><b>${E(n)}</b>${grp[n].map(i=>`<div style="margin-top:3px;"><i style="color:var(--text2);">${E(i.question||'')}</i><div style="padding-left:10px;">${(i.reponse||'').trim()?E(i.reponse):'<span style="color:var(--red);">— vide —</span>'}</div></div>`).join('')}</div>`).join('') : '<div style="color:var(--text3);font-size:11px;">Aucune déclaration.</div>');
-  // Annexes
-  const list = (arr)=> (arr&&arr.length) ? arr.map(x=>'<div style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;margin:3px 0;font-size:11px;">'+terrRenderNode(x,1)+'</div>').join('') : '<div style="color:var(--text3);font-size:11px;">Aucun.</div>';
-  h += sec('Litiges fonciers', list(rec.complainants)) + sec('Servitudes et droits d\'usage', list(rec.listEasements)) + sec('Droits de propriété / concession accordés par l\'administration', list(rec.concessionRights));
-  if(rec.manager) h += sec('Gestionnaire du groupement', '<div style="font-size:11px;">'+terrRenderNode(rec.manager,1)+'</div>');
-  if((rec.entitledPeople||[]).length) h += sec('Ayants droit ('+rec.entitledPeople.length+')', list(rec.entitledPeople));
-  h += `<details style="margin-top:12px;"><summary style="cursor:pointer;font-size:11px;color:var(--text3);">Toutes les données brutes de la fiche</summary><div style="margin-top:6px;">${terrRenderNode(rec,0)}</div></details>`;
-  return h;
+  Object.keys(grp).forEach((n,ix)=>{ dec += `<hr class="pvo-hr"><p><b>Déclarant N°${ix+2} : ${E(n)}</b></p>`+grp[n].map(i=>`<p><i>${E(i.question||'')}</i></p><div class="pvo-ans">${(i.reponse||'').trim()?E(i.reponse):nr}</div>`).join('')+`<p>${sigDe(n,/t[ée]moin/i)||sigDe(n)?'<span class="pvo-ok">✓ signature enregistrée</span>':'<span class="pvo-ko">✗ signature manquante</span>'}</p>`; });
+  h += page('EO 5 bis','Annexe au PV<br>DÉCLARATIONS DE TOUTES LES PERSONNES AUDITIONNÉES', dec);
+  // Détenteurs de droits (ayants droit du groupement / de la famille)
+  const ay = rec.entitledPeople||[];
+  if(ay.length) h += page('Annexe','Annexe au PV<br>LISTE DES DÉTENTEURS DE DROITS COUTUMIERS ('+ay.length+')', tbl(['N°','Nom et Prénoms','Nationalité','Lien / observations','Pièce d\'identité','Téléphone'],
+    ay.map((p,i)=>`<tr><td>${i+1}</td><td>${E(((p.lastname||'')+' '+(p.firstname||'')).trim())}</td><td>${E(p.nationality||'')}</td><td>${E(p.observations||'')}</td><td>${E(((p.identityDocumentType||'')+' '+(p.identityDocumentNumber||'')).trim())}</td><td>${E(p.phoneNumber||'')}</td></tr>`), 1));
+  // EO 6 — litiges
+  const comp = (rec.idLandDispute&&rec.idLandDispute.disputePerson)||rec.complainants||[];
+  h += page('EO 6','Annexe au PV<br>FICHE D\'IDENTIFICATION DES LITIGES FONCIERS', tbl(['Identification des plaignants (Nom et prénoms, qualité et village de résidence, pièce d\'identité)','Description du litige'],
+    comp.map(c=>{ const idn=[c.fullName||pvName(c), c.quality, c.villageResidence, c.idDocNumber].filter(Boolean).join(', '); const desc=c.disputeDescription||''; return `<tr><td>${idn?E(idn):node(c)}</td><td>${E(desc)}</td></tr>`; }), 4)+`<p class="pvo-small">N° de la demande <b>${E(numPV)}</b></p>`);
+  // EO 10 — servitudes
+  h += page('EO 10','Annexe au PV<br>LISTE DES SERVITUDES OU DROITS D\'USAGE, LEUR NATURE ET LE NOM OU LA CARACTÉRISATION DES DÉTENTEURS DE CES DROITS', tbl(['Nature des servitudes ou droits d\'usage','Description de la servitude','Libellé'],
+    (rec.listEasements||[]).map(x=>{ const a=x.nature||'', b=x.description||'', c=x.fullName||''; return (a||b||c)?`<tr><td>${E(a)}</td><td>${E(b)}</td><td>${E(c)}</td></tr>`:`<tr><td colspan="3">${node(x)}</td></tr>`; }), 4)+`<p class="pvo-small">N° de la demande <b>${E(numPV)}</b></p>`);
+  // EO 9 — droits de l'administration
+  h += page('EO 9','Annexe au PV<br>ETAT DES DROITS DE PROPRIÉTÉ OU DE DROITS DE CONCESSION OU D\'OCCUPATION ACCORDÉS PAR L\'ADMINISTRATION<br>(sur tout ou partie de la parcelle objet de la demande de certificat foncier)', tbl(['Type de droit','Superficie (ha)','Localisation','Bénéficiaire','Date d\'octroi'],
+    (rec.concessionRights||[]).map(x=>{ const a=pvPick(x,/type|nature/i), b=pvPick(x,/superf|area/i), c=pvPick(x,/local|place|lieu/i), e=pvPick(x,/benef|holder|owner|name|nom/i), f=pvPick(x,/date/i); return (a||b||c||e||f)?`<tr><td>${E(a)}</td><td>${E(b)}</td><td>${E(c)}</td><td>${E(e)}</td><td>${E(f?(terrDay(f)?fr(terrDay(f)):f):'')}</td></tr>`:`<tr><td colspan="5">${node(x)}</td></tr>`; }), 4)+`<p class="pvo-small">*Indiquer la superficie objet du chevauchement si possible</p><p class="pvo-small">N° de la demande <b>${E(numPV)}</b></p>`);
+  const css = pvCss();
+  return css+'<div class="pvo">'+h+'</div>';
+}
+function terrRenderPV(d, rec){
+  const E = planEsc;
+  const res = terrRdcControls(d, rec), col = {err:'var(--red)',warn:'var(--amber-txt)',info:'var(--text3)'}, ic = {err:'✗',warn:'⚠',info:'ℹ'};
+  const ctl = `<div style="margin:0 0 8px;font-weight:700;color:var(--blue);font-size:12px;">Contrôles automatiques</div>`+(res.length ? '<div style="font-size:11px;">'+res.map(x=>`<div style="padding:3px 0;color:${col[x.s]};">${ic[x.s]} ${E(x.t)}</div>`).join('')+'</div>' : '<div style="color:var(--accent);font-size:11px;">✓ Aucune anomalie détectée automatiquement.</div>');
+  return ctl + `<div style="margin:12px 0 6px;"><b style="font-size:12px;color:var(--blue);">Procès-verbal de recensement des droits coutumiers (format AFOR — lecture seule)</b></div>` + pvOfficielHtml(d, rec);
 }
 
 
@@ -8442,20 +8529,51 @@ function terrPvclControls(d, rec){
   _pvclCtl.set(rec,{sig,res:out}); return out;
 }
 
+function pvDateMots(iso){ const m=String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})/); if(!m) return {an:'',jm:''}; const dd=+m[3]; const y=+m[1];
+  return {an:(y>=2000&&y<2100)?('deux mil'+(y>2000?' '+pvMots(y-2000):'')):String(y), jm:(dd===1?'premier':pvMots(dd))+' '+PV_MOIS[+m[2]-1]}; }
+function pvSuperfMots(ha){ const v=Number(String(ha).replace(',','.')); if(!(v>0)) return ''; const h=Math.floor(v+1e-9), r=(v-h)*100, a=Math.floor(r+1e-6), ca=Math.round((r-a)*100); return h+' ha '+a+' a '+ca+' ca'; }
+function pvclOfficielHtml(d, rec){
+  const E=planEsc, nb=rec.neighborhood||[], pres=rec.presences||[], ex=rec.expertSurveyor;
+  const rdc = terrRec(d,'rdc'), t=(typeof tabMatchForDossier==='function')?tabMatchForDossier(d):null, req=(t&&t.requests)||{};
+  const up=s=>String(s||'').toUpperCase();
+  const dPV = terrRecDate(rec,'pvcl')||'', dm = pvDateMots(dPV);
+  const dash = iso=>iso?iso.split('-').reverse().join('-'):'';
+  const numRdc = rdc ? tabNormCode(rdc.minutesNumber||'') : '', dRdc = rdc ? (terrRecDate(rdc,'rdc')||'') : '';
+  const num = tabNormCode(pvPick(rec,/^(observation|minutes|request)number$/i) || numRdc || d.id);
+  const dReq = terrDay(req.requestDate)||terrDay(req.creationDate)||dRdc||dPV;
+  const village = rec.label || d.village || '';
+  const region = pvFind(rec,/^region/i) || pvFind(req,/^region/i) || 'CAVALLY';
+  const sp = d.sp || pvFind(rec,/cspgfr|sous.?pref/i);
+  const nomDem = ((d.nom_demandeur||'')+' '+(d.prenom||'')).trim();
+  const manager = rdc&&rdc.manager ? (rdc.manager.fullName||pvName(rdc.manager)) : '';
+  const ce = pres.find(p=>/commissaire/i.test((p.memberType&&p.memberType.label)||'')) || null;
+  const ceNom = ce ? ce.nameOfPerson : ((rdc&&(rdc.investigationMembers||[]).find(pvIsCE)) ? pvName((rdc.investigationMembers||[]).find(pvIsCE)) : (d.agent||''));
+  const ota = 'CAG';
+  const cadre = `<div class="pvo-hd"><div style="font-weight:700;">RÉPUBLIQUE DE CÔTE D'IVOIRE</div><div><i>Union - Discipline - Travail</i></div><div style="font-weight:700;">MINISTÈRE DE L'AGRICULTURE ET DU DÉVELOPPEMENT RURAL</div><div style="font-weight:700;">AGENCE FONCIÈRE RURALE</div></div>
+  <div class="pvo-box" style="line-height:1.55;"><div>1. Région de <b class="pvo-f">${E(up(region))}</b></div><div>2. Département de <b class="pvo-f">${E(up(d.dept))}</b></div><div>3. CSPGFR de <b class="pvo-f">${E(up(sp))}</b></div><div>4. CVGFR du Village de <b class="pvo-f">${E(village)}</b></div>
+   <div>5. Nom et prénoms du demandeur ou nom du groupement ou de l'entité collective : <b class="pvo-f">${E(nomDem)}</b></div><div>6. Nom et prénoms du gestionnaire du groupement ou de l'entité <b class="pvo-f">${E(manager)}</b></div>
+   <div>7. N° et date de la demande d'enquête officielle : <b class="pvo-f">${E(num)} du ${E(dash(dReq))}</b></div><div>8. Nom et prénoms du Commissaire-Enquêteur : <b class="pvo-f">${E(up(ceNom))}</b></div><div>9. N° et date du PV de recensement des droits coutumiers : <b class="pvo-f">${E(numRdc||num)} du ${E(dash(dRdc||dPV))}</b></div></div>`;
+  const side = {N:[],S:[],E:[],O:[]}; nb.forEach(n=>{ pvclCard(n.position).forEach(c=>{ if(n.nameOfNeighbor) side[c].push(n.nameOfNeighbor); }); });
+  const lim = (lab,c)=>`<div>${lab} <b>${side[c].length?E(side[c].join(' ; ')):'<span class="pvo-nr">— non renseigné —</span>'}</b></div>`;
+  const contest = nb.some(n=>String(pvPick(n,/oppos|contest|litig/i)).match(/^(1|true|oui|yes)$/i));
+  const sigEx = ex && pvclHasSig(ex) ? '<span class="pvo-ok">✓ signature de l\'opérateur technique agréé enregistrée</span>' : '<span class="pvo-ko">✗ signature de l\'opérateur technique agréé manquante</span>';
+  const p1 = `<div class="pvo-page">${cadre}<div class="pvo-band" style="margin:0 -28px;">CONSTAT DE LIMITES D'UN BIEN FONCIER COUTUMIER RURAL</div><div class="pvo-body">
+    <p>L'an deux mil <b class="pvo-f">${E(dm.an.replace(/^deux mil\s?/,''))}</b>, le <b class="pvo-f">${E(dm.jm)}</b><br>je soussigné, <b class="pvo-f">${E(ota)}</b>,</p>
+    <p>Opérateur technique agréé (OTA), désigné pour la délimitation du bien foncier rural sis à : <b class="pvo-f">${E(village)}</b>, Sous-préfecture de <b class="pvo-f">${E(up(sp))}</b> d'une superficie de <b class="pvo-f">${E(pvSuperfMots(rec.estimatedArea)||'—')}</b>,</p>
+    <p>me suis rendu sur ledit bien foncier rural accompagné des membres de l'équipe d'enquête et du commissaire-enquêteur et ai procédé au constat des limites conformément aux indications données par les parties présentes.</p>
+    <p>Le bien foncier rural objet du présent constat est limité :</p>${lim('au Nord par','N')}${lim('au Sud par','S')}${lim('à l\' Est par','E')}${lim('à l\' Ouest par','O')}
+    <p style="margin-top:10px;">${contest?'Le commissaire-enquêteur, les membres de l\'équipe d\'enquête et l\'opérateur technique agréé ont constaté que les limites indiquées par le demandeur ont fait l\'objet de contestation ou d\'opposition.':'Le commissaire-enquêteur, les membres de l\'équipe d\'enquête et l\'opérateur technique agréé ont constaté que les limites indiquées par le demandeur n\'ont fait l\'objet d\'aucune contestation ni opposition.'}</p>
+    <p style="text-align:right;margin-top:22px;">Signature de l'opérateur technique agréé<br>${sigEx}</p>
+    <p style="margin-top:22px;">N° de la demande <b class="pvo-f">${E(num)}</b></p></div><div class="pvo-eo2">EO 3-1</div></div>`;
+  const p2 = `<div class="pvo-page"><div style="text-align:center;margin:6px 0 4px;">Annexe au constat</div><div style="text-align:center;font-weight:700;text-decoration:underline;font-size:14px;margin-bottom:14px;">Liste des parties présentes lors du constat de limites</div>
+    <table class="pvo-t"><thead><tr><th>N°</th><th>NOM ET PRÉNOMS</th><th>QUALITÉ</th><th>VILLAGE</th><th>SIGNATURE</th></tr></thead><tbody>${pres.map((p,i)=>`<tr><td>${i+1}</td><td><b>${E(p.nameOfPerson||'')}</b></td><td>${E((p.memberType&&p.memberType.label)||'')}${p.representant?' ('+E(p.representant)+')':''}</td><td>${E(village)}</td><td>${pvclHasSig(p)?'<span class="pvo-ok">✓ signature enregistrée</span>':'<span class="pvo-ko">✗ manquante</span>'}</td></tr>`).join('')||'<tr><td colspan="5">&nbsp;</td></tr>'}</tbody></table>
+    <p style="margin-top:12px;">N° de la demande <b class="pvo-f">${E(num)}</b></p><div class="pvo-eo2">EO 3-2</div></div>`;
+  return pvCss()+'<div class="pvo">'+p1+p2+'</div>';
+}
 function terrRenderPVCL(d, rec){
-  const E = planEsc, nb = rec.neighborhood||[], pres = rec.presences||[], ex = rec.expertSurveyor;
-  const sec = (t,body)=>`<div style="margin:12px 0 4px;font-weight:700;color:var(--blue);font-size:12px;">${t}</div>${body}`;
-  const th = 'text-align:left;padding:4px 8px;font-size:10px;text-transform:uppercase;color:var(--text3);', td = 'padding:4px 8px;border-top:1px solid var(--border);vertical-align:top;';
-  const tbl = (heads, rows)=> rows.length ? `<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:var(--surface2);">${heads.map(h=>`<th style="${th}">${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>` : '<div style="color:var(--text3);font-size:11px;">Aucun.</div>';
-  const ok = '<span style="color:var(--accent);font-weight:700;">✓</span>', ko = '<span style="color:var(--red);font-weight:700;">✗ manquante</span>';
-  const res = terrPvclControls(d, rec), col = {err:'var(--red)',warn:'var(--amber-txt)',info:'var(--text3)'}, ic = {err:'✗',warn:'⚠',info:'ℹ'};
-  const dt = terrRecDate(rec,'pvcl');
-  let h = sec('Contrôles automatiques', res.length ? '<div style="font-size:11px;">'+res.map(x=>`<div style="padding:3px 0;color:${col[x.s]};">${ic[x.s]} ${E(x.t)}</div>`).join('')+'</div>' : '<div style="color:var(--accent);font-size:11px;">✓ Aucune anomalie détectée automatiquement.</div>');
-  h += sec('Identification', `<div style="font-size:11px;">Village : <b>${E(rec.label||'—')}</b> · date : <b>${E(dt?dt.split('-').reverse().join('/'):'—')}</b> · superficie estimée : <b>${E(rec.estimatedArea!=null?rec.estimatedArea+' ha':'—')}</b><br>Géomètre-expert : <b>${E(ex?((ex.firstname||'')+' '+(ex.lastname||'')).trim():'—')}</b>${ex&&ex.number?' ('+E(ex.number)+')':''} · signature ${ex&&pvclHasSig(ex)?ok:ko}<br>Attestation du comité — signature CE : ${rec.hasComityAttestSignatoryCE?ok:'non'} · CVGFR : ${rec.hasComityAttestSignatoryCVGFR?ok:'non'} · Président CVGFR : ${rec.hasComityAttestSignatoryPCVGFR?ok:'non'}</div>`);
-  h += sec('Limites et voisins ('+nb.length+')', tbl(['Position','Nom du voisin / de la limite','Nature','Présent','Date de présence'], nb.map(n=>`<tr><td style="${td}">${E(n.position||'—')}</td><td style="${td}font-weight:500;">${E(n.nameOfNeighbor||'')||'<span style="color:var(--red);">— sans nom —</span>'}</td><td style="${td}">${E(n.description||'')}</td><td style="${td}">${n.isPresent===false?'<span style="color:var(--red);">Non</span>':'Oui'}</td><td style="${td}">${n.presenceDate?E(String(n.presenceDate).slice(0,10).split('-').reverse().join('/')):'—'}</td></tr>`)));
-  h += sec('Liste de présence ('+pres.length+')', tbl(['N°','Nom et prénoms','Qualité','Pièce d\'identité','Signature'], pres.map((p,i)=>`<tr><td style="${td}">${i+1}</td><td style="${td}font-weight:500;">${E(p.nameOfPerson||'')}</td><td style="${td}">${E((p.memberType&&p.memberType.label)||'')}</td><td style="${td}">${E(p.numberCNI||'—')}</td><td style="${td}">${pvclHasSig(p)?ok:ko}</td></tr>`)));
-  h += `<details style="margin-top:12px;"><summary style="cursor:pointer;font-size:11px;color:var(--text3);">Toutes les données brutes de la fiche</summary><div style="margin-top:6px;">${terrRenderNode(rec,0)}</div></details>`;
-  return h;
+  const E=planEsc, res=terrPvclControls(d,rec), col={err:'var(--red)',warn:'var(--amber-txt)',info:'var(--text3)'}, ic={err:'✗',warn:'⚠',info:'ℹ'};
+  const ctl = `<div style="margin:0 0 8px;font-weight:700;color:var(--blue);font-size:12px;">Contrôles automatiques</div>`+(res.length ? '<div style="font-size:11px;">'+res.map(x=>`<div style="padding:3px 0;color:${col[x.s]};">${ic[x.s]} ${E(x.t)}</div>`).join('')+'</div>' : '<div style="color:var(--accent);font-size:11px;">✓ Aucune anomalie détectée automatiquement.</div>');
+  return ctl + `<div style="margin:12px 0 6px;"><b style="font-size:12px;color:var(--blue);">Constat de limites (format AFOR — lecture seule)</b></div>` + pvclOfficielHtml(d, rec);
 }
 
 setTimeout(()=>{ try{ terrLoadChecks(); }catch(e){} }, 2800);
