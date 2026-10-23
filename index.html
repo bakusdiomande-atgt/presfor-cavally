@@ -450,7 +450,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-au</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-aw</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -8753,21 +8753,8 @@ function cqeCtlOpen(id){
   m.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">
     <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;"><h3 style="font-family:'Syne',sans-serif;font-size:15px;margin:0;">Dossier ${esc(id)}</h3><button class="btn-s" onclick="cqeCtlClose()">✕ Fermer</button></div>
     <div style="padding:16px 20px;overflow-y:auto;flex:1;">
-      ${row('Demandeur',esc(((d.prenom||'')+' '+(d.nom_demandeur||'')).trim()||'—'))}${row('Village',esc(d.village||'—'))}${row('Département',esc(d.dept||'—'))}${row('Agent',esc(d.agent||'—'))}
-      ${row('Étape',esc(d.etape||'—'))}${cq&&cq.superf?row('Superficie (contrôle)',esc(Number(cq.superf).toFixed(2))+' ha'):''}
-      ${(()=>{ const ti=dosTabInfo(d); return ti?row('Nom (tablette)',esc(ti.nom||'—'))+(ti.superficie!=null?row('Superficie estimée (tablette)',esc(String(ti.superficie))+' ha'):'')+(ti.nationalite?row('Nationalité (tablette)',esc(ti.nationalite)):''):'<div style="padding:6px 0;font-size:11px;color:var(--text3);">Pas de données tablette pour ce dossier.</div>'; })()}
-      ${typeof aforVoisinsHtml==='function'?aforVoisinsHtml(d):''}
-      ${cq&&cq.rejete?row('Contrôle AFOR',cq.corrige?'Rejeté puis corrigé':'<span style="color:#dc2626;">Rejeté</span>'):''}
-      ${k?row('Dernier contrôle',(k.statut==='conforme'?'Conforme':'Rejeté')+' · '+esc(k.par||'')+' · '+esc(k.date||'')):''}
-      ${k&&k.motif?row('Motif',esc(k.motif)):''}
-      <div style="padding:8px 0 0;"><button class="btn-s" onclick="dosOpenFiche('${qid}')">📋 Fiche complète (toutes les sources)</button></div>
       <div style="padding:12px 0 4px;font-weight:700;color:var(--blue);font-size:12px;">Que voulez-vous contrôler ?</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-bottom:10px;">${[['rdc','RDC','Recensement des droits coutumiers'],['pvcl','PVCL','Constat de limites'],['plan','Plan','Plan parcellaire']].map(([kk,lab,sub])=>{ const on=cqeCtlState(d,kk).k!=='none'; return `<button ${on?`onclick="cqeCtlChoose('${qid}','${kk}')"`:'disabled'} style="text-align:center;padding:10px 6px;border:1px solid var(--border-med);border-radius:8px;background:${on?'var(--surface)':'var(--surface2)'};cursor:${on?'pointer':'not-allowed'};font-family:inherit;"><div style="font-weight:700;font-size:13px;">${lab}</div><div style="font-size:9px;color:var(--text3);margin:2px 0 4px;">${sub}</div><div style="font-size:10px;">${cqeCtlBadge(d,kk)}</div></button>`; }).join('')}</div>
-      ${can?`<div style="margin-top:8px;"><label style="font-size:11px;color:var(--text3);">Motif du rejet (obligatoire si rejeté)</label>
-        <input id="ctl-motif" style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;margin:3px 0 8px;" placeholder="Ex. : voisin Sud manquant">
-        <label style="font-size:11px;color:var(--text3);">Commentaire (facultatif)</label>
-        <textarea id="ctl-comm" rows="2" style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;margin-top:3px;"></textarea>
-        <div style="display:flex;gap:8px;margin-top:10px;"><button class="btn-p" style="flex:1;background:#16a34a;" onclick="cqeCtlSubmit('${qid}','conforme')">✓ Dossier conforme</button><button class="btn-p" style="flex:1;background:#dc2626;" onclick="cqeCtlSubmit('${qid}','rejete')">✕ Dossier rejeté</button></div></div>`:''}
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-bottom:10px;">${[['rdc','RDC','Recensement des droits coutumiers'],['pvcl','PVCL','Constat de limites'],['plan','Plan','Plan parcellaire']].map(([kk,lab,sub])=>{ const on=cqeCtlState(d,kk).k!=='none'; return `<button ${on?`onclick="cqeCtlChoose('${qid}','${kk}')"`:'disabled'} style="text-align:center;padding:10px 6px;border:1px solid var(--border-med);border-radius:8px;background:${on?'var(--surface)':'var(--surface2)'};cursor:${on?'pointer':'not-allowed'};font-family:inherit;"><div style="font-weight:700;font-size:13px;">${lab}</div><div style="font-size:9px;color:var(--text3);margin:2px 0 0;">${sub}</div></button>`; }).join('')}</div>
     </div></div>`;
   document.body.appendChild(m);
 }
