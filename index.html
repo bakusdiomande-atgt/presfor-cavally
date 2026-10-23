@@ -450,7 +450,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-aw</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-ax</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -6601,7 +6601,7 @@ function grilleSave(id){
   const textes=ids.map(grilleMotifTexte);
   const statut = ids.length ? 'rejete' : 'conforme';
   const motif = ids.length ? (textes.slice(0,4).join(' | ')+(textes.length>4?' | (+'+(textes.length-4)+' autre(s) motif(s))':'')) : '';
-  const rec = {c:ids, comm, par:by, date:t, _u:new Date().toISOString()};
+  const rec = {c:ids, comm, cm:Object.assign({}, (cqeGrille[id]||{}).cm||{}), par:by, date:t, _u:new Date().toISOString()};
   cqeGrille[id]=rec; cqeGrilleSaveLocal(); cqeFbPut('cq_grille/'+encodeURIComponent(id), rec);
   const prev=cqeCtl[id];
   const hist=((prev&&prev.hist)||[]).concat([{d:t,by,s:statut}]).slice(-10);
@@ -7290,22 +7290,15 @@ async function planOpen(id){
       <div id="plan-viewer" style="flex:1;min-width:0;overflow:auto;background:#d9d9d9;position:relative;" oncontextmenu="return false">
         ${rec.imgs.map(i=>`<div style="position:relative;margin:0 0 8px;"><img class="plan-img" draggable="false" src="${i.data}" style="width:100%;display:block;background:#fff;"><div style="position:absolute;inset:0;background:url('data:image/svg+xml;utf8,${wm}');pointer-events:none;"></div></div>`).join('')}
       </div>
-      <div id="plan-side" style="width:430px;max-width:45%;border-left:1px solid var(--border);overflow-y:auto;padding:14px;font-size:12px;">
+      <div id="plan-side" style="width:440px;max-width:45%;border-left:1px solid var(--border);overflow-y:auto;padding:14px;font-size:12px;">
         <div id="plan-auto"></div>
-        <div style="margin-top:14px;font-weight:700;color:var(--blue);">Contrôle du plan</div>
         ${st==='a_reverifier'?'<div style="margin-top:6px;padding:6px 8px;background:var(--amber-lt);border-radius:6px;">↻ Ce plan a été remplacé depuis le dernier contrôle : à vérifier de nouveau.</div>':''}
-        <label style="display:block;margin-top:6px;">Noms des voisins${sel('voisins',chk.voisins||'')}</label>
-        <label style="display:block;margin-top:6px;">Nom du demandeur${sel('nom',chk.nom||'')}</label>
-        <label style="display:block;margin-top:6px;">Superficie${sel('superf',chk.superf||'')}</label>
-        <label style="display:block;margin-top:6px;">Commentaire<textarea id="plan-comm" rows="3" ${can?'':'disabled'} style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:6px;font-size:12px;font-family:inherit;">${planEsc(chk.commentaire||'')}</textarea></label>
-        ${chk.statut?`<div style="margin-top:8px;font-size:11px;color:var(--text3);">Dernier contrôle : <b>${chk.statut==='conforme'?'Conforme':'Incohérent'}</b> par ${planEsc(chk.par||'—')} le ${planEsc(chk.date||'')}</div>`:''}
+        <div id="grp-panel" style="margin-top:14px;"></div>
         <div style="margin-top:6px;font-size:10px;color:var(--text3);">Plan importé le ${planEsc((entry.ts||'').slice(0,10))}${entry.by?' par '+planEsc(entry.by):''} · ${planEsc(entry.name||'')}</div>
-        ${can?`<div style="display:flex;gap:8px;margin-top:10px;">
-          <button class="btn-p" style="flex:1;background:var(--accent);" onclick="planSubmit('${sid}','conforme')">✓ Plan conforme</button>
-          <button class="btn-p" style="flex:1;background:var(--red);" onclick="planSubmit('${sid}','incoherent')">⚠ Signaler incohérence</button></div>`:'<div style="margin-top:10px;color:var(--text3);">Lecture seule pour ce profil.</div>'}
       </div>
     </div></div>`;
   document.body.appendChild(modal);
+  grpInit(d,'plan'); grpRender();
   modal.addEventListener('keydown', ()=>{});
   planKeyBlock(true);
 
@@ -7509,6 +7502,76 @@ function terrRenderNode(v, depth){
 function terrDay(s){ const m=String(s||'').match(/^(\d{4}-\d{2}-\d{2})/); return m?m[1]:null; }
 function terrRecDate(rec, type){ for(const k of TERR_TYPES[type].dateKeys){ const d=terrDay(rec&&rec[k]); if(d) return d; } return null; }
 
+// ═══════════════════════════════════════════════════════════════
+// CONTRÔLE D'UNE PIÈCE AVEC LA GRILLE — le document (RDC, PVCL, plan) à gauche, la grille de la pièce à droite.
+// Aucun motif coché = pièce conforme ; au moins un = pièce rejetée (circuit habituel : rejet CQI, portefeuille, suivi).
+// ═══════════════════════════════════════════════════════════════
+const GRP_PIECE = {rdc:'3', pvcl:'4', plan:'5'};
+const GRP_LABEL = {rdc:'RDC', pvcl:'PVCL', plan:'Plan parcellaire'};
+function grpInit(d, type){
+  const g = cqeGrille[d.id], pid = GRP_PIECE[type];
+  window._grp = {id:d.id, type, pid, checked:new Set(((g&&g.c)||[]).filter(m=>grillePieceDeMotif(m)===pid)), comm:(g&&g.cm&&g.cm[pid])||''};
+}
+function grpTotalHtml(n){ return '<b>'+n+'</b> motif(s) coché(s) → '+(n?'<span style="color:var(--red);font-weight:700;">pièce rejetée</span>':'<span style="color:var(--accent);font-weight:700;">pièce conforme</span>'); }
+function grpHtml(){
+  const S = window._grp; if(!S) return '';
+  const E = planEsc, can = grilleCan(), p = grilleCatalogue().find(x=>x.id===S.pid); if(!p) return '';
+  const d = (dossiersAFOR||[]).find(x=>String(x.id)===String(S.id));
+  const row = m=>`<label style="display:flex;gap:8px;align-items:flex-start;padding:4px 0;font-size:12px;cursor:${can?'pointer':'default'};"><input type="checkbox" ${S.checked.has(m.id)?'checked':''} ${can?'':'disabled'} onchange="grpToggle('${m.id}',this.checked)" style="margin-top:2px;"><span>${E(m.t)}${m.by?` <span style="color:var(--text3);font-size:10px;">(ajouté par ${E(m.by)})</span>`:''}</span></label>`;
+  const last = S.type==='plan' ? planChecks[S.id] : (terrChecks[S.id]||{})[S.type];
+  const sid = String(S.id).replace(/'/g,"\\'");
+  return `<div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--blue);">Grille de contrôle · ${E(GRP_LABEL[S.type])} <span style="font-weight:400;font-size:11px;color:var(--text3);">(pièce ${E(p.id)} — ${E(p.code)})</span></div>
+    <div style="margin-top:6px;">${p.e.map(e=>`<div style="margin-top:6px;font-weight:600;color:var(--blue);font-size:11px;">${E(e.id)} — ${E(e.t)}</div>${e.m.map(row).join('')}`).join('')}
+      ${p.extra.length?`<div style="margin-top:6px;font-weight:600;color:var(--blue);font-size:11px;">Autres motifs</div>${p.extra.map(row).join('')}`:''}</div>
+    ${can?`<div style="display:flex;gap:6px;margin-top:8px;"><input type="text" id="grp-new" placeholder="Ajouter un autre motif de rejet…" style="flex:1;border:1px solid var(--border-med);border-radius:6px;padding:5px 8px;font-size:12px;"><button class="btn-s" onclick="grpAdd()">+ Ajouter</button></div>`:''}
+    <label style="display:block;margin-top:10px;font-size:11px;color:var(--text3);">Commentaire (facultatif)<textarea id="grp-comm" rows="3" ${can?'':'disabled'} style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:6px;font-size:12px;font-family:inherit;margin-top:3px;">${E(S.comm||'')}</textarea></label>
+    ${last&&last.statut&&last.statut!=='a_verifier'?`<div style="margin-top:6px;font-size:11px;color:var(--text3);">Dernier contrôle : <b>${last.statut==='conforme'?'Conforme':'Rejeté'}</b> par ${E(last.par||'—')} le ${E(last.date||'')}</div>`:''}
+    <div style="position:sticky;bottom:-14px;background:var(--surface);padding:10px 0 14px;z-index:2;margin-top:8px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span id="grp-total" style="font-size:12px;">${grpTotalHtml(S.checked.size)}</span>
+      ${can?`<button class="btn-p" onclick="grpSave('${sid}','${S.type}')">Enregistrer le contrôle</button>`:'<span style="color:var(--text3);font-size:11px;">Lecture seule pour ce profil.</span>'}
+    </div>`;
+}
+function grpRender(){ const el=document.getElementById('grp-panel'); if(!el) return; const sc=el.parentElement?el.parentElement.scrollTop:0; el.innerHTML=grpHtml(); if(el.parentElement) el.parentElement.scrollTop=sc; }
+function grpKeepComm(){ const c=document.getElementById('grp-comm'); if(c && window._grp) window._grp.comm=c.value; }
+function grpToggle(mid,on){ const S=window._grp; if(!S) return; if(on) S.checked.add(mid); else S.checked.delete(mid); const t=document.getElementById('grp-total'); if(t) t.innerHTML=grpTotalHtml(S.checked.size); }
+function grpAdd(){
+  const S=window._grp; if(!S||!grilleCan()) return;
+  const inp=document.getElementById('grp-new'); const t=((inp&&inp.value)||'').trim();
+  if(t.length<4){ showToast('Saisissez le motif (4 caractères minimum).'); return; }
+  const dup = Object.keys(cqeMotifs).find(k=>cqeMotifs[k].p===S.pid && cqeMotifs[k].t.toLowerCase()===t.toLowerCase());
+  const id = dup || ('c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5));
+  if(!dup){ cqeMotifs[id] = {p:S.pid, t, by:cqeWho()||'', d:cqeToday()}; cqeGrilleSaveLocal(); cqeFbPut('cq_motifs/'+encodeURIComponent(id), cqeMotifs[id]); }
+  S.checked.add(id); grpKeepComm(); grpRender();
+}
+async function grpSave(id, type){
+  const S=window._grp; if(!S||!grilleCan()) return;
+  const d=(dossiersAFOR||[]).find(x=>String(x.id)===String(id)); if(!d) return;
+  grpKeepComm();
+  const t=cqeToday(), by=cqeWho()||'(inconnu)', ids=[...S.checked], comm=(S.comm||'').trim();
+  const textes=ids.map(grilleMotifTexte), statut=ids.length?'incoherent':'conforme';
+  const commentaire=[textes.join(' | '), comm].filter(Boolean).join(' — ');
+  // grille du dossier : on remplace uniquement les motifs de cette pièce
+  const g0=cqeGrille[id]||{}, cm=Object.assign({}, g0.cm||{}); cm[S.pid]=comm;
+  const rec={c:((g0.c||[]).filter(m=>grillePieceDeMotif(m)!==S.pid)).concat(ids), comm:Object.values(cm).filter(Boolean).join(' | '), cm, par:by, date:t, _u:new Date().toISOString()};
+  cqeGrille[id]=rec; cqeGrilleSaveLocal(); cqeFbPut('cq_grille/'+encodeURIComponent(id), rec);
+  // verdict de la pièce
+  if(type==='plan'){
+    const entry=planGetFor(d);
+    const chk={voisins:'',nom:'',superf:'',statut,commentaire,par:planWho(),date:t,planTs:entry?entry.ts:null,grille:true};
+    if(pubCQ[id]){ cqeLogEvent(id,'plan_'+(statut==='conforme'?'conforme':'incoherent')); pubSave(); }
+    await planSaveCheck(id, chk); terrApplyRejet(id,'plan',chk);
+    planClose();
+  } else {
+    const r=terrRec(d,type);
+    const chk={statut,commentaire,par:planWho(),date:t,sig:terrSig(r),grille:true};
+    await terrSaveCheck(id,type,chk); terrApplyRejet(id,type,chk);
+    terrClose();
+  }
+  window._grp=null;
+  showToast(GRP_LABEL[type]+' — dossier '+id+' : '+(ids.length?'rejeté ('+ids.length+' motif(s)).':'conforme.'));
+  try{ cqeRenderAll(); }catch(e){}
+}
+
 function terrOpen(id, focus){
   const d = (dossiersAFOR||[]).find(x=>String(x.id)===String(id)); if(!d) return;
   const can = planCanEdit();
@@ -7528,13 +7591,13 @@ function terrOpen(id, focus){
       <div style="background:var(--surface2);padding:8px 12px;display:flex;justify-content:space-between;align-items:center;"><b style="font-family:'Syne',sans-serif;">${T.label} — ${T.titre}</b><span style="font-size:11px;">${terrBadge(d,type)}</span></div>
       <div style="padding:8px 12px;font-size:12px;">${(type==='rdc'&&terrIsPV(rec))?terrRenderPV(d,rec):(type==='pvcl'&&terrIsPVCL(rec))?terrRenderPVCL(d,rec):(ecart+(terrRenderNode(rec,0)||'<span style="color:var(--text3);">Fiche vide.</span>'))}
         <div style="font-size:10px;color:var(--text3);margin-top:6px;">Tablette : ${planEsc(rec._tablette||'—')}${rec._importedAt?' · importé le '+new Date(rec._importedAt).toLocaleDateString('fr-FR'):''}</div></div>
-      <div style="background:var(--surface2);padding:10px 12px;border-top:1px solid var(--border);">
+      ${focus?'':`<div style="background:var(--surface2);padding:10px 12px;border-top:1px solid var(--border);">
         <div style="font-weight:700;color:var(--blue);margin-bottom:4px;">Contrôle du ${T.label}</div>
         <label style="display:block;">Résultat${sel(type+'-statut',chk.statut||'')}</label>
         <label style="display:block;margin-top:6px;">Commentaire<textarea id="terr-${type}-comm" rows="2" ${can?'':'disabled'} style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:6px;font-size:12px;font-family:inherit;">${planEsc(chk.commentaire||'')}</textarea></label>
         ${chk.statut?`<div style="margin-top:6px;font-size:11px;color:var(--text3);">Dernier contrôle : <b>${chk.statut==='conforme'?'Conforme':'Incohérent'}</b> par ${planEsc(chk.par||'—')} le ${planEsc(chk.date||'')}</div>`:''}
         ${can?`<button class="btn-p" style="margin-top:8px;" onclick="terrSubmit('${sid}','${type}')">Enregistrer le contrôle ${T.label}</button>`:'<div style="margin-top:8px;color:var(--text3);">Lecture seule pour ce profil.</div>'}
-      </div></div>`;
+      </div>`}</div>`;
   };
   const old = document.getElementById('terr-modal'); if(old) old.remove();
   const modal = document.createElement('div');
@@ -7547,15 +7610,16 @@ function terrOpen(id, focus){
     </div>
     <div style="flex:1;display:flex;min-height:0;">
       <div id="terr-main" style="flex:1;min-width:0;overflow:auto;padding:14px;font-size:12px;">${focus==='pvcl'?'':bloc('rdc')}${focus==='rdc'?'':bloc('pvcl')}</div>
-      <div style="width:340px;max-width:38%;border-left:1px solid var(--border);overflow-y:auto;padding:14px;font-size:12px;">
-        <div style="font-weight:700;color:var(--blue);margin-bottom:4px;">Dossier AFOR (référence)</div>
+      ${(focus==='rdc'||focus==='pvcl')?`<div style="width:420px;max-width:42%;border-left:1px solid var(--border);overflow-y:auto;padding:14px;font-size:12px;"><div id="grp-panel"></div><details style="margin-top:16px;border-top:1px solid var(--border);padding-top:8px;"><summary style="cursor:pointer;font-weight:700;color:var(--blue);">Dossier AFOR (référence)</summary>`:`<div style="width:340px;max-width:38%;border-left:1px solid var(--border);overflow-y:auto;padding:14px;font-size:12px;">`}
+        <div style="font-weight:700;color:var(--blue);margin:6px 0 4px;">Dossier AFOR (référence)</div>
         ${line('Demandeur', planEsc(nomDem||'—'))}${line('Village / SP', planEsc((d.village||'—')+' / '+(d.sp||'—')))}${line('Agent', planEsc(d.agent||'—'))}
         ${line('Statut AFOR', planEsc(d.statut_txt||'—'))}${line('Rejet / CQ', rejBadge(d))}${line('Étape', planEsc(d.etape||'—'))}${line('Date demande', d.date_DD?d.date_DD.split('-').reverse().join('/'):'—')}${line('Date RDC', d.date_RDC?d.date_RDC.split('-').reverse().join('/'):'—')}${line('Date PVCL', d.date_CL?d.date_CL.split('-').reverse().join('/'):'—')}
         ${line('Superficie déclarée', d.superficie_declaree?d.superficie_declaree+' ha':'—')}${line('Superficie GNSS', gi?gi.superficie.toFixed(2)+' ha':'—')}
         <div style="font-weight:700;color:var(--blue);margin:12px 0 4px;">Voisins déclarés (${planEsc(vois.src)})</div>
         ${vois.list.length?vois.list.map(v=>line(planEsc(v.position||'—'), '<b>'+planEsc(v.nom)+'</b>')).join(''):'<div style="color:var(--text3);">Aucun voisin enregistré.</div>'}
-      </div></div></div>`;
+      ${(focus==='rdc'||focus==='pvcl')?'</details>':''}</div></div></div>`;
   document.body.appendChild(modal);
+  if(focus==='rdc'||focus==='pvcl'){ grpInit(d,focus); grpRender(); }
 }
 function terrClose(){ const m=document.getElementById('terr-modal'); if(m) m.remove(); }
 async function terrSubmit(id, type){
@@ -7872,12 +7936,12 @@ function rejCompteurs(ds){
 }
 // Un contrôle tablette « incohérent » crée (ou met à jour) un rejet CQ ; « conforme » clôt le rejet issu de ce contrôle.
 function terrApplyRejet(id, type, chk){
-  const T = TERR_TYPES[type], t = cqeToday(), by = chk.par || cqeWho() || '(inconnu)';
+  const T = TERR_TYPES[type] || {label:'Plan'}, t = cqeToday(), by = chk.par || cqeWho() || '(inconnu)';
   let c = pubCQ[id], changed = false;
   const motif = T.label+' incohérent : '+(chk.commentaire||'');
   if(chk.statut==='incoherent'){
     if(!c){ c = pubCQ[id] = {niveau:null,statut_cq:'REJETÉ (contrôle '+T.label+')',rejete:true,motif_qc1:null,motif_qc2:null,motif_final:motif,superf:null,date_rejet:t,source:'app',terr:{},_u:new Date().toISOString(),ev:[{t:'rejet_app',d:t,by}]}; changed = true; }
-    else if(!c.rejete || c.corrige){ c.rejete=true; c.corrige=false; c.date_correction=null; c.corrige_par=null; c.motif_final=motif; c.date_rejet=t; delete c.date_rejet_est; c.statut_cq='REJETÉ (contrôle '+T.label+')'; if(c.source!=='app'){ c.source='app'; c.terr={}; } cqeLogEvent(id,'rejet_app'); changed = true; }
+    else if(!c.rejete || c.corrige){ c.rejete=true; c.corrige=false; c.date_correction=null; c.corrige_par=null; c.motif_final=motif; c.date_rejet=t; delete c.date_rejet_est; c.statut_cq='REJETÉ (contrôle '+T.label+')'; c.terr_orig={}; if(c.source!=='app'){ c.source='app'; c.terr={}; } cqeLogEvent(id,'rejet_app'); changed = true; }
     else { c.motif_final = c.motif_final ? (c.motif_final.indexOf(motif)>=0 ? c.motif_final : c.motif_final+' | '+motif) : motif; cqeLogEvent(id,'rejet_app'); changed = true; }
     c.terr = c.terr||{}; c.terr[type] = {d:t,by,motif:chk.commentaire||''};
     if(!c.assigne_a && !cqeAssign[id]){ c.assigne_a = by; c.assigne_date = t; const rec={a:by,d:t,by,_u:new Date().toISOString()}; cqeAssign[id]=rec; cqeAssignSaveLocal(); cqeAssignPut(id,rec); }
@@ -7894,6 +7958,7 @@ function terrApplyRejet(id, type, chk){
 // Après un import AFOR (qui réécrit pubCQ), réapplique les rejets issus des contrôles tablette encore « incohérents ».
 function terrSyncRejets(){
   let n=0;
+  Object.keys(planChecks||{}).forEach(id=>{ const k=planChecks[id]; if(!k||k.statut!=='incoherent') return; const c=pubCQ[id]; if(c && (c.rejete||c.corrige)){ if(c.rejete && c.source==='app'){ c.terr=c.terr||{}; if(!c.terr.plan){ c.terr.plan={d:k.date,by:k.par,motif:k.commentaire||''}; n++; } } return; } if(terrApplyRejet(id,'plan',k)) n++; });
   Object.keys(terrChecks||{}).forEach(id=>{
     ['rdc','pvcl'].forEach(type=>{
       const k = terrChecks[id] && terrChecks[id][type];
