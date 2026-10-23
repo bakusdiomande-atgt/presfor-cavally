@@ -450,7 +450,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-ao</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-aq</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -6447,8 +6447,9 @@ async function cqeSendAfor(btn){
 }
 function cqeAdminBarRender(){
   const el = document.getElementById('cqe-admin-bar'); if(!el) return;
-  if(!currentUser || currentUser.role!=='admin'){ el.innerHTML=''; return; }
+  if(!currentUser || currentUser.role!=='admin' || (typeof cqeTab!=='undefined' && cqeTab!=='dossiers')){ el.innerHTML=''; return; }
   el.innerHTML = `<div style="padding:6px 16px;margin:0 0 8px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);font-size:11px;color:var(--text2);display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <b style="color:var(--accent);">Synchronisation automatique</b> : ${planEsc(autoSyncStatus)}<button class="btn-s" onclick="autoSyncRun()" title="Lancer la vérification maintenant">↻ Synchroniser maintenant</button><br>
     <b>Contrôles CQ</b> · cet ordinateur : ${Object.keys(pubCQ||{}).length.toLocaleString('fr-FR')} · Firebase : ${planEsc(pubLoadStatus)} · envoi : ${planEsc(pubSaveStatus)}
     <button class="btn-s" onclick="cqeRepublish(this)">↑ Envoyer sur Firebase (visible par les contrôleurs)</button>
     · Dossiers AFOR : ${(dossiersAFOR||[]).length.toLocaleString('fr-FR')} (${planEsc(aforLoadStatus)})
@@ -6620,6 +6621,47 @@ setInterval(async ()=>{
     }
   }catch(e){}
 }, 60000);
+
+// ═══════════════════════════════════════════════════════════════
+// SYNCHRONISATION AUTOMATIQUE — plus besoin des boutons « Envoyer » / « Recharger ».
+// Toutes les 5 minutes (et au retour sur l'application) : on compare avec Firebase par de tout petits appels (compteurs),
+// puis on n'envoie / ne recharge QUE ce qui diffère. L'admin envoie (CQ, AFOR, GNSS) ; les autres comptes rechargent.
+// ═══════════════════════════════════════════════════════════════
+let autoSyncStatus = 'en attente', _autoSyncBusy = false, _autoSyncLast = 0;
+async function autoSyncCount(path){
+  try{ const r = await fetch(FIREBASE_URL+'/presfor/'+path+'.json',{signal:AbortSignal.timeout(15000)}); if(!r.ok) return undefined; const v = await r.json(); return (v==null)?0:Number(v)||0; }
+  catch(e){ return undefined; }   // undefined = Firebase injoignable : on ne touche à rien
+}
+async function autoSyncRun(){
+  if(_autoSyncBusy || !currentUser || document.hidden) return;
+  if(typeof _pubPushing!=='undefined' && _pubPushing) return;
+  _autoSyncBusy = true; const did = [];
+  try{
+    const admin = currentUser.role==='admin';
+    // 1) Contrôles CQ : envoi incrémental (seulement ce qui a changé) puis relecture
+    try{ if(admin && Object.keys(pubCQ||{}).length){ const r = await pubPushToFirebase(false); if(r && r.sent) did.push('CQ envoyés'); } }catch(e){}
+    try{ await pubLoadFromFirebase(); if(pubRemoteChanged>0) did.push('CQ mis à jour'); }catch(e){}
+    // 2) Dossiers AFOR
+    const rAfor = await autoSyncCount('afor_cf/meta/count'), lAfor = (dossiersAFOR||[]).length;
+    if(rAfor!==undefined){
+      if(admin && lAfor>rAfor){ try{ await aforSaveToFirebase(); aforLoadStatus='✓ envoyé automatiquement : '+lAfor.toLocaleString('fr-FR')+' dossiers'; did.push('dossiers AFOR envoyés'); }catch(e){ aforLoadStatus='✗ envoi auto : '+e.message; } }
+      else if(rAfor>lAfor || (!admin && rAfor!==lAfor)){ try{ if(await aforLoadFromFirebase()){ try{ aforRenderAll(); dosRenderAll(); }catch(e){} did.push('dossiers AFOR rechargés'); } }catch(e){} }
+    }
+    // 3) GNSS
+    const rG = await autoSyncCount('gnss_data/count'), lG = (gnssData||[]).length;
+    if(rG!==undefined){
+      if(admin && lG>rG){ try{ await gnssSaveToFirebase(); did.push('GNSS envoyé'); }catch(e){} }
+      else if(rG>lG || (!admin && rG!==lG)){ try{ if(await gnssLoadFromFirebase()) did.push('GNSS rechargé'); }catch(e){} }
+    }
+    autoSyncStatus = '✓ '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+(did.length?' — '+did.join(', '):' — tout est à jour');
+  }catch(e){ autoSyncStatus = '✗ '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+' — '+(e&&e.message||e); }
+  _autoSyncBusy = false; _autoSyncLast = Date.now();
+  try{ cqeAdminBarRender(); }catch(e){}
+  try{ if(did.length) cqeRefreshIfOpen(); }catch(e){}
+}
+setInterval(autoSyncRun, 5*60*1000);
+setTimeout(autoSyncRun, 45*1000);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && Date.now()-_autoSyncLast>2*60*1000) setTimeout(autoSyncRun, 1500); });
 function cqeRefreshIfOpen(){ try{ const m=document.getElementById('module-cqe'); if(m && m.classList.contains('active')) cqeRenderAll(); }catch(e){ console.warn('cqeRefreshIfOpen', e); } }
 function cqeRenderAll(){
   const kpiEl = document.getElementById('cqe-kpi');
