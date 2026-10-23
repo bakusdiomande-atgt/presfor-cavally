@@ -450,7 +450,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-az</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-ba</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -8852,6 +8852,19 @@ function cqeCtlChoose(id, kind){
   cqeCtlClose();
   if(kind==='plan') planOpen(id); else terrOpen(id, kind);
 }
+// Motif et date du rejet d'un dossier (pièces incohérentes : motifs cochés + commentaire ; sinon ancien verdict ou rejet AFOR)
+function cqeCtlMotif(d){
+  const id=d.id, parts=[], dates=[];
+  const add=(lab,c)=>{ if(c && c.statut==='incoherent'){ parts.push(lab+' : '+(c.commentaire||'(sans précision)')); if(c.date) dates.push(c.date); } };
+  const tc=terrChecks[id]||{}; add('RDC',tc.rdc); add('PVCL',tc.pvcl); add('Plan',planChecks[id]);
+  const k=cqeCtl[id];
+  if(!parts.length && k && k.statut==='rejete'){ parts.push((k.motif||'')+(k.comm?' — '+k.comm:'')); if(k.date) dates.push(k.date); }
+  const c=pubCQ[id];
+  if(!parts.length && c && c.rejete){ const m=(typeof rejMotif==='function')?rejMotif(d):''; if(m) parts.push(m); }
+  let date=dates.sort().pop()||'';
+  if(!date && c && c.rejete && c.date_rejet) date=c.date_rejet;
+  return {motif:parts.join('\n'), date};
+}
 function cqeRenderControle(){
   const kpiEl=document.getElementById('cqe-kpi'), el=document.getElementById('cqe-content');
   const afor=dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
@@ -8879,7 +8892,7 @@ function cqeRenderControle(){
   const rows=list.slice(f.page*PG,f.page*PG+PG).map(d=>{
     const k0=cqeCtlDerived(d), k=k0.statut==='a_controler'?null:k0; const hasPlan=!!(typeof planGetFor==='function'&&planGetFor(d));
     const st=k?(k.statut==='conforme'?'<span style="color:#16a34a;font-weight:700;">Conforme</span>':'<span style="color:#dc2626;font-weight:700;">Rejeté</span>'):'<span style="color:#d97706;">À contrôler</span>';
-    return `<tr style="cursor:pointer;" onclick="cqeCtlOpen('${qid(d.id)}')"><td style="font-family:'DM Mono',monospace;font-size:11px;">${esc(d.id)}</td><td>${esc((d.prenom||'')+' '+(d.nom_demandeur||''))}</td><td>${esc(d.village||'')}</td><td>${esc(d.agent||'—')}</td><td>${st}</td><td>${k?esc(k.par||'')+' · '+esc(k.date||''):''}</td><td>${cqeCtlBadge(d,'rdc')}</td><td>${cqeCtlBadge(d,'pvcl')}</td><td>${cqeCtlBadge(d,'plan')}</td></tr>`;}).join('')||'<tr><td colspan="9" style="text-align:center;color:#888;padding:14px;">Aucun dossier pour ces filtres.</td></tr>';
+    return `<tr style="cursor:pointer;" onclick="cqeCtlOpen('${qid(d.id)}')"><td style="font-family:'DM Mono',monospace;font-size:11px;">${esc(d.id)}</td><td>${esc((d.prenom||'')+' '+(d.nom_demandeur||''))}</td><td>${esc(d.village||'')}</td><td>${esc(d.agent||'—')}</td><td>${st}</td><td>${k?esc(k.par||'')+' · '+esc(k.date||''):''}</td><td>${cqeCtlBadge(d,'rdc')}</td><td>${cqeCtlBadge(d,'pvcl')}</td><td>${cqeCtlBadge(d,'plan')}</td>${(()=>{ if(!k||k.statut!=='rejete') return '<td></td><td></td>'; const mm=cqeCtlMotif(d); return `<td style="max-width:340px;font-size:11px;white-space:pre-line;">${esc(mm.motif)}</td><td style="white-space:nowrap;">${esc(mm.date?mm.date.split('-').reverse().join('/'):'')}</td>`; })()}</tr>`;}).join('')||'<tr><td colspan="11" style="text-align:center;color:#888;padding:14px;">Aucun dossier pour ces filtres.</td></tr>';
   const sel=(k,opts)=>`<select onchange="cqeCtlSet('${k}',this.value)" style="border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;">${opts.map(o=>`<option value="${esc(o[0])}" ${f[k]===o[0]?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
   el.innerHTML=`<div class="tw" style="overflow:hidden;">
    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -8887,7 +8900,7 @@ function cqeRenderControle(){
      ${sel('statut',[['a_controler','À contrôler'],['conforme','Conformes'],['rejete','Rejetés'],['','Tous']])}
      ${sel('dept',[['','Tous départements'],...depts.map(x=>[x,x])])}
    </div>
-   <div style="overflow:auto;"><table><thead><tr><th>N° dossier</th><th>Demandeur</th><th>Village</th><th>Agent</th><th>Contrôle</th><th>Contrôlé par</th><th>RDC</th><th>PVCL</th><th>Plan</th></tr></thead><tbody>${rows}</tbody></table></div>
+   <div style="overflow:auto;"><table><thead><tr><th>N° dossier</th><th>Demandeur</th><th>Village</th><th>Agent</th><th>Contrôle</th><th>Contrôlé par</th><th>RDC</th><th>PVCL</th><th>Plan</th><th>Motif du rejet</th><th>Rejeté le</th></tr></thead><tbody>${rows}</tbody></table></div>
    <div style="padding:10px 16px;display:flex;gap:8px;align-items:center;font-size:12px;border-top:1px solid var(--border);">
      <button class="btn-s" ${f.page<=0?'disabled':''} onclick="cqeCtlSet('page',${f.page-1})">←</button> Page ${f.page+1} / ${pages} · ${list.length.toLocaleString('fr-FR')} dossier(s)
      <button class="btn-s" ${f.page>=pages-1?'disabled':''} onclick="cqeCtlSet('page',${f.page+1})">→</button></div></div>`;
