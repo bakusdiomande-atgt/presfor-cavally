@@ -450,7 +450,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-ay</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-az</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -6632,7 +6632,7 @@ setInterval(async ()=>{
   try{
     const m=document.getElementById('module-cqe'); if(!m || !m.classList.contains('active') || document.hidden) return;
     if(_pubPushing) return;
-    const nAs = (await cqeAssignLoad()) + (await cqeGrilleLoad()) + (await cqeSuiviLoad()) + (await terrLoadChecks()) + (await planLoadChecks());
+    const nAs = (await cqeAssignLoad()) + (await cqeGrilleLoad()) + (await cqeSuiviLoad()) + (await terrLoadChecks()) + (await planLoadChecks()) + (await cqeEtatLoad());
     await pubLoadFromFirebase();
     if(pubRemoteChanged>0 || nAs>0){
       const modalOpen = ['terr-modal','cqe-dossier-modal','terr-struct'].some(id=>{ const e=document.getElementById(id); return e && e.style.display!=='none'; });
@@ -6660,7 +6660,8 @@ async function autoSyncRun(){
     // 1) Contrôles CQ : envoi incrémental (seulement ce qui a changé) puis relecture
     try{ if(admin && Object.keys(pubCQ||{}).length){ const r = await pubPushToFirebase(false); if(r && r.sent) did.push('CQ envoyés'); } }catch(e){}
     try{ await pubLoadFromFirebase(); if(pubRemoteChanged>0) did.push('CQ mis à jour'); }catch(e){}
-    try{ const n=(await cqeGrilleLoad())+(await terrLoadChecks())+(await planLoadChecks())+(await cqeAssignLoad())+(await cqeSuiviLoad()); if(n>0) did.push('contrôles et attributions mis à jour'); }catch(e){}
+    try{ const n=(await cqeGrilleLoad())+(await terrLoadChecks())+(await planLoadChecks())+(await cqeAssignLoad())+(await cqeSuiviLoad())+(await cqeEtatLoad());
+    if(admin){ const b=cqeEtatBackfill(); if(b) did.push(b+' état(s) de dossier publié(s)'); } if(n>0) did.push('contrôles et attributions mis à jour'); }catch(e){}
     // 2) Dossiers AFOR
     const rAfor = await autoSyncCount('afor_cf/meta/count'), lAfor = (dossiersAFOR||[]).length;
     if(rAfor!==undefined){
@@ -7589,6 +7590,7 @@ async function grpSave(id, type){
     await terrSaveCheck(id,type,chk); terrApplyRejet(id,type,chk);
     terrClose();
   }
+  { const dv=cqeCtlCalc(d); cqeEtatSet(id, dv.statut, dv.par||by, dv.date||t); }
   window._grp=null;
   showToast(GRP_LABEL[type]+' — dossier '+id+' : '+(ids.length?'rejeté ('+ids.length+' motif(s)).':'conforme.'));
   try{ cqeRenderAll(); }catch(e){}
@@ -8776,10 +8778,50 @@ function cqeRenderPilotage(){
 // ═══════════════════════════════════════════════════════════════
 let cqeCtlFilter={q:'',statut:'a_controler',dept:'',page:0};
 function cqeCtlSet(k,v){ cqeCtlFilter[k]=v; if(k!=='page') cqeCtlFilter.page=0; cqeRenderControle(); if(k==='q'){ const el=document.getElementById('ctl-q'); if(el){el.focus(); el.setSelectionRange(el.value.length,el.value.length);} } }
+// État du dossier enregistré au moment du contrôle (calculé par celui qui a les fiches sous les yeux) et partagé via Firebase
+// (/presfor/cq_etat/{dossier}) : chacun voit le même état, même si ses propres fiches tablette / plans ne sont pas tous chargés.
+let cqeEtat = {};
+try{ const x=localStorage.getItem('presfor_cq_etat'); if(x) cqeEtat=JSON.parse(x); }catch(e){}
+function cqeEtatSaveLocal(){ try{ localStorage.setItem('presfor_cq_etat', JSON.stringify(cqeEtat)); }catch(e){} }
+function cqeEtatSet(id, statut, par, date){
+  const rec={s:statut, par:par||'', d:date||cqeToday(), _u:new Date().toISOString()};
+  cqeEtat[id]=rec; cqeEtatSaveLocal(); cqeFbPut('cq_etat/'+encodeURIComponent(id), rec);
+}
+async function cqeEtatLoad(){
+  let n=0;
+  try{
+    const r=await fetch(FIREBASE_URL+'/presfor/cq_etat.json',{signal:AbortSignal.timeout(60000)}); if(!r.ok) return 0;
+    const d=(await r.json())||{};
+    Object.keys(d).forEach(k=>{ const rem=d[k], loc=cqeEtat[k]; if(!loc || String(rem._u||'')>String(loc._u||'')){ if(!loc || loc.s!==rem.s) n++; cqeEtat[k]=rem; } });
+    Object.keys(cqeEtat).forEach(k=>{ const loc=cqeEtat[k], rem=d[k]; if(!rem || String(loc._u||'')>String(rem._u||'')) cqeFbPut('cq_etat/'+encodeURIComponent(k), loc); });
+    cqeEtatSaveLocal();
+  }catch(e){}
+  return n;
+}
+function cqeCtlDerived(d){
+  const e=cqeEtat[d.id];
+  if(e){
+    const tc=terrChecks[d.id]||{}, stamps=[chkStamp(tc.rdc), chkStamp(tc.pvcl), chkStamp(planChecks[d.id])];
+    if(stamps.every(x=>String(e._u||'')>=x)) return {statut:e.s, par:e.par||'', date:e.d||''};   // aucun contrôle plus récent que l'état partagé
+  }
+  return cqeCtlCalc(d);
+}
+// Administrateur : publie l'état des dossiers déjà contrôlés mais jamais enregistrés (contrôles faits avant cette version).
+function cqeEtatBackfill(){
+  let n=0;
+  (dossiersAFOR||[]).forEach(d=>{
+    if(cqeEtat[d.id]) return;
+    const hasCheck = (terrChecks[d.id]&&(terrChecks[d.id].rdc||terrChecks[d.id].pvcl)) || planChecks[d.id] || cqeCtl[d.id];
+    if(!hasCheck) return;
+    const c=cqeCtlCalc(d); if(c.statut==='a_controler') return;
+    cqeEtatSet(d.id, c.statut, c.par, c.date); n++;
+  });
+  return n;
+}
 function cqeCtlStatutOf(id){ const d=(dossiersAFOR||[]).find(x=>String(x.id)===String(id)); return d?cqeCtlDerived(d).statut:((cqeCtl[id]||{}).statut||'a_controler'); }
 // État d'un dossier dans « Contrôle des dossiers », déduit des contrôles par pièce (RDC, PVCL, plan) + ancien verdict global.
 // Rejeté : au moins une pièce incohérente. Conforme : toutes les pièces existantes sont conformes. Sinon : à contrôler.
-function cqeCtlDerived(d){
+function cqeCtlCalc(d){
   const id=d.id, tc=terrChecks[id]||{}, items=[];
   ['rdc','pvcl'].forEach(t=>{ if(terrRec(d,t)){ const c=tc[t]; items.push(c&&(c.statut==='conforme'||c.statut==='incoherent')?c:null); } });
   const pe=(typeof planGetFor==='function')?planGetFor(d):null; if(pe){ const c=planChecks[id], st=planStatusOf(pe,id); items.push(c&&(st==='conforme'||st==='incoherent')?c:null); }
@@ -13578,6 +13620,7 @@ serverLoad().then(ok => {
   cqeAssignLoad().then(()=>cqeRefreshIfOpen());
   cqeGrilleLoad().then(()=>cqeRefreshIfOpen());
   cqeSuiviLoad().then(()=>cqeRefreshIfOpen());
+  cqeEtatLoad().then(()=>cqeRefreshIfOpen());
   aforLoadFromFirebase().then(loaded=>{
     if(loaded){ aforRenderAll(); dosRenderAll(); cqeRefreshIfOpen(); }
     else if(!dossiersAFOR.length){ setTimeout(()=>aforLoadFromFirebase().then(l2=>{ if(l2){ aforRenderAll(); dosRenderAll(); cqeRefreshIfOpen(); } }), 8000); }
