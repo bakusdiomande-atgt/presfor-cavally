@@ -450,7 +450,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-at</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-au</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -1400,6 +1400,17 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
         <div id="tab-import-history" style="margin-top:10px;"></div>
       </div>
 
+      <div class="tw" style="padding:16px;margin-bottom:16px;">
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;">Plans parcellaires (PDF)</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">Le nom de chaque fichier doit contenir le n° du dossier (ex. 088-002-021008.pdf). Un plan réimporté remplace l'ancien. Les plans sont consultés et contrôlés depuis « Contrôle des dossiers ».</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <label class="btn-p" style="cursor:pointer;">📥 Importer des plans PDF<input type="file" accept=".pdf,application/pdf" multiple style="display:none" onchange="planImportFiles(this.files);this.value='';"></label>
+          <label class="btn-s" style="cursor:pointer;">📁 Importer un dossier de plans<input type="file" webkitdirectory multiple style="display:none" onchange="planImportFiles(this.files);this.value='';"></label>
+          <span id="plan-import-summary" style="font-size:11px;color:var(--text2);"></span>
+        </div>
+        <div id="plan-import-status" style="margin-top:10px;"></div>
+      </div>
+
       <div class="tw" style="padding:16px;">
         <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;margin-bottom:10px;">Outils complémentaires</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -1415,6 +1426,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
             Dossiers en publicité sans GNSS
           </button>
+          <button class="btn-s" onclick="terrShowStructure()" title="Liste des champs des fiches tablette (RDC et PVCL)" style="display:inline-flex;align-items:center;gap:6px;">Structure des fiches tablette</button>
           <button class="btn-s viewer-hidden" id="btn-afor-wipe" onclick="aforWipeFirebase()" title="Purger la base AFOR sur Firebase (admin)" style="display:none;align-items:center;gap:6px;background:#FDECEA;color:#B71C1C;border-color:#B71C1C;">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5ZM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 5.885 16h4.23a2 2 0 0 0 1.994-1.84l.853-10.66H13.5a.5.5 0 0 0 0-1z"/></svg>
             Vider Firebase AFOR
@@ -1741,7 +1753,7 @@ function switchModule(id){
   if(id==='activites'){try{actRenderNav();actRenderAll();}catch(e){console.error('activites render:',e);}}
   if(id==='indicateurs'){try{indRenderNav();indRenderAll();}catch(e){console.error('indicateurs render:',e);}}
   if(id==='cqe'){try{cqeRenderAll();}catch(e){console.error('cqe render:',e);} try{ pubLoadFromFirebase().then(()=>cqeRefreshIfOpen()); }catch(e){} }
-  if(id==='imports'){try{tabRenderImportHistory();}catch(e){console.error('imports render:',e);}}
+  if(id==='imports'){try{ const el=document.getElementById('plan-import-summary'); if(el){ const mb=planFiles.reduce((t,e)=>t+(e.kb||0),0)/1024; el.textContent=planFiles.length.toLocaleString('fr-FR')+' plan(s) en base (≈ '+mb.toFixed(0)+' Mo)'; } }catch(e){} try{tabRenderImportHistory();}catch(e){console.error('imports render:',e);}}
   setTimeout(()=>{ if(typeof isViewer==='function'&&isViewer()) applyViewerRestrictions(); },200);
 }
 
@@ -7020,8 +7032,8 @@ function planCodeFromName(name){
   return m ? m[0] : base.trim();
 }
 
-const CQI_SUBS = [['rejets','Rejets CQI'],['controle','Contrôle des dossiers'],['plans','Plans parcellaires'],['terrain','RDC & PVCL']];
-function cqeTabGroup(t){ return t==='dossiers'?'dossiers' : t==='rejets_afor'?'rejets_afor' : CQI_SUBS.some(x=>x[0]===t)?'cqi' : t; }
+const CQI_SUBS = [['rejets','Rejets CQI'],['controle','Contrôle des dossiers']];
+function cqeTabGroup(t){ return t==='dossiers'?'dossiers' : t==='rejets_afor'?'rejets_afor' : ['rejets','controle','plans','terrain'].includes(t)?'cqi' : t; }
 function cqeTabsRender(){
   const g = cqeTabGroup(cqeTab);
   if(g==='cqi') window._cqiSub = cqeTab;
@@ -7136,7 +7148,7 @@ async function planProcessPdf(file){
 // ── Import (ajout et remplacement) ──
 async function planImportFiles(fileList){
   if(planImporting){ showToast('Un import est déjà en cours.'); return; }
-  if(!planCanEdit()){ showToast('Import réservé aux administrateurs et contrôleurs qualité.'); return; }
+  if(!currentUser || currentUser.role!=='admin'){ showToast('Import réservé à l\'administrateur (module Imports).'); return; }
   const files = Array.from(fileList||[]).filter(f=>/\.pdf$/i.test(f.name));
   if(!files.length){ showToast('Aucun fichier PDF sélectionné.'); return; }
   planImporting = true;
@@ -7530,11 +7542,11 @@ function terrOpen(id, focus){
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;display:flex;padding:14px;';
   modal.innerHTML = `<div style="background:var(--surface);border-radius:12px;width:100%;display:flex;flex-direction:column;overflow:hidden;">
     <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;">
-      <h3 style="font-family:'Syne',sans-serif;font-size:14px;margin:0;">Contrôle RDC / PVCL · dossier ${planEsc(d.id)} · ${planEsc(nomDem)}</h3>
+      <h3 style="font-family:'Syne',sans-serif;font-size:14px;margin:0;">Contrôle ${focus==='rdc'?'du RDC':focus==='pvcl'?'du PVCL':'RDC / PVCL'} · dossier ${planEsc(d.id)} · ${planEsc(nomDem)}</h3>
       <div style="display:flex;gap:6px;">${(typeof planGetFor==='function' && planGetFor(d))?`<button class="btn-s" onclick="terrClose();planOpen('${sid}')">Voir le plan</button>`:''}<button class="btn-s" onclick="terrClose()">✕ Fermer</button></div>
     </div>
     <div style="flex:1;display:flex;min-height:0;">
-      <div id="terr-main" style="flex:1;min-width:0;overflow:auto;padding:14px;font-size:12px;">${bloc('rdc')}${bloc('pvcl')}</div>
+      <div id="terr-main" style="flex:1;min-width:0;overflow:auto;padding:14px;font-size:12px;">${focus==='pvcl'?'':bloc('rdc')}${focus==='rdc'?'':bloc('pvcl')}</div>
       <div style="width:340px;max-width:38%;border-left:1px solid var(--border);overflow-y:auto;padding:14px;font-size:12px;">
         <div style="font-weight:700;color:var(--blue);margin-bottom:4px;">Dossier AFOR (référence)</div>
         ${line('Demandeur', planEsc(nomDem||'—'))}${line('Village / SP', planEsc((d.village||'—')+' / '+(d.sp||'—')))}${line('Agent', planEsc(d.agent||'—'))}
@@ -7557,7 +7569,7 @@ async function terrSubmit(id, type){
   const rej = terrApplyRejet(id, type, chk);
   showToast(TERR_TYPES[type].label+' '+id+' : '+(st==='conforme'?'conforme.':'incohérence signalée — dossier rejeté au CQ pour correction.')+(st==='conforme'&&rej?' Rejet clos.':''));
   try{ if(typeof cqeRenderAll==='function') cqeRenderAll(); }catch(e){}
-  terrOpen(id);
+  terrOpen(id, type);
   terrRenderTabKeep();
 }
 function terrRenderTabKeep(){ if(typeof cqeTab!=='undefined' && cqeTab==='terrain') terrRenderTab(); }
@@ -7690,7 +7702,7 @@ function cqeRenderRejets(){
       <select onchange="rejSetFilter('agent',this.value)" style="${S}max-width:200px;">${opt([['','Tous les agents']].concat(agentsRej.map(x=>[x,x])),rejFilter.agent)}</select>
       <select onchange="rejSetFilter('dept',this.value)" style="${S}">${opt([['','Tous départements']].concat(depts.map(x=>[x,x])),rejFilter.dept)}</select>
       <span style="font-size:11px;color:var(--text3);">${total.toLocaleString('fr-FR')} dossier(s)</span>
-      <span style="margin-left:auto;display:flex;gap:6px;">${can?'<button class="btn-s" onclick="rejMarkTransmis()" title="Marque comme transmis à l\'agent tous les dossiers « à transmettre » de la sélection affichée">✉ Marquer la sélection comme transmise</button>':''}<button class="btn-p" onclick="rejExportXlsx()">⬇ Exporter Excel</button><button class="btn-s" onclick="rejExport()">CSV</button></span>
+      <span style="margin-left:auto;display:flex;gap:6px;">${can?'<button class="btn-s" onclick="rejMarkTransmis()" title="Marque comme transmis à l\'agent tous les dossiers « à transmettre » de la sélection affichée">✉ Marquer la sélection comme transmise</button>':''}<button class="btn-p" onclick="rejExportXlsx()">⬇ Exporter Excel</button><button class="btn-s" onclick="rejExport()">⬇ CSV</button><button class="btn-s" onclick="cqeExportCorrections()" title="Une feuille par agent avec les corrections à faire">⬇ Fiches de correction (Excel par agent)</button></span>
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--surface2);">
       ${['Dossier','Demandeur','Village','Agent','Origine','Motif','Rejeté le','Délai','État','Responsable CQ',''].map(h=>`<th style="text-align:left;padding:7px 10px;">${h}</th>`).join('')}</tr></thead>
@@ -8678,6 +8690,20 @@ function cqeRenderPilotage(){
 let cqeCtlFilter={q:'',statut:'a_controler',dept:'',page:0};
 function cqeCtlSet(k,v){ cqeCtlFilter[k]=v; if(k!=='page') cqeCtlFilter.page=0; cqeRenderControle(); if(k==='q'){ const el=document.getElementById('ctl-q'); if(el){el.focus(); el.setSelectionRange(el.value.length,el.value.length);} } }
 function cqeCtlStatutOf(id){ const k=cqeCtl[id]; return k?k.statut:'a_controler'; }
+// État d'un des trois contrôles d'un dossier (RDC, PVCL, plan) — pour la liste et pour le choix du contrôle à faire
+function cqeCtlState(d, kind){
+  if(kind==='plan'){ const e=(typeof planGetFor==='function')?planGetFor(d):null; if(!e) return {k:'none'}; const st=planStatusOf(e,d.id); return {k:st==='conforme'?'ok':st==='incoherent'?'ko':st==='a_reverifier'?'redo':'todo'}; }
+  if(!terrRec(d,kind)) return {k:'none'};
+  const st=terrStatut(d.id,kind), c=(terrChecks[d.id]||{})[kind]; return {k:st==='conforme'?'ok':st==='incoherent'?'ko':(c&&c.refait)?'redo':'todo'};
+}
+function cqeCtlBadge(d, kind){
+  const x=cqeCtlState(d,kind);
+  return x.k==='ok'?'<span style="color:#16a34a;font-weight:700;">✓ Conforme</span>':x.k==='ko'?'<span style="color:#dc2626;font-weight:700;">✗ Incohérent</span>':x.k==='redo'?'<span style="color:#d97706;font-weight:700;">↻ À re-vérifier</span>':x.k==='todo'?'<span style="color:#d97706;">À contrôler</span>':'<span style="color:var(--text3);">— pas de fiche</span>';
+}
+function cqeCtlChoose(id, kind){
+  cqeCtlClose();
+  if(kind==='plan') planOpen(id); else terrOpen(id, kind);
+}
 function cqeRenderControle(){
   const kpiEl=document.getElementById('cqe-kpi'), el=document.getElementById('cqe-content');
   const afor=dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
@@ -8701,7 +8727,7 @@ function cqeRenderControle(){
   const rows=list.slice(f.page*PG,f.page*PG+PG).map(d=>{
     const k=cqeCtl[d.id]; const hasPlan=!!(typeof planGetFor==='function'&&planGetFor(d));
     const st=k?(k.statut==='conforme'?'<span style="color:#16a34a;font-weight:700;">Conforme</span>':'<span style="color:#dc2626;font-weight:700;">Rejeté</span>'):'<span style="color:#d97706;">À contrôler</span>';
-    return `<tr style="cursor:pointer;" onclick="cqeCtlOpen('${qid(d.id)}')"><td style="font-family:'DM Mono',monospace;font-size:11px;">${esc(d.id)}</td><td>${esc((d.prenom||'')+' '+(d.nom_demandeur||''))}</td><td>${esc(d.village||'')}</td><td>${esc(d.agent||'—')}</td><td>${st}</td><td>${k?esc(k.par||'')+' · '+esc(k.date||''):''}</td><td>${hasPlan?'Oui':'—'}</td></tr>`;}).join('')||'<tr><td colspan="7" style="text-align:center;color:#888;padding:14px;">Aucun dossier pour ces filtres.</td></tr>';
+    return `<tr style="cursor:pointer;" onclick="cqeCtlOpen('${qid(d.id)}')"><td style="font-family:'DM Mono',monospace;font-size:11px;">${esc(d.id)}</td><td>${esc((d.prenom||'')+' '+(d.nom_demandeur||''))}</td><td>${esc(d.village||'')}</td><td>${esc(d.agent||'—')}</td><td>${st}</td><td>${k?esc(k.par||'')+' · '+esc(k.date||''):''}</td><td>${cqeCtlBadge(d,'rdc')}</td><td>${cqeCtlBadge(d,'pvcl')}</td><td>${cqeCtlBadge(d,'plan')}</td></tr>`;}).join('')||'<tr><td colspan="9" style="text-align:center;color:#888;padding:14px;">Aucun dossier pour ces filtres.</td></tr>';
   const sel=(k,opts)=>`<select onchange="cqeCtlSet('${k}',this.value)" style="border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;">${opts.map(o=>`<option value="${esc(o[0])}" ${f[k]===o[0]?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
   el.innerHTML=`<div class="tw" style="overflow:hidden;">
    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -8709,7 +8735,7 @@ function cqeRenderControle(){
      ${sel('statut',[['a_controler','À contrôler'],['conforme','Conformes'],['rejete','Rejetés'],['','Tous']])}
      ${sel('dept',[['','Tous départements'],...depts.map(x=>[x,x])])}
    </div>
-   <div style="overflow:auto;"><table><thead><tr><th>N° dossier</th><th>Demandeur</th><th>Village</th><th>Agent</th><th>Contrôle</th><th>Contrôlé par</th><th>Plan</th></tr></thead><tbody>${rows}</tbody></table></div>
+   <div style="overflow:auto;"><table><thead><tr><th>N° dossier</th><th>Demandeur</th><th>Village</th><th>Agent</th><th>Contrôle</th><th>Contrôlé par</th><th>RDC</th><th>PVCL</th><th>Plan</th></tr></thead><tbody>${rows}</tbody></table></div>
    <div style="padding:10px 16px;display:flex;gap:8px;align-items:center;font-size:12px;border-top:1px solid var(--border);">
      <button class="btn-s" ${f.page<=0?'disabled':''} onclick="cqeCtlSet('page',${f.page-1})">←</button> Page ${f.page+1} / ${pages} · ${list.length.toLocaleString('fr-FR')} dossier(s)
      <button class="btn-s" ${f.page>=pages-1?'disabled':''} onclick="cqeCtlSet('page',${f.page+1})">→</button></div></div>`;
@@ -8735,7 +8761,8 @@ function cqeCtlOpen(id){
       ${k?row('Dernier contrôle',(k.statut==='conforme'?'Conforme':'Rejeté')+' · '+esc(k.par||'')+' · '+esc(k.date||'')):''}
       ${k&&k.motif?row('Motif',esc(k.motif)):''}
       <div style="padding:8px 0 0;"><button class="btn-s" onclick="dosOpenFiche('${qid}')">📋 Fiche complète (toutes les sources)</button></div>
-      ${hasPlan?`<div style="padding:10px 0;"><button class="btn-s" onclick="cqeCtlClose();planOpen('${qid}')">Voir / vérifier le plan parcellaire</button></div>`:'<div style="padding:8px 0;font-size:12px;color:var(--text3);">Aucun plan importé pour ce dossier.</div>'}
+      <div style="padding:12px 0 4px;font-weight:700;color:var(--blue);font-size:12px;">Que voulez-vous contrôler ?</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-bottom:10px;">${[['rdc','RDC','Recensement des droits coutumiers'],['pvcl','PVCL','Constat de limites'],['plan','Plan','Plan parcellaire']].map(([kk,lab,sub])=>{ const on=cqeCtlState(d,kk).k!=='none'; return `<button ${on?`onclick="cqeCtlChoose('${qid}','${kk}')"`:'disabled'} style="text-align:center;padding:10px 6px;border:1px solid var(--border-med);border-radius:8px;background:${on?'var(--surface)':'var(--surface2)'};cursor:${on?'pointer':'not-allowed'};font-family:inherit;"><div style="font-weight:700;font-size:13px;">${lab}</div><div style="font-size:9px;color:var(--text3);margin:2px 0 4px;">${sub}</div><div style="font-size:10px;">${cqeCtlBadge(d,kk)}</div></button>`; }).join('')}</div>
       ${can?`<div style="margin-top:8px;"><label style="font-size:11px;color:var(--text3);">Motif du rejet (obligatoire si rejeté)</label>
         <input id="ctl-motif" style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;margin:3px 0 8px;" placeholder="Ex. : voisin Sud manquant">
         <label style="font-size:11px;color:var(--text3);">Commentaire (facultatif)</label>
