@@ -450,7 +450,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-ba</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-bb</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -6632,7 +6632,7 @@ setInterval(async ()=>{
   try{
     const m=document.getElementById('module-cqe'); if(!m || !m.classList.contains('active') || document.hidden) return;
     if(_pubPushing) return;
-    const nAs = (await cqeAssignLoad()) + (await cqeGrilleLoad()) + (await cqeSuiviLoad()) + (await terrLoadChecks()) + (await planLoadChecks()) + (await cqeEtatLoad());
+    const nAs = (await cqeAssignLoad()) + (await cqeGrilleLoad()) + (await cqeSuiviLoad()) + (await terrLoadChecks()) + (await planLoadChecks()) + (await cqeEtatLoad()) + (await cqeLocksLoad());
     await pubLoadFromFirebase();
     if(pubRemoteChanged>0 || nAs>0){
       const modalOpen = ['terr-modal','cqe-dossier-modal','terr-struct'].some(id=>{ const e=document.getElementById(id); return e && e.style.display!=='none'; });
@@ -6682,6 +6682,87 @@ async function autoSyncRun(){
 }
 setInterval(autoSyncRun, 5*60*1000);
 setTimeout(autoSyncRun, 45*1000);
+// ═══════════════════════════════════════════════════════════════
+// VERROU DE DOSSIER — un seul contrôleur à la fois sur un même dossier.
+// /presfor/cq_lock/{dossier} = {by, t}. Pris à l'ouverture du dossier, renouvelé toutes les minutes tant qu'une fenêtre
+// du dossier est ouverte, libéré à la fermeture ; expire seul après 3 min sans renouvellement (poste éteint, onglet fermé).
+// ═══════════════════════════════════════════════════════════════
+const LOCK_TTL = 180000;
+let cqeLocks = {}, _lockMine = null, _lockGrace = 0, _lockIdle = 0;
+function lockFresh(l){ return !!l && l.t && (Date.now()-Date.parse(l.t) < LOCK_TTL); }
+async function lockGet(id){
+  const r = await fetch(FIREBASE_URL+'/presfor/cq_lock/'+encodeURIComponent(id)+'.json',{signal:AbortSignal.timeout(8000)});
+  if(!r.ok) throw new Error('HTTP '+r.status); return await r.json();
+}
+async function cqeLocksLoad(){
+  try{ const r=await fetch(FIREBASE_URL+'/presfor/cq_lock.json',{signal:AbortSignal.timeout(15000)}); if(!r.ok) return 0; const d=(await r.json())||{}; const before=JSON.stringify(Object.keys(cqeLocks).filter(k=>lockFresh(cqeLocks[k])).sort());
+    cqeLocks=d; return before!==JSON.stringify(Object.keys(d).filter(k=>lockFresh(d[k])).sort())?1:0; }catch(e){ return 0; }
+}
+function lockOther(id){ const l=cqeLocks[id]; return (lockFresh(l) && l.by!==(cqeWho()||'')) ? l : null; }
+function lockModalOpen(){ return ['ctl-modal','terr-modal','plan-modal','grille-modal'].some(i=>document.getElementById(i)); }
+// Prend le verrou. Retourne {ok:true} ou {ok:false, by, t}.
+async function cqeLockAcquire(id, force){
+  if(!grilleCan()) return {ok:true};                       // consultation seule : pas de verrou
+  const me = cqeWho()||'(inconnu)', sid=String(id);
+  if(_lockMine && _lockMine.id===sid && Date.now()-_lockMine.at < 120000) { _lockMine.at=_lockMine.at; return {ok:true}; }
+  const url = FIREBASE_URL+'/presfor/cq_lock/'+encodeURIComponent(sid)+'.json';
+  try{
+    if(!force){ const cur = await lockGet(sid); if(lockFresh(cur) && cur.by!==me) { cqeLocks[sid]=cur; return {ok:false, by:cur.by, t:cur.t}; } }
+    if(_lockMine && _lockMine.id!==sid) await cqeLockRelease(true);
+    const rec={by:me, t:new Date().toISOString()};
+    const w = await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec),signal:AbortSignal.timeout(8000)}); if(!w.ok) throw new Error('HTTP '+w.status);
+    await new Promise(res=>setTimeout(res,600));            // deux contrôleurs simultanés : le dernier écrit gagne, on relit pour savoir qui
+    const chk = await lockGet(sid);
+    if(chk && chk.by!==me){ cqeLocks[sid]=chk; return {ok:false, by:chk.by, t:chk.t}; }
+    _lockMine={id:sid, at:Date.now()}; _lockGrace=Date.now()+15000; cqeLocks[sid]=rec; return {ok:true};
+  }catch(e){ console.warn('verrou:', e.message); showToast('⚠ Verrou de dossier indisponible (Firebase injoignable) : vérifiez qu\'aucun autre contrôleur n\'est sur ce dossier.'); return {ok:true}; }
+}
+async function cqeLockRelease(silent){
+  const m=_lockMine; _lockMine=null; if(!m) return;
+  try{ const cur=await lockGet(m.id); if(cur && cur.by===(cqeWho()||'(inconnu)')){ await fetch(FIREBASE_URL+'/presfor/cq_lock/'+encodeURIComponent(m.id)+'.json',{method:'DELETE',signal:AbortSignal.timeout(8000)}); } delete cqeLocks[m.id]; }catch(e){}
+}
+function cqeLockMaybeRelease(){ if(_lockMine && !lockModalOpen() && Date.now()>_lockGrace) cqeLockRelease(); }
+async function cqeLockRenew(){
+  if(!_lockMine) return;
+  if(!lockModalOpen()){ if(Date.now()>_lockGrace && ++_lockIdle>=2) cqeLockRelease(); return; }
+  _lockIdle=0;
+  try{ const rec={by:cqeWho()||'(inconnu)', t:new Date().toISOString()}; await fetch(FIREBASE_URL+'/presfor/cq_lock/'+encodeURIComponent(_lockMine.id)+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec),signal:AbortSignal.timeout(8000)}); }catch(e){}
+}
+setInterval(cqeLockRenew, 60000);
+setInterval(cqeLockMaybeRelease, 15000);
+window.addEventListener('beforeunload', ()=>{ if(_lockMine){ try{ fetch(FIREBASE_URL+'/presfor/cq_lock/'+encodeURIComponent(_lockMine.id)+'.json',{method:'DELETE',keepalive:true}); }catch(e){} } });
+function lockBlockedDialog(id, by, t, retry){
+  const old=document.getElementById('lock-modal'); if(old) old.remove();
+  const hh = t ? new Date(t).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '';
+  const m=document.createElement('div'); m.id='lock-modal'; m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10010;display:flex;align-items:center;justify-content:center;padding:20px;';
+  m.innerHTML=`<div style="background:var(--surface);border-radius:12px;max-width:440px;width:100%;padding:20px;"><div style="font-size:30px;text-align:center;">🔒</div>
+    <h3 style="font-family:'Syne',sans-serif;font-size:15px;margin:6px 0;text-align:center;">Dossier en cours de traitement</h3>
+    <p style="font-size:13px;text-align:center;margin:8px 0 14px;">Le dossier <b>${planEsc(id)}</b> est en cours de traitement par <b>${planEsc(by||'un autre contrôleur')}</b>${hh?' (depuis '+hh+')':''}.<br>Vous pourrez le contrôler dès qu'il aura terminé.</p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;"><button class="btn-p" onclick="document.getElementById('lock-modal').remove()">OK</button>${rejIsAdmin()?`<button class="btn-s" style="color:var(--red);" onclick="document.getElementById('lock-modal').remove();${retry}">Forcer l'accès (administrateur)</button>`:''}</div></div>`;
+  document.body.appendChild(m);
+}
+// Ouvre un écran de contrôle uniquement si le dossier n'est pas pris par un autre contrôleur.
+function cqeGuard(name, orig){
+  return function(id, a, b){
+    const args = arguments, self = this;
+    if(!grilleCan()) return orig.apply(self, args);
+    if(_lockMine && _lockMine.id===String(id) && Date.now()-_lockMine.at < 120000){ _lockGrace=Date.now()+15000; return orig.apply(self, args); }
+    return cqeLockAcquire(id).then(r=>{
+      if(r.ok) return orig.apply(self, args);
+      const q = String(id).replace(/'/g,"\\'");
+      window._lockRetry = ()=>cqeLockAcquire(id,true).then(()=>orig.apply(self,args));
+      lockBlockedDialog(id, r.by, r.t, 'window._lockRetry()');
+    });
+  };
+}
+cqeCtlOpen = cqeGuard('cqeCtlOpen', cqeCtlOpen);
+terrOpen = cqeGuard('terrOpen', terrOpen);
+planOpen = cqeGuard('planOpen', planOpen);
+grilleOpen = cqeGuard('grilleOpen', grilleOpen);
+['cqeCtlClose','terrClose','planClose','grilleClose'].forEach(n=>{ const f=window[n]; if(typeof f==='function'){ window[n]=function(){ const r=f.apply(this,arguments); setTimeout(cqeLockMaybeRelease,1500); return r; }; } });
+const _cqeCtlChoose0 = cqeCtlChoose;
+cqeCtlChoose = function(id,kind){ _lockGrace=Date.now()+20000; return _cqeCtlChoose0(id,kind); };
+
 document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && Date.now()-_autoSyncLast>2*60*1000) setTimeout(autoSyncRun, 1500); });
 function cqeRefreshIfOpen(){ try{ const m=document.getElementById('module-cqe'); if(m && m.classList.contains('active')) cqeRenderAll(); }catch(e){ console.warn('cqeRefreshIfOpen', e); } }
 function cqeRenderAll(){
@@ -8892,7 +8973,7 @@ function cqeRenderControle(){
   const rows=list.slice(f.page*PG,f.page*PG+PG).map(d=>{
     const k0=cqeCtlDerived(d), k=k0.statut==='a_controler'?null:k0; const hasPlan=!!(typeof planGetFor==='function'&&planGetFor(d));
     const st=k?(k.statut==='conforme'?'<span style="color:#16a34a;font-weight:700;">Conforme</span>':'<span style="color:#dc2626;font-weight:700;">Rejeté</span>'):'<span style="color:#d97706;">À contrôler</span>';
-    return `<tr style="cursor:pointer;" onclick="cqeCtlOpen('${qid(d.id)}')"><td style="font-family:'DM Mono',monospace;font-size:11px;">${esc(d.id)}</td><td>${esc((d.prenom||'')+' '+(d.nom_demandeur||''))}</td><td>${esc(d.village||'')}</td><td>${esc(d.agent||'—')}</td><td>${st}</td><td>${k?esc(k.par||'')+' · '+esc(k.date||''):''}</td><td>${cqeCtlBadge(d,'rdc')}</td><td>${cqeCtlBadge(d,'pvcl')}</td><td>${cqeCtlBadge(d,'plan')}</td>${(()=>{ if(!k||k.statut!=='rejete') return '<td></td><td></td>'; const mm=cqeCtlMotif(d); return `<td style="max-width:340px;font-size:11px;white-space:pre-line;">${esc(mm.motif)}</td><td style="white-space:nowrap;">${esc(mm.date?mm.date.split('-').reverse().join('/'):'')}</td>`; })()}</tr>`;}).join('')||'<tr><td colspan="11" style="text-align:center;color:#888;padding:14px;">Aucun dossier pour ces filtres.</td></tr>';
+    return `<tr style="cursor:pointer;" onclick="cqeCtlOpen('${qid(d.id)}')"><td style="font-family:'DM Mono',monospace;font-size:11px;">${esc(d.id)}${(()=>{ const lk=lockOther(d.id); return lk?` <span title="En cours de traitement par ${esc(lk.by)}" style="font-family:inherit;color:#b45309;">🔒 ${esc(lk.by)}</span>`:''; })()}</td><td>${esc((d.prenom||'')+' '+(d.nom_demandeur||''))}</td><td>${esc(d.village||'')}</td><td>${esc(d.agent||'—')}</td><td>${st}</td><td>${k?esc(k.par||'')+' · '+esc(k.date||''):''}</td><td>${cqeCtlBadge(d,'rdc')}</td><td>${cqeCtlBadge(d,'pvcl')}</td><td>${cqeCtlBadge(d,'plan')}</td>${(()=>{ if(!k||k.statut!=='rejete') return '<td></td><td></td>'; const mm=cqeCtlMotif(d); return `<td style="max-width:340px;font-size:11px;white-space:pre-line;">${esc(mm.motif)}</td><td style="white-space:nowrap;">${esc(mm.date?mm.date.split('-').reverse().join('/'):'')}</td>`; })()}</tr>`;}).join('')||'<tr><td colspan="11" style="text-align:center;color:#888;padding:14px;">Aucun dossier pour ces filtres.</td></tr>';
   const sel=(k,opts)=>`<select onchange="cqeCtlSet('${k}',this.value)" style="border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;">${opts.map(o=>`<option value="${esc(o[0])}" ${f[k]===o[0]?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
   el.innerHTML=`<div class="tw" style="overflow:hidden;">
    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
