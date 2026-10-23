@@ -450,7 +450,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-ax</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-az</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -5096,6 +5096,13 @@ try {
 
 let pubSaveStatus = '—', _pubSent = {}, _pubPushing = false, _pubPushAgain = false;
 function pubSave(){
+  // Toute entrée modifiée depuis le dernier envoi reçoit un horodatage : sans lui, une modification locale pouvait être
+  // écrasée par la version plus ancienne de Firebase au rechargement suivant (rejets faits par un autre utilisateur perdus).
+  try{
+    const now = new Date().toISOString(), strip = o=>{ const c=Object.assign({}, o); delete c._u; return JSON.stringify(c); };
+    Object.keys(pubCQ||{}).forEach(k=>{ const e=pubCQ[k]; if(!e || typeof e!=='object') return; const sent=_pubSent['cq/'+k]; if(sent===undefined){ if(!e._u) e._u=now; return; } let sc=null; try{ sc=JSON.parse(sent); delete sc._u; sc=JSON.stringify(sc); }catch(x){} if(sc!==strip(e)) e._u=now; });
+    Object.keys(cqeCtl||{}).forEach(k=>{ const e=cqeCtl[k]; if(!e || typeof e!=='object') return; const sent=_pubSent['ctl/'+k]; if(sent===undefined){ if(!e._u) e._u=now; return; } let sc=null; try{ sc=JSON.parse(sent); delete sc._u; sc=JSON.stringify(sc); }catch(x){} if(sc!==strip(e)) e._u=now; });
+  }catch(e){}
   try {
     localStorage.setItem('presfor_pub_oppositions', JSON.stringify(pubOppositions));
     localStorage.setItem('presfor_pub_cq', JSON.stringify(pubCQ));
@@ -6625,7 +6632,7 @@ setInterval(async ()=>{
   try{
     const m=document.getElementById('module-cqe'); if(!m || !m.classList.contains('active') || document.hidden) return;
     if(_pubPushing) return;
-    const nAs = (await cqeAssignLoad()) + (await cqeGrilleLoad()) + (await cqeSuiviLoad());
+    const nAs = (await cqeAssignLoad()) + (await cqeGrilleLoad()) + (await cqeSuiviLoad()) + (await terrLoadChecks()) + (await planLoadChecks()) + (await cqeEtatLoad());
     await pubLoadFromFirebase();
     if(pubRemoteChanged>0 || nAs>0){
       const modalOpen = ['terr-modal','cqe-dossier-modal','terr-struct'].some(id=>{ const e=document.getElementById(id); return e && e.style.display!=='none'; });
@@ -6653,6 +6660,8 @@ async function autoSyncRun(){
     // 1) Contrôles CQ : envoi incrémental (seulement ce qui a changé) puis relecture
     try{ if(admin && Object.keys(pubCQ||{}).length){ const r = await pubPushToFirebase(false); if(r && r.sent) did.push('CQ envoyés'); } }catch(e){}
     try{ await pubLoadFromFirebase(); if(pubRemoteChanged>0) did.push('CQ mis à jour'); }catch(e){}
+    try{ const n=(await cqeGrilleLoad())+(await terrLoadChecks())+(await planLoadChecks())+(await cqeAssignLoad())+(await cqeSuiviLoad())+(await cqeEtatLoad());
+    if(admin){ const b=cqeEtatBackfill(); if(b) did.push(b+' état(s) de dossier publié(s)'); } if(n>0) did.push('contrôles et attributions mis à jour'); }catch(e){}
     // 2) Dossiers AFOR
     const rAfor = await autoSyncCount('afor_cf/meta/count'), lAfor = (dossiersAFOR||[]).length;
     if(rAfor!==undefined){
@@ -7077,14 +7086,20 @@ async function planLoadMeta(){
 
 // ── Vérifications partagées ──
 async function planLoadChecks(){
+  let n=0;
   try{
-    const r = await fetch(FIREBASE_URL+'/presfor/plan_checks.json',{signal:AbortSignal.timeout(15000)});
-    if(!r.ok) return;
-    const d = await r.json();
-    if(d){ planChecks = Object.assign({}, planChecks, d); try{ localStorage.setItem('presfor_plan_checks', JSON.stringify(planChecks)); }catch(e){} }
+    const r = await fetch(FIREBASE_URL+'/presfor/plan_checks.json',{signal:AbortSignal.timeout(30000)});
+    if(!r.ok) return 0;
+    const d = (await r.json())||{};
+    Object.keys(d).forEach(id=>{ const rem=d[id], loc=planChecks[id]; if(!rem||typeof rem!=='object') return; if(!loc || chkStamp(rem)>chkStamp(loc)){ planChecks[id]=rem; n++; } });
+    Object.keys(planChecks).forEach(id=>{ const loc=planChecks[id], rem=d[id]; if(loc && typeof loc==='object' && (!rem || chkStamp(loc)>chkStamp(rem))) cqeFbPut('plan_checks/'+encodeURIComponent(id), loc); });
+    try{ localStorage.setItem('presfor_plan_checks', JSON.stringify(planChecks)); }catch(e){}
+    if(n && typeof cqeRefreshIfOpen==='function') cqeRefreshIfOpen();
   }catch(e){ console.warn('planLoadChecks:', e.message); }
+  return n;
 }
 async function planSaveCheck(id, chk){
+  chk._u = new Date().toISOString();
   // Historique conservé : chaque contrôle de plan (qui, quand, résultat) reste compté pour le suivi du contrôleur
   const prev = planChecks[id];
   chk.hist = ((prev && prev.hist) || (prev && prev.date ? [{d:prev.date,by:prev.par,s:prev.statut}] : [])).concat([{d:chk.date,by:chk.par,s:chk.statut}]).slice(-10);
@@ -7423,15 +7438,23 @@ const TERR_TYPES = {
 };
 try{ const c = localStorage.getItem('presfor_terr_checks'); if(c) terrChecks = JSON.parse(c); }catch(e){}
 
+function chkStamp(c){ return String((c&&(c._u||c.date))||''); }
+// Fusion par contrôle (dossier + type) : la version la plus récente l'emporte ; ce que cet ordinateur a en plus ou de plus récent est renvoyé.
 async function terrLoadChecks(){
+  let n=0;
   try{
-    const r = await fetch(FIREBASE_URL+'/presfor/terr_checks.json',{signal:AbortSignal.timeout(15000)});
-    if(!r.ok) return;
-    const d = await r.json();
-    if(d){ terrChecks = Object.assign({}, terrChecks, d); try{ localStorage.setItem('presfor_terr_checks', JSON.stringify(terrChecks)); }catch(e){} if(typeof cqeTab!=='undefined' && cqeTab==='terrain') terrRenderTab(); }
+    const r = await fetch(FIREBASE_URL+'/presfor/terr_checks.json',{signal:AbortSignal.timeout(30000)});
+    if(!r.ok) return 0;
+    const d = (await r.json())||{};
+    Object.keys(d).forEach(id=>Object.keys(d[id]||{}).forEach(t=>{ const rem=d[id][t], loc=(terrChecks[id]||{})[t]; if(!rem||typeof rem!=='object') return; if(!loc || chkStamp(rem)>chkStamp(loc)){ (terrChecks[id]=terrChecks[id]||{})[t]=rem; n++; } }));
+    Object.keys(terrChecks).forEach(id=>Object.keys(terrChecks[id]||{}).forEach(t=>{ const loc=terrChecks[id][t], rem=(d[id]||{})[t]; if(loc && typeof loc==='object' && (!rem || chkStamp(loc)>chkStamp(rem))) cqeFbPut('terr_checks/'+encodeURIComponent(id)+'/'+t, loc); }));
+    try{ localStorage.setItem('presfor_terr_checks', JSON.stringify(terrChecks)); }catch(e){}
+    if(n && typeof cqeRefreshIfOpen==='function') cqeRefreshIfOpen();
   }catch(e){ console.warn('terrLoadChecks:', e.message); }
+  return n;
 }
 async function terrSaveCheck(id, type, chk){
+  chk._u = new Date().toISOString();
   const cur = terrChecks[id] = terrChecks[id] || {};
   const prev = cur[type];
   chk.hist = ((prev && prev.hist) || (prev && prev.date ? [{d:prev.date,by:prev.par,s:prev.statut}] : [])).concat([{d:chk.date,by:chk.par,s:chk.statut}]).slice(-10);
@@ -7567,6 +7590,7 @@ async function grpSave(id, type){
     await terrSaveCheck(id,type,chk); terrApplyRejet(id,type,chk);
     terrClose();
   }
+  { const dv=cqeCtlCalc(d); cqeEtatSet(id, dv.statut, dv.par||by, dv.date||t); }
   window._grp=null;
   showToast(GRP_LABEL[type]+' — dossier '+id+' : '+(ids.length?'rejeté ('+ids.length+' motif(s)).':'conforme.'));
   try{ cqeRenderAll(); }catch(e){}
@@ -8754,7 +8778,66 @@ function cqeRenderPilotage(){
 // ═══════════════════════════════════════════════════════════════
 let cqeCtlFilter={q:'',statut:'a_controler',dept:'',page:0};
 function cqeCtlSet(k,v){ cqeCtlFilter[k]=v; if(k!=='page') cqeCtlFilter.page=0; cqeRenderControle(); if(k==='q'){ const el=document.getElementById('ctl-q'); if(el){el.focus(); el.setSelectionRange(el.value.length,el.value.length);} } }
-function cqeCtlStatutOf(id){ const k=cqeCtl[id]; return k?k.statut:'a_controler'; }
+// État du dossier enregistré au moment du contrôle (calculé par celui qui a les fiches sous les yeux) et partagé via Firebase
+// (/presfor/cq_etat/{dossier}) : chacun voit le même état, même si ses propres fiches tablette / plans ne sont pas tous chargés.
+let cqeEtat = {};
+try{ const x=localStorage.getItem('presfor_cq_etat'); if(x) cqeEtat=JSON.parse(x); }catch(e){}
+function cqeEtatSaveLocal(){ try{ localStorage.setItem('presfor_cq_etat', JSON.stringify(cqeEtat)); }catch(e){} }
+function cqeEtatSet(id, statut, par, date){
+  const rec={s:statut, par:par||'', d:date||cqeToday(), _u:new Date().toISOString()};
+  cqeEtat[id]=rec; cqeEtatSaveLocal(); cqeFbPut('cq_etat/'+encodeURIComponent(id), rec);
+}
+async function cqeEtatLoad(){
+  let n=0;
+  try{
+    const r=await fetch(FIREBASE_URL+'/presfor/cq_etat.json',{signal:AbortSignal.timeout(60000)}); if(!r.ok) return 0;
+    const d=(await r.json())||{};
+    Object.keys(d).forEach(k=>{ const rem=d[k], loc=cqeEtat[k]; if(!loc || String(rem._u||'')>String(loc._u||'')){ if(!loc || loc.s!==rem.s) n++; cqeEtat[k]=rem; } });
+    Object.keys(cqeEtat).forEach(k=>{ const loc=cqeEtat[k], rem=d[k]; if(!rem || String(loc._u||'')>String(rem._u||'')) cqeFbPut('cq_etat/'+encodeURIComponent(k), loc); });
+    cqeEtatSaveLocal();
+  }catch(e){}
+  return n;
+}
+function cqeCtlDerived(d){
+  const e=cqeEtat[d.id];
+  if(e){
+    const tc=terrChecks[d.id]||{}, stamps=[chkStamp(tc.rdc), chkStamp(tc.pvcl), chkStamp(planChecks[d.id])];
+    if(stamps.every(x=>String(e._u||'')>=x)) return {statut:e.s, par:e.par||'', date:e.d||''};   // aucun contrôle plus récent que l'état partagé
+  }
+  return cqeCtlCalc(d);
+}
+// Administrateur : publie l'état des dossiers déjà contrôlés mais jamais enregistrés (contrôles faits avant cette version).
+function cqeEtatBackfill(){
+  let n=0;
+  (dossiersAFOR||[]).forEach(d=>{
+    if(cqeEtat[d.id]) return;
+    const hasCheck = (terrChecks[d.id]&&(terrChecks[d.id].rdc||terrChecks[d.id].pvcl)) || planChecks[d.id] || cqeCtl[d.id];
+    if(!hasCheck) return;
+    const c=cqeCtlCalc(d); if(c.statut==='a_controler') return;
+    cqeEtatSet(d.id, c.statut, c.par, c.date); n++;
+  });
+  return n;
+}
+function cqeCtlStatutOf(id){ const d=(dossiersAFOR||[]).find(x=>String(x.id)===String(id)); return d?cqeCtlDerived(d).statut:((cqeCtl[id]||{}).statut||'a_controler'); }
+// État d'un dossier dans « Contrôle des dossiers », déduit des contrôles par pièce (RDC, PVCL, plan) + ancien verdict global.
+// Rejeté : au moins une pièce incohérente. Conforme : toutes les pièces existantes sont conformes. Sinon : à contrôler.
+function cqeCtlCalc(d){
+  const id=d.id, tc=terrChecks[id]||{}, items=[];
+  ['rdc','pvcl'].forEach(t=>{ if(terrRec(d,t)){ const c=tc[t]; items.push(c&&(c.statut==='conforme'||c.statut==='incoherent')?c:null); } });
+  const pe=(typeof planGetFor==='function')?planGetFor(d):null; if(pe){ const c=planChecks[id], st=planStatusOf(pe,id); items.push(c&&(st==='conforme'||st==='incoherent')?c:null); }
+  const last = arr=>arr.filter(Boolean).sort((a,b)=>chkStamp(a)<chkStamp(b)?1:-1)[0]||null;
+  const ko = last(items.filter(x=>x&&x.statut==='incoherent'));
+  if(ko) return {statut:'rejete', par:ko.par||'', date:ko.date||''};
+  const k=cqeCtl[id], allOk = items.length && items.every(Boolean), lo = allOk?last(items):null;
+  if(k){
+    if(k.statut==='conforme') return {statut:'conforme', par:k.par||'', date:k.date||''};
+    if(allOk && String(lo.date||'')>=String(k.date||'')) return {statut:'conforme', par:lo.par||'', date:lo.date||''};
+    return {statut:'rejete', par:k.par||'', date:k.date||''};
+  }
+  if(allOk) return {statut:'conforme', par:lo.par||'', date:lo.date||''};
+  return {statut:'a_controler', par:'', date:''};
+}
+
 // État d'un des trois contrôles d'un dossier (RDC, PVCL, plan) — pour la liste et pour le choix du contrôle à faire
 function cqeCtlState(d, kind){
   if(kind==='plan'){ const e=(typeof planGetFor==='function')?planGetFor(d):null; if(!e) return {k:'none'}; const st=planStatusOf(e,d.id); return {k:st==='conforme'?'ok':st==='incoherent'?'ko':st==='a_reverifier'?'redo':'todo'}; }
@@ -8774,9 +8857,13 @@ function cqeRenderControle(){
   const afor=dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
   const t=cqeToday(), me=cqeWho();
   const ids=new Set(afor.map(d=>String(d.id)));
-  const ctlIds=Object.keys(cqeCtl).filter(id=>ids.has(id));
-  const nOk=ctlIds.filter(id=>cqeCtl[id].statut==='conforme').length, nRej=ctlIds.length-nOk;
-  const myDay=cqeBuildActions().filter(a=>ids.has(String(a.id))&&a.by===me&&a.d===t&&(a.t==='dos_ok'||a.t==='dos_rej')).length;
+  const der = new Map(afor.map(d=>[String(d.id), cqeCtlDerived(d)]));
+  const nOk=[...der.values()].filter(x=>x.statut==='conforme').length, nRej=[...der.values()].filter(x=>x.statut==='rejete').length;
+  const ctlIds={length:nOk+nRej};
+  const mine = new Set();
+  afor.forEach(d=>{ ['rdc','pvcl'].forEach(ty=>{ const c=(terrChecks[d.id]||{})[ty]; if(c&&c.par===me&&c.date===t) mine.add(d.id+'|'+ty); }); const pc=planChecks[d.id]; if(pc&&pc.par===me&&pc.date===t) mine.add(d.id+'|plan'); });
+  cqeBuildActions().filter(a=>ids.has(String(a.id))&&a.by===me&&a.d===t&&(a.t==='dos_ok'||a.t==='dos_rej')).forEach(a=>mine.add(a.id+'|global'));
+  const myDay=mine.size;
   kpiEl.innerHTML=[['Dossiers de la zone',afor.length,'#475569',''],['À contrôler',afor.length-ctlIds.length,'#d97706','a_controler'],['Conformes',nOk,'#16a34a','conforme'],['Rejetés',nRej,'#dc2626','rejete'],['Mes contrôles aujourd\'hui',myDay,'#0f766e',null]]
     .map(k=>`<div class="kpi" ${k[3]===null?'':`onclick="cqeCtlSet('statut','${k[3]}')" style="cursor:pointer;" title="Cliquer pour filtrer la liste"`}><div class="kpi-l">${k[0]}</div><div class="kpi-v" style="color:${k[2]}">${k[1].toLocaleString('fr-FR')}</div></div>`).join('');
   const f=cqeCtlFilter, q=(f.q||'').toLowerCase();
@@ -8790,7 +8877,7 @@ function cqeRenderControle(){
   const PG=100, pages=Math.max(1,Math.ceil(list.length/PG)); if(f.page>=pages) f.page=pages-1;
   const esc=planEsc, qid=id=>String(id).replace(/'/g,"\\'");
   const rows=list.slice(f.page*PG,f.page*PG+PG).map(d=>{
-    const k=cqeCtl[d.id]; const hasPlan=!!(typeof planGetFor==='function'&&planGetFor(d));
+    const k0=cqeCtlDerived(d), k=k0.statut==='a_controler'?null:k0; const hasPlan=!!(typeof planGetFor==='function'&&planGetFor(d));
     const st=k?(k.statut==='conforme'?'<span style="color:#16a34a;font-weight:700;">Conforme</span>':'<span style="color:#dc2626;font-weight:700;">Rejeté</span>'):'<span style="color:#d97706;">À contrôler</span>';
     return `<tr style="cursor:pointer;" onclick="cqeCtlOpen('${qid(d.id)}')"><td style="font-family:'DM Mono',monospace;font-size:11px;">${esc(d.id)}</td><td>${esc((d.prenom||'')+' '+(d.nom_demandeur||''))}</td><td>${esc(d.village||'')}</td><td>${esc(d.agent||'—')}</td><td>${st}</td><td>${k?esc(k.par||'')+' · '+esc(k.date||''):''}</td><td>${cqeCtlBadge(d,'rdc')}</td><td>${cqeCtlBadge(d,'pvcl')}</td><td>${cqeCtlBadge(d,'plan')}</td></tr>`;}).join('')||'<tr><td colspan="9" style="text-align:center;color:#888;padding:14px;">Aucun dossier pour ces filtres.</td></tr>';
   const sel=(k,opts)=>`<select onchange="cqeCtlSet('${k}',this.value)" style="border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;">${opts.map(o=>`<option value="${esc(o[0])}" ${f[k]===o[0]?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
@@ -13533,6 +13620,7 @@ serverLoad().then(ok => {
   cqeAssignLoad().then(()=>cqeRefreshIfOpen());
   cqeGrilleLoad().then(()=>cqeRefreshIfOpen());
   cqeSuiviLoad().then(()=>cqeRefreshIfOpen());
+  cqeEtatLoad().then(()=>cqeRefreshIfOpen());
   aforLoadFromFirebase().then(loaded=>{
     if(loaded){ aforRenderAll(); dosRenderAll(); cqeRefreshIfOpen(); }
     else if(!dossiersAFOR.length){ setTimeout(()=>aforLoadFromFirebase().then(l2=>{ if(l2){ aforRenderAll(); dosRenderAll(); cqeRefreshIfOpen(); } }), 8000); }
