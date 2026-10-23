@@ -450,7 +450,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-an</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-ao</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -1233,17 +1233,16 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <main class="main" style="width:100%;">
     <div class="panel active">
       <div class="page-head">
-        <div><h2>CQE — Contrôle Qualité Enquête</h2><p>Suivi qualité des dossiers passés en contrôle</p></div>
+        <div><h2>Contrôle qualité</h2><p>État général · rejets AFOR (CQE) · rejets des contrôleurs qualité (CQI)</p></div>
         <div class="btn-row">
-          <button class="btn-s" id="cqe-tab-dossiers" onclick="cqeSetTab('dossiers')" style="font-weight:700;">Dossiers CQ</button>
-          <button class="btn-s" id="cqe-tab-controle" onclick="cqeSetTab('controle')">Contrôle des dossiers</button>
-          <button class="btn-s" id="cqe-tab-plans" onclick="cqeSetTab('plans')">Plans parcellaires</button>
-          <button class="btn-s" id="cqe-tab-rejets" onclick="cqeSetTab('rejets')">Rejets &amp; suivi</button>
-          <button class="btn-s" id="cqe-tab-terrain" onclick="cqeSetTab('terrain')">RDC &amp; PVCL</button>
-          <button class="btn-s" id="cqe-tab-rapprochement" onclick="cqeSetTab('rapprochement')">Rapprochement des sources</button>
-          <button class="btn-s" id="cqe-tab-pilotage" onclick="cqeSetTab('pilotage')">Pilotage CQE <span id="cqe-pilot-badge" style="display:none;background:#dc2626;color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:3px;"></span></button>
+          <button class="btn-s" id="cqe-tab-dossiers" onclick="cqeSetTab('dossiers')" style="font-weight:700;">État général</button>
+          <button class="btn-s" id="cqe-tab-rejets_afor" onclick="cqeSetTab('rejets_afor')">Rejets AFOR (CQE)</button>
+          <button class="btn-s" id="cqe-tab-cqi" onclick="cqeSetTab(window._cqiSub||'rejets')">Rejets contrôleurs (CQI)</button>
+          <button class="btn-s" id="cqe-tab-rapprochement" onclick="cqeSetTab('rapprochement')" style="display:none;">Rapprochement des sources</button>
+          <button class="btn-s" id="cqe-tab-pilotage" onclick="cqeSetTab('pilotage')" style="display:none;">Pilotage CQE <span id="cqe-pilot-badge" style="display:none;background:#dc2626;color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:3px;"></span></button>
         </div>
       </div>
+      <div id="cqe-subbar"></div>
       <div id="cqe-admin-bar"></div>
       <div class="kpi-bar" id="cqe-kpi"></div>
       <div id="cqe-content"></div>
@@ -6626,10 +6625,10 @@ function cqeRenderAll(){
   const kpiEl = document.getElementById('cqe-kpi');
   const contentEl = document.getElementById('cqe-content');
   if(!kpiEl || !contentEl) return;
-  cqeEnsureDates(); cqeUpdateBadge(); try{ cqeAdminBarRender(); }catch(e){}
+  cqeEnsureDates(); cqeUpdateBadge(); try{ cqeAdminBarRender(); }catch(e){} try{ cqeTabsRender(); }catch(e){}
   if(typeof cqeTab!=='undefined' && cqeTab==='plans'){ planRenderTab(); return; }
   if(typeof cqeTab!=='undefined' && cqeTab==='terrain'){ terrRenderTab(); return; }
-  if(typeof cqeTab!=='undefined' && cqeTab==='rejets'){ cqeRenderRejets(); return; }
+  if(typeof cqeTab!=='undefined' && (cqeTab==='rejets'||cqeTab==='rejets_afor')){ cqeRenderRejets(); return; }
   if(typeof cqeTab!=='undefined' && cqeTab==='pilotage'){ cqeRenderPilotage(); return; }
   if(typeof cqeTab!=='undefined' && cqeTab==='controle'){ cqeRenderControle(); return; }
   if(typeof cqeTab!=='undefined' && cqeTab==='rapprochement'){ recRender(); return; }
@@ -6979,16 +6978,23 @@ function planCodeFromName(name){
   return m ? m[0] : base.trim();
 }
 
+const CQI_SUBS = [['rejets','Rejets CQI'],['controle','Contrôle des dossiers'],['plans','Plans parcellaires'],['terrain','RDC & PVCL']];
+function cqeTabGroup(t){ return t==='dossiers'?'dossiers' : t==='rejets_afor'?'rejets_afor' : CQI_SUBS.some(x=>x[0]===t)?'cqi' : t; }
+function cqeTabsRender(){
+  const g = cqeTabGroup(cqeTab);
+  if(g==='cqi') window._cqiSub = cqeTab;
+  ['dossiers','rejets_afor','cqi','rapprochement','pilotage'].forEach(k=>{
+    const b=document.getElementById('cqe-tab-'+k); if(!b) return;
+    b.style.fontWeight = g===k?'700':'400';
+    if(k==='rapprochement'||k==='pilotage') b.style.display = rejIsAdmin()?'':'none';
+  });
+  const sb=document.getElementById('cqe-subbar');
+  if(sb) sb.innerHTML = g==='cqi' ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px;">'+CQI_SUBS.map(x=>`<button class="btn-s" onclick="cqeSetTab('${x[0]}')" style="${cqeTab===x[0]?'font-weight:700;background:var(--accent);color:#fff;border-color:var(--accent);':''}font-size:12px;">${x[1]}</button>`).join('')+'</div>' : '';
+}
 function cqeSetTab(t){
+  if((t==='rapprochement'||t==='pilotage') && !rejIsAdmin()) t='dossiers';
   cqeTab = t;
-  const a=document.getElementById('cqe-tab-dossiers'), b=document.getElementById('cqe-tab-plans');
-  const rp=document.getElementById('cqe-tab-rapprochement'); if(rp) rp.style.fontWeight = t==='rapprochement'?'700':'400';
-  const k=document.getElementById('cqe-tab-controle'); if(k) k.style.fontWeight = t==='controle'?'700':'400';
-  const c=document.getElementById('cqe-tab-pilotage'); if(c) c.style.fontWeight = t==='pilotage'?'700':'400';
-  const rj=document.getElementById('cqe-tab-rejets'); if(rj) rj.style.fontWeight = t==='rejets'?'700':'400';
-  const tr=document.getElementById('cqe-tab-terrain'); if(tr) tr.style.fontWeight = t==='terrain'?'700':'400';
-  if(a) a.style.fontWeight = t==='dossiers'?'700':'400';
-  if(b) b.style.fontWeight = t==='plans'?'700':'400';
+  cqeTabsRender();
   cqeRenderAll();
 }
 
@@ -7590,7 +7596,9 @@ function rejCorrige(id){
 function cqeRenderRejets(){
   const kpiEl = document.getElementById('cqe-kpi'), el = document.getElementById('cqe-content');
   if(!kpiEl||!el) return;
-  const all = rejRows();
+  const modeAfor = cqeTab==='rejets_afor';
+  const all = rejRows().filter(x=> modeAfor ? x.e.origine==='afor' : x.e.origine!=='afor');
+  if(modeAfor) rejFilter.origine = 'afor'; else if(rejFilter.origine==='afor') rejFilter.origine = '';
   const can = rejIsAdmin()||rejIsCqe(), me = cqeWho()||'';
   const aCorr = all.filter(x=>x.e.etat==='rejete'), corr = all.filter(x=>x.e.etat==='corrige');
   const nonAss = aCorr.filter(x=>!x.resp).length;
@@ -7627,6 +7635,7 @@ function cqeRenderRejets(){
   const opt = (arr,v)=>arr.map(o=>`<option value="${planEsc(o[0])}" ${v===o[0]?'selected':''}>${planEsc(o[1])}</option>`).join('');
   const ctlSel = (id,cur)=>`<select ${rejIsAdmin()?'':'disabled'} onchange="rejAssign('${String(id).replace(/'/g,"\\'")}',this.value)" style="padding:3px;border:1px solid var(--border);border-radius:5px;font-size:11px;max-width:150px;"><option value="">— non attribué —</option>${names.map(n=>`<option ${n===cur?'selected':''}>${planEsc(n)}</option>`).join('')}</select>`;
   el.innerHTML = `
+  <div style="font-size:12px;color:var(--text3);margin:0 0 8px;">${modeAfor?'<b>Rejets AFOR (CQE)</b> — dossiers rejetés par l\'AFOR (fichier ou statut). Les contrôleurs les suivent dans leur portefeuille jusqu\'à la correction.':'<b>Rejets des contrôleurs qualité (CQI)</b> — dossiers rejetés par nos contrôleurs (grille, plan parcellaire, RDC, PVCL).'}</div>
   <div class="tw" style="margin-bottom:12px;overflow:auto;"><div style="font-weight:700;padding:10px 12px;">Portefeuille des contrôleurs qualité</div>
     <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:6px 10px;">Contrôleur</th><th style="text-align:right;padding:6px 10px;">Dossiers à corriger (actif)</th><th style="text-align:right;padding:6px 10px;">En retard (≥ ${CQE_ALERT_DAYS} j)</th><th style="text-align:right;padding:6px 10px;">Plus ancien (j)</th><th style="text-align:right;padding:6px 10px;">Corrigés</th><th></th></tr></thead>
     <tbody>${port.map(p=>`<tr style="border-top:1px solid var(--border);"><td style="padding:6px 10px;font-weight:600;">${planEsc(p.n)}</td><td style="padding:6px 10px;text-align:right;font-weight:700;">${p.ac}</td><td style="padding:6px 10px;text-align:right;color:${p.ret?'var(--red)':'inherit'};">${p.ret}</td><td style="padding:6px 10px;text-align:right;">${p.max==null?'—':p.max}</td><td style="padding:6px 10px;text-align:right;">${p.co}</td><td style="padding:6px 10px;text-align:right;"><button class="btn-s" onclick="rejSetFilter('resp','${String(p.n).replace(/'/g,"\\'")}')">Voir</button></td></tr>`).join('')||'<tr><td colspan="6" style="padding:12px;text-align:center;color:var(--text3);">Aucun compte contrôleur qualité.</td></tr>'}</tbody></table></div>
@@ -7634,7 +7643,7 @@ function cqeRenderRejets(){
     <div style="padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);align-items:center;">
       <input type="text" placeholder="N° dossier, nom, village, agent, contrôleur…" value="${planEsc(rejFilter.q)}" oninput="rejFilter.q=this.value;rejFilter.page=0;clearTimeout(window._rjT);window._rjT=setTimeout(cqeRenderRejets,250);" style="${S}min-width:220px;">
       <select onchange="rejSetFilter('etat',this.value)" style="${S}">${opt([['a_corriger','En cours (non vérifiés)'],['rejete','À transmettre'],['transmis','Transmis à l\'agent'],['corrige_agent','Corrigés par l\'agent (à vérifier)'],['verifie','Correction vérifiée'],['','Tous']],rejFilter.etat)}</select>
-      <select onchange="rejSetFilter('origine',this.value)" style="${S}">${opt([['','Toutes origines'],['afor','AFOR (fichier / statut)'],['grille','CQ — grille'],['plan','CQ — plan'],['rdc','CQ — RDC'],['pvcl','CQ — PVCL']],rejFilter.origine)}</select>
+      ${modeAfor?'':`<select onchange="rejSetFilter('origine',this.value)" style="${S}">${opt([['','Toutes origines CQI'],['grille','CQ — grille'],['plan','CQ — plan'],['rdc','CQ — RDC'],['pvcl','CQ — PVCL']],rejFilter.origine)}</select>`}
       <select onchange="rejSetFilter('resp',this.value)" style="${S}">${opt([['','Tous les responsables'],['__none','Sans responsable']].concat(me?[[me,'Mon portefeuille']]:[]).concat(names.filter(n=>n!==me).map(n=>[n,n])),rejFilter.resp)}</select>
       <select onchange="rejSetFilter('agent',this.value)" style="${S}max-width:200px;">${opt([['','Tous les agents']].concat(agentsRej.map(x=>[x,x])),rejFilter.agent)}</select>
       <select onchange="rejSetFilter('dept',this.value)" style="${S}">${opt([['','Tous départements']].concat(depts.map(x=>[x,x])),rejFilter.dept)}</select>
@@ -7752,7 +7761,7 @@ function rejExportXlsx(){
     agents.forEach((a,i)=>{ let nm=a.replace(/[\\/?*\[\]:]/g,' ').trim().slice(0,28)||'Agent'+(i+1); const base=nm; let k=2; while(usedNames.has(nm)) nm=base.slice(0,26)+' '+k++; usedNames.add(nm); XLSX.utils.book_append_sheet(wb, mk(parAgent[a].map(ix=>rows[ix])), nm); });
   }
   const fAg = rejFilter.agent ? '_'+rejFilter.agent.replace(/[^A-Za-z0-9]+/g,'_').slice(0,30) : '';
-  XLSX.writeFile(wb, 'SSE_PRESFOR_CAG_rejets_suivi'+fAg+'_'+today+'.xlsx');
+  XLSX.writeFile(wb, 'SSE_PRESFOR_CAG_rejets_'+(cqeTab==='rejets_afor'?'AFOR':'CQI')+'_suivi'+fAg+'_'+today+'.xlsx');
   showToast(list.length+' dossier(s) exporté(s) — '+agents.length+' agent(s), '+motifCols.length+' motif(s) en colonnes.');
 }
 
@@ -8591,7 +8600,7 @@ function cqeCtlSubmit(id,statut){
   if(statut==='rejete' && pubCQ[id] && !pubCQ[id].assigne_a && !cqeAssign[id]){ pubCQ[id].assigne_a = by; pubCQ[id].assigne_date = t; cqeAssignSet(id, by); }
   pubSave();
   cqeCtlClose();
-  showToast(statut==='conforme'?'Dossier '+id+' : conforme.':'Dossier '+id+' rejeté — il apparaît dans « Dossiers CQ » pour correction.');
+  showToast(statut==='conforme'?'Dossier '+id+' : conforme.':'Dossier '+id+' rejeté — il apparaît dans « Rejets CQI » pour correction.');
   cqeRenderAll();
 }
 
