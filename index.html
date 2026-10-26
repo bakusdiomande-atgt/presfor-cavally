@@ -451,7 +451,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-bf</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-bg</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -6778,7 +6778,7 @@ cqeCtlChoose = function(id,kind){ _lockGrace=Date.now()+20000; return _cqeCtlCho
 // ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-10-bf';
+const APP_VERSION = 'v15-10-bg';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
@@ -7038,7 +7038,6 @@ function cqeRenderAll(){
     <td style="padding:8px 12px;color:var(--text2);">${d.village||''}</td>
     <td style="padding:8px 12px;">${d.agent||'—'}</td>
     ${derniereColonne}
-    <td style="padding:8px 12px;white-space:nowrap;">${(()=>{ const r=grilleResume(d.id); return (r?`<span style="font-size:10px;color:${r.n?'var(--red)':'var(--accent)'};margin-right:4px;">${r.n?r.n+' motif(s)':'✓'}</span>`:'')+`<button class="btn-s" onclick="event.stopPropagation();grilleOpen('${String(d.id).replace(/'/g,"\\'")}')">Grille</button>`; })()}</td>
   </tr>`;
   }).join('');
   contentEl.innerHTML = motifBreakdownHtml + `<div class="tw" style="overflow:hidden;">
@@ -7073,8 +7072,8 @@ function cqeRenderAll(){
     <div style="padding:8px 16px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);">${vue==='conformes'?'Dossiers conformes':vue==='non'?'Dossiers non contrôlés':vue==='tous'?'Tous les dossiers':vueCorriges?'Dossiers corrigés':'Dossiers rejetés'} (contrôle qualité) — ${filtered.length.toLocaleString('fr-FR')} résultat(s)</div>
     <div style="overflow-x:auto;">
     <table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">N° Dossier</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Demandeur</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Village</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Agent</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">${vueAutre?'État':vueCorriges?'Corrigé par':'Rejeté le'}</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Grille</th></tr></thead>
-      <tbody>${rows || '<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--text3);">Aucun résultat pour ces filtres</td></tr>'}</tbody>
+      <thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">N° Dossier</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Demandeur</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Village</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">Agent</th><th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--text3);">${vueAutre?'État':vueCorriges?'Corrigé par':'Rejeté le'}</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="5" style="padding:16px;text-align:center;color:var(--text3);">Aucun résultat pour ces filtres</td></tr>'}</tbody>
     </table>
     </div>
     ${filtered.length>200 ? `<div style="padding:8px 16px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);">${filtered.length.toLocaleString('fr-FR')} résultats au total — 200 premiers affichés (affinez les filtres ou exportez le CSV pour tout voir).</div>` : ''}
@@ -8049,7 +8048,7 @@ function cqeRenderRejets(){
       <td style="padding:6px 10px;white-space:nowrap;">${c&&c.date_rejet?planEsc(c.date_rejet.split('-').reverse().join('/')):'—'}</td><td style="padding:6px 10px;color:${jc};font-weight:${jc!=='inherit'?700:400};">${j==null?'—':j+' j'}</td>
       <td style="padding:6px 10px;"><span style="color:${SUIVI_COL[x.s]||'inherit'};font-weight:700;">${SUIVI_LIB[x.s]||''}</span>${(()=>{ const tc=terrChecks[x.d.id]||{}; const rc=['rdc','pvcl'].map(t=>tc[t]&&tc[t].recheck).filter(Boolean).sort((a,b)=>String(b.d).localeCompare(String(a.d)))[0]; if(!rc) return ''; return `<div style="font-size:10px;color:var(--text3);white-space:normal;max-width:220px;">Fiche renvoyée le ${planEsc(String(rc.d).split('-').reverse().join('/'))}${rc.ko.length?' — <b style="color:var(--red)">non corrigé : '+planEsc(rc.ko.join(' ; '))+'</b>':''}${rc.confirm.length?' — <b style="color:var(--amber-txt)">corrigé, à confirmer : '+planEsc(rc.confirm.join(' ; '))+'</b>':''}</div>`; })()}</td>
       <td style="padding:6px 10px;">${ctlSel(x.d.id,x.resp)}</td>
-      <td style="padding:6px 10px;white-space:nowrap;text-align:right;">${can&&x.e.etat==='rejete'?`${(x.resp===me||(x.resp&&!rejIsAdmin()))?'':`<button class="btn-s" onclick="rejPrendre('${id}')">Prendre en charge</button> `}${rejCanAct(x.d.id)&&c?(x.s==='rejete'?`<button class="btn-s" onclick="rejSuiviAction('${id}','transmettre')">✉ Transmis à l'agent</button> `:x.s==='transmis'?`<button class="btn-s" onclick="rejSuiviAction('${id}','corrige_agent')">Agent a corrigé</button> `:x.s==='corrige_agent'?`<button class="btn-s" onclick="rejSuiviAction('${id}','verifier')">✓ Vérifier la correction</button> <button class="btn-s" onclick="rejSuiviAction('${id}','retransmettre')">↩ Retransmettre</button> `:''):''}`:''}<button class="btn-s" onclick="grilleOpen('${id}')">Grille</button> <button class="btn-s" onclick="terrOpen('${id}')">Fiche</button></td></tr>`; }).join('')||'<tr><td colspan="11" style="padding:16px;text-align:center;color:var(--text3);">Aucun dossier ne correspond.</td></tr>'}</tbody></table>
+      <td style="padding:6px 10px;white-space:nowrap;text-align:right;">${can&&x.e.etat==='rejete'?`${(x.resp===me||(x.resp&&!rejIsAdmin()))?'':`<button class="btn-s" onclick="rejPrendre('${id}')">Prendre en charge</button> `}${rejCanAct(x.d.id)&&c?(x.s==='rejete'?`<button class="btn-s" onclick="rejSuiviAction('${id}','transmettre')">✉ Transmis à l'agent</button> `:x.s==='transmis'?`<button class="btn-s" onclick="rejSuiviAction('${id}','corrige_agent')">Agent a corrigé</button> `:x.s==='corrige_agent'?`<button class="btn-s" onclick="rejSuiviAction('${id}','verifier')">✓ Vérifier la correction</button> <button class="btn-s" onclick="rejSuiviAction('${id}','retransmettre')">↩ Retransmettre</button> `:''):''}`:''}<button class="btn-s" onclick="terrOpen('${id}')">Fiche</button></td></tr>`; }).join('')||'<tr><td colspan="11" style="padding:16px;text-align:center;color:var(--text3);">Aucun dossier ne correspond.</td></tr>'}</tbody></table>
     ${pages>1?`<div style="padding:8px 16px;display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);font-size:11px;"><button class="btn-s" ${rejFilter.page===0?'disabled':''} onclick="rejFilter.page--;cqeRenderRejets()">← Précédent</button> Page ${rejFilter.page+1} / ${pages} <button class="btn-s" ${rejFilter.page>=pages-1?'disabled':''} onclick="rejFilter.page++;cqeRenderRejets()">Suivant →</button></div>`:''}
   </div>`;
 }
