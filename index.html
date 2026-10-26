@@ -450,7 +450,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-bd</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-be</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -7879,7 +7879,7 @@ function cqeRenderRejets(){
       return `<tr style="border-top:1px solid var(--border);"><td style="padding:6px 10px;font-family:'DM Mono',monospace;">${planEsc(x.d.id)}</td><td style="padding:6px 10px;">${planEsc(((x.d.prenom||'')+' '+(x.d.nom_demandeur||'')).trim())}</td><td style="padding:6px 10px;">${planEsc(x.d.village||'')}</td><td style="padding:6px 10px;">${planEsc(x.d.agent||'')}</td>
       <td style="padding:6px 10px;">${planEsc(REJ_LIB[x.e.origine]||'')}</td><td style="padding:6px 10px;max-width:260px;font-size:11px;">${planEsc(rejMotif(x.d)).slice(0,160)}</td>
       <td style="padding:6px 10px;white-space:nowrap;">${c&&c.date_rejet?planEsc(c.date_rejet.split('-').reverse().join('/')):'—'}</td><td style="padding:6px 10px;color:${jc};font-weight:${jc!=='inherit'?700:400};">${j==null?'—':j+' j'}</td>
-      <td style="padding:6px 10px;"><span style="color:${SUIVI_COL[x.s]||'inherit'};font-weight:700;">${SUIVI_LIB[x.s]||''}</span></td>
+      <td style="padding:6px 10px;"><span style="color:${SUIVI_COL[x.s]||'inherit'};font-weight:700;">${SUIVI_LIB[x.s]||''}</span>${(()=>{ const tc=terrChecks[x.d.id]||{}; const rc=['rdc','pvcl'].map(t=>tc[t]&&tc[t].recheck).filter(Boolean).sort((a,b)=>String(b.d).localeCompare(String(a.d)))[0]; if(!rc) return ''; return `<div style="font-size:10px;color:var(--text3);white-space:normal;max-width:220px;">Fiche renvoyée le ${planEsc(String(rc.d).split('-').reverse().join('/'))}${rc.ko.length?' — <b style="color:var(--red)">non corrigé : '+planEsc(rc.ko.join(' ; '))+'</b>':''}${rc.confirm.length?' — <b style="color:var(--amber-txt)">corrigé, à confirmer : '+planEsc(rc.confirm.join(' ; '))+'</b>':''}</div>`; })()}</td>
       <td style="padding:6px 10px;">${ctlSel(x.d.id,x.resp)}</td>
       <td style="padding:6px 10px;white-space:nowrap;text-align:right;">${can&&x.e.etat==='rejete'?`${(x.resp===me||(x.resp&&!rejIsAdmin()))?'':`<button class="btn-s" onclick="rejPrendre('${id}')">Prendre en charge</button> `}${rejCanAct(x.d.id)&&c?(x.s==='rejete'?`<button class="btn-s" onclick="rejSuiviAction('${id}','transmettre')">✉ Transmis à l'agent</button> `:x.s==='transmis'?`<button class="btn-s" onclick="rejSuiviAction('${id}','corrige_agent')">Agent a corrigé</button> `:x.s==='corrige_agent'?`<button class="btn-s" onclick="rejSuiviAction('${id}','verifier')">✓ Vérifier la correction</button> <button class="btn-s" onclick="rejSuiviAction('${id}','retransmettre')">↩ Retransmettre</button> `:''):''}`:''}<button class="btn-s" onclick="grilleOpen('${id}')">Grille</button> <button class="btn-s" onclick="terrOpen('${id}')">Fiche</button></td></tr>`; }).join('')||'<tr><td colspan="11" style="padding:16px;text-align:center;color:var(--text3);">Aucun dossier ne correspond.</td></tr>'}</tbody></table>
     ${pages>1?`<div style="padding:8px 16px;display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);font-size:11px;"><button class="btn-s" ${rejFilter.page===0?'disabled':''} onclick="rejFilter.page--;cqeRenderRejets()">← Précédent</button> Page ${rejFilter.page+1} / ${pages} <button class="btn-s" ${rejFilter.page>=pages-1?'disabled':''} onclick="rejFilter.page++;cqeRenderRejets()">Suivant →</button></div>`:''}
@@ -8075,6 +8075,41 @@ function terrSyncRejets(){
   });
   return n;
 }
+// Vérification automatique d'un rejet après renvoi de la fiche par l'agent (nouvel import tablette) :
+// chaque motif de la grille pour cette pièce est classé ok (corrigé) / ko (toujours présent) / confirm (non mesurable : à confirmer par le contrôleur).
+function rejMotifAuto(mid, res, rec, type, d){
+  const txt = grilleMotifTexte(mid)||'';
+  if(/illisible/i.test(txt)) return 'confirm';
+  const bad = re=>(res||[]).some(r=>(r.s==='err'||r.s==='warn') && re.test(r.t));
+  if(/signature/i.test(txt)) return bad(/signature.*manquante/i) ? 'ko' : 'ok';
+  if(/\bdates?\b/i.test(txt)){ const dt=terrRecDate(rec,type); if(!dt) return 'ko'; return bad(/^Date du (PV|PVCL)/) ? 'ko' : 'ok'; }
+  return 'confirm';
+}
+function rejRecheck(d, type, rec, k, sig){
+  const id=d.id, piece=GRP_PIECE[type], g=cqeGrille[id];
+  const ids=((g&&g.c)||[]).filter(m=>grillePieceDeMotif(m)===piece); if(!ids.length) return false;
+  const res = type==='rdc' ? terrRdcControls(d,rec) : terrPvclControls(d,rec);
+  const st={}; ids.forEach(m=>{ st[m]=rejMotifAuto(m,res,rec,type,d); });
+  const ok=ids.filter(m=>st[m]==='ok'), rest=ids.filter(m=>st[m]!=='ok'), ko=ids.filter(m=>st[m]==='ko');
+  const t=cqeToday(), hist=((k.hist||[]).concat([{d:t,by:'import tablette',s:'refait'}])).slice(-10);
+  if(ok.length){ const cm=Object.assign({},g.cm||{}); const nr={c:(g.c||[]).filter(m=>!ok.includes(m)), comm:g.comm, cm, par:g.par, date:g.date, _u:new Date().toISOString()}; cqeGrille[id]=nr; cqeGrilleSaveLocal(); cqeFbPut('cq_grille/'+encodeURIComponent(id), nr); }
+  const info={d:t, ko:ko.map(grilleMotifTexte), confirm:rest.filter(m=>st[m]==='confirm').map(grilleMotifTexte), ok:ok.length};
+  terrChecks[id] = terrChecks[id]||{};
+  const c=pubCQ[id];
+  if(!rest.length){
+    const nk={statut:'conforme', commentaire:'', par:'Vérification automatique', date:t, sig, grille:true, auto:true, hist, recheck:info};
+    terrChecks[id][type]=nk; terrApplyRejet(id,type,nk);
+    const dv=cqeCtlCalc(d); cqeEtatSet(id, dv.statut, dv.par||'Vérification automatique', dv.date||t);
+    if(dv.statut==='conforme') cqeSuiviSet(id,'verifie');
+  } else {
+    const nk={statut:'incoherent', commentaire:rest.map(grilleMotifTexte).join(' | '), par:k.par, date:k.date, sig, grille:true, refait:t, hist, recheck:info};
+    if(c && c.motif_final && k.commentaire && c.motif_final.indexOf(k.commentaire)>=0) c.motif_final=c.motif_final.replace(k.commentaire, nk.commentaire);
+    if(c && c.terr && c.terr[type]){ c.terr[type].refait=t; c.terr[type].motif=nk.commentaire; }
+    terrChecks[id][type]=nk;
+    if(!ko.length) cqeSuiviSet(id,'corrige_agent');
+  }
+  return true;
+}
 // Fiche refaite : si le contenu tablette a changé depuis le dernier contrôle, le contrôle repasse « à vérifier ».
 function terrDetectRefaits(){
   const upd = {}; let nb = 0;
@@ -8086,6 +8121,7 @@ function terrDetectRefaits(){
       const sig = terrSig(rec); if(!sig) return;
       if(!k.sig){ k.sig = sig; upd[d.id+'/'+type] = k; return; }
       if(k.sig===sig) return;
+      if(k.statut==='incoherent' && k.grille){ try{ if(rejRecheck(d,type,rec,k,sig)){ nb++; upd[d.id+'/'+type]=terrChecks[d.id][type]; return; } }catch(e){ console.warn('rejRecheck:',e); } }
       const t = cqeToday();
       const nk = {statut:'a_verifier', commentaire:k.commentaire||'', par:k.par, date:k.date, sig, refait:t, avant:k.statut,
                   hist:((k.hist||[]).concat([{d:t,by:'import tablette',s:'refait'}])).slice(-10)};
