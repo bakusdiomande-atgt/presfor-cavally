@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 <title>SSE_PRESFOR_CAG</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -450,7 +451,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-be</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-bf</span></div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -6475,7 +6476,10 @@ function cqeAdminBarRender(){
     · GNSS : ${(gnssData||[]).length.toLocaleString('fr-FR')} parcelles, ${Math.round((gnssData||[]).reduce((t,g)=>t+(g.superficie||0),0)).toLocaleString('fr-FR')} ha (${planEsc(gnssLoadStatus)} · envoi : ${planEsc(gnssSaveStatus)})
     <button class="btn-s" onclick="gnssSaveToFirebase().then(()=>showToast('GNSS envoyé sur Firebase ✓')).catch(e=>showToast('Envoi GNSS impossible : '+e.message))">↑ Envoyer le GNSS sur Firebase</button>
     <button class="btn-s" onclick="cqeSendAfor(this)">↑ Envoyer les dossiers AFOR sur Firebase</button>
-    <button class="btn-s" onclick="cqeReloadData(this)">↓ Recharger</button></div>`;
+    <button class="btn-s" onclick="cqeReloadData(this)">↓ Recharger</button>
+    <button class="btn-s" onclick="snapCreate()" title="Enregistre les chiffres à cet instant (date, version, périmètre) et télécharge l'Excel : base des rapports officiels">📌 Figer les chiffres</button>
+    <button class="btn-s" onclick="snapList()">Rapports figés</button>
+    <button class="btn-s" onclick="auditOpen()">🗒 Journal d'audit</button></div>`;
 }
 async function cqeReloadData(btn){
   if(btn){ btn.disabled=true; btn.textContent='Chargement…'; }
@@ -6608,14 +6612,14 @@ function grilleSave(id){
   const textes=ids.map(grilleMotifTexte);
   const statut = ids.length ? 'rejete' : 'conforme';
   const motif = ids.length ? (textes.slice(0,4).join(' | ')+(textes.length>4?' | (+'+(textes.length-4)+' autre(s) motif(s))':'')) : '';
-  const rec = {c:ids, comm, cm:Object.assign({}, (cqeGrille[id]||{}).cm||{}), par:by, date:t, _u:new Date().toISOString()};
+  const rec = {c:ids, comm, cm:Object.assign({}, (cqeGrille[id]||{}).cm||{}), par:by, date:t, _u:nowSrv()};
   cqeGrille[id]=rec; cqeGrilleSaveLocal(); cqeFbPut('cq_grille/'+encodeURIComponent(id), rec);
   const prev=cqeCtl[id];
   const hist=((prev&&prev.hist)||[]).concat([{d:t,by,s:statut}]).slice(-10);
-  cqeCtl[id]={statut,motif,comm,par:by,date:t,hist,_u:new Date().toISOString(),grille:true};
+  cqeCtl[id]={statut,motif,comm,par:by,date:t,hist,_u:nowSrv(),grille:true};
   let c=pubCQ[id];
   if(statut==='rejete'){
-    if(!c) c=pubCQ[id]={niveau:null,statut_cq:'REJETÉ (grille de contrôle)',rejete:true,motif_qc1:null,motif_qc2:null,motif_final:motif,superf:null,date_rejet:t,source:'app',grille:true,_u:new Date().toISOString(),ev:[{t:'rejet_app',d:t,by}]};
+    if(!c) c=pubCQ[id]={niveau:null,statut_cq:'REJETÉ (grille de contrôle)',rejete:true,motif_qc1:null,motif_qc2:null,motif_final:motif,superf:null,date_rejet:t,source:'app',grille:true,_u:nowSrv(),ev:[{t:'rejet_app',d:t,by}]};
     else if(!c.rejete || c.corrige){ c.rejete=true; c.corrige=false; c.date_correction=null; c.corrige_par=null; c.motif_final=motif; c.date_rejet=t; delete c.date_rejet_est; c.statut_cq='REJETÉ (grille de contrôle)'; if(c.source!=='app'){ c.source='app'; c.terr={}; } c.grille=true; cqeLogEvent(id,'rejet_app'); }
     else { cqeLogEvent(id,'rejet_app'); if(c.source==='app'){ c.motif_final=motif; c.grille=true; } }
     if(!cqeAssign[id] && !(c.assigne_a)){ c.assigne_a=by; c.assigne_date=t; cqeAssignSet(id,by); }
@@ -6689,7 +6693,7 @@ setTimeout(autoSyncRun, 45*1000);
 // ═══════════════════════════════════════════════════════════════
 const LOCK_TTL = 180000;
 let cqeLocks = {}, _lockMine = null, _lockGrace = 0, _lockIdle = 0;
-function lockFresh(l){ return !!l && l.t && (Date.now()-Date.parse(l.t) < LOCK_TTL); }
+function lockFresh(l){ return !!l && l.t && (Date.now()+(+_clockOff||0)-Date.parse(l.t) < LOCK_TTL); }
 async function lockGet(id){
   const r = await fetch(FIREBASE_URL+'/presfor/cq_lock/'+encodeURIComponent(id)+'.json',{signal:AbortSignal.timeout(8000)});
   if(!r.ok) throw new Error('HTTP '+r.status); return await r.json();
@@ -6707,10 +6711,19 @@ async function cqeLockAcquire(id, force){
   if(_lockMine && _lockMine.id===sid && Date.now()-_lockMine.at < 120000) { _lockMine.at=_lockMine.at; return {ok:true}; }
   const url = FIREBASE_URL+'/presfor/cq_lock/'+encodeURIComponent(sid)+'.json';
   try{
-    if(!force){ const cur = await lockGet(sid); if(lockFresh(cur) && cur.by!==me) { cqeLocks[sid]=cur; return {ok:false, by:cur.by, t:cur.t}; } }
+    let etag=null;
+    if(!force){
+      // lecture avec ETag : l'écriture suivante n'aboutit que si personne n'a pris le verrou entre-temps (compare-and-set de Firebase)
+      const g = await fetch(url,{headers:{'X-Firebase-ETag':'true'},signal:AbortSignal.timeout(8000)}); if(!g.ok) throw new Error('HTTP '+g.status);
+      const cur = await g.json(); try{ etag=g.headers.get('ETag'); }catch(e){}
+      if(lockFresh(cur) && cur.by!==me) { cqeLocks[sid]=cur; return {ok:false, by:cur.by, t:cur.t}; }
+    }
     if(_lockMine && _lockMine.id!==sid) await cqeLockRelease(true);
-    const rec={by:me, t:new Date().toISOString()};
-    const w = await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec),signal:AbortSignal.timeout(8000)}); if(!w.ok) throw new Error('HTTP '+w.status);
+    const rec={by:me, t:nowSrv()};
+    const hd={'Content-Type':'application/json'}; if(etag) hd['if-match']=etag;
+    const w = await fetch(url,{method:'PUT',headers:hd,body:JSON.stringify(rec),signal:AbortSignal.timeout(8000)});
+    if(w.status===412){ const c2=await lockGet(sid); cqeLocks[sid]=c2; if(c2 && c2.by!==me && lockFresh(c2)) return {ok:false, by:c2.by, t:c2.t}; }
+    else if(!w.ok) throw new Error('HTTP '+w.status);
     await new Promise(res=>setTimeout(res,600));            // deux contrôleurs simultanés : le dernier écrit gagne, on relit pour savoir qui
     const chk = await lockGet(sid);
     if(chk && chk.by!==me){ cqeLocks[sid]=chk; return {ok:false, by:chk.by, t:chk.t}; }
@@ -6726,7 +6739,7 @@ async function cqeLockRenew(){
   if(!_lockMine) return;
   if(!lockModalOpen()){ if(Date.now()>_lockGrace && ++_lockIdle>=2) cqeLockRelease(); return; }
   _lockIdle=0;
-  try{ const rec={by:cqeWho()||'(inconnu)', t:new Date().toISOString()}; await fetch(FIREBASE_URL+'/presfor/cq_lock/'+encodeURIComponent(_lockMine.id)+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec),signal:AbortSignal.timeout(8000)}); }catch(e){}
+  try{ const rec={by:cqeWho()||'(inconnu)', t:nowSrv()}; await fetch(FIREBASE_URL+'/presfor/cq_lock/'+encodeURIComponent(_lockMine.id)+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec),signal:AbortSignal.timeout(8000)}); }catch(e){}
 }
 setInterval(cqeLockRenew, 60000);
 setInterval(cqeLockMaybeRelease, 15000);
@@ -6762,6 +6775,161 @@ grilleOpen = cqeGuard('grilleOpen', grilleOpen);
 ['cqeCtlClose','terrClose','planClose','grilleClose'].forEach(n=>{ const f=window[n]; if(typeof f==='function'){ window[n]=function(){ const r=f.apply(this,arguments); setTimeout(cqeLockMaybeRelease,1500); return r; }; } });
 const _cqeCtlChoose0 = cqeCtlChoose;
 cqeCtlChoose = function(id,kind){ _lockGrace=Date.now()+20000; return _cqeCtlChoose0(id,kind); };
+// ═══════════════════════════════════════════════════════════════
+// ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
+// ═══════════════════════════════════════════════════════════════
+const APP_VERSION = 'v15-10-bf';
+var _clockOff = 0, _clockOk = false;
+function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
+// ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
+window._fbErr = [];
+function fbErrNote(m, u, msg){
+  const path = String(u).replace(FIREBASE_URL,'').split('?')[0];
+  if(/clock_probe|\/audit\//.test(path)) return;
+  _fbErr.push({t:new Date().toISOString(), m, path, msg}); if(_fbErr.length>60) _fbErr.shift();
+  fbErrBadge();
+}
+function fbErrRecent(){ const lim=Date.now()-15*60000; return _fbErr.filter(e=>Date.parse(e.t)>lim); }
+function fbErrBadge(){
+  let b=document.getElementById('fb-err-badge');
+  if(!b){ const host=document.getElementById('sync-indicator'); if(!host||!host.parentNode) return; b=document.createElement('span'); b.id='fb-err-badge'; b.style.cssText='cursor:pointer;margin-left:6px;padding:2px 8px;border-radius:10px;background:#B83025;color:#fff;font-size:11px;font-weight:700;display:none;'; b.onclick=fbErrShow; host.parentNode.insertBefore(b, host.nextSibling); }
+  const n=fbErrRecent().length; b.style.display=n?'inline-block':'none'; b.textContent='⚠ '+n+' envoi(s) échoué(s)';
+  if(n && !window._fbErrToast){ window._fbErrToast=1; showToast('⚠ Un envoi vers Firebase a échoué : vos modifications ne sont peut-être pas partagées. Cliquez sur le badge rouge.'); setTimeout(()=>{window._fbErrToast=0;},60000); }
+}
+function fbErrShow(){
+  const l=fbErrRecent().slice().reverse(); const old=document.getElementById('fberr-modal'); if(old) old.remove();
+  const m=document.createElement('div'); m.id='fberr-modal'; m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10020;display:flex;align-items:center;justify-content:center;padding:20px;';
+  m.innerHTML=`<div style="background:var(--surface);border-radius:12px;max-width:560px;width:100%;max-height:80vh;overflow:auto;padding:18px;"><h3 style="margin:0 0 8px;font-size:15px;">Envois échoués (15 dernières minutes)</h3><div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Vérifiez la connexion internet puis refaites l'action (ou rechargez la page : les données locales sont renvoyées au démarrage).</div>${l.map(e=>`<div style="font-size:11px;border-top:1px solid var(--border);padding:4px 0;"><b>${new Date(e.t).toLocaleTimeString('fr-FR')}</b> ${e.m} ${planEsc(e.path)} — ${planEsc(e.msg)}</div>`).join('')||'Aucun.'}<div style="text-align:right;margin-top:10px;"><button class="btn-s" onclick="_fbErr.length=0;fbErrBadge();document.getElementById('fberr-modal').remove()">Effacer</button> <button class="btn-p" onclick="document.getElementById('fberr-modal').remove()">Fermer</button></div></div>`;
+  document.body.appendChild(m);
+}
+(function(){
+  const f0 = window.fetch.bind(window);
+  window.fetch = function(url, opt){
+    const u = String((url&&url.url)||url);
+    if(u.indexOf(FIREBASE_URL)!==0) return f0(url,opt);
+    const m = String((opt&&opt.method)||'GET').toUpperCase();
+    return f0(url,opt).then(r=>{ if(!r.ok && m!=='GET') fbErrNote(m,u,'HTTP '+r.status); return r; })
+      .catch(e=>{ if(m!=='GET') fbErrNote(m,u,e&&e.message||'échec réseau'); throw e; });
+  };
+})();
+// ── Horloge : décalage entre ce poste et le serveur Firebase (les dates de modification servent à départager les versions) ──
+async function clockSync(){
+  try{
+    const key = String(cqeWho()||'anon').replace(/[.#$\[\]\/]/g,'_');
+    const t0=Date.now();
+    const r = await fetch(FIREBASE_URL+'/presfor/clock_probe/'+encodeURIComponent(key)+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({'.sv':'timestamp'}),signal:AbortSignal.timeout(8000)});
+    if(!r.ok) return; const srv = await r.json(); const t1=Date.now(); if(typeof srv!=='number') return;
+    _clockOff = srv - Math.round((t0+t1)/2); _clockOk = true;
+    const min = Math.round(_clockOff/60000);
+    let b=document.getElementById('clock-badge');
+    if(Math.abs(_clockOff)>120000){
+      if(!b){ const host=document.getElementById('sync-indicator'); if(host&&host.parentNode){ b=document.createElement('span'); b.id='clock-badge'; b.style.cssText='margin-left:6px;padding:2px 8px;border-radius:10px;background:#B45309;color:#fff;font-size:11px;font-weight:700;'; host.parentNode.appendChild(b); } }
+      if(b){ b.textContent='🕒 horloge du poste décalée de '+Math.abs(min)+' min'; b.title='Réglez la date et l\'heure de cet ordinateur (réglage automatique). L\'application corrige déjà ses enregistrements.'; }
+    } else if(b) b.remove();
+  }catch(e){}
+}
+setTimeout(clockSync, 4000); setInterval(clockSync, 10*60000);
+// ── Version : un poste resté sur une ancienne version est invité à recharger ──
+async function versionCheck(){
+  try{
+    const r = await fetch(FIREBASE_URL+'/presfor/app_version.json',{signal:AbortSignal.timeout(8000)}); if(!r.ok) return;
+    const remote = await r.json();
+    if(currentUser && currentUser.role==='admin' && (!remote || APP_VERSION>String(remote))){
+      await fetch(FIREBASE_URL+'/presfor/app_version.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(APP_VERSION),signal:AbortSignal.timeout(8000)}); return;
+    }
+    if(remote && String(remote)>APP_VERSION){
+      if(document.getElementById('ver-banner')) return;
+      const b=document.createElement('div'); b.id='ver-banner'; b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:10030;background:#B45309;color:#fff;padding:8px 14px;font-size:13px;text-align:center;';
+      b.innerHTML='Une nouvelle version de l\'application est disponible ('+planEsc(String(remote))+', vous avez '+APP_VERSION+'). Les chiffres peuvent différer tant que vous ne rechargez pas. <button style="margin-left:10px;padding:3px 10px;border:0;border-radius:6px;cursor:pointer;font-weight:700;" onclick="location.href=location.pathname+\'?v=\'+Date.now()">Recharger maintenant</button>';
+      document.body.appendChild(b);
+    }
+  }catch(e){}
+}
+(function(){ const sp=document.querySelector('[title="Version de l\'application"]'); if(sp) sp.textContent=APP_VERSION; })();
+setTimeout(versionCheck, 8000); setInterval(versionCheck, 5*60000);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ versionCheck(); clockSync(); } });
+
+// ── Journal d'audit : qui a fait quoi, quand (écriture seule : /presfor/audit/{date}/{id}) ──
+async function auditLog(action, id, detail){
+  try{
+    const t=nowSrv(), rec={t, by:cqeWho()||(currentUser&&currentUser.id)||'?', role:(currentUser&&currentUser.role)||'', a:action, id:id==null?'':String(id), d:String(detail==null?'':detail).slice(0,400), v:APP_VERSION};
+    for(let k=0;k<2;k++){ try{ const r=await fetch(FIREBASE_URL+'/presfor/audit/'+t.slice(0,10)+'.json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec),signal:AbortSignal.timeout(10000)}); if(r.ok) return; }catch(e){} await new Promise(res=>setTimeout(res,1500)); }
+  }catch(e){}
+}
+function auditWrap(name, fn){ const f=window[name]; if(typeof f!=='function') return; window[name]=function(){ let r; try{ const a=fn.apply(null,arguments); if(a) auditLog(a[0],a[1],a[2]); }catch(e){} return f.apply(this,arguments); }; }
+auditWrap('terrSaveCheck', (id,type,chk)=>['controle_'+type, id, (chk&&chk.statut)+' — '+((chk&&chk.commentaire)||'')]);
+auditWrap('planSaveCheck', (id,chk)=>['controle_plan', id, (chk&&chk.statut)+' — '+((chk&&chk.commentaire)||'')]);
+auditWrap('cqeSuiviSet', (id,s)=>['suivi', id, s]);
+auditWrap('cqeAssignSet', (id,who)=>['attribution', id, who||'(libéré)']);
+auditWrap('adminDeleteUser', id=>['compte_supprime', id, '']);
+auditWrap('adminSetZone', (id,z)=>['compte_zone', id, z]);
+auditWrap('aforSaveToFirebase', ()=>['import_afor','', 'envoi base AFOR']);
+auditWrap('tabSaveToFirebase', ()=>['import_tablette','', 'envoi données tablette']);
+auditWrap('gnssSaveToFirebase', ()=>['import_gnss','', 'envoi GNSS']);
+function auditAdminDOM(){ // reset mot de passe : l'identifiant est dans le formulaire
+  const f=window.adminResetPwd; if(typeof f!=='function') return;
+  window.adminResetPwd=function(){ try{ const el=document.getElementById('adm-reset-user'); auditLog('mot_de_passe_reinitialise', el&&el.value, ''); }catch(e){} return f.apply(this,arguments); };
+}
+auditAdminDOM();
+async function auditOpen(){
+  if(!currentUser||currentUser.role!=='admin') return;
+  const old=document.getElementById('audit-modal'); if(old) old.remove();
+  const m=document.createElement('div'); m.id='audit-modal'; m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10020;display:flex;align-items:center;justify-content:center;padding:20px;';
+  m.innerHTML='<div style="background:var(--surface);border-radius:12px;max-width:1000px;width:100%;max-height:88vh;overflow:auto;padding:18px;"><h3 style="margin:0 0 8px;font-size:15px;">Journal d\'audit (7 derniers jours)</h3><div id="audit-body">Chargement…</div></div>';
+  document.body.appendChild(m);
+  const rows=[]; const days=[...Array(7)].map((_,i)=>new Date(Date.now()+_clockOff-i*86400000).toISOString().slice(0,10));
+  for(const d of days){ try{ const r=await fetch(FIREBASE_URL+'/presfor/audit/'+d+'.json',{signal:AbortSignal.timeout(20000)}); const j=r.ok?await r.json():null; if(j) Object.keys(j).forEach(k=>rows.push(j[k])); }catch(e){} }
+  rows.sort((a,b)=>String(b.t).localeCompare(String(a.t))); window._auditRows=rows;
+  const draw=q=>{ q=(q||'').toLowerCase(); const l=rows.filter(r=>!q||JSON.stringify(r).toLowerCase().includes(q)).slice(0,500);
+    document.getElementById('audit-body').innerHTML=`<div style="display:flex;gap:8px;margin-bottom:8px;"><input id="audit-q" placeholder="Filtrer (nom, dossier, action…)" value="${planEsc(q)}" style="flex:1;padding:6px;border:1px solid var(--border);border-radius:6px;"><button class="btn-s" onclick="auditExport()">⬇ Excel</button><button class="btn-p" onclick="document.getElementById('audit-modal').remove()">Fermer</button></div><div style="font-size:11px;color:var(--text3);margin-bottom:6px;">${rows.length} événement(s) — affichage des 500 plus récents</div><table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:4px 6px;">Date/heure</th><th style="text-align:left;padding:4px 6px;">Utilisateur</th><th style="text-align:left;padding:4px 6px;">Action</th><th style="text-align:left;padding:4px 6px;">Dossier</th><th style="text-align:left;padding:4px 6px;">Détail</th></tr></thead><tbody>${l.map(r=>`<tr style="border-top:1px solid var(--border);"><td style="padding:3px 6px;white-space:nowrap;">${planEsc(String(r.t).replace('T',' ').slice(0,19))}</td><td style="padding:3px 6px;">${planEsc(r.by)}</td><td style="padding:3px 6px;">${planEsc(r.a)}</td><td style="padding:3px 6px;font-family:'DM Mono',monospace;">${planEsc(r.id)}</td><td style="padding:3px 6px;">${planEsc(r.d)}</td></tr>`).join('')}</tbody></table>`;
+    const i=document.getElementById('audit-q'); i.oninput=()=>{ clearTimeout(window._auT); window._auT=setTimeout(()=>draw(i.value),250); }; };
+  draw('');
+}
+function auditExport(){ if(typeof XLSX==='undefined') return; const rows=window._auditRows||[]; const ws=XLSX.utils.aoa_to_sheet([['Date/heure','Utilisateur','Rôle','Action','Dossier','Détail','Version'],...rows.map(r=>[r.t,r.by,r.role,r.a,r.id,r.d,r.v])]); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Audit'); XLSX.writeFile(wb,'SSE_PRESFOR_CAG_audit_'+nowSrv().slice(0,10)+'.xlsx'); }
+
+// ── Chiffres officiels figés : un instantané daté, reproductible, enregistré sur Firebase ──
+function snapCompute(){
+  const afor = dashFilterByZone(dossiersAFOR||[], dashZoneFilter);
+  const mk=()=>({total:0,conforme:0,rejete:0,a_controler:0,rejets_afor:0,rejets_cqi_en_cours:0,corriges:0});
+  const tot=mk(), dep={}, ag={};
+  afor.forEach(d=>{
+    const k=cqeCtlDerived(d).statut, e=rejEtat(d);
+    [tot,(dep[d.dept||'(non renseigné)']=dep[d.dept||'(non renseigné)']||mk()),(ag[d.agent||'(non renseigné)']=ag[d.agent||'(non renseigné)']||mk())].forEach(o=>{
+      o.total++; if(k==='conforme') o.conforme++; else if(k==='rejete') o.rejete++; else o.a_controler++;
+      if(e.etat==='rejete'){ if(e.origine==='afor') o.rejets_afor++; else o.rejets_cqi_en_cours++; } else if(e.etat==='corrige') o.corriges++;
+    });
+  });
+  return {t:nowSrv(), by:cqeWho()||'', version:APP_VERSION, zone:String(dashZoneFilter||'toutes'), tot, dep, ag};
+}
+function snapXlsx(sn){
+  if(typeof XLSX==='undefined') return;
+  const H=['Total dossiers','Conformes (CQ)','Rejetés (CQ)','À contrôler','Rejets AFOR en cours','Rejets CQI en cours','Rejetés puis corrigés'];
+  const row=(n,o)=>[n,o.total,o.conforme,o.rejete,o.a_controler,o.rejets_afor,o.rejets_cqi_en_cours,o.corriges];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Chiffres officiels figés — SSE_PRESFOR_CAG'],['Figé le',sn.t],['Par',sn.by],['Version application',sn.version],['Périmètre',sn.zone],[],['',...H],row('Ensemble',sn.tot)]),'Synthèse');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Département',...H],...Object.keys(sn.dep).sort().map(k=>row(k,sn.dep[k]))]),'Par département');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Agent',...H],...Object.keys(sn.ag).sort().map(k=>row(k,sn.ag[k]))]),'Par agent');
+  XLSX.writeFile(wb,'SSE_PRESFOR_CAG_chiffres_figes_'+sn.t.slice(0,16).replace(/[:T]/g,'-')+'.xlsx');
+}
+async function snapCreate(){
+  if(!currentUser||currentUser.role!=='admin') return;
+  if(!(dossiersAFOR||[]).length){ showToast('Aucun dossier AFOR chargé : rien à figer.'); return; }
+  if(!confirm('Figer les chiffres actuels (date, version et périmètre enregistrés sur Firebase) et télécharger le fichier Excel ?')) return;
+  const sn=snapCompute(), key=sn.t.replace(/[:.]/g,'-');
+  try{ const r=await fetch(FIREBASE_URL+'/presfor/snapshots/'+key+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(sn),signal:AbortSignal.timeout(20000)}); if(!r.ok) throw new Error('HTTP '+r.status); auditLog('chiffres_figes','', sn.tot.total+' dossiers, '+sn.tot.conforme+' conformes, '+sn.tot.rejete+' rejetés'); showToast('Chiffres figés et enregistrés ✓'); }
+  catch(e){ showToast('⚠ Enregistrement Firebase impossible ('+e.message+') — le fichier Excel est tout de même téléchargé.'); }
+  snapXlsx(sn);
+}
+async function snapList(){
+  const old=document.getElementById('snap-modal'); if(old) old.remove();
+  const m=document.createElement('div'); m.id='snap-modal'; m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10020;display:flex;align-items:center;justify-content:center;padding:20px;';
+  m.innerHTML='<div style="background:var(--surface);border-radius:12px;max-width:760px;width:100%;max-height:85vh;overflow:auto;padding:18px;"><h3 style="margin:0 0 8px;font-size:15px;">Chiffres officiels figés</h3><div id="snap-body">Chargement…</div></div>';
+  document.body.appendChild(m);
+  let j=null; try{ const r=await fetch(FIREBASE_URL+'/presfor/snapshots.json',{signal:AbortSignal.timeout(20000)}); j=r.ok?await r.json():null; }catch(e){}
+  window._snaps=j||{}; const ks=Object.keys(window._snaps).sort().reverse();
+  document.getElementById('snap-body').innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:5px;">Figé le</th><th style="text-align:left;padding:5px;">Par</th><th style="text-align:right;padding:5px;">Dossiers</th><th style="text-align:right;padding:5px;">Conformes</th><th style="text-align:right;padding:5px;">Rejetés</th><th style="text-align:left;padding:5px;">Version</th><th></th></tr></thead><tbody>${ks.map(k=>{ const s=window._snaps[k]; return `<tr style="border-top:1px solid var(--border);"><td style="padding:5px;">${planEsc(String(s.t).replace('T',' ').slice(0,16))}</td><td style="padding:5px;">${planEsc(s.by)}</td><td style="padding:5px;text-align:right;">${s.tot.total}</td><td style="padding:5px;text-align:right;">${s.tot.conforme}</td><td style="padding:5px;text-align:right;">${s.tot.rejete}</td><td style="padding:5px;">${planEsc(s.version)}</td><td style="padding:5px;"><button class="btn-s" onclick="snapXlsx(window._snaps['${k}'])">⬇ Excel</button></td></tr>`; }).join('')||'<tr><td colspan="7" style="padding:10px;color:var(--text3);">Aucun instantané.</td></tr>'}</tbody></table><div style="text-align:right;margin-top:10px;"><button class="btn-p" onclick="document.getElementById('snap-modal').remove()">Fermer</button></div>`;
+}
+
 
 document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && Date.now()-_autoSyncLast>2*60*1000) setTimeout(autoSyncRun, 1500); });
 function cqeRefreshIfOpen(){ try{ const m=document.getElementById('module-cqe'); if(m && m.classList.contains('active')) cqeRenderAll(); }catch(e){ console.warn('cqeRefreshIfOpen', e); } }
@@ -7180,7 +7348,7 @@ async function planLoadChecks(){
   return n;
 }
 async function planSaveCheck(id, chk){
-  chk._u = new Date().toISOString();
+  chk._u = nowSrv();
   // Historique conservé : chaque contrôle de plan (qui, quand, résultat) reste compté pour le suivi du contrôleur
   const prev = planChecks[id];
   chk.hist = ((prev && prev.hist) || (prev && prev.date ? [{d:prev.date,by:prev.par,s:prev.statut}] : [])).concat([{d:chk.date,by:chk.par,s:chk.statut}]).slice(-10);
@@ -7535,7 +7703,7 @@ async function terrLoadChecks(){
   return n;
 }
 async function terrSaveCheck(id, type, chk){
-  chk._u = new Date().toISOString();
+  chk._u = nowSrv();
   const cur = terrChecks[id] = terrChecks[id] || {};
   const prev = cur[type];
   chk.hist = ((prev && prev.hist) || (prev && prev.date ? [{d:prev.date,by:prev.par,s:prev.statut}] : [])).concat([{d:chk.date,by:chk.par,s:chk.statut}]).slice(-10);
@@ -7656,7 +7824,7 @@ async function grpSave(id, type){
   const commentaire=[textes.join(' | '), comm].filter(Boolean).join(' — ');
   // grille du dossier : on remplace uniquement les motifs de cette pièce
   const g0=cqeGrille[id]||{}, cm=Object.assign({}, g0.cm||{}); cm[S.pid]=comm;
-  const rec={c:((g0.c||[]).filter(m=>grillePieceDeMotif(m)!==S.pid)).concat(ids), comm:Object.values(cm).filter(Boolean).join(' | '), cm, par:by, date:t, _u:new Date().toISOString()};
+  const rec={c:((g0.c||[]).filter(m=>grillePieceDeMotif(m)!==S.pid)).concat(ids), comm:Object.values(cm).filter(Boolean).join(' | '), cm, par:by, date:t, _u:nowSrv()};
   cqeGrille[id]=rec; cqeGrilleSaveLocal(); cqeFbPut('cq_grille/'+encodeURIComponent(id), rec);
   // verdict de la pièce
   if(type==='plan'){
@@ -7774,7 +7942,7 @@ async function cqeAssignLoad(){
     cqeAssignSaveLocal(); return n;
   }catch(e){ return 0; }
 }
-function cqeAssignSet(id, who){ const t=cqeToday(); const rec={a:who||'', d:t, by:cqeWho()||'', _u:new Date().toISOString()}; cqeAssign[id]=rec; cqeAssignSaveLocal(); cqeAssignPut(id, rec); }
+function cqeAssignSet(id, who){ const t=cqeToday(); const rec={a:who||'', d:t, by:cqeWho()||'', _u:nowSrv()}; cqeAssign[id]=rec; cqeAssignSaveLocal(); cqeAssignPut(id, rec); }
 function rejResponsable(d){
   const as = cqeAssign[d.id]; if(as) return as.a || '';
   const c = pubCQ[d.id]; if(!c) return '';
@@ -7802,10 +7970,10 @@ function rejAssign(id, who){
   const d = (dossiersAFOR||[]).find(x=>String(x.id)===String(id)); if(!d) return;
   const t = cqeToday();
   let c = pubCQ[id];
-  if(!c){ c = pubCQ[id] = {niveau:null,statut_cq:'REJETÉ (statut AFOR)',rejete:true,motif_qc1:null,motif_qc2:null,motif_final:'Statut AFOR : '+(d.statut_txt||'rejeté'),superf:null,date_rejet:t,source:'afor_statut',ev:[],_u:new Date().toISOString()}; }
+  if(!c){ c = pubCQ[id] = {niveau:null,statut_cq:'REJETÉ (statut AFOR)',rejete:true,motif_qc1:null,motif_qc2:null,motif_final:'Statut AFOR : '+(d.statut_txt||'rejeté'),superf:null,date_rejet:t,source:'afor_statut',ev:[],_u:nowSrv()}; }
   c.assigne_a = who || ''; c.assigne_date = who ? t : null;
   cqeLogEvent(id, who ? 'assigne' : 'desassigne');
-  { const rec = {a:who||'', d:t, by:cqeWho()||'', _u:new Date().toISOString()}; cqeAssign[id]=rec; cqeAssignSaveLocal(); cqeAssignPut(id, rec); }
+  { const rec = {a:who||'', d:t, by:cqeWho()||'', _u:nowSrv()}; cqeAssign[id]=rec; cqeAssignSaveLocal(); cqeAssignPut(id, rec); }
   pubSave();
   cqeRenderAll();
 }
@@ -7896,7 +8064,7 @@ try{ const x=localStorage.getItem('presfor_cq_suivi'); if(x) cqeSuivi=JSON.parse
 function cqeSuiviSaveLocal(){ try{ localStorage.setItem('presfor_cq_suivi', JSON.stringify(cqeSuivi)); }catch(e){} }
 function cqeSuiviSet(id, s){
   const t=cqeToday(), by=cqeWho()||'', prev=cqeSuivi[id];
-  const rec={s, d:t, by, _u:new Date().toISOString(), h:((prev&&prev.h)||[]).concat([{s,d:t,by}]).slice(-12)};
+  const rec={s, d:t, by, _u:nowSrv(), h:((prev&&prev.h)||[]).concat([{s,d:t,by}]).slice(-12)};
   cqeSuivi[id]=rec; cqeSuiviSaveLocal(); cqeFbPut('cq_suivi/'+encodeURIComponent(id), rec);
 }
 async function cqeSuiviLoad(){
@@ -8045,11 +8213,11 @@ function terrApplyRejet(id, type, chk){
   let c = pubCQ[id], changed = false;
   const motif = T.label+' incohérent : '+(chk.commentaire||'');
   if(chk.statut==='incoherent'){
-    if(!c){ c = pubCQ[id] = {niveau:null,statut_cq:'REJETÉ (contrôle '+T.label+')',rejete:true,motif_qc1:null,motif_qc2:null,motif_final:motif,superf:null,date_rejet:t,source:'app',terr:{},_u:new Date().toISOString(),ev:[{t:'rejet_app',d:t,by}]}; changed = true; }
+    if(!c){ c = pubCQ[id] = {niveau:null,statut_cq:'REJETÉ (contrôle '+T.label+')',rejete:true,motif_qc1:null,motif_qc2:null,motif_final:motif,superf:null,date_rejet:t,source:'app',terr:{},_u:nowSrv(),ev:[{t:'rejet_app',d:t,by}]}; changed = true; }
     else if(!c.rejete || c.corrige){ c.rejete=true; c.corrige=false; c.date_correction=null; c.corrige_par=null; c.motif_final=motif; c.date_rejet=t; delete c.date_rejet_est; c.statut_cq='REJETÉ (contrôle '+T.label+')'; c.terr_orig={}; if(c.source!=='app'){ c.source='app'; c.terr={}; } cqeLogEvent(id,'rejet_app'); changed = true; }
     else { c.motif_final = c.motif_final ? (c.motif_final.indexOf(motif)>=0 ? c.motif_final : c.motif_final+' | '+motif) : motif; cqeLogEvent(id,'rejet_app'); changed = true; }
     c.terr = c.terr||{}; c.terr[type] = {d:t,by,motif:chk.commentaire||''};
-    if(!c.assigne_a && !cqeAssign[id]){ c.assigne_a = by; c.assigne_date = t; const rec={a:by,d:t,by,_u:new Date().toISOString()}; cqeAssign[id]=rec; cqeAssignSaveLocal(); cqeAssignPut(id,rec); }
+    if(!c.assigne_a && !cqeAssign[id]){ c.assigne_a = by; c.assigne_date = t; const rec={a:by,d:t,by,_u:nowSrv()}; cqeAssign[id]=rec; cqeAssignSaveLocal(); cqeAssignPut(id,rec); }
   } else if(chk.statut==='conforme' && c && c.terr && c.terr[type]){
     c.terr_orig = Object.assign(c.terr_orig||{}, {[type]:true}); delete c.terr[type];
     if(!Object.keys(c.terr).length && c.rejete && !c.corrige && c.source==='app'){
@@ -8092,7 +8260,7 @@ function rejRecheck(d, type, rec, k, sig){
   const st={}; ids.forEach(m=>{ st[m]=rejMotifAuto(m,res,rec,type,d); });
   const ok=ids.filter(m=>st[m]==='ok'), rest=ids.filter(m=>st[m]!=='ok'), ko=ids.filter(m=>st[m]==='ko');
   const t=cqeToday(), hist=((k.hist||[]).concat([{d:t,by:'import tablette',s:'refait'}])).slice(-10);
-  if(ok.length){ const cm=Object.assign({},g.cm||{}); const nr={c:(g.c||[]).filter(m=>!ok.includes(m)), comm:g.comm, cm, par:g.par, date:g.date, _u:new Date().toISOString()}; cqeGrille[id]=nr; cqeGrilleSaveLocal(); cqeFbPut('cq_grille/'+encodeURIComponent(id), nr); }
+  if(ok.length){ const cm=Object.assign({},g.cm||{}); const nr={c:(g.c||[]).filter(m=>!ok.includes(m)), comm:g.comm, cm, par:g.par, date:g.date, _u:nowSrv()}; cqeGrille[id]=nr; cqeGrilleSaveLocal(); cqeFbPut('cq_grille/'+encodeURIComponent(id), nr); }
   const info={d:t, ko:ko.map(grilleMotifTexte), confirm:rest.filter(m=>st[m]==='confirm').map(grilleMotifTexte), ok:ok.length};
   terrChecks[id] = terrChecks[id]||{};
   const c=pubCQ[id];
@@ -8901,7 +9069,7 @@ let cqeEtat = {};
 try{ const x=localStorage.getItem('presfor_cq_etat'); if(x) cqeEtat=JSON.parse(x); }catch(e){}
 function cqeEtatSaveLocal(){ try{ localStorage.setItem('presfor_cq_etat', JSON.stringify(cqeEtat)); }catch(e){} }
 function cqeEtatSet(id, statut, par, date){
-  const rec={s:statut, par:par||'', d:date||cqeToday(), _u:new Date().toISOString()};
+  const rec={s:statut, par:par||'', d:date||cqeToday(), _u:nowSrv()};
   cqeEtat[id]=rec; cqeEtatSaveLocal(); cqeFbPut('cq_etat/'+encodeURIComponent(id), rec);
 }
 async function cqeEtatLoad(){
@@ -9491,10 +9659,10 @@ setTimeout(()=>{ try{ cqeEnsureDates(); cqeUpdateBadge(); }catch(e){} }, 4000);
 // ── Marquer un dossier rejeté comme corrigé et validé par le contrôleur qualité :
 // il sort de "Rejetés" et vient compléter "Conformes". ──
 function cqeWho(){ return (currentUser && currentUser.nom) ? currentUser.nom.split('—')[0].trim() : null; }
-function cqeToday(){ return new Date().toISOString().split('T')[0]; }
+function cqeToday(){ return new Date(Date.now()+(typeof _clockOff==='number'?_clockOff:0)).toISOString().split('T')[0]; }
 function cqeLogEvent(id, t){
   const cq = pubCQ[id]; if(!cq) return;
-  cq._u = new Date().toISOString();
+  cq._u = nowSrv();
   (cq.ev = cq.ev||[]).push({t, d:cqeToday(), by:cqeWho()});
   if(cq.ev.length>20) cq.ev = cq.ev.slice(-20);
 }
@@ -10164,10 +10332,10 @@ function pubSaveCorrection(id){
   };
   // Mettre à jour le statut principal si validé
   if(statut === 'VALIDE'){
-    pubCQ[id]._u = new Date().toISOString(); pubCQ[id].rejete = false;
+    pubCQ[id]._u = nowSrv(); pubCQ[id].rejete = false;
     pubCQ[id].statut_cq = 'VALIDE';
   } else if(statut === 'EN_COURS'){
-    pubCQ[id]._u = new Date().toISOString(); pubCQ[id].rejete = false; // En cours de correction = plus rejeté bloquant
+    pubCQ[id]._u = nowSrv(); pubCQ[id].rejete = false; // En cours de correction = plus rejeté bloquant
   }
   pubSave();
   pubRenderList();
@@ -10959,15 +11127,19 @@ let saveTimer = null;
 // Garder serverAvailable pour compatibilité
 let serverAvailable = false;
 
+// ── Lecture ciblée du nœud « legacy » (dossiers/absences/comptes) : jamais /presfor.json en entier,
+// qui contient aussi la base AFOR, les fiches tablette, les plans, etc. (plusieurs centaines de Mo).
+async function fbLegacyGet(timeout){
+  const keys=['dossiers','absences','users_db','updated_at','reset'];
+  const vals = await Promise.all(keys.map(k=>fetch(FIREBASE_URL+'/presfor/'+k+'.json',{signal:AbortSignal.timeout(timeout||20000)}).then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })));
+  const o={}; keys.forEach((k,i)=>{ if(vals[i]!==null && vals[i]!==undefined) o[k]=vals[i]; });
+  return Object.keys(o).length ? o : null;
+}
 // ── Charger depuis Firebase ──
 async function serverLoad(){
   updateSyncIndicator('pending');
   try {
-    const r = await fetch(FIREBASE_URL + '/presfor.json', {
-      signal: AbortSignal.timeout(20000)
-    });
-    if(!r.ok) throw new Error('HTTP ' + r.status);
-    const d = await r.json();
+    const d = await fbLegacyGet(20000);
 
     if(!d || d.reset){
       dossiers=[]; absences=[];
@@ -11130,9 +11302,8 @@ async function serverSave(){
     // 1. Lire l'état actuel sur Firebase avant d'écrire
     let needsUIRefresh = false;
     try {
-      const rGet = await fetch(FIREBASE_URL + '/presfor.json', { signal: AbortSignal.timeout(10000) });
-      if(rGet.ok){
-        const remote = await rGet.json();
+      { 
+        const remote = await fbLegacyGet(15000);
         if(remote){
           // Fusionner users_db à chaque sauvegarde (les comptes ne doivent jamais se perdre),
           // que les timestamps correspondent ou non.
@@ -11154,12 +11325,13 @@ async function serverSave(){
           console.log('Fusion avant sauvegarde — données mergées depuis Firebase');
         }
       }
-    } catch(eMerge){ console.log('Lecture pré-save ignorée:', eMerge.message); }
+    } catch(eMerge){ console.warn('Lecture pré-save impossible, sauvegarde reportée:', eMerge.message); throw eMerge; }
 
     // 2. Écrire l'état fusionné (users_db inclus pour ne jamais perdre les comptes)
     const ts = new Date().toISOString();
+    // PATCH (et non PUT) : ne touche QUE ces clés. Un PUT sur /presfor effaçait tout le reste (CQ, AFOR, tablette, plans…).
     const r = await fetch(FIREBASE_URL + '/presfor.json', {
-      method: 'PUT',
+      method: 'PATCH',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({dossiers, absences, users_db: usersToFirebase(users_db), updated_at: ts, reset: false}),
       signal: AbortSignal.timeout(25000)
@@ -11176,6 +11348,8 @@ async function serverSave(){
   } catch(e) {
     updateSyncIndicator('error');
     console.log('Erreur save:', e.message);
+    saveQueue = true;
+    setTimeout(()=>{ if(saveQueue){ saveQueue=false; serverSave(); } }, 15000);
   } finally {
     isSaving = false;
     if(saveQueue){ saveQueue = false; setTimeout(serverSave, 500); }
@@ -13313,9 +13487,9 @@ async function authWriteUser(id, userData){
 async function authLoadUsersFromFirebase(){
   try{
     // Lire depuis /presfor.json (chemin fiable) et extraire users_db
-    const r = await fetch(FIREBASE_URL + '/presfor.json', {signal:AbortSignal.timeout(10000)});
+    const r = await fetch(FIREBASE_URL + '/presfor/users_db.json', {signal:AbortSignal.timeout(10000)});
     if(r.ok){
-      const data = await r.json();
+      const data = {users_db: await r.json()};
       if(data && data.users_db && typeof data.users_db === 'object'){
         const decoded = usersFromFirebase(data.users_db);
         Object.keys(decoded).forEach(k=>{ if(k.includes('__dot__')) delete decoded[k]; });
@@ -13391,6 +13565,8 @@ async function authLogin(){
     // 1. Recharger users_db depuis Firebase
     err.textContent='Chargement...';
     err.style.cssText='display:block;background:#E4EFE8;color:#0F2F1C;padding:10px;border-radius:6px;margin-top:10px;font-size:12px;';
+    { let f={}; try{ f=JSON.parse(localStorage.getItem('presfor_login_fail')||'{}'); }catch(e){} const x=f[id];
+      if(x && x.n>=5 && Date.now()-x.t<5*60000) throw new Error('Trop de tentatives : réessayez dans '+Math.ceil((5*60000-(Date.now()-x.t))/60000)+' min.'); }
     await authLoadUsersFromFirebase();
     // 2. Chercher l'utilisateur
     err.textContent='Recherche compte...';
@@ -13402,8 +13578,11 @@ async function authLogin(){
     err.textContent='Vérification mot de passe...';
     const hash = await hashPassword(pwd);
     if(hash !== user.password_hash){
+      try{ const f=JSON.parse(localStorage.getItem('presfor_login_fail')||'{}'); const x=f[id]&&Date.now()-f[id].t<5*60000?f[id]:{n:0}; f[id]={n:x.n+1,t:Date.now()}; localStorage.setItem('presfor_login_fail',JSON.stringify(f)); }catch(e){}
+      if(typeof auditLog==='function') auditLog('connexion_echec', id, 'mot de passe incorrect');
       throw new Error('Mot de passe incorrect.');
     }
+    try{ const f=JSON.parse(localStorage.getItem('presfor_login_fail')||'{}'); delete f[id]; localStorage.setItem('presfor_login_fail',JSON.stringify(f)); }catch(e){}
     // 4. Connexion réussie
     err.textContent='Connexion réussie !';
     currentUser = {id:user.id, nom:user.nom, role:user.role, zone:user.zone||null, loginAt:new Date().toISOString()};
@@ -13413,6 +13592,7 @@ async function authLogin(){
     users_db[id].last_login = new Date().toISOString();
     authWriteUser(id, users_db[id]).catch(()=>{});
     authApplyUI();
+    if(typeof auditLog==='function') auditLog('connexion', id, '');
     document.getElementById('auth-overlay').style.display='none';
     showToast('Bienvenue, '+user.nom.split(' ')[0]+' !');
   }catch(e){
@@ -13571,19 +13751,19 @@ async function saveUsersToDB(){
   try{ localStorage.setItem('presfor_users_backup', JSON.stringify(users_db)); }catch(e){}
   try{
     // Lire les données actuelles Firebase (sans users_db dans le payload principal)
-    const r = await fetch(FIREBASE_URL+'/presfor.json', {signal:AbortSignal.timeout(15000)});
+    const r = await fetch(FIREBASE_URL+'/presfor/users_db.json', {signal:AbortSignal.timeout(15000)});
     if(!r.ok) throw new Error('Lecture Firebase HTTP '+r.status);
-    const current = await r.json();
+    const current = {users_db: await r.json()};
     // Fusionner users_db (local prend priorité, clés encodées pour Firebase)
     const remoteUsers = usersFromFirebase((current&&current.users_db)||{});
     const mergedUsers = Object.assign({}, remoteUsers, users_db);
     // Écrire users_db séparément dans un nœud dédié
-    const payload = Object.assign({}, current||{}, {
+    const payload = {
       users_db: usersToFirebase(mergedUsers),
       updated_at: new Date().toISOString()
-    });
+    };
     const w = await fetch(FIREBASE_URL+'/presfor.json', {
-      method:'PUT',
+      method:'PATCH',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(20000)
