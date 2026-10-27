@@ -46,6 +46,22 @@ body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--t
 .tb-mod.active .mod-num{background:rgba(255,255,255,0.22);}
 .tb-right{margin-left:auto;font-size:11px;opacity:.4;font-family:'DM Mono',monospace;flex-shrink:0;}
 
+
+/* ── Menu vertical gauche (modules) ── */
+.main-rail{position:fixed;left:0;top:52px;bottom:0;width:178px;background:var(--accent);z-index:150;display:flex;flex-direction:column;border-right:1px solid rgba(255,255,255,0.07);overflow-y:auto;}
+.main-rail .tb-modules{display:flex;flex-direction:column;align-items:stretch;flex:1;height:auto;gap:2px;padding:10px 8px;}
+.main-rail .tb-mod{height:38px;padding:0 10px;border-radius:8px;border:none;border-bottom:none;justify-content:flex-start;font-size:12.5px;color:rgba(255,255,255,0.7);background:none;}
+.main-rail .tb-mod:hover{background:rgba(255,255,255,0.09);color:#fff;}
+.main-rail .tb-mod.active{background:rgba(255,255,255,0.18) !important;color:#fff !important;border-bottom:none;box-shadow:inset 3px 0 0 #fff;}
+.main-rail .tb-mod svg{opacity:.85;}
+.rail-foot{padding:10px 12px 12px;border-top:1px solid rgba(255,255,255,0.12);display:flex;flex-direction:column;gap:6px;}
+.rail-foot #tb-logout-btn{width:100%;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:7px 8px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;}
+.rail-foot #tb-logout-btn:hover{background:rgba(255,255,255,0.22);}
+.rail-zone{font-size:10.5px;color:rgba(255,255,255,0.7);line-height:1.3;}
+.rail-ver{font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;}
+.app{margin-left:178px;}
+@media(max-width:900px){.main-rail{position:static;width:auto;flex-direction:row;overflow-x:auto;border-right:none}.main-rail .tb-modules{flex-direction:row;padding:4px 8px}.main-rail .tb-mod{height:34px;white-space:nowrap}.rail-foot{display:none}.app{margin-left:0}}
+
 /* ── Layout ── */
 .app{display:flex;min-height:calc(100vh - 52px);}
 .sidebar{width:204px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);padding:16px 10px;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;}
@@ -64,8 +80,8 @@ body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--t
 
 /* ── Module panels ── */
 .module{display:none;}
-@media(max-width:1700px){.tb-mod{padding:0 8px;gap:4px;font-size:11px;}#hdate{display:none;}}
-@media(max-width:1300px){.tb-mod svg{display:none;}.topbar{padding:0 8px;}}
+@media(max-width:1700px){#hdate{display:none;}}
+@media(max-width:1300px){.topbar{padding:0 8px;}}
 /* Contrôleur qualité : seuls le tableau de bord (lecture) et le CQE sont accessibles */
 body.role-cqe .tb-mod:not(#tab-accueil):not(#tab-cqe){display:none !important;}
 body.role-cqe #tb-admin-btn{display:none !important;}
@@ -451,7 +467,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
   <button onclick="document.getElementById('merge-banner').style.display='none'" style="background:none;border:none;color:#E0F0EB;cursor:pointer;font-size:16px;line-height:1;opacity:.7;">×</button>
 </div>
 <div class="tb-logo">PF</div>
-    <div class="tb-title">SSE_PRESFOR_CAG <span id="tb-zone-label">· Cavally + Worodougou</span><span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace;margin-left:6px;" title="Version de l'application">v15-10-bg</span></div>
+    <div class="tb-title">SSE_PRESFOR_CAG</div>
   <select id="zone-selector" onchange="zoneSwitch(this.value)" style="margin-left:6px;background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">
     <option value="all">Toutes les zones (vue d'ensemble)</option>
     <option value="cavally">Cavally (Lot 13) uniquement</option>
@@ -472,7 +488,17 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <span id="net-label">En ligne</span>
   </div>
   </div>
-  <nav class="tb-modules">
+  <div style="display:flex;align-items:center;gap:6px;margin-left:8px;">
+    <div id="tb-user-info" style="display:none;align-items:center;gap:6px;">
+      <span id="tb-user-name" style="font-size:11px;color:rgba(255,255,255,0.8);font-family:'DM Mono',monospace;"></span>
+      <span id="tb-user-role" style="font-size:10px;background:rgba(255,255,255,0.15);padding:2px 7px;border-radius:8px;color:rgba(255,255,255,0.7);"></span>
+    </div>
+    <button id="tb-admin-btn" onclick="adminOpenPanel()" title="Gestion des comptes" style="display:none;background:rgba(255,255,255,0.12);border:none;color:rgba(255,255,255,0.8);padding:4px 9px;border-radius:6px;cursor:pointer;font-size:13px;">🔑</button>
+  </div>
+  <span class="tb-right" id="hdate"></span>
+</header>
+<aside class="main-rail" id="main-rail">
+  <nav class="tb-modules" id="tb-modules">
     <button class="tb-mod" onclick="switchModule('accueil')" id="tab-accueil" style="background:var(--accent);color:#fff;">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="margin-right:4px"><path d="M8.354 1.146a.5.5 0 0 0-.708 0l-6 6A.5.5 0 0 0 1.5 7.5v7a.5.5 0 0 0 .5.5h4.5a.5.5 0 0 0 .5-.5v-4h2v4a.5.5 0 0 0 .5.5H14a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.146-.354L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.354 1.146z"/></svg>
       Tableau de bord
@@ -498,24 +524,12 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
       Rapports
     </button>
   </nav>
-  <div style="display:flex;align-items:center;gap:6px;margin-left:8px;">
-    <div id="tb-user-info" style="display:none;align-items:center;gap:6px;">
-      <span id="tb-user-name" style="font-size:11px;color:rgba(255,255,255,0.8);font-family:'DM Mono',monospace;"></span>
-      <span id="tb-user-role" style="font-size:10px;background:rgba(255,255,255,0.15);padding:2px 7px;border-radius:8px;color:rgba(255,255,255,0.7);"></span>
-    </div>
-    <button id="tb-admin-btn" onclick="adminOpenPanel()" title="Gestion des comptes" style="display:none;background:rgba(255,255,255,0.12);border:none;color:rgba(255,255,255,0.8);padding:4px 9px;border-radius:6px;cursor:pointer;font-size:13px;">🔑</button>
-    <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;background:rgba(255,255,255,0.12);border:none;color:rgba(255,255,255,0.8);padding:4px 9px;border-radius:6px;cursor:pointer;font-size:11px;">⏻</button>
+  <div class="rail-foot">
+    <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;">⏻ Se déconnecter</button>
+    <div class="rail-zone" id="tb-zone-label">Cavally + Worodougou</div>
+    <div class="rail-ver" title="Version de l'application">v15-10-bi</div>
   </div>
-  <div style="display:flex;align-items:center;gap:6px;margin-left:8px;">
-    <div id="tb-user-info" style="display:none;align-items:center;gap:6px;">
-      <span id="tb-user-name" style="font-size:11px;color:rgba(255,255,255,0.8);font-family:'DM Mono',monospace;"></span>
-      <span id="tb-user-role" style="font-size:10px;background:rgba(255,255,255,0.15);padding:2px 7px;border-radius:8px;color:rgba(255,255,255,0.7);"></span>
-    </div>
-    <button id="tb-admin-btn" onclick="adminOpenPanel()" title="Gestion des comptes" style="display:none;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 9px;border-radius:6px;cursor:pointer;font-size:13px;">🔑</button>
-    <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:4px 9px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">⏻</button>
-  </div>
-  <span class="tb-right" id="hdate"></span>
-</header>
+</aside>
 
 <div class="app">
 
@@ -1552,7 +1566,7 @@ function dashFilterByZone(list, zoneFilter){
 
 function zoneApplyUI(){
   const lbl = document.getElementById('tb-zone-label');
-  if(lbl) lbl.textContent = dashZoneFilter==='all' ? '· Cavally + Worodougou' : '· ' + PROJECT_ZONES[dashZoneFilter].label;
+  if(lbl) lbl.textContent = dashZoneFilter==='all' ? 'Cavally + Worodougou' : PROJECT_ZONES[dashZoneFilter].label;
   const sel = document.getElementById('zone-selector');
   if(sel) sel.value = dashZoneFilter;
   // Rafraîchir tous les modules dont l'affichage dépend de la zone active,
@@ -6778,7 +6792,7 @@ cqeCtlChoose = function(id,kind){ _lockGrace=Date.now()+20000; return _cqeCtlCho
 // ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-10-bg';
+const APP_VERSION = 'v15-10-bi';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
@@ -6948,27 +6962,32 @@ function cqeRenderAll(){
   const cqIds = Object.keys(pubCQ||{});
   const aforIds = new Set(afor.map(d=>d.id));
   const cqDossiers = afor.filter(d=>pubCQ[d.id]);
-  const rejetesInitial = cqDossiers.filter(d=>pubCQ[d.id].rejete);
-  const corriges = rejetesInitial.filter(d=>pubCQ[d.id].corrige);
+  // « Rejetés » = somme des rejets de l'AFOR (fichier ou statut) et de nos contrôleurs qualité : même règle que les onglets de rejets (rejEtat)
+  const rejetesInitial = afor.filter(d=>{ const e=rejEtat(d).etat; return e==='rejete'||e==='corrige'; });
+  const corriges = afor.filter(d=>rejEtat(d).etat==='corrige' && pubCQ[d.id]);
   // Un dossier rejeté puis corrigé manuellement par le contrôleur qualité sort de "Rejetés"
   // et vient compléter "Conformes" — voir cqeMarquerCorrige().
-  const rejetes = rejetesInitial.filter(d=>!pubCQ[d.id].corrige);
+  const rejetes = afor.filter(d=>rejEtat(d).etat==='rejete');
+  const _rejSet0 = new Set(rejetes.map(d=>d.id));
+  const nbConformes = cqDossiers.filter(d=>!_rejSet0.has(d.id)).length;
+  const nbNonControles = afor.filter(d=>!pubCQ[d.id] && !_rejSet0.has(d.id)).length;
   const tauxCouverture = afor.length>0 ? Math.round(cqDossiers.length/afor.length*100) : 0;
-  const tauxRejet = cqDossiers.length>0 ? Math.round(rejetes.length/cqDossiers.length*100) : 0;
+  const tauxRejet = afor.length>0 ? Math.round(rejetes.length/afor.length*100) : 0;
   const sansGnssApresPub = aforGetSansGnssApresPublicite();
   kpiEl.innerHTML = `
     <div class="kpi blue"><div class="kpi-l">Dossiers passés en CQ</div><div class="kpi-v">${cqDossiers.length.toLocaleString('fr-FR')}</div><div class="kpi-s">${tauxCouverture}% des dossiers</div></div>
-    <div class="kpi red"><div class="kpi-l">Rejetés</div><div class="kpi-v">${rejetes.length.toLocaleString('fr-FR')}</div><div class="kpi-s">${tauxRejet}% des dossiers CQ</div></div>
-    <div class="kpi green"><div class="kpi-l">Conformes</div><div class="kpi-v">${(cqDossiers.length-rejetes.length).toLocaleString('fr-FR')}</div><div class="kpi-s">${corriges.length>0?'dont '+corriges.length+' corrigé(s)':''}</div></div>
-    <div class="kpi"><div class="kpi-l">Non encore contrôlés</div><div class="kpi-v">${(afor.length-cqDossiers.length).toLocaleString('fr-FR')}</div></div>
+    <div class="kpi red"><div class="kpi-l">Rejetés</div><div class="kpi-v">${rejetes.length.toLocaleString('fr-FR')}</div><div class="kpi-s">AFOR + contrôleurs CQ · ${tauxRejet}% des dossiers</div></div>
+    <div class="kpi green"><div class="kpi-l">Conformes</div><div class="kpi-v">${nbConformes.toLocaleString('fr-FR')}</div><div class="kpi-s">${corriges.length>0?'dont '+corriges.length+' corrigé(s)':''}</div></div>
+    <div class="kpi"><div class="kpi-l">Non encore contrôlés</div><div class="kpi-v">${nbNonControles.toLocaleString('fr-FR')}</div></div>
     <div class="kpi ${sansGnssApresPub.length>0?'amber':''}"><div class="kpi-l">Publicité sans GNSS</div><div class="kpi-v">${sansGnssApresPub.length.toLocaleString('fr-FR')}</div><div class="kpi-s">${sansGnssApresPub.length>0?'À vérifier':'Cohérent'}</div></div>`;
-  if(!cqDossiers.length){
+  if(!cqDossiers.length && !rejetes.length){
     contentEl.innerHTML = `<div class="empty-state"><p style="font-size:13px;">Aucun dossier n'est encore passé par le contrôle qualité.</p><p style="font-size:11px;color:var(--text3);margin-top:6px;">${(dossiersAFOR||[]).length?'':'La base des dossiers n\'est pas encore chargée ('+planEsc(aforLoadStatus)+'). '}Si vous vous attendiez à voir des dossiers, rechargez les données depuis le serveur.</p><p style="font-size:10px;color:var(--text3);margin-top:4px;">Contrôles CQ — ${planEsc(pubLoadStatus)} · en mémoire sur cet ordinateur : ${Object.keys(pubCQ||{}).length.toLocaleString('fr-FR')}</p>${(currentUser&&currentUser.role==='admin'&&Object.keys(pubCQ||{}).length)?'<p style="margin-top:6px;"><button class="btn-s" onclick="cqeRepublish(this)">↑ Envoyer les contrôles CQ de cet ordinateur sur Firebase</button></p>':''}<p style="margin-top:8px;"><button class="btn-s" onclick="cqeReloadData(this)">↻ Recharger les données</button></p></div>`;
     return;
   }
   // Motif retenu par dossier : le plus "avancé" disponible (validation finale > QC2 > QC1)
   const motifDossier = d => {
     const cq = pubCQ[d.id];
+    if(!cq) return d.statut_txt ? ('Statut AFOR : '+d.statut_txt) : null;
     return cq.motif_final || cq.motif_qc2 || cq.motif_qc1 || null;
   };
   // Répartition des motifs de rejet les plus fréquents (sur l'ensemble des rejets, indépendamment des filtres).
@@ -7012,11 +7031,11 @@ function cqeRenderAll(){
   const fDept = cqeFilterState.dept||'';
   const fAgent = cqeFilterState.agent||'';
   const _rejSet = new Set(rejetes.map(d=>d.id));
-  const nonControles = afor.filter(d=>!pubCQ[d.id]);
+  const nonControles = afor.filter(d=>!pubCQ[d.id] && !_rejSet.has(d.id));
   const conformes = cqDossiers.filter(d=>!_rejSet.has(d.id));
   const sourceListe = vue==='corriges' ? corriges : vue==='conformes' ? conformes : vue==='non' ? nonControles : vue==='tous' ? afor : rejetes;
   const villagesListe = [...new Set(sourceListe.map(d=>d.village).filter(Boolean))].sort();
-  const etatTxt = d=>{ const c=pubCQ[d.id]; return !c ? '<span style="color:var(--text3);">Non contrôlé</span>' : (c.rejete && !c.corrige) ? '<span style="color:var(--red);font-weight:700;">Rejeté</span>' : c.rejete ? '<span style="color:var(--accent);font-weight:700;">Rejeté puis corrigé</span>' : '<span style="color:var(--accent);">Conforme</span>'; };
+  const etatTxt = d=>{ const c=pubCQ[d.id]; return !c ? (_rejSet.has(d.id) ? '<span style="color:var(--red);font-weight:700;">Rejeté (AFOR)</span>' : '<span style="color:var(--text3);">Non contrôlé</span>') : (c.rejete && !c.corrige) ? '<span style="color:var(--red);font-weight:700;">Rejeté</span>' : c.rejete ? '<span style="color:var(--accent);font-weight:700;">Rejeté puis corrigé</span>' : '<span style="color:var(--accent);">Conforme</span>'; };
   const depts = [...new Set(sourceListe.map(d=>d.dept).filter(Boolean))].sort();
   const agentsListe = [...new Set(sourceListe.map(d=>d.agent).filter(Boolean))].sort();
   const filtered = sourceListe.filter(d=>{
@@ -7028,7 +7047,7 @@ function cqeRenderAll(){
   });
 
   const rows = filtered.slice(0,200).map(d=>{
-    const cq = pubCQ[d.id];
+    const cq = pubCQ[d.id] || {};
     const derniereColonne = vueAutre ? `<td style="padding:8px 12px;">${etatTxt(d)}</td>` : vueCorriges
       ? `<td style="padding:8px 12px;color:var(--text2);">${cq.corrige_par||'—'} <span style="color:var(--text3);">· ${fmtDate(cq.date_correction)}</span></td>`
       : `<td style="padding:8px 12px;color:var(--text2);">${cq.date_rejet?fmtDate(cq.date_rejet)+' <span style="color:var(--text3);">· '+(cqeDaysBetween(cq.date_rejet,cqeToday())||0)+' j</span>':'—'}</td>`;
@@ -7197,7 +7216,7 @@ function cqeExportCorrections(){
 // ── Détail d'un dossier passé en contrôle qualité (fenêtre superposée) ──
 function cqeShowDossierDetail(id){
   const d = (dossiersAFOR||[]).find(x=>String(x.id)===String(id));
-  const cq = pubCQ[id];
+  const cq = pubCQ[id] || ((d && rejEtat(d).etat==='rejete') ? {rejete:true, statut_cq:'REJETÉ (statut AFOR)', motif_final:'Statut AFOR : '+(d.statut_txt||'rejeté'), source:'afor_statut', ev:[]} : null);
   if(!d || !cq){ showToast('Dossier introuvable.'); return; }
 
   let modal = document.getElementById('cqe-dossier-modal');
