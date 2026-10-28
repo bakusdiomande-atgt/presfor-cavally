@@ -528,7 +528,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <div style="margin-top:auto;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,0.12);">
       <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;width:100%;margin-bottom:10px;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">⏻ Se déconnecter</button>
       <div class="rail-zone" id="tb-zone-label" style="font-size:10.5px;color:rgba(255,255,255,0.7);line-height:1.3;">Cavally + Worodougou</div>
-      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-10-bu</div>
+      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-10-bv</div>
     </div>
   </nav>
 
@@ -6775,7 +6775,7 @@ cqeCtlChoose = function(id,kind){ _lockGrace=Date.now()+20000; return _cqeCtlCho
 // ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-10-bu';
+const APP_VERSION = 'v15-10-bv';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
@@ -7895,7 +7895,7 @@ function terrOpen(id, focus){
     if(dt && da){ const j = Math.round((Date.parse(dt)-Date.parse(da))/86400000); ecart = Math.abs(j)>1 ? `<div style="margin:6px 0;padding:6px 8px;background:var(--amber-lt);color:var(--amber-txt);border-radius:6px;font-size:11px;">⚠ Date sur tablette (${dt.split('-').reverse().join('/')}) différente de la date dans la base AFOR (${da.split('-').reverse().join('/')}) : écart de ${Math.abs(j)} jour(s).</div>` : ''; }
     return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:14px;overflow:hidden;">
       <div style="background:var(--surface2);padding:8px 12px;display:flex;justify-content:space-between;align-items:center;"><b style="font-family:'Syne',sans-serif;">${T.label} — ${T.titre}</b><span style="font-size:11px;">${terrBadge(d,type)}</span></div>
-      <div style="padding:8px 12px;font-size:12px;">${(type==='rdc'&&terrIsPV(rec))?terrRenderPV(d,rec):(type==='pvcl'&&terrIsPVCL(rec))?terrRenderPVCL(d,rec):(ecart+(terrRenderNode(rec,0)||'<span style="color:var(--text3);">Fiche vide.</span>'))}
+      <div style="padding:8px 12px;font-size:12px;">${(type==='rdc'&&terrIsPV(rec))?terrRenderPV(d,rec):(type==='pvcl'&&terrIsPVCL(rec))?terrRenderPVCL(d,rec):DOC_TYPES.includes(type)?terrRenderDoc(d,rec,type):(ecart+(terrRenderNode(rec,0)||'<span style="color:var(--text3);">Fiche vide.</span>'))}
         <div style="font-size:10px;color:var(--text3);margin-top:6px;">Tablette : ${planEsc(rec._tablette||'—')}${rec._importedAt?' · importé le '+new Date(rec._importedAt).toLocaleDateString('fr-FR'):''}${rejIsAdmin()?` · <a href="#" onclick="terrBrutShow('${sid}','${type}');return false;" style="color:var(--blue);">Structure de la fiche</a>`:''}</div></div>
       ${focus?'':`<div style="background:var(--surface2);padding:10px 12px;border-top:1px solid var(--border);">
         <div style="font-weight:700;color:var(--blue);margin-bottom:4px;">Contrôle du ${T.label}</div>
@@ -8400,7 +8400,19 @@ function terrSyncRejets(){
 // chaque motif de la grille pour cette pièce est classé ok (corrigé) / ko (toujours présent) / confirm (non mesurable : à confirmer par le contrôleur).
 function rejMotifAuto(mid, res, rec, type, d){
   const txt = grilleMotifTexte(mid)||'';
-  if(type!=='rdc' && type!=='pvcl') return 'confirm';   // autres documents : pas encore de mesure automatique, le contrôleur confirme
+  if(type!=='rdc' && type!=='pvcl'){
+    if(!DOC_TYPES.includes(type)) return 'confirm';   // annonce, attestation : pas encore de mesure automatique
+    if(/illisible/i.test(txt)) return 'confirm';
+    const bad2=re=>(res||[]).some(r=>(r.s==='err'||r.s==='warn') && re.test(r.t));
+    if(/signature/i.test(txt)) return type==='dem' ? 'confirm' : (bad2(/signature/i)?'ko':'ok');   // demande : aucune signature mesurable dans l'export
+    if(/\bdates?\b/i.test(txt)){ const dt=terrRecDate(rec,type); if(!dt) return 'ko'; return bad2(/^Date /i)?'ko':'ok'; }
+    if(/quorum/i.test(txt)) return bad2(/quorum/i)?'ko':'ok';
+    if(/fiche n°1/i.test(txt)) return bad2(/fiche n°1/i)?'ko':'ok';
+    if(/d[ée]lai/i.test(txt)) return bad2(/d[ée]lai/i)?'ko':'ok';
+    if(/liste de pr[ée]sence/i.test(txt)) return bad2(/liste de pr[ée]sence/i)?'ko':'ok';
+    if(/opposition/i.test(txt)) return bad2(/opposition/i)?'ko':'ok';
+    return 'confirm';
+  }
   if(/illisible/i.test(txt)) return 'confirm';
   const bad = re=>(res||[]).some(r=>(r.s==='err'||r.s==='warn') && re.test(r.t));
   if(/signature/i.test(txt)) return bad(/signature.*manquante/i) ? 'ko' : 'ok';
@@ -8410,7 +8422,7 @@ function rejMotifAuto(mid, res, rec, type, d){
 function rejRecheck(d, type, rec, k, sig){
   const id=d.id, piece=GRP_PIECE[type], g=cqeGrille[id];
   const ids=((g&&g.c)||[]).filter(m=>grillePieceDeMotif(m)===piece); if(!ids.length) return false;
-  const res = type==='rdc' ? terrRdcControls(d,rec) : type==='pvcl' ? terrPvclControls(d,rec) : [];
+  const res = type==='rdc' ? terrRdcControls(d,rec) : type==='pvcl' ? terrPvclControls(d,rec) : DOC_TYPES.includes(type) ? terrDocControls(d,rec,type) : [];
   const st={}; ids.forEach(m=>{ st[m]=rejMotifAuto(m,res,rec,type,d); });
   const ok=ids.filter(m=>st[m]==='ok'), rest=ids.filter(m=>st[m]!=='ok'), ko=ids.filter(m=>st[m]==='ko');
   const t=cqeToday(), hist=((k.hist||[]).concat([{d:t,by:'import tablette',s:'refait'}])).slice(-10);
@@ -9141,6 +9153,190 @@ function terrRenderPVCL(d, rec){
   const E=planEsc, res=terrPvclControls(d,rec), col={err:'var(--red)',warn:'var(--amber-txt)',info:'var(--text3)'}, ic={err:'✗',warn:'⚠',info:'ℹ'};
   const ctl = `<div style="margin:0 0 8px;font-weight:700;color:var(--blue);font-size:12px;">Contrôles automatiques</div>`+(res.length ? '<div style="font-size:11px;">'+res.map(x=>`<div style="padding:3px 0;color:${col[x.s]};">${ic[x.s]} ${E(x.t)}</div>`).join('')+'</div>' : '<div style="color:var(--accent);font-size:11px;">✓ Aucune anomalie détectée automatiquement.</div>');
   return ctl + `<div style="margin:12px 0 6px;"><b style="font-size:12px;color:var(--blue);">Constat de limites (format AFOR — lecture seule)</b></div>` + pvclOfficielHtml(d, rec);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DEMANDE, OUVERTURE / CLÔTURE DE PUBLICITÉ, CONSTAT D'EXISTENCE : affichage au format AFOR + contrôles automatiques
+// (structures des exports 01_requests, 05_open_advertising, 06_close_advertising, 07_existence)
+// ═══════════════════════════════════════════════════════════════
+const DOC_TYPES = ['dem','ouv','clo','con'];
+function docG(o,p){ try{ return p.split('.').reduce((a,k)=>a==null?undefined:a[k],o); }catch(e){ return undefined; } }
+function docFd(iso){ const x=terrDay(iso); return x?x.split('-').reverse().join('/'):''; }
+function docPres(rec,type){
+  let arr = type==='ouv' ? rec.presences : type==='clo' ? rec.advertisementPresence : type==='con' ? rec.existencePresence : [];
+  arr = Array.isArray(arr)?arr:[];
+  const re = type==='ouv' ? /ouverture/i : type==='clo' ? /cl[ôo]ture/i : null;
+  if(re){ const f=arr.filter(p=>re.test(p.description||'')); if(f.length) return f; }
+  return arr;
+}
+function docAnnoncePres(rec){ return (Array.isArray(rec.presences)?rec.presences:[]).filter(p=>/annonce/i.test(p.description||'')); }
+function docRole(p){ const r=p&&(p.personType||p.memberType); return typeof r==='string'?r:(r&&r.label)||''; }
+function docCtx(d){
+  const t=(typeof tabMatchForDossier==='function'&&tabMatchForDossier(d))||{}, req=t.requests||{}, ap=req.applicant||{}, land=req.land||{};
+  const rdc=terrRec(d,'rdc'), pvcl=terrRec(d,'pvcl'), ouv=terrRec(d,'ouv'), clo=terrRec(d,'clo');
+  const up=s=>String(s||'').toUpperCase();
+  const person=((ap.lastname||'')+' '+(ap.firstname||'')).replace(/\s+/g,' ').trim() || ((d.nom_demandeur||'')+' '+(d.prenom||'')).trim();
+  const grp=String(ap.nameOfGroup||'').trim();
+  const rep=((ap.representativeLastname||'')+' '+(ap.representativeFirstname||'')).trim();
+  const village = docG(land,'village.label') || d.village || '';
+  return {t,req,ap,land,rdc,pvcl,ouv,clo,up,person,grp,rep,village,
+    region: docG(land,'village.subPrefecture.department.region.label') || 'CAVALLY',
+    dept: docG(land,'village.subPrefecture.department.label') || d.dept || '',
+    sp: docG(land,'village.subPrefecture.label') || d.sp || '',
+    nomDem: grp || person, gest: grp ? (ap.selectedSignatory==='representant'&&rep?rep:person) : (rep||''),
+    num: tabNormCode(req.requestNumber||d.id), dReq: terrDay(req.requestDate)||terrDay(req.creationDate)||'',
+    area: pvcl&&pvcl.estimatedArea ? pvcl.estimatedArea : (land.estimatedArea||0)};
+}
+function terrDocControls(d, rec, type){
+  const out=[], add=(s,t)=>out.push({s,t}), c=docCtx(d);
+  const sigN=(arr)=>arr.filter(p=>!pvclHasSig(p)).length;
+  const dtOf = terrRecDate(rec,type);
+  const cmpAfor=(field,lab)=>{ if(dtOf && d[field]){ const j=Math.round((Date.parse(dtOf)-Date.parse(d[field]))/86400000); if(Math.abs(j)>1) add('warn','Date '+lab+' ('+docFd(dtOf)+') différente de la date AFOR ('+docFd(d[field])+') : '+Math.abs(j)+' jour(s).'); } };
+  const listCtl=(arr,lab)=>{
+    if(!arr.length){ add('err','Liste de présence '+lab+' absente ou vide.'); return; }
+    const sm=sigN(arr); if(sm) add(sm===arr.length?'err':'warn',sm+' signature(s) manquante(s) sur '+arr.length+' personne(s) de la liste de présence.');
+    const noCni=arr.filter(p=>p.numberCNI!==undefined && !String(p.numberCNI||'').trim()).length; if(noCni) add('info',noCni+' personne(s) sans n° de pièce.');
+  };
+  if(type==='dem'){
+    const ap=c.ap, land=c.land;
+    if(!String(rec.requestNumber||'').trim()) add('err','Numéro d\'enregistrement de la demande absent.');
+    if(!dtOf) add('err','Date de la demande absente.');
+    cmpAfor('date_DD','de la demande');
+    if(!(ap.lastname||'').trim() || !(ap.firstname||'').trim()) add('err','Nom ou prénoms du demandeur absent.');
+    if(!ap.birthdate || !(ap.birthplace||'').trim()) add('warn','Date ou lieu de naissance du demandeur absent.');
+    if(!(ap.nationality||'').trim()) add('warn','Nationalité du demandeur absente.');
+    if(!(ap.identityDocumentNumber||'').trim()) add('warn','Numéro de la pièce d\'identification absent (pas un motif de rejet pour permis de conduire, certificat de nationalité ou extrait de naissance).');
+    if(!ap.identityDocumentPhoto) add('warn','Photocopie de la pièce d\'identité absente.');
+    if(ap.selectedSignatory==='representant' && !(ap.representativeLastname||ap.representativeFirstname)) add('warn','Signataire « représentant » sans identité du représentant.');
+    if(!(Number(land.estimatedArea)>0)) add('warn','Superficie estimée absente ou nulle.');
+    if(!(rec.neighborhood||[]).length) add('warn','Aucune limite / aucun voisin renseigné.');
+    else if((rec.neighborhood||[]).some(n=>!(n.nameOfNeighbor||'').trim())) add('warn','Limite(s) sans nom de voisin.');
+    add('info','Signature du demandeur : non vérifiable automatiquement (aucun champ de signature dans l\'export tablette).');
+  }
+  if(type==='ouv'){
+    const arr=docPres(rec,'ouv'); listCtl(arr,'de la séance d\'ouverture');
+    if(rec.signatoryCVGFR!==true) add('err','Signature du Président du CVGFR manquante.');
+    if(rec.signatoryPhoto!==true) add('err','Signature du commissaire-enquêteur manquante.');
+    if(!dtOf) add('err','Date de la séance d\'ouverture absente.');
+    cmpAfor('date_OV','de la séance d\'ouverture');
+    const dp=c.pvcl&&terrRecDate(c.pvcl,'pvcl'), dr=c.rdc&&terrRecDate(c.rdc,'rdc');
+    if(dtOf && dp && dtOf<dp) add('err','Date d\'ouverture ('+docFd(dtOf)+') antérieure au PVCL ('+docFd(dp)+').');
+    if(dtOf && dr && dtOf<dr) add('err','Date d\'ouverture ('+docFd(dtOf)+') antérieure au RDC ('+docFd(dr)+').');
+    const an=docAnnoncePres(rec).map(p=>terrDay(p.presenceDate)).filter(Boolean).sort().pop();
+    if(an && dtOf && Math.round((Date.parse(dtOf)-Date.parse(an))/86400000)<1) add('warn','Délai entre l\'annonce ('+docFd(an)+') et l\'ouverture ('+docFd(dtOf)+') inférieur à 1 jour.');
+    if(!(rec.nomPrenomCE||'').trim()) add('warn','Commissaire-enquêteur non renseigné.');
+    else if(d.agent){ const m=agRosterMatcher(); const x=m(rec.nomPrenomCE)||String(rec.nomPrenomCE).toUpperCase(), y=m(d.agent)||String(d.agent).toUpperCase(); if(x!==y && pvSim(rec.nomPrenomCE,d.agent)<0.6) add('warn','Commissaire-enquêteur ('+rec.nomPrenomCE+') différent de l\'agent AFOR ('+d.agent+').'); }
+  }
+  if(type==='clo'){
+    const arr=docPres(rec,'clo'); listCtl(arr,'de la séance de clôture');
+    if(rec.signatoryCVGFR!==true) add('err','Signature du Président du CVGFR manquante.');
+    if(rec.signatoryPhoto!==true) add('err','Signature du commissaire-enquêteur manquante.');
+    if(!dtOf) add('err','Date de la séance de clôture absente.');
+    cmpAfor('date_CP','de la séance de clôture');
+    const od=c.ouv&&terrRecDate(c.ouv,'ouv');
+    if(dtOf && od){ const lim=new Date(od+'T00:00:00Z'); lim.setUTCMonth(lim.getUTCMonth()+1); if(Date.parse(dtOf)<lim.getTime()) add('err','Délai de publicité inférieur à 1 mois calendaire (du '+docFd(od)+' au '+docFd(dtOf)+').'); }
+    else if(!od) add('info','Pas de fiche d\'ouverture de publicité : délai de publicité non vérifiable.');
+    const op=Array.isArray(rec.opposition)?rec.opposition:[];
+    const sansDesc=op.filter(o=>/maintien/i.test(o.typeOpposition||'') && !String(o.descriptionO||'').trim()).length; if(sansDesc) add('err','Opposition maintenue sans description ('+sansDesc+').');
+    const mt=op.filter(o=>/maintien/i.test(o.typeOpposition||'')).length; if(mt) add('info',mt+' opposition(s) maintenue(s) : un PV de règlement du litige est attendu avant la suite de la procédure.');
+    if(!(rec.nomPrenomCE||'').trim()) add('warn','Commissaire-enquêteur non renseigné.');
+  }
+  if(type==='con'){
+    const arr=docPres(rec,'con'); listCtl(arr,'des signataires du constat');
+    const signed=arr.filter(pvclHasSig).length, tot=Number(rec.totalMembre)||0;
+    if(tot>0 && signed/tot<0.75) add('err','Le quorum des membres signataires n\'est pas atteint ('+signed+'/'+tot+' ; il faut au moins les trois quarts).');
+    if(tot>=60) add('warn','Effectif total du comité anormal ('+tot+' membres).');
+    const pres=arr.find(p=>/pr[ée]sident/i.test(docRole(p)));
+    if(rec.signatoryCSPGFR!==true || (pres && !pvclHasSig(pres))) add('err','Fiche n°1 du PV de constat d\'existence continue non signée par le Président du CVGFR.');
+    else if(!pres) add('warn','Aucun Président du CVGFR sur la liste des signataires.');
+    if(!dtOf) add('err','Date du constat d\'existence absente.');
+    cmpAfor('date_AP','du constat d\'existence');
+    const cd=c.clo&&terrRecDate(c.clo,'clo'); if(dtOf && cd && dtOf<cd) add('err','Date du constat ('+docFd(dtOf)+') antérieure à la clôture de la publicité ('+docFd(cd)+').');
+    if(!cd) add('info','Pas de fiche de clôture de publicité : cohérence des dates non vérifiable.');
+  }
+  return out;
+}
+function docCadreHtml(d, c, extra){
+  const E=planEsc, up=c.up;
+  const lines=[['Région de',up(c.region)],['Département de',up(c.dept)],['CSPGFR de',up(c.sp)],['CVGFR du Village de',c.village],
+    ['Nom et prénoms du demandeur ou nom du groupement ou de l\'entité collective :',c.nomDem],['Nom et prénoms du gestionnaire du groupement ou de l\'entité (*) :',c.gest],
+    ['N° et date de la demande d\'enquête officielle :',c.num+' du '+docFd(c.dReq)]].concat(extra);
+  return `<div class="pvo-hd"><div style="font-weight:700;">RÉPUBLIQUE DE CÔTE D'IVOIRE</div><div><i>Union - Discipline - Travail</i></div><div style="font-weight:700;">MINISTÈRE DE L'AGRICULTURE ET DU DÉVELOPPEMENT RURAL</div><div style="font-weight:700;">AGENCE FONCIÈRE RURALE</div></div>
+  <div class="pvo-box" style="line-height:1.55;">${lines.map((l,i)=>`<div>${i+1}. ${E(l[0])} <b class="pvo-f">${E(l[1]||'')}</b></div>`).join('')}<div style="font-size:10px;margin-top:4px;">(*) : en cas de groupement ou d'entité collective.</div></div>`;
+}
+function docSigHtml(ok,lab){ return ok?`<span class="pvo-ok">✓ signature ${planEsc(lab)} enregistrée</span>`:`<span class="pvo-ko">✗ signature ${planEsc(lab)} manquante</span>`; }
+function docListeHtml(arr, c, titre, withCni){
+  const E=planEsc;
+  return `<div style="text-align:center;font-weight:700;text-decoration:underline;font-size:14px;margin:6px 0 12px;">${E(titre)}</div>
+  <table class="pvo-t"><thead><tr><th>N°</th>${withCni?'<th>N° DE LA PIÈCE D\'IDENTITÉ</th>':''}<th>NOM ET PRÉNOMS</th><th>QUALITÉ</th><th>SIGNATURE</th></tr></thead><tbody>${arr.map((p,i)=>`<tr><td>${i+1}</td>${withCni?`<td>${E(p.numberCNI||'')}</td>`:''}<td><b>${E(p.nameOfPerson||'')}</b></td><td>${E(docRole(p))}</td><td>${pvclHasSig(p)?'<span class="pvo-ok">✓ signature enregistrée</span>':'<span class="pvo-ko">✗ signature manquante</span>'}</td></tr>`).join('')||`<tr><td colspan="${withCni?5:4}" class="pvo-nr">— liste de présence non renseignée —</td></tr>`}</tbody></table>`;
+}
+function docOfficielHtml(d, rec, type){
+  const E=planEsc, c=docCtx(d), up=c.up, sup=pvSuperfMots(c.area)||'00 ha 00 a 00 ca';
+  const rdc=c.rdc, pvcl=c.pvcl;
+  const ce=up(rec.nomPrenomCE||'');
+  const pvRdc=rdc?(tabNormCode(rdc.minutesNumber||'')+' du '+docFd(terrRecDate(rdc,'rdc'))):'';
+  const pvLim=pvcl?(tabNormCode(pvcl.codeObservation||'')+' du '+docFd(terrRecDate(pvcl,'pvcl'))):'';
+  const dDoc=terrRecDate(rec,type)||'';
+  if(type==='dem'){
+    const ap=c.ap, land=c.land, L=(k,v)=>`<div>${k} <b class="pvo-f">${E(v||'')}</b></div>`;
+    const lim=(rec.neighborhood||[]).map(n=>`<div>${E(n.position||'')} : <b>${E(n.nameOfNeighbor||'—')}</b></div>`).join('')||'<div class="pvo-nr">— non renseignées —</div>';
+    return pvCss()+`<div class="pvo"><div class="pvo-page"><div class="pvo-hd"><div style="font-weight:700;">RÉPUBLIQUE DE CÔTE D'IVOIRE</div><div><i>Union - Discipline - Travail</i></div><div style="font-weight:700;">MINISTÈRE DE L'AGRICULTURE ET DU DÉVELOPPEMENT RURAL</div><div style="font-weight:700;">AGENCE FONCIÈRE RURALE</div></div>
+    <div class="pvo-band" style="margin:0 -28px;">DEMANDE D'ENQUÊTE EN VUE DE L'ÉTABLISSEMENT D'UN CERTIFICAT FONCIER</div><div class="pvo-body">
+    <p>Enregistrée sous le n° <b class="pvo-f">${E(c.num)}</b> du <b class="pvo-f">${E(docFd(dDoc))}</b></p>
+    <div style="font-weight:700;color:#00a651;margin:6px 0;">Renseignements concernant le demandeur</div>
+    ${L('Nom :',ap.lastname)}${L('Prénoms :',ap.firstname)}${L('Date et lieu de naissance :',docFd(ap.birthdate)+' à '+(ap.birthplace||''))}${L('Nom et prénoms du père :',ap.nameOfFather)}${L('Nom et prénoms de la mère :',ap.nameOfMother)}${L('Nationalité :',ap.nationality)}${L('Profession :',ap.job)}
+    ${L('Pièce d\'identité — nature :',ap.identityDocumentType)}${L('Pièce d\'identité — n° / date :',(ap.identityDocumentNumber||'')+(ap.pieceDate?' du '+docFd(ap.pieceDate):''))}${L('Résidence habituelle :',ap.habitualResidence)}${L('Numéro de téléphone :',ap.phoneNumber)}${L('Agissant pour le compte de :',c.grp)}
+    <div style="font-weight:700;color:#00a651;margin:12px 0 6px;">Désignation du bien foncier coutumier</div>
+    ${L('Département de :',up(c.dept))}${L('Sous-préfecture de :',up(c.sp))}${L('Village :',c.village)}${L('Indications complémentaires :',ap.incationComplementaire)}${L('Superficie estimée :',pvSuperfMots(land.estimatedArea))}
+    <div style="margin-top:6px;">Limites :</div><div style="margin-left:14px;">${lim}</div>
+    <div style="font-weight:700;color:#00a651;margin:12px 0 6px;">Informations sur l'Opérateur Technique Agréé</div>${L('Nom ou raison sociale :','CAG')}
+    <p style="margin-top:12px;">Date : <b class="pvo-f">${E(docFd(dDoc))}</b> — Signature du demandeur : <span class="pvo-nr">à vérifier sur le document (non mesurable dans l'export)</span></p></div><div class="pvo-eo2">EO 1-1</div></div></div>`;
+  }
+  if(type==='ouv'){
+    const arr=docPres(rec,'ouv');
+    const p1=`<div class="pvo-page">${docCadreHtml(d,c,[['Nom et prénoms du Commissaire-Enquêteur :',ce],['N° et date du PV de recensement des droits coutumiers :',pvRdc],['N° et date du PV de constat des limites :',pvLim]])}
+      <div class="pvo-band" style="margin:0 -28px;">PROCÈS-VERBAL D'OUVERTURE DE PUBLICITÉ DE L'ENQUÊTE FONCIÈRE RURALE OFFICIELLE<br>N° ${E(c.num)} DU ${E(docFd(dDoc))}</div><div class="pvo-body">
+      <p>Enquête demandée par <b class="pvo-f">${E(c.nomDem)}</b> et portant sur un terrain de <b class="pvo-f">${E(sup)}</b> sis à <b class="pvo-f">${E(c.village)}</b></p>
+      <p>M. <b class="pvo-f">${E(ce)}</b>, Commissaire-Enquêteur, déclare que la séance publique d'ouverture de la publicité de l'enquête foncière rurale relative à la parcelle ci-dessus référencée a eu lieu le <b class="pvo-f">${E(docFd(dDoc))}</b> pour une période d'affichage d'un (01) mois.</p>
+      <p>Ont été examinés au cours de cette séance, les documents ci-après : le procès-verbal de recensement des droits coutumiers ; le constat des limites de la parcelle ; le plan provisoire.</p>
+      <p>A la fin, deux registres des accords et oppositions ont été ouverts pour recueillir les avis du public pendant la période de publicité et sont tenus respectivement par le CVGFR et par le Sous-préfet.</p>
+      <div style="display:flex;justify-content:space-between;margin-top:20px;"><div>Le Président du Comité Villageois de Gestion Foncière Rurale<br>${docSigHtml(rec.signatoryCVGFR===true,'du Président du CVGFR')}</div><div style="text-align:right;">Le Commissaire-Enquêteur<br>${docSigHtml(rec.signatoryPhoto===true,'du commissaire-enquêteur')}</div></div></div><div class="pvo-eo2">EO 13b</div></div>`;
+    const p2=`<div class="pvo-page">${docListeHtml(arr,c,'LISTE DE PRÉSENCE À LA SÉANCE PUBLIQUE D\'OUVERTURE',false)}<div class="pvo-eo2">EO 3b</div></div>`;
+    return pvCss()+'<div class="pvo">'+p1+p2+'</div>';
+  }
+  if(type==='clo'){
+    const arr=docPres(rec,'clo'), op=Array.isArray(rec.opposition)?rec.opposition:[];
+    const od=c.ouv?terrRecDate(c.ouv,'ouv'):'';
+    const opl=(re)=>op.filter(o=>re.test(o.typeOpposition||'')).map(o=>`<div class="pvo-ans">${E(o.descriptionO&&o.descriptionO.length<400?o.descriptionO:(o.descriptionO?o.descriptionO.slice(0,400)+'…':'(sans description)'))}</div>`).join('')||'<div class="pvo-nr" style="margin-left:14px;">— aucune —</div>';
+    const p1=`<div class="pvo-page">${docCadreHtml(d,c,[['Nom et prénoms du Commissaire-Enquêteur :',ce],['N° et date du PV de recensement des droits coutumiers :',pvRdc],['N° et date du PV de constat des limites :',pvLim]])}
+      <div class="pvo-band" style="margin:0 -28px;">PROCÈS VERBAL DE CLÔTURE DE PUBLICITÉ DE L'ENQUÊTE FONCIÈRE RURALE OFFICIELLE<br>N° ${E(c.num)} DU ${E(docFd(dDoc))}</div><div class="pvo-body">
+      <p>Enquête demandée par <b class="pvo-f">${E(c.nomDem)}</b> et portant sur un terrain de <b class="pvo-f">${E(sup)}</b> sis à <b class="pvo-f">${E(c.village)}</b></p>
+      <p>M. <b class="pvo-f">${E(ce)}</b>, Commissaire-Enquêteur, déclare que la séance publique de clôture de la publicité des enquêtes foncières rurales officielles a eu lieu le <b class="pvo-f">${E(docFd(dDoc))}</b> à l'issue d'une période d'affichage d'un mois${od?' (ouverture le '+E(docFd(od))+')':''}.</p>
+      <p>Après lecture publique et discussion des registres des accords et oppositions, sont consignées dans le présent procès-verbal les remarques suivantes :</p>
+      <div style="font-weight:700;">Ont formulé leur accord :</div><div class="pvo-nr" style="margin-left:14px;">non détaillé dans l'export tablette</div>
+      <div style="font-weight:700;margin-top:8px;">Ont formulé des oppositions et les ont retirées après discussions :</div>${opl(/r[ée]tract/i)}
+      <div style="font-weight:700;margin-top:8px;">Ont formulé et maintenu leurs oppositions dans les termes ci-dessous :</div>${opl(/maintien/i)}
+      <div style="display:flex;justify-content:space-between;margin-top:20px;"><div>Le Président du Comité Villageois de Gestion Foncière Rurale<br>${docSigHtml(rec.signatoryCVGFR===true,'du Président du CVGFR')}</div><div style="text-align:right;">Le Commissaire-Enquêteur<br>${docSigHtml(rec.signatoryPhoto===true,'du commissaire-enquêteur')}</div></div></div><div class="pvo-eo2">EO 14b</div></div>`;
+    const p2=`<div class="pvo-page">${docListeHtml(arr,c,'LISTE DE PRÉSENCE À LA SÉANCE DE CLÔTURE DE PUBLICITÉ',false)}<div class="pvo-eo2">EO 14b — liste</div></div>`;
+    return pvCss()+'<div class="pvo">'+p1+p2+'</div>';
+  }
+  // con
+  const arr=docPres(rec,'con'), signed=arr.filter(pvclHasSig).length, tot=Number(rec.totalMembre)||0, cd=c.clo?terrRecDate(c.clo,'clo'):'';
+  const pres=arr.find(p=>/pr[ée]sident/i.test(docRole(p)));
+  const p1=`<div class="pvo-page">${docCadreHtml(d,c,[['Date de clôture de la publicité des résultats :',docFd(cd)]])}
+    <div class="pvo-band" style="margin:0 -28px;">CONSTAT D'EXISTENCE CONTINUE ET PAISIBLE DE DROITS COUTUMIERS<br>SUR UN BIEN FONCIER DU DOMAINE RURAL</div><div class="pvo-body">
+    <p>Vu le dossier de délimitation, vu le procès-verbal de recensement des droits coutumiers et ses annexes, vu le procès-verbal de clôture de la publicité des résultats, les membres du Comité Villageois de Gestion Foncière Rurale soussignés, après en avoir délibéré en séance du <b class="pvo-f">${E(docFd(dDoc))}</b> ont constaté :</p>
+    <ul class="pvo-ul"><li>qu'ils sont réunis en nombre supérieur ou égal à trois quarts de l'effectif total du CVGFR, ce qui leur donne compétence à signer le présent constat,</li><li>que le bien foncier ci-dessus désigné fait l'objet de droits coutumiers fonciers exercés par le demandeur,</li><li>qu'aucun litige n'a été relevé et qu'en conséquence les droits sont exercés de façon paisible,</li><li>que ces droits sont exercés de façon continue.</li></ul>
+    <p style="margin-top:12px;">En conséquence, dressent le présent constat pour servir et valoir ce que de droit.</p>
+    <p style="text-align:right;margin-top:16px;">Signature Président CVGFR : <b>${E(pres?pres.nameOfPerson:'—')}</b><br>${docSigHtml(rec.signatoryCSPGFR===true && (!pres||pvclHasSig(pres)),'de la fiche n°1')}<br>${E(docFd(dDoc))}</p></div><div class="pvo-eo2">EO 15 page 1</div></div>`;
+  const p2=`<div class="pvo-page"><div>Membres total du comité : <b>${E(tot||'—')}</b></div><div>Session : <b>${E(rec.session==1?'1ère session':rec.session==2?'2ème session':(rec.session||'—'))}</b></div><div>Quorum : <b>${tot?(signed/tot>=0.75?'Atteint':'Non atteint')+' ('+signed+'/'+tot+')':'—'}</b></div>
+    <div style="margin:10px 0 0;">Liste des signataires du constat d'existence continue et paisible des droits coutumiers sur le bien foncier rural objet de la demande n° <b>${E(c.num)}</b></div>${docListeHtml(arr,c,'',true)}<div class="pvo-eo2">EO 15 page 2</div></div>`;
+  return pvCss()+'<div class="pvo">'+p1+p2+'</div>';
+}
+function terrRenderDoc(d, rec, type){
+  const E=planEsc, res=terrDocControls(d,rec,type), col={err:'var(--red)',warn:'var(--amber-txt)',info:'var(--text3)'}, ic={err:'✗',warn:'⚠',info:'ℹ'};
+  const ctl=`<div style="margin:0 0 8px;font-weight:700;color:var(--blue);font-size:12px;">Contrôles automatiques</div>`+(res.length?'<div style="font-size:11px;">'+res.map(x=>`<div style="padding:3px 0;color:${col[x.s]};">${ic[x.s]} ${E(x.t)}</div>`).join('')+'</div>':'<div style="color:var(--accent);font-size:11px;">✓ Aucune anomalie détectée automatiquement.</div>');
+  return ctl+`<div style="margin:12px 0 6px;"><b style="font-size:12px;color:var(--blue);">${E(TERR_TYPES[type].titre)} (format AFOR — lecture seule)</b></div>`+docOfficielHtml(d,rec,type);
 }
 
 setTimeout(()=>{ try{ terrLoadChecks(); }catch(e){} }, 2800);
