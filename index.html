@@ -528,7 +528,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <div style="margin-top:auto;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,0.12);">
       <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;width:100%;margin-bottom:10px;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">⏻ Se déconnecter</button>
       <div class="rail-zone" id="tb-zone-label" style="font-size:10.5px;color:rgba(255,255,255,0.7);line-height:1.3;">Cavally + Worodougou</div>
-      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-10-ce</div>
+      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-10-cf</div>
     </div>
   </nav>
 
@@ -6775,7 +6775,7 @@ cqeCtlChoose = function(id,kind){ _lockGrace=Date.now()+20000; return _cqeCtlCho
 // ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-10-ce';
+const APP_VERSION = 'v15-10-cf';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
@@ -8232,16 +8232,15 @@ function cqeRenderRejets(){
       <span style="margin-left:auto;display:flex;gap:6px;">${can?'<button class="btn-s" onclick="rejMarkTransmis()" title="Marque comme transmis à l\'agent tous les dossiers « à transmettre » de la sélection affichée">✉ Marquer la sélection comme transmise</button>':''}<button class="btn-p" onclick="rejExportXlsx()">⬇ Exporter Excel</button><button class="btn-s" onclick="rejExport()">⬇ CSV</button><button class="btn-s" onclick="cqeExportCorrections()" title="Une feuille par agent avec les corrections à faire">⬇ Fiches de correction (Excel par agent)</button></span>
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--surface2);">
-      ${['Dossier','Demandeur','Village','Agent','Document rejeté','Motif','Rejeté le','Délai','Statut du rejet','Transmis le','Contrôleur responsable','Corrigé le','Durée de correction'].map(h=>`<th style="text-align:left;padding:7px 10px;">${h}</th>`).join('')}</tr></thead>
+      ${['Dossier','Demandeur','Village','Agent','Document rejeté','Motif','Rejeté le','Délai','Transmis le','Contrôleur responsable','Corrigé le','Durée de correction'].map(h=>`<th style="text-align:left;padding:7px 10px;">${h}</th>`).join('')}</tr></thead>
     <tbody>${pageList.map(x=>{ const id=String(x.d.id).replace(/'/g,"\\'"), c=x.e.cq; const j=x.e.jours; const jc=j==null?'':(j>=CQE_CRIT_DAYS?'var(--red)':j>=CQE_ALERT_DAYS?'var(--amber-txt)':'inherit');
       return `<tr style="border-top:1px solid var(--border);cursor:pointer;" onclick="rejDetailOpen('${id}')"><td style="padding:6px 10px;font-family:'DM Mono',monospace;">${planEsc(x.d.id)}</td><td style="padding:6px 10px;">${planEsc(((x.d.prenom||'')+' '+(x.d.nom_demandeur||'')).trim())}</td><td style="padding:6px 10px;">${planEsc(x.d.village||'')}</td><td style="padding:6px 10px;">${planEsc(x.d.agent||'')}</td>
-      <td style="padding:6px 10px;white-space:nowrap;">${planEsc(rejDocsOf(x.d))}</td><td style="padding:6px 10px;max-width:260px;font-size:11px;">${planEsc(rejMotif(x.d)).slice(0,160)}</td>
+      <td style="padding:6px 10px;white-space:nowrap;">${planEsc(rejDocsOf(x.d))}</td><td style="padding:6px 10px;max-width:260px;font-size:11px;">${planEsc(rejMotif(x.d)).slice(0,160)}${(()=>{ const tc=terrChecks[x.d.id]||{}; const rc=['rdc','pvcl'].map(t=>tc[t]&&tc[t].recheck).filter(Boolean).sort((a,b)=>String(b.d).localeCompare(String(a.d)))[0]; if(!rc) return ''; return `<div style="font-size:10px;color:var(--text3);white-space:normal;max-width:220px;">Fiche renvoyée le ${planEsc(String(rc.d).split('-').reverse().join('/'))}${rc.ko.length?' — <b style="color:var(--red)">non corrigé : '+planEsc(rc.ko.join(' ; '))+'</b>':''}${rc.confirm.length?' — <b style="color:var(--amber-txt)">corrigé, à confirmer : '+planEsc(rc.confirm.join(' ; '))+'</b>':''}</div>`; })()}</td>
       <td style="padding:6px 10px;white-space:nowrap;">${c&&c.date_rejet?planEsc(c.date_rejet.split('-').reverse().join('/')):'—'}</td><td style="padding:6px 10px;color:${jc};font-weight:${jc!=='inherit'?700:400};">${j==null?'—':j+' j'}</td>
-      <td style="padding:6px 10px;"><span style="color:${SUIVI_COL[x.s]||'inherit'};font-weight:700;">${SUIVI_LIB[x.s]||''}</span>${(()=>{ const tc=terrChecks[x.d.id]||{}; const rc=['rdc','pvcl'].map(t=>tc[t]&&tc[t].recheck).filter(Boolean).sort((a,b)=>String(b.d).localeCompare(String(a.d)))[0]; if(!rc) return ''; return `<div style="font-size:10px;color:var(--text3);white-space:normal;max-width:220px;">Fiche renvoyée le ${planEsc(String(rc.d).split('-').reverse().join('/'))}${rc.ko.length?' — <b style="color:var(--red)">non corrigé : '+planEsc(rc.ko.join(' ; '))+'</b>':''}${rc.confirm.length?' — <b style="color:var(--amber-txt)">corrigé, à confirmer : '+planEsc(rc.confirm.join(' ; '))+'</b>':''}</div>`; })()}</td>
       <td style="padding:6px 10px;white-space:nowrap;">${rejTransHtml(x.d,x.e.etat)}</td>
       <td style="padding:6px 10px;">${ctlSel(x.d.id,x.resp)}</td>
       ${(()=>{ const corr=x.e.etat==='corrige'; const dc=corr?((c&&c.date_correction)||x.e.ctlDate||''):''; const fdt=v=>String(v||'').split('-').reverse().join('/'); const dr=c&&c.date_rejet; const du=(corr&&dc&&dr)?Math.max(0,cqeDaysBetween(dr,dc)||0)+' j':'—'; return `<td style="padding:6px 10px;white-space:nowrap;">${corr?(dc?fdt(dc):'—'):'—'}</td><td style="padding:6px 10px;white-space:nowrap;">${du}</td>`; })()}
-      </tr>`; }).join('')||'<tr><td colspan="13" style="padding:16px;text-align:center;color:var(--text3);">Aucun dossier ne correspond.</td></tr>'}</tbody></table>
+      </tr>`; }).join('')||'<tr><td colspan="12" style="padding:16px;text-align:center;color:var(--text3);">Aucun dossier ne correspond.</td></tr>'}</tbody></table>
     ${pages>1?`<div style="padding:8px 16px;display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);font-size:11px;"><button class="btn-s" ${rejFilter.page===0?'disabled':''} onclick="rejFilter.page--;cqeRenderRejets()">← Précédent</button> Page ${rejFilter.page+1} / ${pages} <button class="btn-s" ${rejFilter.page>=pages-1?'disabled':''} onclick="rejFilter.page++;cqeRenderRejets()">Suivant →</button></div>`:''}
   </div>`;
 }
