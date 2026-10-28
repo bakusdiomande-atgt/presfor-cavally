@@ -528,7 +528,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <div style="margin-top:auto;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,0.12);">
       <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;width:100%;margin-bottom:10px;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">⏻ Se déconnecter</button>
       <div class="rail-zone" id="tb-zone-label" style="font-size:10.5px;color:rgba(255,255,255,0.7);line-height:1.3;">Cavally + Worodougou</div>
-      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-10-bv</div>
+      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-10-bw</div>
     </div>
   </nav>
 
@@ -6775,7 +6775,7 @@ cqeCtlChoose = function(id,kind){ _lockGrace=Date.now()+20000; return _cqeCtlCho
 // ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-10-bv';
+const APP_VERSION = 'v15-10-bw';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
@@ -8959,6 +8959,7 @@ function pvCss(){ return `<style>
   .pvo-ok{color:#0a7a3a;font-weight:700;font-size:10px;} .pvo-ko{color:#c62828;font-weight:700;font-size:10px;} .pvo-hr{border:0;border-top:1px dashed #bbb;margin:12px 0;}
   .pvo-node{font-size:11px;background:#f4f4f4;padding:4px 8px;margin:4px 0;}
   .pvo-eo2{position:absolute;left:28px;bottom:10px;font-size:11px;}
+  .pvo-frame{border:1.5px solid #00a651;} .pvo-band2{background:#00a651;color:#111;text-align:center;font-weight:700;font-size:13px;padding:10px 8px;} .pvo-sec{background:#00a651;color:#111;font-weight:700;font-size:12px;padding:8px 18px;margin:14px -6px 8px;}
   .pvo-pc{background:#fff;color:#111;font-family:'Times New Roman',serif;}
   @media print{.pvo{background:#fff;padding:0;} .pvo-page{box-shadow:none;margin:0;}}
   </style>`; }
@@ -9211,7 +9212,7 @@ function terrDocControls(d, rec, type){
     if(!(Number(land.estimatedArea)>0)) add('warn','Superficie estimée absente ou nulle.');
     if(!(rec.neighborhood||[]).length) add('warn','Aucune limite / aucun voisin renseigné.');
     else if((rec.neighborhood||[]).some(n=>!(n.nameOfNeighbor||'').trim())) add('warn','Limite(s) sans nom de voisin.');
-    add('info','Signature du demandeur : non vérifiable automatiquement (aucun champ de signature dans l\'export tablette).');
+    add('info','Signature du demandeur : non vérifiable automatiquement (aucune image de signature dans l\'export tablette).');
   }
   if(type==='ouv'){
     const arr=docPres(rec,'ouv'); listCtl(arr,'de la séance d\'ouverture');
@@ -9278,19 +9279,30 @@ function docOfficielHtml(d, rec, type){
   const pvLim=pvcl?(tabNormCode(pvcl.codeObservation||'')+' du '+docFd(terrRecDate(pvcl,'pvcl'))):'';
   const dDoc=terrRecDate(rec,type)||'';
   if(type==='dem'){
-    const ap=c.ap, land=c.land, L=(k,v)=>`<div>${k} <b class="pvo-f">${E(v||'')}</b></div>`;
-    const lim=(rec.neighborhood||[]).map(n=>`<div>${E(n.position||'')} : <b>${E(n.nameOfNeighbor||'—')}</b></div>`).join('')||'<div class="pvo-nr">— non renseignées —</div>';
-    return pvCss()+`<div class="pvo"><div class="pvo-page"><div class="pvo-hd"><div style="font-weight:700;">RÉPUBLIQUE DE CÔTE D'IVOIRE</div><div><i>Union - Discipline - Travail</i></div><div style="font-weight:700;">MINISTÈRE DE L'AGRICULTURE ET DU DÉVELOPPEMENT RURAL</div><div style="font-weight:700;">AGENCE FONCIÈRE RURALE</div></div>
-    <div class="pvo-band" style="margin:0 -28px;">DEMANDE D'ENQUÊTE EN VUE DE L'ÉTABLISSEMENT D'UN CERTIFICAT FONCIER</div><div class="pvo-body">
-    <p>Enregistrée sous le n° <b class="pvo-f">${E(c.num)}</b> du <b class="pvo-f">${E(docFd(dDoc))}</b></p>
-    <div style="font-weight:700;color:#00a651;margin:6px 0;">Renseignements concernant le demandeur</div>
-    ${L('Nom :',ap.lastname)}${L('Prénoms :',ap.firstname)}${L('Date et lieu de naissance :',docFd(ap.birthdate)+' à '+(ap.birthplace||''))}${L('Nom et prénoms du père :',ap.nameOfFather)}${L('Nom et prénoms de la mère :',ap.nameOfMother)}${L('Nationalité :',ap.nationality)}${L('Profession :',ap.job)}
-    ${L('Pièce d\'identité — nature :',ap.identityDocumentType)}${L('Pièce d\'identité — n° / date :',(ap.identityDocumentNumber||'')+(ap.pieceDate?' du '+docFd(ap.pieceDate):''))}${L('Résidence habituelle :',ap.habitualResidence)}${L('Numéro de téléphone :',ap.phoneNumber)}${L('Agissant pour le compte de :',c.grp)}
-    <div style="font-weight:700;color:#00a651;margin:12px 0 6px;">Désignation du bien foncier coutumier</div>
-    ${L('Département de :',up(c.dept))}${L('Sous-préfecture de :',up(c.sp))}${L('Village :',c.village)}${L('Indications complémentaires :',ap.incationComplementaire)}${L('Superficie estimée :',pvSuperfMots(land.estimatedArea))}
-    <div style="margin-top:6px;">Limites :</div><div style="margin-left:14px;">${lim}</div>
-    <div style="font-weight:700;color:#00a651;margin:12px 0 6px;">Informations sur l'Opérateur Technique Agréé</div>${L('Nom ou raison sociale :','CAG')}
-    <p style="margin-top:12px;">Date : <b class="pvo-f">${E(docFd(dDoc))}</b> — Signature du demandeur : <span class="pvo-nr">à vérifier sur le document (non mesurable dans l'export)</span></p></div><div class="pvo-eo2">EO 1-1</div></div></div>`;
+    const ap=c.ap, land=c.land, dd=iso=>{ const x=terrDay(iso); return x?x.split('-').reverse().join('-'):''; };
+    const tel=v=>{ const s=String(v||'').replace(/\D/g,''); return s.length===10?s.replace(/(\d{2})(?=\d)/g,'$1 ').trim():String(v||''); };
+    const L=(k,v)=>`<div style="margin:11px 0;">${k} <b class="pvo-f">${E(v||'')}</b></div>`;
+    const sec=t=>`<div class="pvo-sec">• ${t}</div>`;
+    const lim=(rec.neighborhood||[]).map(n=>`<div style="margin:9px 0 9px 22px;">${E(n.position||'')} : <b class="pvo-f">${E(n.nameOfNeighbor||'—')}</b></div>`).join('')||'<div class="pvo-nr" style="margin-left:22px;">— non renseignées —</div>';
+    const ph=typeof ap.photo==='string'&&ap.photo.length>400?ap.photo:'';
+    const imgSrc='';   // le champ « photo » du demandeur n'est pas affiché tant qu'on ignore s'il s'agit de sa signature ou de son portrait
+    const hd=`<div class="pvo-hd"><div style="font-weight:700;">RÉPUBLIQUE DE CÔTE D'IVOIRE</div><div><i>Union - Discipline - Travail</i></div><div style="font-weight:700;">MINISTÈRE DE L'AGRICULTURE ET DU DÉVELOPPEMENT RURAL</div><div style="font-weight:700;">AGENCE FONCIÈRE RURALE</div></div>`;
+    const p1=`<div class="pvo-page">${hd}<div class="pvo-frame"><div class="pvo-band2">DEMANDE D'ENQUÊTE EN VUE DE L'ÉTABLISSEMENT D'UN<br>CERTIFICAT FONCIER</div><div style="padding:12px 20px 18px;">
+      <div style="margin:6px 0 10px;">Enregistrée sous le n° <b class="pvo-f">${E(c.num)}</b> du <b class="pvo-f">${E(dd(dDoc))}</b></div>
+      ${sec('Renseignements concernant le demandeur')}
+      ${L('Nom :',ap.lastname)}${L('Prénoms :',ap.firstname)}${L('Date et lieu de naissance :',dd(ap.birthdate)+' à '+(ap.birthplace||''))}${L('Nom et prénoms du père :',ap.nameOfFather)}${L('Nom et prénoms de la mère :',ap.nameOfMother)}${L('Nationalité :',ap.nationality)}${L('Profession :',ap.job)}
+      ${L('Pièce d\'identité : Nature (2) :',ap.identityDocumentType)}<div style="margin:11px 0;">Pièce d'identité : n° <b class="pvo-f">${E(ap.identityDocumentNumber||'')}</b> du <b class="pvo-f">${E(dd(ap.pieceDate))}</b></div>${L('Résidence habituelle :',ap.habitualResidence)}${L('Numéro de Téléphone :',tel(ap.phoneNumber))}${L('Agissant pour le compte de :',c.grp)}
+      ${sec('Désignation du bien foncier coutumier')}
+      ${L('Département d :',up(c.dept))}${L('Sous-Préfecture d :',up(c.sp))}${L('Village :',c.village)}${L('Indications complémentaires éventuelles sur la localisation :',ap.incationComplementaire)}${L('Superficie estimée :',pvSuperfMots(land.estimatedArea))}
+      <div style="margin:11px 0 4px;"><u>Limites</u> (3) :</div>${lim}</div></div><div class="pvo-eo2">EO 1-1</div></div>`;
+    const p2=`<div class="pvo-page"><div class="pvo-frame" style="border:0;">${sec('Informations sur l\'Opérateur Technique Agréé')}
+      <div style="margin:11px 20px;">Nom ou raison sociale : <b class="pvo-f">CAG</b></div><div style="margin:11px 20px;">Adresse : <b class="pvo-f">BP ABIDJAN</b></div>
+      <div style="margin:11px 20px;">Email : <b class="pvo-f">snangaz1@yahoo.fr</b> N° Téléphone : <b class="pvo-f">07 08 850 252 / 07 88 220 199</b></div>
+      <div style="text-align:center;margin:46px 0 0 40%;">Date<br><b style="line-height:2.2;">${E(dd(dDoc))}</b></div>
+      <div style="text-align:center;margin:50px 0 0 40%;">Signature du demandeur<div style="min-height:70px;margin-top:8px;">${imgSrc?`<img src="${imgSrc}" alt="" style="max-height:80px;max-width:200px;">`:'<span class="pvo-nr">— non disponible dans l\'export tablette —</span>'}</div></div>
+      <ul style="margin:30px 0 8px 14px;font-size:11px;line-height:1.7;"><li>(1) Numéro généré par le Système d'Information Foncier</li><li>(2) Carte nationale d'identité, passeport, etc.</li><li>(3) Limites indiquées ou vérifiées techniquement</li></ul>
+      <div style="font-size:11px;">N.B : joindre la photocopie de la pièce d'identité du demandeur ou du gestionnaire</div></div><div class="pvo-eo2">EO 1-2</div></div>`;
+    return pvCss()+'<div class="pvo">'+p1+p2+'</div>';
   }
   if(type==='ouv'){
     const arr=docPres(rec,'ouv');
