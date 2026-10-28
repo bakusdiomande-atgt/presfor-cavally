@@ -528,7 +528,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <div style="margin-top:auto;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,0.12);">
       <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;width:100%;margin-bottom:10px;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">⏻ Se déconnecter</button>
       <div class="rail-zone" id="tb-zone-label" style="font-size:10.5px;color:rgba(255,255,255,0.7);line-height:1.3;">Cavally + Worodougou</div>
-      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-10-bq</div>
+      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-10-bs</div>
     </div>
   </nav>
 
@@ -1424,7 +1424,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
             Dossiers en publicité sans GNSS
           </button>
-          <button class="btn-s" onclick="terrShowStructure()" title="Liste des champs des fiches tablette (RDC et PVCL)" style="display:inline-flex;align-items:center;gap:6px;">Structure des fiches tablette</button>
+          <button class="btn-s" onclick="terrShowStructure()" title="Liste des champs des fiches tablette (RDC, PVCL, demande, publicité, constat, attestation)" style="display:inline-flex;align-items:center;gap:6px;">Structure des fiches tablette</button>
           <button class="btn-s viewer-hidden" id="btn-afor-wipe" onclick="aforWipeFirebase()" title="Purger la base AFOR sur Firebase (admin)" style="display:none;align-items:center;gap:6px;background:#FDECEA;color:#B71C1C;border-color:#B71C1C;">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5ZM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 5.885 16h4.23a2 2 0 0 0 1.994-1.84l.853-10.66H13.5a.5.5 0 0 0 0-1z"/></svg>
             Vider Firebase AFOR
@@ -6492,7 +6492,7 @@ async function cqeReloadData(btn){
 // Le contrôleur coche les motifs de rejet pour chaque dossier ; il peut ajouter ses propres motifs.
 // Stockage dédié : /presfor/cq_grille/{dossier} (une écriture par dossier) et /presfor/cq_motifs/{id} (motifs ajoutés).
 // ═══════════════════════════════════════════════════════════════
-const GRILLE_CQ = [{"id":"1","code":"DCF","e":[{"id":"1a","t":"Demande d’enquête en vue de l’établissement d’un CF","m":["Document scanné illisible","Absence de dates requises","Absence du numéro d’enregistrement de la demande","Absence de signature du demandeur","Erreur sur les informations concernant l’identification du demandeur ou du gestionnaire (nom, âge, lieu de naissance, nationalité…)","Absence du numéro de la pièce d’identification","Absence d’informations sur l’Opérateur Technique Agréé ou Opérateur Foncier"]}]},{"id":"2","code":"ID","e":[{"id":"2a","t":"La pièce d’identité","m":["Absence de CNI et de tout autre document d’identité (passeport, attestation d’identité, carte consulaire…). Pas motif de rejet pour paiement à l’OF","Photocopie pièce d’identité illisible","Absence du numéro de la pièce d’identité"]}]},{"id":"3","code":"RDC","e":[{"id":"3a","t":"Procès-Verbal de Recensement des Droits Coutumiers","m":["Documents illisibles","Absence de signatures requises","Absence de dates requises ou dates fantaisistes"]},{"id":"3b","t":"Fiche démographique","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Non mention de la qualité des personnes auditionnées","Absence sur la fiche des personnes ayant fait des déclarations"]},{"id":"3c","t":"Déclarations de toutes les personnes auditionnées","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Déclarant n°1 n’est pas le demandeur","Insuffisance d’informations sur la nature des droits (l’usage que peut faire le demandeur de la parcelle) et/ou l’origine des droits du demandeur (comment est-il devenu le propriétaire de la parcelle ?)","Absence de date et de signature du déclarant","Absence audition d’au moins un référent qualifié (parents du demandeur) cas d’héritage","Absence d’audition du cédant (ou d’un référent qualifié) en cas d’achat ou don","Absence d’information sur les occupants ou non de la parcelle","Absence de contrat, déclaration ou de preuve d’achat pour une cession réalisée avant le 14 octobre 2019","Cession réalisée après le 14 octobre 2019, sans CF de la parcelle cédée"]},{"id":"3d","t":"Fiche d’identification des litiges fonciers","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises"]},{"id":"3e","t":"Liste des détenteurs de droits coutumiers collectifs","m":["Document scanné illisible","Absence de date et signature requise","Insuffisance d’information (nom et prénoms, date et lieu de naissance, nature et n° de la pièce d’identité ou du titre d’identité, etc…) sur l’un des détenteurs de droits coutumiers collectifs (pas un motif de rejet)"]},{"id":"3f","t":"Désignation du gestionnaire d’un bien foncier rural collectif","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises"]},{"id":"3g","t":"Etat des droits de propriété ou de droits de concession ou d’occupation accordés par l’Administration (sur tout ou partie de la parcelle objet de la demande de CF)","m":["Document scanné illisible","Absence de la date et signature du commissaire enquêteur","Tableau de l’état insuffisamment renseigné"]},{"id":"3h","t":"Liste des servitudes ou droits d’usage, leur nature et le nom ou la caractérisation des détenteurs de ces droits","m":["Document scanné illisible","Absence de la date et signature du commissaire enquêteur","Liste des servitudes insuffisamment renseigné (information manquante sur la nature, la localisation, le nom ou la caractérisation des détenteurs)"]}]},{"id":"4","code":"PVCL","e":[{"id":"4a","t":"Procès-Verbal des Constats de limites parcelle","m":["Document scanné illisible","Absence de signatures requises (CE, Topographes, voisins limitrophes …)","Absence de dates requises","Absence signature d’un voisin ou son représentant sur le PVCL, avec absence du formulaire de carence de participation du voisin limitrophe concerné","Incohérence entre les noms des voisins inscrits sur le PVCL (PV des constats de limites) et le plan","La qualité \"voisin\" des limitrophes sur la liste de présence du PVCL non mentionnée","Indication de la ligne haute ou moyenne tension électrique comme limite d’une parcelle (spécifiquement l’indication de bandes de lignes de haute et moyenne tension n’est pas un motif de rejet), Indication de voie ferrée comme limite d’une parcelle Indication de piste comme limite d’une parcelle, (indication de route avec emprise n’est pas un motif de rejet) Indication de ruisseaux et cours non permanent comme limite d’une parcelle (l’indication de cours d’eau avec emprise n’est pas un motif de rejet) Non inscription du nom du cours d’eau sur le PV Indication de village, de terre communautaire (sans préciser le nom de la communauté), de basfonds ou de plantation comme limite d’une parcelle"]}]},{"id":"5","code":"PPROV","e":[{"id":"5a","t":"Plan provisoire","m":["Document scanné illisible","Plan de situation non conforme","Indication de la ligne haute ou moyenne tension électrique comme limite d’une parcelle (spécifiquement l’indication de bandes de lignes de haute et moyenne tension n’est pas un motif de rejet), Indication de voie ferrée comme limite d’une parcelle Indication de piste comme limite d’une parcelle, (indication de route avec emprise n’est pas un motif de rejet) Indication de ruisseaux et cours non permanent comme limite d’une parcelle (l’indication de cours d’eau avec emprise n’est pas un motif de rejet) Non inscription du nom du cours d’eau sur le PV Indication de village, de terre communautaire (sans préciser le nom de la communauté), de basfonds ou de plantation comme limite d’une parcelle","Incohérence entre les noms des voisins inscrits sur le PVCL (PV des constats de limites) et le plan","Date d’édition du plan antérieure à celle du PV de constat de limite","Date d’édition du plan postérieure à celle du PV de Clôture de la publicité"]}]},{"id":"6","code":"SHP PPROV","e":[{"id":"6a","t":"Fichier Shp (Shapefile) du Plan provisoire","m":["Absence de fichier Shape (polygone et ou point)","Table attributaire mal renseignée (astérix et autres...)","Chevauchement ou espacement entre parcelles mitoyennes","Parcelles empiétant sur un domaine concurrent au domaine foncier rural, sur un Titre Foncier ou certificat foncier","Incohérence de superficie sur le Shp et sur le plan","Incohérence entre les noms des voisins limitrophes sur le plan et sur le Shp","Parcelle CF située hors polygonale de la DTV"]}]},{"id":"7","code":"AFPUB","e":[{"id":"7a","t":"Annonce de la présentation publique des résultats des enquêtes foncières rurales officielles","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Absence de date sur la fiche d’annonce de publicité","Inconformité du numéro du dossier à présenter en publicité","Absence de plan provisoire à mettre publicité","Inconformité de la superficie sur le Plan Prov et sur la liste des enquêtes faisant l’objet de publicité","Absence du nom du demandeur ou du groupement sur la liste des dossiers à présenter"]}]},{"id":"8","code":"PVOPUB","e":[{"id":"8a","t":"Procès-Verbal d’ouverture de publicité","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Absence du numéro et date de la séance d’ouverture de la publicité","Non-respect du délai d’au moins 1 jour entre l’annonce et l’ouverture de la publicité","Inconformité du numéro du dossier présenté en publicité","Absence du nom du demandeur ou du groupement sur la liste des dossiers présentés","Absence de la liste de présence comportant le nom complet, les qualités et les signatures des personnes présentes (le faible nombre de personnes présentes n’est pas un motif de rejet)"]}]},{"id":"9","code":"PVCPUB","e":[{"id":"9a","t":"Procès-Verbal de Clôture de publicité des résultats des enquêtes foncières rurales officielles","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Absence d’un des documents à annexer au PV","Inconformité du numéro du dossier présenté en publicité","Absence du nom du demandeur sur une des listes","Absence de la liste de présence comportant le nom complet, les qualités et les signatures des personnes présentes (le faible nombre de personnes présentes n’est pas un motif de rejet)","Non description d’une opposition identifiée","Délai de publicité inférieur à 1 mois calendaire"]}]},{"id":"10","code":"CECPDC","e":[{"id":"10a","t":"Constat d’existence continue et paisible des droits coutumiers","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Le quorum des membres signataires n’est pas atteint","Fiche n°1 du PV de constat d’existence continue non signée par le Président du CVGFR","Absence de date et numéro de la demande sur la liste des participants","Absence du formulaire de carence de participation d’un voisin limitrophe (cas de non-signature d’un voisin limitrophe sur le PV de Constat des limites)","L’absence de PV de règlement d’un litige persistant après la clôture de publicité"]}]},{"id":"11","code":"A.VAL","e":[{"id":"11a","t":"Attestation de validation","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Absence de la liste de présence annexée à la validation"]}]},{"id":"12","code":"P DEF","e":[{"id":"12a","t":"Plan définitif","m":["Superficie sur le plan définitif différente de la superficie sur le certificat foncier, inconformité du nom de l’entité sur le plan définitif et le shapefile. Inconformité du nom de village sur le CF et sur le plan","Date d’établissement du Plan définitif antérieure à la date de signature du PV de constat de limite","Date d’édition du Plan définitif postérieure à la date de signature du CF","Absence de signature et du cachet du géomètre-expert"]}]},{"id":"13","code":"SHP P DEF","e":[{"id":"13a","t":"Fichier SHAPE du Plan définitif","m":["Absence de fichier Shape (polygone et ou point)","Table attributaire mal renseignée (astérix et autres...)","Chevauchement ou espacement entre parcelles mitoyennes","Parcelles empiétant sur un domaine concurrent au domaine foncier rural, sur un Titre Foncier ou certificat foncier","Incohérence entre le Shp et le plan (superficie)","Incohérence entre les noms des voisins limitrophes sur le plan et le Shp"]}]},{"id":"14","code":"CF","e":[{"id":"14a","t":"Certificat foncier","m":["Document scanné illisible","Absence des signatures requises","Absence du cachet et du nom du préfet","Absence du nom d’un ayant-droit sur le CFC","Absence de timbres ou insuffisance du montant du timbrage","Absence de dates et toutes informations requises sur le CF","Superficie sur le plan définitif différente de la superficie sur le certificat foncier"]}]}];
+const GRILLE_CQ = [{"id":"1","code":"DCF","e":[{"id":"1a","t":"Demande d’enquête en vue de l’établissement d’un CF","m":["Document scanné illisible","Absence de dates requises","Absence du numéro d’enregistrement de la demande","Absence de signature du demandeur","Erreur sur les informations concernant l’identification du demandeur ou du gestionnaire (nom, âge, lieu de naissance, nationalité…)","Absence du numéro de la pièce d’identification (Pas motif de rejet pour les demandes enregistrées avec Permis de conduire, Certificat de nationalité, Extrait d’acte de naissance)","Absence d’informations sur l’Opérateur Technique Agréé ou Opérateur Foncier"]}]},{"id":"2","code":"ID","e":[{"id":"2a","t":"La pièce d’identité","m":["Absence de CNI ou de tout autre document d’identification (Passeport, Attestation d’identité, Carte consulaire, Permis de conduire, Certificat de nationalité, Extrait de naissance…)","Photocopie pièce d’identité illisible","Absence du numéro de la pièce d’identité"]}]},{"id":"3","code":"RDC","e":[{"id":"3a","t":"Procès-Verbal de Recensement des Droits Coutumiers","m":["Documents illisibles","Absence de signatures requises","Absence de dates requises ou dates fantaisistes"]},{"id":"3b","t":"Fiche démographique","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Non mention de la qualité des personnes auditionnées","Absence sur la fiche des personnes ayant fait des déclarations"]},{"id":"3c","t":"Déclarations de toutes les personnes auditionnées","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Déclarant n°1 n’est pas le demandeur","Insuffisance d’informations sur la nature des droits (l’usage que peut faire le demandeur de la parcelle) et/ou l’origine des droits du demandeur (comment est-il devenu le propriétaire de la parcelle ?)","Absence de date et de signature du déclarant","Absence audition d’au moins un référent qualifié (parents du demandeur) cas d’héritage","Absence d’audition du cédant (ou d’un référent qualifié) en cas d’achat ou don","Absence d’information sur les occupants ou non de la parcelle","Absence de contrat, déclaration ou de preuve d’achat pour une cession réalisée avant le 14 octobre 2019","Cession réalisée après le 14 octobre 2019, sans CF de la parcelle cédée"]},{"id":"3d","t":"Fiche d’identification des litiges fonciers","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises"]},{"id":"3e","t":"Liste des détenteurs de droits coutumiers collectifs","m":["Document scanné illisible","Absence de date et signature requise","Insuffisance d’information (nom et prénoms, date et lieu de naissance, nature et n° de la pièce d’identité ou du titre d’identité, etc…) sur l’un des détenteurs de droits coutumiers collectifs (pas un motif de rejet)","PV de réunion de famille ou PV de désignation du gestionnaire (en sus, pas motif de rejet)"]},{"id":"3f","t":"Désignation du gestionnaire d’un bien foncier rural collectif","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises"]},{"id":"3g","t":"Etat des droits de propriété ou de droits de concession ou d’occupation accordés par l’Administration (sur tout ou partie de la parcelle objet de la demande de CF)","m":["Document scanné illisible","Absence de la date et signature du commissaire enquêteur","Tableau de l’état insuffisamment renseigné"]},{"id":"3h","t":"Liste des servitudes ou droits d’usage, leur nature et le nom ou la caractérisation des détenteurs de ces droits","m":["Document scanné illisible","Absence de la date et signature du commissaire enquêteur","Liste des servitudes insuffisamment renseigné (information manquante sur la nature, la localisation, le nom ou la caractérisation des détenteurs)"]}]},{"id":"4","code":"PVCL","e":[{"id":"4a","t":"Procès-Verbal des Constats de limites parcelle","m":["Document scanné illisible","Absence de signatures requises (CE, Topographes, voisins limitrophes …)","Absence de dates requises","Absence signature d’un voisin ou son représentant sur le PVCL, avec absence du formulaire de carence de participation du voisin limitrophe concerné","Incohérence entre les noms des voisins inscrits sur le PVCL (PV des constats de limites) et le plan","La qualité \"voisin\" des limitrophes sur la liste de présence du PVCL non mentionnée","Indication de la ligne haute ou moyenne tension électrique comme limite d’une parcelle (spécifiquement l’indication de bandes de lignes de haute et moyenne tension n’est pas un motif de rejet), Indication de voie ferrée comme limite d’une parcelle Indication de piste comme limite d’une parcelle, (indication de route avec emprise n’est pas un motif de rejet) Indication de ruisseaux et cours non permanent comme limite d’une parcelle (l’indication de cours d’eau avec emprise n’est pas un motif de rejet) Non inscription du nom du cours d’eau sur le PV Indication de village, de terre communautaire (sans préciser le nom de la communauté), de basfonds ou de plantation comme limite d’une parcelle"]}]},{"id":"5","code":"PPROV","e":[{"id":"5a","t":"Plan provisoire","m":["Document scanné illisible","Plan de situation non conforme","Indication de la ligne haute ou moyenne tension électrique comme limite d’une parcelle (spécifiquement l’indication de bandes de lignes de haute et moyenne tension n’est pas un motif de rejet), Indication de voie ferrée comme limite d’une parcelle Indication de piste comme limite d’une parcelle, (indication de route avec emprise n’est pas un motif de rejet) Indication de ruisseaux et cours non permanent comme limite d’une parcelle (l’indication de cours d’eau avec emprise n’est pas un motif de rejet) Non inscription du nom du cours d’eau sur le PV Indication de village, de terre communautaire (sans préciser le nom de la communauté), de basfonds ou de plantation comme limite d’une parcelle","Incohérence entre les noms des voisins inscrits sur le PVCL (PV des constats de limites) et le plan","Date d’édition du plan antérieure à celle du PV de constat de limite","Date d’édition du plan postérieure à celle du PV de Clôture de la publicité"]}]},{"id":"6","code":"SHP PPROV","e":[{"id":"6a","t":"Fichier Shp (Shapefile) du Plan provisoire","m":["Absence de fichier Shape (polygone et ou point)","Table attributaire mal renseignée (astérix et autres...)","Chevauchement ou espacement entre parcelles mitoyennes","Parcelles empiétant sur un domaine concurrent au domaine foncier rural, sur un Titre Foncier ou certificat foncier","Incohérence de superficie sur le Shp et sur le plan","Incohérence entre les noms des voisins limitrophes sur le plan et sur le Shp","Parcelle CF située hors polygonale de la DTV"]}]},{"id":"7","code":"AFPUB","e":[{"id":"7a","t":"Annonce de la présentation publique des résultats des enquêtes foncières rurales officielles","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Absence de date sur la fiche d’annonce de publicité","Inconformité du numéro du dossier à présenter en publicité","Absence de plan provisoire à mettre publicité","Inconformité de la superficie sur le Plan Prov et sur la liste des enquêtes faisant l’objet de publicité","Absence du nom du demandeur ou du groupement sur la liste des dossiers à présenter"]}]},{"id":"8","code":"PVOPUB","e":[{"id":"8a","t":"Procès-Verbal d’ouverture de publicité","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Absence du numéro et date de la séance d’ouverture de la publicité","Non-respect du délai d’au moins 1 jour entre l’annonce et l’ouverture de la publicité","Inconformité du numéro du dossier présenté en publicité","Absence du nom du demandeur ou du groupement sur la liste des dossiers présentés","Absence de la liste de présence comportant le nom complet, les qualités et les signatures des personnes présentes (le faible nombre de personnes présentes n’est pas un motif de rejet)"]}]},{"id":"9","code":"PVCPUB","e":[{"id":"9a","t":"Procès-Verbal de Clôture de publicité des résultats des enquêtes foncières rurales officielles","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Absence d’un des documents à annexer au PV","Inconformité du numéro du dossier présenté en publicité","Absence du nom du demandeur sur une des listes","Absence de la liste de présence comportant le nom complet, les qualités et les signatures des personnes présentes (le faible nombre de personnes présentes n’est pas un motif de rejet)","Non description d’une opposition identifiée","Délai de publicité inférieur à 1 mois calendaire"]}]},{"id":"10","code":"CECPDC","e":[{"id":"10a","t":"Constat d’existence continue et paisible des droits coutumiers","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Le quorum des membres signataires n’est pas atteint","Fiche n°1 du PV de constat d’existence continue non signée par le Président du CVGFR","Absence de date et numéro de la demande sur la liste des participants","Absence du formulaire de carence de participation d’un voisin limitrophe (cas de non-signature d’un voisin limitrophe sur le PV de Constat des limites)","L’absence de PV de règlement d’un litige persistant après la clôture de publicité"]}]},{"id":"11","code":"A.VAL","e":[{"id":"11a","t":"Attestation de validation","m":["Document scanné illisible","Absence de signatures requises","Absence de dates requises","Absence de la liste de présence annexée à la validation"]}]},{"id":"12","code":"P DEF","e":[{"id":"12a","t":"Plan définitif","m":["Superficie sur le plan définitif différente de la superficie sur le certificat foncier, inconformité du nom de l’entité sur le plan définitif et le shapefile. Inconformité du nom de village sur le CF et sur le plan","Date d’établissement du Plan définitif antérieure à la date de signature du PV de constat de limite","Date d’édition du Plan définitif postérieure à la date de signature du CF","Absence de signature et du cachet du géomètre-expert"]}]},{"id":"13","code":"SHP P DEF","e":[{"id":"13a","t":"Fichier SHAPE du Plan définitif","m":["Absence de fichier Shape (polygone et ou point)","Table attributaire mal renseignée (astérix et autres...)","Chevauchement ou espacement entre parcelles mitoyennes","Parcelles empiétant sur un domaine concurrent au domaine foncier rural, sur un Titre Foncier ou certificat foncier","Incohérence entre le Shp et le plan (superficie)","Incohérence entre les noms des voisins limitrophes sur le plan et le Shp"]}]},{"id":"14","code":"CF","e":[{"id":"14a","t":"Certificat foncier","m":["Document scanné illisible","Absence des signatures requises","Absence du cachet et du nom du préfet","Absence du nom d’un ayant-droit sur le CFC","Absence de timbres ou insuffisance du montant du timbrage","Absence de dates et toutes informations requises sur le CF","Superficie sur le plan définitif différente de la superficie sur le certificat foncier"]}]}];
 let cqeGrille = {}, cqeMotifs = {};
 try{ const x=localStorage.getItem('presfor_cq_grille'); if(x) cqeGrille=JSON.parse(x); const y=localStorage.getItem('presfor_cq_motifs'); if(y) cqeMotifs=JSON.parse(y); }catch(e){}
 function cqeGrilleSaveLocal(){ try{ localStorage.setItem('presfor_cq_grille', JSON.stringify(cqeGrille)); localStorage.setItem('presfor_cq_motifs', JSON.stringify(cqeMotifs)); }catch(e){} }
@@ -6775,7 +6775,7 @@ cqeCtlChoose = function(id,kind){ _lockGrace=Date.now()+20000; return _cqeCtlCho
 // ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-10-bq';
+const APP_VERSION = 'v15-10-bs';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
@@ -7709,7 +7709,15 @@ const TERR_PAGE = 100;
 const TERR_TYPES = {
   rdc:  {label:'RDC',  titre:'Recensement des droits coutumiers', stage:'minutes',      dateField:'date_RDC', dateKeys:['minutesDate','creationDate']},
   pvcl: {label:'PVCL', titre:'PV de constat de limite',           stage:'observations', dateField:'date_CL',  dateKeys:['observationDate','creationDate']},
+  dem:  {label:'Demande',    titre:'Demande d\'enquête en vue d\'un CF',                     stage:'requests',        dateField:null, dateKeys:['requestDate','creationDate'], short:'Dem.'},
+  afp:  {label:'Annonce',    titre:'Annonce de la présentation publique des résultats',       stage:'advertising',     dateField:null, dateKeys:['advertisingDate','announcementDate','creationDate'], short:'Ann.'},
+  ouv:  {label:'Ouverture',  titre:'PV d\'ouverture de publicité',                            stage:'openAdvertising', dateField:null, dateKeys:['openDate','openAdvertisingDate','openingDate','creationDate'], short:'Ouv.'},
+  clo:  {label:'Clôture',    titre:'PV de clôture de publicité',                              stage:'closeAdvertising',dateField:null, dateKeys:['closeDate','closeAdvertisingDate','closingDate','creationDate'], short:'Clôt.'},
+  con:  {label:'Constat',    titre:'Constat d\'existence continue et paisible des droits coutumiers', stage:'existence',   dateField:null, dateKeys:['dateExistence','existenceDate','creationDate'], short:'Const.'},
+  att:  {label:'Attestation',titre:'Attestation de validation',                               stage:'validation',      dateField:null, dateKeys:['validationDate','creationDate'], short:'Att.'},
 };
+const TERR_ALL = ['rdc','pvcl','dem','afp','ouv','clo','con','att'];
+const TERR_NEW = ['dem','afp','ouv','clo','con','att'];
 try{ const c = localStorage.getItem('presfor_terr_checks'); if(c) terrChecks = JSON.parse(c); }catch(e){}
 
 function chkStamp(c){ return String((c&&(c._u||c.date))||''); }
@@ -7803,8 +7811,8 @@ function terrRecDate(rec, type){ for(const k of TERR_TYPES[type].dateKeys){ cons
 // CONTRÔLE D'UNE PIÈCE AVEC LA GRILLE — le document (RDC, PVCL, plan) à gauche, la grille de la pièce à droite.
 // Aucun motif coché = pièce conforme ; au moins un = pièce rejetée (circuit habituel : rejet CQI, portefeuille, suivi).
 // ═══════════════════════════════════════════════════════════════
-const GRP_PIECE = {rdc:'3', pvcl:'4', plan:'5'};
-const GRP_LABEL = {rdc:'RDC', pvcl:'PVCL', plan:'Plan parcellaire'};
+const GRP_PIECE = {rdc:'3', pvcl:'4', plan:'5', dem:'1', afp:'7', ouv:'8', clo:'9', con:'10', att:'11'};
+const GRP_LABEL = {rdc:'RDC', pvcl:'PVCL', plan:'Plan parcellaire', dem:'Demande', afp:'Annonce de publicité', ouv:'Ouverture de publicité', clo:'Clôture de publicité', con:'Constat d\'existence paisible et continu', att:'Attestation de validation'};
 function grpInit(d, type){
   const g = cqeGrille[d.id], pid = GRP_PIECE[type];
   window._grp = {id:d.id, type, pid, checked:new Set(((g&&g.c)||[]).filter(m=>grillePieceDeMotif(m)===pid)), comm:(g&&g.cm&&g.cm[pid])||''};
@@ -7881,8 +7889,8 @@ function terrOpen(id, focus){
   const sel = (name,val)=>`<select id="terr-${name}" ${can?'':'disabled'} style="width:100%;padding:5px;border:1px solid var(--border-med);border-radius:6px;font-size:12px;">${[['','— à évaluer —'],['conforme','Conforme'],['incoherent','Incohérent']].map(o=>`<option value="${o[0]}" ${val===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>`;
   const bloc = type=>{
     const T = TERR_TYPES[type], rec = terrRec(d,type), chk = (terrChecks[d.id]||{})[type]||{};
-    if(!rec) return `<div style="padding:12px;color:var(--text3);border:1px dashed var(--border);border-radius:8px;margin-bottom:12px;"><b>${T.label}</b> — aucune fiche tablette retrouvée pour ce dossier. Importez les ZIP de la tablette (fichier ${T.stage==='minutes'?'02_minutes':'03_observations'}).</div>`;
-    const dt = terrRecDate(rec,type), da = d[T.dateField];
+    if(!rec) return `<div style="padding:12px;color:var(--text3);border:1px dashed var(--border);border-radius:8px;margin-bottom:12px;"><b>${T.label}</b> — aucune fiche tablette retrouvée pour ce dossier. Importez les ZIP de la tablette (fichier ${({minutes:'02_minutes',observations:'03_observations',requests:'01_requests',advertising:'04_advertising',openAdvertising:'05_open_advertising',closeAdvertising:'06_close_advertising',existence:'07_existence',validation:'08_validation'})[T.stage]||T.stage}).</div>`;
+    const dt = terrRecDate(rec,type), da = T.dateField?d[T.dateField]:null;
     let ecart = '';
     if(dt && da){ const j = Math.round((Date.parse(dt)-Date.parse(da))/86400000); ecart = Math.abs(j)>1 ? `<div style="margin:6px 0;padding:6px 8px;background:var(--amber-lt);color:var(--amber-txt);border-radius:6px;font-size:11px;">⚠ Date sur tablette (${dt.split('-').reverse().join('/')}) différente de la date dans la base AFOR (${da.split('-').reverse().join('/')}) : écart de ${Math.abs(j)} jour(s).</div>` : ''; }
     return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:14px;overflow:hidden;">
@@ -7903,21 +7911,21 @@ function terrOpen(id, focus){
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;display:flex;padding:14px;';
   modal.innerHTML = `<div style="background:var(--surface);border-radius:12px;width:100%;display:flex;flex-direction:column;overflow:hidden;">
     <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;">
-      <h3 style="font-family:'Syne',sans-serif;font-size:14px;margin:0;">Contrôle ${focus==='rdc'?'du RDC':focus==='pvcl'?'du PVCL':'RDC / PVCL'} · dossier ${planEsc(d.id)} · ${planEsc(nomDem)}</h3>
+      <h3 style="font-family:'Syne',sans-serif;font-size:14px;margin:0;">Contrôle ${focus==='rdc'?'du RDC':focus==='pvcl'?'du PVCL':(focus&&TERR_TYPES[focus])?'— '+TERR_TYPES[focus].titre:'RDC / PVCL'} · dossier ${planEsc(d.id)} · ${planEsc(nomDem)}</h3>
       <div style="display:flex;gap:6px;">${(typeof planGetFor==='function' && planGetFor(d))?`<button class="btn-s" onclick="terrClose();planOpen('${sid}')">Voir le plan</button>`:''}<button class="btn-s" onclick="terrClose()">✕ Fermer</button></div>
     </div>
     <div style="flex:1;display:flex;min-height:0;">
-      <div id="terr-main" style="flex:1;min-width:0;overflow:auto;padding:14px;font-size:12px;">${focus==='pvcl'?'':bloc('rdc')}${focus==='rdc'?'':bloc('pvcl')}</div>
-      ${(focus==='rdc'||focus==='pvcl')?`<div style="width:420px;max-width:42%;border-left:1px solid var(--border);overflow-y:auto;padding:14px;font-size:12px;"><div id="grp-panel"></div><details style="margin-top:16px;border-top:1px solid var(--border);padding-top:8px;"><summary style="cursor:pointer;font-weight:700;color:var(--blue);">Dossier AFOR (référence)</summary>`:`<div style="width:340px;max-width:38%;border-left:1px solid var(--border);overflow-y:auto;padding:14px;font-size:12px;">`}
+      <div id="terr-main" style="flex:1;min-width:0;overflow:auto;padding:14px;font-size:12px;">${focus?bloc(focus):bloc('rdc')+bloc('pvcl')}</div>
+      ${focus?`<div style="width:420px;max-width:42%;border-left:1px solid var(--border);overflow-y:auto;padding:14px;font-size:12px;"><div id="grp-panel"></div><details style="margin-top:16px;border-top:1px solid var(--border);padding-top:8px;"><summary style="cursor:pointer;font-weight:700;color:var(--blue);">Dossier AFOR (référence)</summary>`:`<div style="width:340px;max-width:38%;border-left:1px solid var(--border);overflow-y:auto;padding:14px;font-size:12px;">`}
         <div style="font-weight:700;color:var(--blue);margin:6px 0 4px;">Dossier AFOR (référence)</div>
         ${line('Demandeur', planEsc(nomDem||'—'))}${line('Village / SP', planEsc((d.village||'—')+' / '+(d.sp||'—')))}${line('Agent', planEsc(d.agent||'—'))}
         ${line('Statut AFOR', planEsc(d.statut_txt||'—'))}${line('Rejet / CQ', rejBadge(d))}${line('Étape', planEsc(d.etape||'—'))}${line('Date demande', d.date_DD?d.date_DD.split('-').reverse().join('/'):'—')}${line('Date RDC', d.date_RDC?d.date_RDC.split('-').reverse().join('/'):'—')}${line('Date PVCL', d.date_CL?d.date_CL.split('-').reverse().join('/'):'—')}
         ${line('Superficie déclarée', d.superficie_declaree?d.superficie_declaree+' ha':'—')}${line('Superficie GNSS', gi?gi.superficie.toFixed(2)+' ha':'—')}
         <div style="font-weight:700;color:var(--blue);margin:12px 0 4px;">Voisins déclarés (${planEsc(vois.src)})</div>
         ${vois.list.length?vois.list.map(v=>line(planEsc(v.position||'—'), '<b>'+planEsc(v.nom)+'</b>')).join(''):'<div style="color:var(--text3);">Aucun voisin enregistré.</div>'}
-      ${(focus==='rdc'||focus==='pvcl')?'</details>':''}</div></div></div>`;
+      ${focus?'</details>':''}</div></div></div>`;
   document.body.appendChild(modal);
-  if(focus==='rdc'||focus==='pvcl'){ grpInit(d,focus); grpRender(); }
+  if(focus){ grpInit(d,focus); grpRender(); }
 }
 function terrClose(){ const m=document.getElementById('terr-modal'); if(m) m.remove(); }
 async function terrSubmit(id, type){
@@ -8012,8 +8020,8 @@ function rejCorrige(id){
 // ═══ Rejets contrôleurs (CQI) : liste simple de tous les dossiers rejetés par nos contrôleurs qualité ═══
 function rejDocsOf(d){
   const c=pubCQ[d.id]||{}, t=Object.assign({}, c.terr_orig||{}, c.terr||{}), o=[];
-  if(t.rdc) o.push('RDC'); if(t.pvcl) o.push('PVCL'); if(t.plan) o.push('Plan');
-  if(!o.length){ const g=cqeGrille[d.id]; const lib={'3':'RDC','4':'PVCL','5':'Plan'}; [...new Set(((g&&g.c)||[]).map(m=>grillePieceDeMotif(m)))].forEach(pc=>{ const cat=grilleCatalogue().find(x=>x.id===pc); o.push(lib[pc]||(cat&&cat.code)||'Grille'); }); }
+  if(t.rdc) o.push('RDC'); if(t.pvcl) o.push('PVCL'); TERR_NEW.forEach(k=>{ if(t[k]) o.push(TERR_TYPES[k].label); }); if(t.plan) o.push('Plan');
+  if(!o.length){ const g=cqeGrille[d.id]; const lib={'1':'Demande','3':'RDC','4':'PVCL','5':'Plan','7':'Annonce','8':'Ouverture','9':'Clôture','10':'Constat','11':'Attestation'}; [...new Set(((g&&g.c)||[]).map(m=>grillePieceDeMotif(m)))].forEach(pc=>{ const cat=grilleCatalogue().find(x=>x.id===pc); o.push(lib[pc]||(cat&&cat.code)||'Grille'); }); }
   if(!o.length) o.push(REJ_LIB[rejOrigine(d)]||'—');
   return o.join(', ');
 }
@@ -8025,7 +8033,7 @@ function rejControlePar(d){
 }
 function rejStatutCqi(x){
   if(x.e.etat==='corrige') return {t:'Corrigé', c:'var(--accent)'};
-  const tc=terrChecks[x.d.id]||{}; const rc=['rdc','pvcl'].map(t=>tc[t]&&tc[t].recheck).filter(Boolean).sort((a,b)=>String(b.d).localeCompare(String(a.d)))[0];
+  const tc=terrChecks[x.d.id]||{}; const rc=TERR_ALL.map(t=>tc[t]&&tc[t].recheck).filter(Boolean).sort((a,b)=>String(b.d).localeCompare(String(a.d)))[0];
   if(rc){ if(rc.ko&&rc.ko.length) return {t:'Fiche renvoyée — motif(s) non corrigé(s)', c:'var(--red)'}; return {t:'Corrigé, à confirmer', c:'var(--amber-txt)'}; }
   return {t:'En attente de correction', c:'var(--red)'};
 }
@@ -8034,7 +8042,7 @@ function rejDetailOpen(id){
   const d=(dossiersAFOR||[]).find(x=>String(x.id)===String(id)); if(!d) return;
   const esc=planEsc, c=pubCQ[id]||{}, e=rejEtat(d), fd=v=>v?esc(String(v).split('-').reverse().join('/')):'—';
   const tc=terrChecks[id]||{}, g=cqeGrille[id]||{}, pc=planChecks[id];
-  const docs=[['RDC',tc.rdc,'3'],['PVCL',tc.pvcl,'4'],['Plan',pc,'5']];
+  const docs=[['Demande',tc.dem,'1'],['RDC',tc.rdc,'3'],['PVCL',tc.pvcl,'4'],['Plan',pc,'5'],['Annonce de publicité',tc.afp,'7'],['Ouverture de publicité',tc.ouv,'8'],['Clôture de publicité',tc.clo,'9'],['Constat d\'existence paisible et continu',tc.con,'10'],['Attestation de validation',tc.att,'11']];
   const blocs=docs.map(([lab,k,piece])=>{
     if(!k || (k.statut!=='incoherent' && !(k.recheck))) return '';
     const motifs=((g.c||[]).filter(m=>grillePieceDeMotif(m)===piece)).map(m=>'• '+esc(grilleMotifTexte(m))).join('<br>') || esc(k.commentaire||'');
@@ -8065,7 +8073,7 @@ function rejDetailOpen(id){
 // Motif actuel d'un rejet CQI : lu dans les contrôles et la grille en cours (jamais dans un texte cumulé)
 function rejMotifCourant(d){
   const id=d.id, g=cqeGrille[id]||{}, tc=terrChecks[id]||{}, pc=planChecks[id], parts=[];
-  [['RDC',tc.rdc,'3'],['PVCL',tc.pvcl,'4'],['Plan',pc,'5']].forEach(([lab,k,piece])=>{
+  [['Demande',tc.dem,'1'],['RDC',tc.rdc,'3'],['PVCL',tc.pvcl,'4'],['Plan',pc,'5'],['Annonce',tc.afp,'7'],['Ouverture',tc.ouv,'8'],['Clôture',tc.clo,'9'],['Constat',tc.con,'10'],['Attestation',tc.att,'11']].forEach(([lab,k,piece])=>{
     if(!k || k.statut!=='incoherent') return;
     const ids=(g.c||[]).filter(m=>grillePieceDeMotif(m)===piece);
     const txt=ids.length?ids.map(grilleMotifTexte).join(' | '):(k.commentaire||'');
@@ -8326,10 +8334,11 @@ function rejOrigine(d){
   const afor = /REJET|REFUS/.test(String(d.statut_txt||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,''));
   if(!c || (!c.rejete && !c.corrige)) return afor ? 'afor' : null;
   if(c.source!=='app') return 'afor';
-  const t = Object.assign({}, c.terr_orig||{}, c.terr||{}), a=!!t.rdc, b=!!t.pvcl;
+  const t = Object.assign({}, c.terr_orig||{}, c.terr||{}), a=!!t.rdc, b=!!t.pvcl, nw=TERR_NEW.filter(k=>t[k]);
+  if(nw.length) return (a||b||nw.length>1) ? 'multi' : nw[0];
   return a&&b ? 'rdc+pvcl' : a ? 'rdc' : b ? 'pvcl' : c.grille ? 'grille' : 'plan';
 }
-const REJ_LIB = {afor:'AFOR (fichier)', grille:'CQ — grille', plan:'CQ — plan', rdc:'CQ — RDC', pvcl:'CQ — PVCL', 'rdc+pvcl':'CQ — RDC + PVCL'};
+const REJ_LIB = {afor:'AFOR (fichier)', grille:'CQ — grille', plan:'CQ — plan', rdc:'CQ — RDC', pvcl:'CQ — PVCL', 'rdc+pvcl':'CQ — RDC + PVCL', dem:'CQ — Demande', afp:'CQ — Annonce', ouv:'CQ — Ouverture', clo:'CQ — Clôture', con:'CQ — Constat', att:'CQ — Attestation', multi:'CQ — plusieurs documents'};
 function rejEtat(d){
   const c = pubCQ && pubCQ[d.id], o = rejOrigine(d);
   let etat = 'ok';
@@ -8348,7 +8357,7 @@ function rejBadge(d){
 }
 function rejCompteurs(ds){
   const r = {total:0, afor:0, plan:0, grille:0, rdc:0, pvcl:0, corriges:0};
-  (ds||[]).forEach(d=>{ const e=rejEtat(d); if(e.etat==='rejete'){ r.total++; const o=e.origine; if(o==='afor') r.afor++; else if(o==='plan') r.plan++; else if(o==='grille') r.grille++; else { if(/rdc/.test(o)) r.rdc++; if(/pvcl/.test(o)) r.pvcl++; } } else if(e.etat==='corrige') r.corriges++; });
+  (ds||[]).forEach(d=>{ const e=rejEtat(d); if(e.etat==='rejete'){ r.total++; const o=e.origine; if(o==='afor') r.afor++; else if(o==='plan') r.plan++; else if(o==='grille') r.grille++; else { if(/rdc/.test(o)) r.rdc++; if(/pvcl/.test(o)) r.pvcl++; if(/^(dem|afp|ouv|clo|con|att|multi)$/.test(o)) r.autres=(r.autres||0)+1; } } else if(e.etat==='corrige') r.corriges++; });
   return r;
 }
 // Un contrôle tablette « incohérent » crée (ou met à jour) un rejet CQ ; « conforme » clôt le rejet issu de ce contrôle.
@@ -8377,7 +8386,7 @@ function terrSyncRejets(){
   let n=0;
   Object.keys(planChecks||{}).forEach(id=>{ const k=planChecks[id]; if(!k||k.statut!=='incoherent') return; const c=pubCQ[id]; if(c && (c.rejete||c.corrige)){ if(c.rejete && c.source==='app'){ c.terr=c.terr||{}; if(!c.terr.plan){ c.terr.plan={d:k.date,by:k.par,motif:k.commentaire||''}; n++; } } return; } if(terrApplyRejet(id,'plan',k)) n++; });
   Object.keys(terrChecks||{}).forEach(id=>{
-    ['rdc','pvcl'].forEach(type=>{
+    TERR_ALL.forEach(type=>{
       const k = terrChecks[id] && terrChecks[id][type];
       if(!k || k.statut!=='incoherent') return;
       const c = pubCQ[id];
@@ -8391,6 +8400,7 @@ function terrSyncRejets(){
 // chaque motif de la grille pour cette pièce est classé ok (corrigé) / ko (toujours présent) / confirm (non mesurable : à confirmer par le contrôleur).
 function rejMotifAuto(mid, res, rec, type, d){
   const txt = grilleMotifTexte(mid)||'';
+  if(type!=='rdc' && type!=='pvcl') return 'confirm';   // autres documents : pas encore de mesure automatique, le contrôleur confirme
   if(/illisible/i.test(txt)) return 'confirm';
   const bad = re=>(res||[]).some(r=>(r.s==='err'||r.s==='warn') && re.test(r.t));
   if(/signature/i.test(txt)) return bad(/signature.*manquante/i) ? 'ko' : 'ok';
@@ -8400,7 +8410,7 @@ function rejMotifAuto(mid, res, rec, type, d){
 function rejRecheck(d, type, rec, k, sig){
   const id=d.id, piece=GRP_PIECE[type], g=cqeGrille[id];
   const ids=((g&&g.c)||[]).filter(m=>grillePieceDeMotif(m)===piece); if(!ids.length) return false;
-  const res = type==='rdc' ? terrRdcControls(d,rec) : terrPvclControls(d,rec);
+  const res = type==='rdc' ? terrRdcControls(d,rec) : type==='pvcl' ? terrPvclControls(d,rec) : [];
   const st={}; ids.forEach(m=>{ st[m]=rejMotifAuto(m,res,rec,type,d); });
   const ok=ids.filter(m=>st[m]==='ok'), rest=ids.filter(m=>st[m]!=='ok'), ko=ids.filter(m=>st[m]==='ko');
   const t=cqeToday(), hist=((k.hist||[]).concat([{d:t,by:'import tablette',s:'refait'}])).slice(-10);
@@ -8428,7 +8438,7 @@ function terrDetectRefaits(){
   const upd = {}; let nb = 0;
   (dossiersAFOR||[]).forEach(d=>{
     const ck = terrChecks[d.id]; if(!ck) return;
-    ['rdc','pvcl'].forEach(type=>{
+    TERR_ALL.forEach(type=>{
       const k = ck[type]; if(!k) return;
       const rec = terrRec(d,type); if(!rec) return;
       const sig = terrSig(rec); if(!sig) return;
@@ -8563,7 +8573,7 @@ function terrAnalyse(stageKey){
 }
 function terrStructureTexte(){
   const out = ['STRUCTURE DES FICHES TABLETTE — '+new Date().toLocaleDateString('fr-FR')];
-  [['minutes','RDC (02_minutes)'],['observations','PVCL (03_observations)']].forEach(([k,lab])=>{
+  [['minutes','RDC (02_minutes)'],['observations','PVCL (03_observations)'],['requests','DEMANDE (01_requests)'],['openAdvertising','OUVERTURE DE PUBLICITÉ (05_open_advertising)'],['closeAdvertising','CLÔTURE DE PUBLICITÉ (06_close_advertising)'],['existence','CONSTAT D\'EXISTENCE PAISIBLE ET CONTINU (07_existence)'],['validation','ATTESTATION DE VALIDATION (08_validation)']].forEach(([k,lab])=>{
     const a = terrAnalyse(k);
     out.push('', '=== '+lab+' : '+a.n+' fiche(s) ===');
     if(!a.n){ out.push('(aucune fiche importée)'); return; }
@@ -9231,7 +9241,7 @@ async function cqeEtatLoad(){
 function cqeCtlDerived(d){
   const e=cqeEtat[d.id];
   if(e){
-    const tc=terrChecks[d.id]||{}, stamps=[chkStamp(tc.rdc), chkStamp(tc.pvcl), chkStamp(planChecks[d.id])];
+    const tc=terrChecks[d.id]||{}, stamps=TERR_ALL.map(t=>chkStamp(tc[t])).concat([chkStamp(planChecks[d.id])]);
     if(stamps.every(x=>String(e._u||'')>=x)) return {statut:e.s, par:e.par||'', date:e.d||''};   // aucun contrôle plus récent que l'état partagé
   }
   return cqeCtlCalc(d);
@@ -9241,7 +9251,7 @@ function cqeEtatBackfill(){
   let n=0;
   (dossiersAFOR||[]).forEach(d=>{
     if(cqeEtat[d.id]) return;
-    const hasCheck = (terrChecks[d.id]&&(terrChecks[d.id].rdc||terrChecks[d.id].pvcl)) || planChecks[d.id] || cqeCtl[d.id];
+    const hasCheck = (terrChecks[d.id]&&TERR_ALL.some(t=>terrChecks[d.id][t])) || planChecks[d.id] || cqeCtl[d.id];
     if(!hasCheck) return;
     const c=cqeCtlCalc(d); if(c.statut==='a_controler') return;
     cqeEtatSet(d.id, c.statut, c.par, c.date); n++;
@@ -9253,7 +9263,7 @@ function cqeCtlStatutOf(id){ const d=(dossiersAFOR||[]).find(x=>String(x.id)===S
 // Rejeté : au moins une pièce incohérente. Conforme : toutes les pièces existantes sont conformes. Sinon : à contrôler.
 function cqeCtlCalc(d){
   const id=d.id, tc=terrChecks[id]||{}, items=[];
-  ['rdc','pvcl'].forEach(t=>{ if(terrRec(d,t)){ const c=tc[t]; items.push(c&&(c.statut==='conforme'||c.statut==='incoherent')?c:null); } });
+  TERR_ALL.forEach(t=>{ if(terrRec(d,t)){ const c=tc[t]; items.push(c&&(c.statut==='conforme'||c.statut==='incoherent')?c:null); } });
   const pe=(typeof planGetFor==='function')?planGetFor(d):null; if(pe){ const c=planChecks[id], st=planStatusOf(pe,id); items.push(c&&(st==='conforme'||st==='incoherent')?c:null); }
   const last = arr=>arr.filter(Boolean).sort((a,b)=>chkStamp(a)<chkStamp(b)?1:-1)[0]||null;
   const ko = last(items.filter(x=>x&&x.statut==='incoherent'));
@@ -9278,6 +9288,10 @@ function cqeCtlBadge(d, kind){
   const x=cqeCtlState(d,kind);
   return x.k==='ok'?'<span style="color:#16a34a;font-weight:700;">✓ Conforme</span>':x.k==='ko'?'<span style="color:#dc2626;font-weight:700;">✗ Incohérent</span>':x.k==='redo'?'<span style="color:#d97706;font-weight:700;">↻ À re-vérifier</span>':x.k==='todo'?'<span style="color:#d97706;">À contrôler</span>':'<span style="color:var(--text3);">— pas de fiche</span>';
 }
+function cqeCtlBadgeS(d, kind){
+  const x=cqeCtlState(d,kind);
+  return x.k==='ok'?'<span style="color:#16a34a;font-weight:700;">✓</span>':x.k==='ko'?'<span style="color:#dc2626;font-weight:700;">✗</span>':x.k==='redo'?'<span style="color:#d97706;font-weight:700;">↻</span>':x.k==='todo'?'<span style="color:#d97706;">•</span>':'<span style="color:var(--text3);">—</span>';
+}
 function cqeCtlChoose(id, kind){
   cqeCtlClose();
   if(kind==='plan') planOpen(id); else terrOpen(id, kind);
@@ -9286,7 +9300,7 @@ function cqeCtlChoose(id, kind){
 function cqeCtlMotif(d){
   const id=d.id, parts=[], dates=[];
   const add=(lab,c)=>{ if(c && c.statut==='incoherent'){ parts.push(lab+' : '+(c.commentaire||'(sans précision)')); if(c.date) dates.push(c.date); } };
-  const tc=terrChecks[id]||{}; add('RDC',tc.rdc); add('PVCL',tc.pvcl); add('Plan',planChecks[id]);
+  const tc=terrChecks[id]||{}; add('RDC',tc.rdc); add('PVCL',tc.pvcl); TERR_NEW.forEach(t=>add(TERR_TYPES[t].label,tc[t])); add('Plan',planChecks[id]);
   const k=cqeCtl[id];
   if(!parts.length && k && k.statut==='rejete'){ parts.push((k.motif||'')+(k.comm?' — '+k.comm:'')); if(k.date) dates.push(k.date); }
   const c=pubCQ[id];
@@ -9304,7 +9318,7 @@ function cqeRenderControle(){
   const nOk=[...der.values()].filter(x=>x.statut==='conforme').length, nRej=[...der.values()].filter(x=>x.statut==='rejete').length;
   const ctlIds={length:nOk+nRej};
   const mine = new Set();
-  afor.forEach(d=>{ ['rdc','pvcl'].forEach(ty=>{ const c=(terrChecks[d.id]||{})[ty]; if(c&&c.par===me&&c.date===t) mine.add(d.id+'|'+ty); }); const pc=planChecks[d.id]; if(pc&&pc.par===me&&pc.date===t) mine.add(d.id+'|plan'); });
+  afor.forEach(d=>{ TERR_ALL.forEach(ty=>{ const c=(terrChecks[d.id]||{})[ty]; if(c&&c.par===me&&c.date===t) mine.add(d.id+'|'+ty); }); const pc=planChecks[d.id]; if(pc&&pc.par===me&&pc.date===t) mine.add(d.id+'|plan'); });
   cqeBuildActions().filter(a=>ids.has(String(a.id))&&a.by===me&&a.d===t&&(a.t==='dos_ok'||a.t==='dos_rej')).forEach(a=>mine.add(a.id+'|global'));
   Object.keys(cqeEtat||{}).forEach(id=>{ const e=cqeEtat[id]; if(e&&e.par===me&&e.d===t&&ids.has(String(id))) mine.add(id+'|global'); });
   const mineIds=new Set([...mine].map(x=>x.split('|')[0])); const myDay=[...mineIds].filter(id=>ids.has(String(id))).length;
@@ -9324,7 +9338,7 @@ function cqeRenderControle(){
   const rows=list.slice(f.page*PG,f.page*PG+PG).map(d=>{
     const k0=cqeCtlDerived(d), k=k0.statut==='a_controler'?null:k0; const hasPlan=!!(typeof planGetFor==='function'&&planGetFor(d));
     const st=k?(k.statut==='conforme'?'<span style="color:#16a34a;font-weight:700;">Conforme</span>':'<span style="color:#dc2626;font-weight:700;">Rejeté</span>'):'<span style="color:#d97706;">À contrôler</span>';
-    return `<tr style="cursor:pointer;" onclick="cqeCtlOpen('${qid(d.id)}')"><td style="font-family:'DM Mono',monospace;font-size:11px;">${esc(d.id)}${(()=>{ const lk=lockOther(d.id); return lk?` <span title="En cours de traitement par ${esc(lk.by)}" style="font-family:inherit;color:#b45309;">🔒 ${esc(lk.by)}</span>`:''; })()}</td><td>${esc((d.prenom||'')+' '+(d.nom_demandeur||''))}</td><td>${esc(d.village||'')}</td><td>${esc(d.agent||'—')}</td><td>${st}</td><td>${k?esc(k.par||''):''}</td>${(()=>{ if(!k||k.statut!=='rejete') return '<td></td>'; const mm=cqeCtlMotif(d); return `<td style="white-space:nowrap;">${esc(mm.date?mm.date.split('-').reverse().join('/'):'')}</td>`; })()}<td>${cqeCtlBadge(d,'rdc')}</td><td>${cqeCtlBadge(d,'pvcl')}</td><td>${cqeCtlBadge(d,'plan')}</td>${(()=>{ if(!k||k.statut!=='rejete') return '<td></td>'; const mm=cqeCtlMotif(d); return `<td style="max-width:340px;font-size:11px;white-space:pre-line;">${esc(mm.motif)}</td>`; })()}</tr>`;}).join('')||'<tr><td colspan="11" style="text-align:center;color:#888;padding:14px;">Aucun dossier pour ces filtres.</td></tr>';
+    return `<tr style="cursor:pointer;" onclick="cqeCtlOpen('${qid(d.id)}')"><td style="font-family:'DM Mono',monospace;font-size:11px;">${esc(d.id)}${(()=>{ const lk=lockOther(d.id); return lk?` <span title="En cours de traitement par ${esc(lk.by)}" style="font-family:inherit;color:#b45309;">🔒 ${esc(lk.by)}</span>`:''; })()}</td><td>${esc((d.prenom||'')+' '+(d.nom_demandeur||''))}</td><td>${esc(d.village||'')}</td><td>${esc(d.agent||'—')}</td><td>${st}</td><td>${k?esc(k.par||''):''}</td>${(()=>{ if(!k||k.statut!=='rejete') return '<td></td>'; const mm=cqeCtlMotif(d); return `<td style="white-space:nowrap;">${esc(mm.date?mm.date.split('-').reverse().join('/'):'')}</td>`; })()}<td>${cqeCtlBadge(d,'rdc')}</td><td>${cqeCtlBadge(d,'pvcl')}</td><td>${cqeCtlBadge(d,'plan')}</td>${TERR_NEW.map(t=>`<td title="${esc(TERR_TYPES[t].titre)}" style="text-align:center;">${cqeCtlBadgeS(d,t)}</td>`).join('')}${(()=>{ if(!k||k.statut!=='rejete') return '<td></td>'; const mm=cqeCtlMotif(d); return `<td style="max-width:340px;font-size:11px;white-space:pre-line;">${esc(mm.motif)}</td>`; })()}</tr>`;}).join('')||'<tr><td colspan="17" style="text-align:center;color:#888;padding:14px;">Aucun dossier pour ces filtres.</td></tr>';
   const sel=(k,opts)=>`<select onchange="cqeCtlSet('${k}',this.value)" style="border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;">${opts.map(o=>`<option value="${esc(o[0])}" ${f[k]===o[0]?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
   el.innerHTML=`<div class="tw" style="overflow:hidden;">
    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -9332,7 +9346,7 @@ function cqeRenderControle(){
      ${sel('statut',[['a_controler','À contrôler'],['conforme','Conformes'],['rejete','Rejetés'],['mes','Mes contrôles aujourd\'hui'],['','Tous']])}
      ${sel('dept',[['','Tous départements'],...depts.map(x=>[x,x])])}
    </div>
-   <div style="overflow:auto;"><table><thead><tr><th>N° dossier</th><th>Demandeur</th><th>Village</th><th>Agent</th><th>Statut</th><th>Contrôlé par</th><th>Rejeté le</th><th>RDC</th><th>PVCL</th><th>Plan</th><th>Motif du rejet</th></tr></thead><tbody>${rows}</tbody></table></div>
+   <div style="overflow:auto;"><table><thead><tr><th>N° dossier</th><th>Demandeur</th><th>Village</th><th>Agent</th><th>Statut</th><th>Contrôlé par</th><th>Rejeté le</th><th>RDC</th><th>PVCL</th><th>Plan</th>${TERR_NEW.map(t=>`<th title="${esc(TERR_TYPES[t].titre)}">${TERR_TYPES[t].short}</th>`).join('')}<th>Motif du rejet</th></tr></thead><tbody>${rows}</tbody></table></div>
    <div style="padding:10px 16px;display:flex;gap:8px;align-items:center;font-size:12px;border-top:1px solid var(--border);">
      <button class="btn-s" ${f.page<=0?'disabled':''} onclick="cqeCtlSet('page',${f.page-1})">←</button> Page ${f.page+1} / ${pages} · ${list.length.toLocaleString('fr-FR')} dossier(s)
      <button class="btn-s" ${f.page>=pages-1?'disabled':''} onclick="cqeCtlSet('page',${f.page+1})">→</button></div></div>`;
@@ -9351,7 +9365,7 @@ function cqeCtlOpen(id){
     <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;"><h3 style="font-family:'Syne',sans-serif;font-size:15px;margin:0;">Dossier ${esc(id)}</h3><button class="btn-s" onclick="cqeCtlClose()">✕ Fermer</button></div>
     <div style="padding:16px 20px;overflow-y:auto;flex:1;">
       <div style="padding:12px 0 4px;font-weight:700;color:var(--blue);font-size:12px;">Que voulez-vous contrôler ?</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-bottom:10px;">${[['rdc','RDC','Recensement des droits coutumiers'],['pvcl','PVCL','Constat de limites'],['plan','Plan','Plan parcellaire']].map(([kk,lab,sub])=>{ const on=cqeCtlState(d,kk).k!=='none'; return `<button ${on?`onclick="cqeCtlChoose('${qid}','${kk}')"`:'disabled'} style="text-align:center;padding:10px 6px;border:1px solid var(--border-med);border-radius:8px;background:${on?'var(--surface)':'var(--surface2)'};cursor:${on?'pointer':'not-allowed'};font-family:inherit;"><div style="font-weight:700;font-size:13px;">${lab}</div><div style="font-size:9px;color:var(--text3);margin:2px 0 0;">${sub}</div></button>`; }).join('')}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-bottom:10px;">${[['dem','Demande','Demande d\'enquête'],['rdc','RDC','Recensement des droits coutumiers'],['pvcl','PVCL','Constat de limites'],['plan','Plan','Plan parcellaire'],['afp','Annonce','Annonce de publicité'],['ouv','Ouverture','PV d\'ouverture de publicité'],['clo','Clôture','PV de clôture de publicité'],['con','Constat','Existence paisible et continue'],['att','Attestation','Attestation de validation']].map(([kk,lab,sub])=>{ const on=cqeCtlState(d,kk).k!=='none'; return `<button ${on?`onclick="cqeCtlChoose('${qid}','${kk}')"`:'disabled'} style="text-align:center;padding:10px 6px;border:1px solid var(--border-med);border-radius:8px;background:${on?'var(--surface)':'var(--surface2)'};cursor:${on?'pointer':'not-allowed'};font-family:inherit;"><div style="font-weight:700;font-size:13px;">${lab}</div><div style="font-size:9px;color:var(--text3);margin:2px 0 0;">${sub}</div>${on?`<div style="font-size:10px;margin-top:4px;">${cqeCtlBadge(d,kk)}</div>`:''}</button>`; }).join('')}</div>
     </div></div>`;
   document.body.appendChild(m);
 }
@@ -9755,7 +9769,7 @@ function cqeBuildActions(){
   Object.keys(planChecks||{}).forEach(id=>{ const k=planChecks[id]; if(!k) return;
     if(k.date) add(id,k.date,k.par||'(inconnu)',k.statut==='conforme'?'ok':'inc');
     (k.hist||[]).forEach(h=>{ if(h&&h.d) add(id,h.d,h.by||'(inconnu)',h.s==='conforme'?'ok':'inc'); }); });
-  Object.keys(terrChecks||{}).forEach(id=>{ ['rdc','pvcl'].forEach(ty=>{ const k=terrChecks[id]&&terrChecks[id][ty]; if(!k) return;
+  Object.keys(terrChecks||{}).forEach(id=>{ TERR_ALL.forEach(ty=>{ const k=terrChecks[id]&&terrChecks[id][ty]; if(!k) return;
     if(k.date) add(id+'#'+ty,k.date,k.par||'(inconnu)','ter_'+(k.statut==='conforme'?'ok':'inc'));
     (k.hist||[]).forEach(h=>{ if(h&&h.d) add(id+'#'+ty,h.d,h.by||'(inconnu)','ter_'+(h.s==='conforme'?'ok':'inc')); }); }); });
   Object.keys(cqeCtl||{}).forEach(id=>{ const k=cqeCtl[id]; if(!k) return;
