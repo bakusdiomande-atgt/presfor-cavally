@@ -528,7 +528,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <div style="margin-top:auto;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,0.12);">
       <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;width:100%;margin-bottom:10px;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">⏻ Se déconnecter</button>
       <div class="rail-zone" id="tb-zone-label" style="font-size:10.5px;color:rgba(255,255,255,0.7);line-height:1.3;">Cavally + Worodougou</div>
-      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-10-cm</div>
+      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-10-cq</div>
     </div>
   </nav>
 
@@ -1123,6 +1123,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
           <select id="ind-ag-f-fonction" onchange="agRenderList('ind-ag')">
             <option value="">Toutes fonctions</option>
             <option>Commissaire enquêteur</option>
+              <option>Contrôleur qualité</option>
             <option>Chef d'équipe départemental</option>
             <option>Opérateur GNSS</option>
             <option>RR ISF</option>
@@ -1148,6 +1149,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
             <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:3px;">Fonction</label>
             <select id="ag-new-fonction" style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;">
               <option>Commissaire enquêteur</option>
+              <option>Contrôleur qualité</option>
               <option>Chef d'équipe départemental</option>
               <option>Opérateur GNSS</option>
               <option>RR ISF</option>
@@ -1253,6 +1255,28 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
 <div id="module-rapport" class="module" style="display:none;flex:1;min-width:0;">
   <div style="flex:1;overflow-y:auto;padding:20px;">
     <div class="page-head"><div><h2>Rapports d'activités</h2><p>Rapport généré automatiquement à partir des données AFOR, GNSS, tablettes et CQE</p></div></div>
+    <div class="tw" id="rz-card" style="padding:16px;margin-bottom:16px;border-left:3px solid var(--accent);">
+      <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:2px;">Rapport hebdomadaire de zone (modèle PRESFOR)</div>
+      <p style="font-size:11px;color:var(--text2);margin:0 0 12px;">Page de garde, sommaire, synthèse de la semaine, levés, enquêtes, certification foncière et contrôle qualité sont calculés automatiquement. Les parties ISF, délimitation, plannings et divers se collent depuis Excel (ou se complètent dans Word). Export Word modifiable.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:end;">
+        <label style="font-size:11px;color:var(--text2);">Zone
+          <select id="rz-zone" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-top:3px;"><option value="cavally">Cavally</option><option value="worodougou">Worodougou</option></select></label>
+        <label style="font-size:11px;color:var(--text2);">Du (lundi)
+          <input id="rz-du" type="date" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-top:3px;"></label>
+        <label style="font-size:11px;color:var(--text2);">Au (samedi)
+          <input id="rz-au" type="date" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-top:3px;"></label>
+        <label style="font-size:11px;color:var(--text2);">Présenté par (Coordonnateur Régional)
+          <input id="rz-par" type="text" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-top:3px;"></label>
+        <label style="font-size:11px;color:var(--text2);">Date du rapport
+          <input id="rz-date" type="text" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-top:3px;"></label>
+      </div>
+      <details style="margin-top:12px;"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--accent);">Parties à compléter (ISF, délimitation, plannings, divers)</summary><div id="rz-manuels" style="margin-top:10px;"></div></details>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+        <button class="btn-p" onclick="rzApercu()">Aperçu du rapport</button>
+        <button class="btn-s" id="rz-btn-word" onclick="rzWord(this)" style="display:none;">⬇ Télécharger en Word (.docx)</button>
+      </div>
+    </div>
+    <div id="rz-apercu" class="tw" style="display:none;padding:0;overflow:hidden;background:#fff;margin-bottom:16px;"><div id="rz-contenu"></div></div>
     <div class="tw" style="padding:16px;margin-bottom:16px;border-left:3px solid var(--amber);">
       <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:2px;">Analyse de rattrapage</div>
       <p style="font-size:11px;color:var(--text2);margin:0 0 12px;">Où sont bloqués les dossiers, villages prioritaires, fiabilité des données et cadence nécessaire pour tenir l'objectif. Suit la zone choisie en haut de l'écran.</p>
@@ -1746,7 +1770,7 @@ function switchModule(id){
   // Rafraîchir le module activé
   if(id==='dossier'){try{dosShowPanel('list');dosRenderAll();}catch(e){console.error('dos render:',e);}}
   if(id==='accueil'){try{dashRenderAll();}catch(e){console.error('dash render:',e);}}
-  if(id==='rapport'){try{rptInit();}catch(e){console.error('rapport render:',e);}}
+  if(id==='rapport'){try{rptInit();}catch(e){console.error('rapport render:',e);} try{rzInit();}catch(e){console.error('rz init:',e);}}
   if(id==='pub'){try{pubInit();}catch(e){console.error('pub render:',e);}}
   if(id==='activites'){try{actRenderNav();actRenderAll();}catch(e){console.error('activites render:',e);}}
   if(id==='indicateurs'){try{indRenderNav();indRenderAll();}catch(e){console.error('indicateurs render:',e);}}
@@ -2752,7 +2776,25 @@ const GNSS_AGENT_KEYS = {
   'Dje Christian Dominique Konan': ['DJE','CHRISTIAN'],
   'Fakayode Abdul':                ['FAKAYODE'],
   'Kouassi Kouame Gislain':        ['KOUASSI','GISLAIN'],
-  'Chigbeu Akoue Florent':         ['CHIGBEU','FLORENT'],
+  'Chigbeu Akoue Florent':         ['CHIGBEU','FLORENT'],  "Kouadio Kouassi Ismael Landry": ["KOUADIO", "ISMAEL"],
+  "Sewonin Eric": ["SEWONIN", "ERIC"],
+  "Kouassi Konan Salomon": ["KOUASSI", "SALOMON"],
+  "Kouame Kouassi Bernard": ["KOUAME", "BERNARD"],
+  "Kouadio Amoin Marina": ["KOUADIO", "MARINA"],
+  "Ouattara Affissatou": ["OUATTARA", "AFFISSATOU"],
+  "Yeo Tenignigui Djeneba": ["YEO", "TENIGNIGUI"],
+  "Kouame Awa Ouattara": ["KOUAME", "AWA"],
+  "Yobo Beranger": ["YOBO", "BERANGER"],
+  "Kouabenan Kouame Emmanuel": ["KOUABENAN", "EMMANUEL"],
+  "Coulibaly Yaya": ["COULIBALY", "YAYA"],
+  "Konate Yassoungo": ["KONATE", "YASSOUNGO"],
+  "Gnakpa Israel Prince Djibi": ["GNAKPA", "ISRAEL"],
+  "Kouame Kouassi Anderson": ["KOUAME", "ANDERSON"],
+  "Pale Alex": ["PALE", "ALEX"],
+  "Momo Yssouf": ["MOMO"],
+  "Sekongo Seriba Dokporo": ["SEKONGO", "SERIBA"],
+  "Ebo Agnui Bediebegian Nathan": ["EBO", "AGNUI"],
+  "N'Guessan Lorougnon Ciruis": ["GUESSAN", "LOROUGNON"],
 };
 
 function gnssStatsForAgent(nomAgent){
@@ -2965,6 +3007,109 @@ function agentsPersist(){
   agentsSaveToFirebase().catch(e=>{ console.warn('agents Firebase save:', e.message); updateSyncIndicator('error'); }).finally(syncPendingEnd);
 }
 
+
+// ── Mise à jour du personnel — fichier « Liste des CE, CQI et opérateurs GNSS — octobre 2026 » (76 agents) ──
+// Fusion (sans doublon) dans AGENTS_FULL : un agent déjà présent garde son nom (rattachement des dossiers
+// inchangé) mais reçoit la zone, le téléphone, la date de début et, si fin de contrat, sa date de départ.
+// Les agents absents du fichier ne sont pas touchés. Appliquée une seule fois (repère maj:'2026-10' conservé
+// avec la liste, donc synchronisé via Firebase) ; elle ne réécrase pas ensuite les modifications manuelles.
+const AGENTS_MAJ_2610 = [
+  {nom:"Bakayoko Adama", tel:'0779210922', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2025-08-20', fin:null},
+  {nom:"Bio Michel Franck Olivier", tel:'0788089259', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2025-08-20', fin:null},
+  {nom:"Dago Guy Melaine", tel:'0707970403', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2025-06-16', fin:null},
+  {nom:"Diby Arnaud", tel:'0758739395', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2025-06-16', fin:null},
+  {nom:"Djahi Gapea", tel:'0749478688', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2025-06-16', fin:null},
+  {nom:"Kouadio Ahou Estelle", tel:'0707356623', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2025-08-20', fin:null},
+  {nom:"Kouassi Kobina Philippe", tel:'0140532021', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2025-08-20', fin:null},
+  {nom:"N'Guessan Armand", tel:'0708319517', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2025-06-16', fin:null},
+  {nom:"Assi Beda Jean Frejus", tel:'0768815952', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2026-07-02', fin:null},
+  {nom:"Bleu Deaouhande Wilfried", tel:'0709871683', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2026-06-29', fin:null},
+  {nom:"Ettien Aimee Sandrine", tel:'0788625302', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2026-06-29', fin:null},
+  {nom:"Gba Gbokui Rodrigue Stanislas", tel:'0749943139', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2026-07-06', fin:null, ancien:"Gbai Gbai Gbokui Rodrigue Stanislas"},
+  {nom:"Grah Legnond Edgard", tel:'0767287311', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2026-06-29', fin:null},
+  {nom:"Gueu Minwodo Siril", tel:'0545158422', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2026-06-29', fin:null},
+  {nom:"N'Goran Gobi", tel:'0768796150', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2026-07-20', fin:null, ancien:"N'Goran Kouassi Gobi"},
+  {nom:"Traore Rokia", tel:'0566098924', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2026-07-20', fin:null},
+  {nom:"Dagnogo Yessoungo", tel:'0596413404', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2026-08-25', fin:null},
+  {nom:"Dello Djemanoua Irina", tel:'0769928131', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2026-08-28', fin:null},
+  {nom:"Fieni Kouame Betri", tel:'0101631234', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2026-08-25', fin:null},
+  {nom:"Gueu Melaine Zondie", tel:'0788862911', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2026-08-25', fin:null},
+  {nom:"Kouame Pri Affounou Aristide", tel:'0151512300', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2026-08-25', fin:null},
+  {nom:"Ebo Agnui Bediebegian Nathan", tel:'0712656420', fonction:'Opérateur GNSS', zone:'cavally', debut:'2026-09-24', fin:null},
+  {nom:"Konan Alex", tel:'0707912328', fonction:'Opérateur GNSS', zone:'cavally', debut:'2025-08-01', fin:null},
+  {nom:"Konate Yassoungo", tel:'0504896147', fonction:'Opérateur GNSS', zone:'cavally', debut:'2026-03-02', fin:null},
+  {nom:"Kouadio Ezeckiel", tel:'0787288228', fonction:'Opérateur GNSS', zone:'cavally', debut:'2025-09-01', fin:null},
+  {nom:"Kouame Kouassi Anderson", tel:'0170224910', fonction:'Opérateur GNSS', zone:'cavally', debut:'2026-07-20', fin:null},
+  {nom:"Nguessan Lorougnon Ciruis", tel:'0789309525', fonction:'Opérateur GNSS', zone:'cavally', debut:'2026-10-01', fin:null},
+  {nom:"Pale Alex", tel:'0704430390', fonction:'Opérateur GNSS', zone:'cavally', debut:'2026-07-20', fin:null},
+  {nom:"Barima Kouakou Augustin", tel:'0709585468', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2025-06-23', fin:null},
+  {nom:"Coulibaly Nangalourou", tel:'0769818138', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2025-06-23', fin:null},
+  {nom:"Gboko Paulin", tel:'0758523535', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2025-08-01', fin:null, ancien:"Gboko Kouakou Paulin"},
+  {nom:"Kangah Richmonde Alosia", tel:'0749017773', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2025-07-01', fin:null},
+  {nom:"Niangoran Brice Landry Bakou", tel:'0707183831', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2025-06-23', fin:null},
+  {nom:"Opoly Kouo Joseph Josue", tel:'0747465090', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2025-07-01', fin:null},
+  {nom:"Sanogo Djenebou", tel:'0759072883', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2025-08-20', fin:null},
+  {nom:"Seka Apie Larissa", tel:'0708706827', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2025-07-01', fin:null},
+  {nom:"Yao Aya Nadia Florentine", tel:'0779352924', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2025-08-20', fin:null},
+  {nom:"Zamble Lou Balelefai Lois", tel:'0708069247', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2025-08-01', fin:null},
+  {nom:"Pale Sansan", tel:'0700754774', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2026-08-25', fin:null},
+  {nom:"Traore Hamed", tel:'0505185689', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2026-08-25', fin:null},
+  {nom:"Yao Assi Celaire", tel:'0718517430', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2026-08-25', fin:null},
+  {nom:"Yeo Noubontene Adama", tel:'0585531611', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2026-08-25', fin:null},
+  {nom:"Yohan Nel Wilfried", tel:'0778149118', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2026-08-25', fin:null},
+  {nom:"Coulibaly Yaya", tel:'0787406664', fonction:'Opérateur GNSS', zone:'worodougou', debut:'2026-05-18', fin:null},
+  {nom:"Gnakpa Israel Prince Djibi", tel:'0566098924', fonction:'Opérateur GNSS', zone:'worodougou', debut:'2026-07-20', fin:null},
+  {nom:"Kouadio Kouassi Ismael Landry", tel:'0759927514', fonction:'Opérateur GNSS', zone:'worodougou', debut:'2025-08-05', fin:null},
+  {nom:"Kouadio Amoin Marina", tel:'0758597116', fonction:'Opérateur GNSS', zone:'worodougou', debut:'2025-08-05', fin:null},
+  {nom:"Kouassi Konan Salomon", tel:'0749216543', fonction:'Opérateur GNSS', zone:'worodougou', debut:'2025-08-05', fin:null},
+  {nom:"Momo Yssouf", tel:'0554311791', fonction:'Opérateur GNSS', zone:'worodougou', debut:'2026-08-03', fin:null, ancien:"Momo Issouf"},
+  {nom:"Sewonin Eric", tel:'0596455813', fonction:'Opérateur GNSS', zone:'worodougou', debut:'2025-08-05', fin:null},
+  {nom:"Kouame Awa Ouattara", tel:'0701716913', fonction:'Opérateur GNSS', zone:'worodougou', debut:'2025-09-15', fin:null},
+  {nom:"Fofana Ahoua", tel:'0711349624', fonction:'Opérateur GNSS', zone:'cavally', debut:'2025-08-05', fin:null},
+  {nom:"Samake Yaya", tel:'0709125085', fonction:'Contrôleur qualité', zone:'worodougou', debut:'2026-07-27', fin:null},
+  {nom:"Yao Ahou Stephanie", tel:'0747250408', fonction:'Contrôleur qualité', zone:'worodougou', debut:'2026-07-28', fin:null},
+  {nom:"Amani Kouame Ble Romeo", tel:'0708241657', fonction:'Contrôleur qualité', zone:'cavally', debut:'2026-08-03', fin:null},
+  {nom:"Mian Kouablan Jean", tel:'0748258759', fonction:'Contrôleur qualité', zone:'cavally', debut:'2026-08-03', fin:null},
+  {nom:"Kouassi Assi Romeo", tel:'0757356676', fonction:'Contrôleur qualité', zone:'worodougou', debut:'2026-10-22', fin:null},
+  {nom:"Ble Gatho Grace Nancy", tel:'0779628941', fonction:'Contrôleur qualité', zone:'worodougou', debut:'2026-10-22', fin:null},
+  {nom:"Kaba Abdourahamane", tel:'0709631509', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2026-09-15', fin:null},
+  {nom:"Kouadio Kouassi Guy", tel:'0779044218', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2026-09-15', fin:null},
+  {nom:"Yapi Assi Memel Francklin", tel:'0700102703', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2026-09-15', fin:null},
+  {nom:"Yeboua Adjia Emmanuela", tel:'0708136233', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2026-01-19', fin:null},
+  {nom:"Coulibaly Koundjele Djalia", tel:'0566853574', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2026-03-26', fin:null},
+  {nom:"Kone Favognon Cedric", tel:'0777844396', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2026-03-26', fin:null},
+  {nom:"Tokalo Lou Tchan Danielle", tel:'0712206049', fonction:'Commissaire enquêteur', zone:'worodougou', debut:'2026-04-13', fin:null},
+  {nom:"Kouadio Konan Evance", tel:'0758319238', fonction:'Commissaire enquêteur', zone:'cavally', debut:'2026-07-27', fin:null},
+  {nom:"Kouame Kouassi Bernard", tel:'0779328820', fonction:'Opérateur GNSS', zone:'worodougou', debut:'2025-08-05', fin:null},
+  {nom:"Ouattara Affissatou", tel:'0779567677', fonction:'Opérateur GNSS', zone:'worodougou', debut:'2026-09-15', fin:"2026-10-06"},
+  {nom:"Yeo Tenignigui Djeneba", tel:'0102923078', fonction:'Opérateur GNSS', zone:'worodougou', debut:'2026-09-15', fin:"2026-10-12"},
+  {nom:"Yobo Beranger", tel:'0706712333', fonction:'Opérateur GNSS', zone:'worodougou', debut:'2025-10-11', fin:null},
+  {nom:"Kouabenan Kouame Emmanuel", tel:'0141979616', fonction:'Opérateur GNSS', zone:'worodougou', debut:'2025-11-26', fin:null},
+  {nom:"Yao Atouman Jean Charles", tel:'0555100634', fonction:'Opérateur GNSS', zone:'cavally', debut:'2026-01-22', fin:null},
+  {nom:"Fakayode Abdul", tel:'0173735246', fonction:'Opérateur GNSS', zone:'cavally', debut:'2026-02-06', fin:"2026-10-09"},
+  {nom:"Dje Christian Dominique Konan", tel:'0720530055', fonction:'Opérateur GNSS', zone:'cavally', debut:'2026-02-06', fin:null},
+  {nom:"Kouassi Kouame Gislain", tel:'0777440514', fonction:'Opérateur GNSS', zone:'cavally', debut:'2026-02-18', fin:null},
+  {nom:"Sekongo Seriba Dokporo", tel:'0594326676', fonction:'Opérateur GNSS', zone:'worodougou', debut:'2026-10-01', fin:null}
+];
+const AGENTS_MAJ_REPERE = '2026-10b';
+function agentsAppliquerMaj2610(){
+  if(AGENTS_FULL.some(a=>a.maj===AGENTS_MAJ_REPERE)) return false;
+  const tk = s=>(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/['’]/g,'').replace(/[^A-Z0-9 ]+/g,' ').split(/\s+/).filter(Boolean);
+  AGENTS_MAJ_2610.forEach(m=>{
+    let a = AGENTS_FULL.find(x=>x.nom===m.nom) || (m.ancien && AGENTS_FULL.find(x=>x.nom===m.ancien));
+    if(a && m.ancien && a.nom===m.ancien) a.nom = m.nom;
+    if(!a){ const mt=new Set(tk(m.nom)); a = AGENTS_FULL.find(x=>{ const t=tk(x.nom); return t.length>=2 && t.every(w=>mt.has(w)); }); }
+    if(!a){ a={nom:m.nom, tel:'', fonction:m.fonction, zone:m.zone, dateDepart:null}; AGENTS_FULL.push(a); }
+    a.tel = m.tel || a.tel || '';
+    a.fonction = m.fonction;
+    a.zone = m.zone;
+    a.debut = m.debut;
+    a.dateDepart = m.fin || null;
+    a.maj = AGENTS_MAJ_REPERE;
+  });
+  return true;
+}
+
 // ── Ajouter un agent depuis le formulaire "Agents — Liste" ──
 // Rafraîchit l'affichage des agents sur les deux préfixes possibles ('ag' et 'ind-ag') — nécessaire
 // car agRenderAll() seul ne cible que 'ag', qui n'est pas forcément l'interface visible à l'écran.
@@ -3016,7 +3161,10 @@ function agReactiver(nom){
 
 function agInit(){
   agentsLoadFromStorage();
-  agentsLoadFromFirebase().then(loaded=>{ if(loaded) agRenderTousPrefixes(); });
+  agentsLoadFromFirebase().catch(()=>false).then(loaded=>{
+    if(agentsAppliquerMaj2610()){ agentsPersist(); loaded=true; }
+    if(loaded) agRenderTousPrefixes();
+  });
   try{
     const s = localStorage.getItem('presfor_absences');
     if(s) absences = JSON.parse(s)||[];
@@ -3051,7 +3199,10 @@ function agRenderKPI(idPrefix){
   idPrefix = idPrefix || 'ag';
   const el = document.getElementById(idPrefix+'-kpi');
   if(!el) return;
-  const agents = AGENTS_FULL.filter(a=>(dashZoneFilter==='all')||(a.zone===dashZoneFilter)||(!a.zone && dashZoneFilter==='cavally'));
+  const agentsTous = AGENTS_FULL.filter(a=>(dashZoneFilter==='all')||(a.zone===dashZoneFilter)||(!a.zone && dashZoneFilter==='cavally'));
+  const agents = agentsTous.filter(a=>!a.dateDepart);
+  const nbPartis = agentsTous.length - agents.length;
+  const cq = agents.filter(a=>a.fonction==='Contrôleur qualité').length;
   const total = agents.length;
   const chefs = agents.filter(a=>a.fonction.includes("Chef")).length;
   const gnss  = agents.filter(a=>a.fonction==='Opérateur GNSS').length;
@@ -3061,8 +3212,8 @@ function agRenderKPI(idPrefix){
   window._agKpiList={total:agents, ce:agents.filter(a=>a.fonction==='Commissaire enquêteur'), gnss:agents.filter(a=>a.fonction==='Opérateur GNSS'),
     abs:agents.filter(a=>{ const t=new Date().toISOString().split('T')[0]; return absences.some(x=>x.debut<=t&&x.fin>=t&&(x.agent===a.nom)); })};
   el.innerHTML=`
-    <div class="kpi blue"><div class="kpi-l">Total agents</div><div class="kpi-v">${total}</div><div class="kpi-s">${zoneLabel}</div></div>
-    <div class="kpi green"><div class="kpi-l">Comm. enquêteurs</div><div class="kpi-v">${ce}</div><div class="kpi-s">+ ${chefs} chefs d\'équipe</div></div>
+    <div class="kpi blue"><div class="kpi-l">Total agents</div><div class="kpi-v">${total}</div><div class="kpi-s">${zoneLabel}${nbPartis?' · '+nbPartis+' parti'+(nbPartis>1?'s':'')+' (voir liste)':''}</div></div>
+    <div class="kpi green"><div class="kpi-l">Comm. enquêteurs</div><div class="kpi-v">${ce}</div><div class="kpi-s">+ ${cq} contrôleurs qualité</div></div>
     <div class="kpi"><div class="kpi-l">Opérateurs GNSS</div><div class="kpi-v">${gnss}</div><div class="kpi-s">Terrain</div></div>
     <div class="kpi ${absAuj>0?'amber':''}"><div class="kpi-l">Absents auj.</div><div class="kpi-v">${absAuj}</div><div class="kpi-s">${absAuj>0?'En absence':'Tous disponibles'}</div></div>`;
 }
@@ -3071,6 +3222,7 @@ function agRenderKPI(idPrefix){
 function agFonctionColor(f){
   if(f.includes('Chef')) return {bg:'#EDE9FE',tx:'#4C1D95',brd:'#8B5CF6'};
   if(f==='Commissaire enquêteur') return {bg:'var(--accent-lt)',tx:'var(--accent-txt)',brd:'var(--accent2)'};
+  if(f==='Contrôleur qualité') return {bg:'#FCE7F3',tx:'#9D174D',brd:'#DB2777'};
   if(f==='Opérateur GNSS') return {bg:'var(--blue-lt)',tx:'var(--blue-txt)',brd:'var(--blue)'};
   if(f==='RR ISF') return {bg:'#FEF3C7',tx:'#92400E',brd:'#D97706'};
   if(f==='ISF') return {bg:'#FBF0DC',tx:'#6B3F00',brd:'#D97706'};
@@ -6775,7 +6927,7 @@ cqeCtlChoose = function(id,kind){ _lockGrace=Date.now()+20000; return _cqeCtlCho
 // ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-10-cm';
+const APP_VERSION = 'v15-10-cq';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
@@ -10965,6 +11117,441 @@ function rptGetData(){
     depts, agentsCE, agentsGNSS,
     cq:{total:cqDos.length, rejetes:rejetes.length, corriges:corriges.length},
     totalDos:afor.length, nbTablette};
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RAPPORT HEBDOMADAIRE DE ZONE (modèle PRESFOR) — aperçu + export Word (.docx)
+// Parties automatiques : synthèse, II-2 (levés, enquêtes, certification foncière), III (contrôle qualité).
+// Parties à compléter (collage depuis Excel) : I (ISF), II-1 (délimitation), IV (plannings), V (divers).
+// ═══════════════════════════════════════════════════════════════
+const RZ_ENTETE = {
+  cal:'Date | Activité | Lieu | Heure'
+};
+const RZ_MANUELS = [
+  ['isf_carto','I-1','Cartographie participative sur affiche, diagnostic des CVGFR et calendriers','Sous-préfectures | Nombre de villages | Carto réalisées | Diagnostics des CVGFR réalisés | Calendriers des 1ères activités | Observations'],
+  ['isf_form','I-2','Formation des CVGFR, information et sensibilisation et dialogue communautaire','Sous-préfectures | Nbre villages | Formation N°1 & 2 des CVGFR | Formation N°3 & 4 des CVGFR | Information et sensibilisation | Dialogues communautaires | Observations'],
+  ['isf_contrats_sem','I-3-1','Point des contrats réalisés au cours de la semaine','ASF | Villages | Prêt | Location | Planter-partager/Plantation | Planter-partager/Récolte | Total'],
+  ['isf_contrats_cumul','I-3-2','Cumul des contrats réalisés jusqu\'à ce jour','Département | Sous-préfecture | Villages | Prêt | Location | PP-P | PP-R | Total'],
+  ['delim_cumul','II-1','La délimitation des territoires des villages jusqu\'à ce jour','Département | Sous-préfecture | Villages à délimiter | Historique | Délimité | Approuvé | Validé'],
+  ['delim_synth','II-1-1','Synthèse de la délimitation des territoires de villages jusqu\'à ce jour','Sous-préfecture | Villages à délimiter | Recueil réalisé | Layon identifié | PV signé | Village délimité | Pub | Approuvé | Validé'],
+  ['cal_asf','IV-1','Calendrier des ASF',RZ_ENTETE.cal],
+  ['cal_topos','IV-2-1','Calendrier d\'activités des topos',RZ_ENTETE.cal],
+  ['cal_ce','IV-2-2','Calendrier d\'activités des CE',RZ_ENTETE.cal],
+  ['divers','V','Divers (un paragraphe par ligne ; les lignes commençant par V-1-, V-2-… sont mises en titre)','']
+];
+let rzManuels = {};
+try{ const x=localStorage.getItem('presfor_rz_manuels'); if(x) rzManuels=JSON.parse(x)||{}; }catch(e){}
+function rzSaveManuels(){ try{ localStorage.setItem('presfor_rz_manuels', JSON.stringify(rzManuels)); }catch(e){} }
+function rzN(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim(); }
+function rzFmt(n){ return Math.round(n||0).toLocaleString('fr-FR'); }
+function rzHa(n){ return (n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function rzIso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function rzFr(iso){ const p=String(iso||'').split('-'); return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:''; }
+const RZ_MOIS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+function rzPeriodeTxt(a,b){
+  const A=new Date(a+'T12:00:00'), B=new Date(b+'T12:00:00'), j=d=>d.getDate()===1?'1er':String(d.getDate());
+  if(A.getMonth()===B.getMonth()&&A.getFullYear()===B.getFullYear()) return 'Du '+j(A)+' au '+j(B)+' '+RZ_MOIS[B.getMonth()]+' '+B.getFullYear();
+  return 'Du '+j(A)+' '+RZ_MOIS[A.getMonth()]+' au '+j(B)+' '+RZ_MOIS[B.getMonth()]+' '+B.getFullYear();
+}
+function rzDefautPeriode(){
+  const t=new Date(); t.setHours(12,0,0,0); const dow=t.getDay();
+  const l=new Date(t); l.setDate(t.getDate()-((dow+6)%7)-7);   // lundi de la semaine précédente
+  const s=new Date(l); s.setDate(l.getDate()+5);                // samedi
+  return {du:rzIso(l), au:rzIso(s)};
+}
+const RZ_COL=['#1C4A2E','#2E7D4F','#F5A623','#8FB9A0','#C0392B','#6B7F73','#D9822B'];
+function rzChartImg(cfg,w,h){
+  try{
+    if(typeof Chart==='undefined') return null;
+    const cv=document.createElement('canvas'); cv.width=w; cv.height=h; cv.style.width=w+'px'; cv.style.height=h+'px';
+    const bg={id:'rzbg',beforeDraw:c=>{ const x=c.ctx; x.save(); x.globalCompositeOperation='destination-over'; x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); x.restore(); }};
+    cfg.options=Object.assign({animation:false,responsive:false,devicePixelRatio:2,maintainAspectRatio:false},cfg.options||{});
+    cfg.plugins=[bg];
+    const ch=new Chart(cv,cfg); const src=cv.toDataURL('image/png'); ch.destroy();
+    return {k:'img',src,w,h};
+  }catch(e){ console.warn('rz chart',e); return null; }
+}
+function rzMapImg(vals,w,h,titre){
+  try{
+    if(typeof SP_CAVALLY_LATLNG==='undefined') return null;
+    const cv=document.createElement('canvas'); cv.width=w*2; cv.height=h*2; const x=cv.getContext('2d'); x.scale(2,2);
+    x.fillStyle='#fff'; x.fillRect(0,0,w,h);
+    const polys=SP_CAVALLY_LATLNG; let la0=99,la1=-99,lo0=99,lo1=-99;
+    polys.forEach(p=>(p.latlngs||[]).forEach(([la,lo])=>{ la0=Math.min(la0,la); la1=Math.max(la1,la); lo0=Math.min(lo0,lo); lo1=Math.max(lo1,lo); }));
+    const k=Math.cos(((la0+la1)/2)*Math.PI/180), pad=34, mw=w-2*pad-170, mh=h-2*pad-10;
+    const sc=Math.min(mw/((lo1-lo0)*k), mh/(la1-la0)); const ox=pad+(mw-(lo1-lo0)*k*sc)/2, oy=pad+10+(mh-(la1-la0)*sc)/2;
+    const P=([la,lo])=>[ox+(lo-lo0)*k*sc, oy+(la1-la)*sc];
+    const nums=[...vals.values()].filter(v=>v>0).sort((a,b)=>a-b), mx=nums.length?nums[nums.length-1]:1;
+    const colr=v=>{ if(!(v>0)) return '#EEF1EF'; const t=Math.min(1,v/mx); const c=[[214,232,220],[46,125,79]]; return 'rgb('+c[0].map((a,i)=>Math.round(a+(c[1][i]-a)*t)).join(',')+')'; };
+    x.font='bold 13px Arial'; x.fillStyle='#1C4A2E'; x.fillText(titre,pad,22);
+    polys.forEach(p=>{ const v=vals.get(rzN(p.name))||0; x.beginPath(); (p.latlngs||[]).forEach((pt,i)=>{ const [a,b]=P(pt); i?x.lineTo(a,b):x.moveTo(a,b); }); x.closePath(); x.fillStyle=colr(v); x.fill(); x.strokeStyle='#fff'; x.lineWidth=1.4; x.stroke(); });
+    x.textAlign='center';
+    polys.forEach(p=>{ const v=vals.get(rzN(p.name))||0; const pts=(p.latlngs||[]).map(P); if(!pts.length) return; const cx=pts.reduce((s,q)=>s+q[0],0)/pts.length, cy=pts.reduce((s,q)=>s+q[1],0)/pts.length;
+      x.fillStyle=(v/mx>0.55)?'#fff':'#1a1a1a'; x.font='bold 9px Arial'; x.fillText(p.name,cx,cy); if(v>0){ x.font='9px Arial'; x.fillText(Math.round(v).toLocaleString('fr-FR'),cx,cy+11); } });
+    x.textAlign='left'; const lx=w-pad-150; x.font='bold 11px Arial'; x.fillStyle='#333'; x.fillText('Parcelles levées',lx,pad+22);
+    [0,0.25,0.5,0.75,1].forEach((t,i)=>{ x.fillStyle=colr(t*mx||0.0001); x.fillRect(lx,pad+34+i*24,22,16); x.fillStyle='#333'; x.font='10px Arial'; x.fillText(Math.round(t*mx).toLocaleString('fr-FR'),lx+30,pad+46+i*24); });
+    return {k:'img',src:cv.toDataURL('image/png'),w,h};
+  }catch(e){ console.warn('rz map',e); return null; }
+}
+function rzBuildTable(head, data, opts){
+  // data : [{cells:[..], bold:bool}]
+  return {k:'table', head, rows:data.map(r=>r.cells), bold:data.map(r=>!!r.bold), fs:(opts&&opts.fs)||8};
+}
+// Table hiérarchique : lignes [{keys:[dept,sp,village], v:[nombres]}] → lignes avec totaux par niveau
+function rzHier(items, fmts, lvl){
+  // lvl = nombre de colonnes de clés (2 ou 3) ; totaux par sous-niveau 1 (sp) et niveau 0 (dept)
+  const out=[], tot=(arr)=>fmts.map((_,i)=>arr.reduce((s,x)=>s+(x.v[i]||0),0));
+  const fm=(vals)=>vals.map((v,i)=>fmts[i](v));
+  const byD=new Map(); items.forEach(it=>{ const d=it.keys[0]; if(!byD.has(d)) byD.set(d,[]); byD.get(d).push(it); });
+  const grand=[];
+  [...byD.keys()].sort().forEach(d=>{
+    const di=byD.get(d); const bySp=new Map(); di.forEach(it=>{ const s=it.keys[1]; if(!bySp.has(s)) bySp.set(s,[]); bySp.get(s).push(it); });
+    [...bySp.keys()].sort().forEach(s=>{
+      const si=bySp.get(s).sort((a,b)=>a.keys[2].localeCompare(b.keys[2],'fr'));
+      si.forEach(it=>out.push({cells:[d,s,it.keys[2],...(it.v.some(x=>x)?fm(it.v):fmts.map(()=>''))]}));
+      out.push({cells:['','Total '+s,'',...fm(tot(si))],bold:true});
+    });
+    out.push({cells:['Total '+d,'','',...fm(tot(di))],bold:true});
+    grand.push(...di);
+  });
+  out.push({cells:['Total région','','',...fm(tot(grand))],bold:true});
+  return out;
+}
+function rzCompute(o){
+  const zone=o.zone, Z=PROJECT_ZONES[zone]||PROJECT_ZONES.cavally, depts=Z.depts, from=o.du, to=o.au;
+  const inD=v=>!!v&&v>=from&&v<=to, upTo=v=>!!v&&v<=to;
+  const inZone=dn=>depts.includes(rzN(dn));
+  const afor=(dossiersAFOR||[]).filter(d=>inZone(d.dept));
+  const gnss=(gnssData||[]).filter(g=>inZone(g.dept));
+  // index villages : dept|village -> {dept, sp, village}
+  const vIdx=new Map(), vList=new Map();
+  const addV=(dept,sp,village,own)=>{ const kv=rzN(dept)+'|'+rzN(village); if(!vIdx.has(kv)) vIdx.set(kv,{dept:rzN(dept),sp:sp||'—',village:village||'—'}); else if(own&&sp){ vIdx.get(kv).sp=sp; } return vIdx.get(kv); };
+  afor.forEach(d=>addV(d.dept,d.sp,d.village,true));
+  gnss.forEach(g=>addV(g.dept,g.sp,g.village,false));
+  const vOf=(dept,village)=>vIdx.get(rzN(dept)+'|'+rzN(village));
+  const supCache=new Map(); const sup=d=>{ if(!supCache.has(d.id)) supCache.set(d.id, dosSuperfValide(d)||0); return supCache.get(d.id); };
+  const blocks=[], synCharts=[];
+  const P=(x)=>blocks.push({k:'p',x}), PI=(x)=>blocks.push({k:'pi',x});
+  const H1=(x)=>blocks.push({k:'h1',x}), H2=(x)=>blocks.push({k:'h2',x}), H3=(x)=>blocks.push({k:'h3',x});
+
+  // ── Indicateurs d'une période (pour la synthèse et la comparaison à la semaine précédente)
+  const metr=(a,b)=>{ const i=v=>!!v&&v>=a&&v<=b; const gl=gnss.filter(g=>i(g.date_leve));
+    return {lev:gl.length, ha:gl.reduce((s,g)=>s+(g.superficie||0),0), dd:afor.filter(d=>i(d.date_DD)).length, rdc:afor.filter(d=>i(d.date_RDC)).length, pvcl:afor.filter(d=>i(d.date_CL)).length,
+      ov:afor.filter(d=>i(d.date_OV)).length, cp:afor.filter(d=>i(d.date_CP)).length, va:afor.filter(d=>i(d.date_VA)).length}; };
+  const dPrev=(iso,n)=>{ const x=new Date(iso+'T12:00:00'); x.setDate(x.getDate()-n); return rzIso(x); };
+  const nbJ=Math.round((new Date(to+'T12:00:00')-new Date(from+'T12:00:00'))/86400000)+1;
+  const m1=metr(from,to), m0=metr(dPrev(from,nbJ),dPrev(to,nbJ));
+  const evo=(a,b)=>{ const d=a-b; return (d>0?'+':'')+rzFmt(d); };
+
+  // ── CQ de la période
+  const ids=new Set(afor.map(d=>String(d.id))), byId=new Map(afor.map(d=>[String(d.id),d]));
+  const acts=(typeof cqeBuildActions==='function'?cqeBuildActions():[]).filter(a=>a.d>=from&&a.d<=to&&ids.has(String(a.id).split('#')[0]));
+  const cqD=new Set(acts.map(a=>String(a.id).split('#')[0]));
+  const rows_rej=rejRows().filter(x=>ids.has(String(x.d.id))&&x.e.etat==='rejete');
+  const enRetard=rows_rej.filter(x=>x.e.jours!=null&&x.e.jours>=CQE_ALERT_DAYS).length, nonTrans=rows_rej.filter(x=>x.s==='rejete').length;
+
+  // ══ SYNTHÈSE
+  H1('Synthèse de la semaine');
+  P(rzPeriodeTxt(from,to)+' — '+Z.label+' ('+depts.map(x=>x.charAt(0)+x.slice(1).toLowerCase()).join(', ')+')');
+  const cumLev0=gnss.filter(g=>!g.date_leve||upTo(g.date_leve));
+  const kpis=[
+    {label:'Parcelles levées (cumul)',value:rzFmt(cumLev0.length),sub:rzHa(cumLev0.reduce((s,g)=>s+(g.superficie||0),0))+' ha'},
+    {label:'RDC réalisés (cumul)',value:rzFmt(afor.filter(d=>upTo(d.date_RDC)).length),sub:'+'+rzFmt(m1.rdc)+' cette semaine'},
+    {label:'PVCL signés (cumul)',value:rzFmt(afor.filter(d=>upTo(d.date_CL)).length),sub:'+'+rzFmt(m1.pvcl)+' cette semaine'},
+    {label:'Dossiers validés',value:rzFmt(afor.filter(d=>d.etape==='VA').length),sub:'+'+rzFmt(m1.va)+' cette semaine'}
+  ];
+  blocks.push({k:'kpis',items:kpis});
+  blocks.push(rzBuildTable(['Indicateur','Semaine','Semaine précédente','Évolution'],[
+    ['Parcelles levées (nombre)',m1.lev,m0.lev],['Superficie levée (ha)',m1.ha,m0.ha,1],['Demandes enregistrées',m1.dd,m0.dd],['RDC réalisés',m1.rdc,m0.rdc],['PVCL signés',m1.pvcl,m0.pvcl],
+    ['Publicités ouvertes',m1.ov,m0.ov],['Publicités clôturées',m1.cp,m0.cp],['Dossiers validés',m1.va,m0.va]
+  ].map(r=>({cells:[r[0], r[3]?rzHa(r[1]):rzFmt(r[1]), r[3]?rzHa(r[2]):rzFmt(r[2]), r[3]?((r[1]-r[2]>0?'+':'')+rzHa(r[1]-r[2])):evo(r[1],r[2])]})),{fs:9}));
+  const cumLev=gnss.filter(g=>!g.date_leve||upTo(g.date_leve));
+  const att=[];
+  att.push(rzFmt(cumLev.length)+' parcelles levées au total ('+rzHa(cumLev.reduce((s,g)=>s+(g.superficie||0),0))+' ha), '+rzFmt(afor.filter(d=>upTo(d.date_RDC)).length)+' RDC et '+rzFmt(afor.filter(d=>upTo(d.date_CL)).length)+' PVCL réalisés, '+rzFmt(afor.filter(d=>d.etape==='VA').length)+' dossiers validés.');
+  att.push('Contrôle qualité : '+rzFmt(cqD.size)+' dossier(s) contrôlé(s) cette semaine ; '+rzFmt(rows_rej.length)+' dossier(s) rejeté(s) en attente de correction dont '+rzFmt(enRetard)+' en retard (≥ '+CQE_ALERT_DAYS+' j) et '+rzFmt(nonTrans)+' pas encore transmis aux agents.');
+  blocks.push({k:'bul',items:att});
+  const synIdx=blocks.length;
+
+  // ── graphiques de synthèse
+  { const wk=[]; for(let i=7;i>=0;i--){ const a=dPrev(from,nbJ*i), b=dPrev(to,nbJ*i); wk.push({l:rzFr(a).slice(0,5),m:metr(a,b)}); }
+    const g1=rzChartImg({type:'bar',data:{labels:wk.map(x=>x.l),datasets:[{type:'bar',label:'Parcelles levées',data:wk.map(x=>x.m.lev),backgroundColor:RZ_COL[1],yAxisID:'y'},{type:'line',label:'Superficie (ha)',data:wk.map(x=>Math.round(x.m.ha)),borderColor:RZ_COL[2],backgroundColor:RZ_COL[2],yAxisID:'y1',tension:.25}]},
+      options:{plugins:{title:{display:true,text:'Rythme des levés — 8 dernières semaines',font:{size:14}},legend:{position:'bottom'}},scales:{y:{beginAtZero:true,title:{display:true,text:'Parcelles'}},y1:{position:'right',beginAtZero:true,grid:{drawOnChartArea:false},title:{display:true,text:'Hectares'}}}}},640,300);
+    const g2=rzChartImg({type:'bar',data:{labels:wk.map(x=>x.l),datasets:[{label:'RDC',data:wk.map(x=>x.m.rdc),backgroundColor:RZ_COL[0]},{label:'PVCL',data:wk.map(x=>x.m.pvcl),backgroundColor:RZ_COL[3]},{label:'Demandes',data:wk.map(x=>x.m.dd),backgroundColor:RZ_COL[2]}]},
+      options:{plugins:{title:{display:true,text:'Enquêtes foncières — 8 dernières semaines',font:{size:14}},legend:{position:'bottom'}},scales:{y:{beginAtZero:true}}}},640,300);
+    synCharts.push(g1,g2); }
+  // ══ I — ISF (parties à compléter)
+  const manuel=(key,num,titre,lvl)=>{
+    const def=RZ_MANUELS.find(m=>m[0]===key); (lvl===3?H3:H2)(num+'- '+titre);
+    const txt=(o.manuels&&o.manuels[key])||''; const head=(def[3]||'').split('|').map(x=>x.trim()).filter(Boolean);
+    if(!head.length){ txt.split('\n').map(x=>x.trim()).filter(Boolean).forEach(l=>blocks.push(/^V-\d/.test(l)?{k:'h3',x:l}:{k:'p',x:l})); if(!txt.trim()) PI('À compléter.'); return; }
+    const lines=txt.split('\n').map(x=>x.replace(/\r/g,'')).filter(x=>x.trim());
+    let rows=lines.map(l=>(/\t/.test(l)?l.split('\t'):(l.split(';').length>1?l.split(';'):[l])).map(c=>c.trim()));
+    if(rows.length && rows[0][0] && rows[0][0].toLowerCase()===head[0].toLowerCase()) rows=rows.slice(1);
+    if(!rows.length) rows=[head.map(()=>''),head.map(()=>'')];
+    const bold=rows.map(r=>/^total/i.test(r[0]||''));
+    blocks.push({k:'table',head,rows:rows.map(r=>head.map((_,i)=>r[i]==null?'':r[i])),bold,fs:8});
+  };
+  blocks.push({k:'sect',orient:'portrait'});
+  H1('I- Point des activités de l\'ISF');
+  manuel('isf_carto','I-1','Cartographie participative sur affiche, diagnostic des CVGFR et calendriers');
+  manuel('isf_form','I-2','Formation des CVGFR, information et sensibilisation et dialogue communautaire');
+  H2('I-3- Contractualisation (rédaction de contrats dans le DIGIFOR)');
+  manuel('isf_contrats_sem','I-3-1','Point des contrats réalisés au cours de la semaine du '+rzPeriodeTxt(from,to).replace(/^Du /,''),3);
+  manuel('isf_contrats_cumul','I-3-2','Cumul des contrats réalisés jusqu\'à ce jour : '+rzFr(to),3);
+
+  // ══ II — Activités techniques
+  H1('II- Point des activités techniques');
+  manuel('delim_cumul','II-1','La délimitation des territoires des villages jusqu\'à ce jour : '+rzFr(to));
+  manuel('delim_synth','II-1-1','Synthèse de la délimitation des territoires de villages jusqu\'à ce jour : '+rzFr(to),3);
+  H2('II-2- La certification foncière');
+  H3('II-2-1- Point des levés topographiques');
+  P('II-2-1-1- Les levés réalisés au cours de la semaine du '+rzPeriodeTxt(from,to).replace(/^Du /,''));
+  // levés de la semaine : département > opérateur > village
+  const gw=gnss.filter(g=>inD(g.date_leve));
+  const tree=new Map();
+  gw.forEach(g=>{ const dp=rzN(g.dept), op=(g.operateur||'(opérateur non renseigné)').trim(), vl=g.village||'—';
+    if(!tree.has(dp)) tree.set(dp,new Map()); const T=tree.get(dp); if(!T.has(op)) T.set(op,new Map()); const V=T.get(op); const x=V.get(vl)||{n:0,ha:0}; x.n++; x.ha+=g.superficie||0; V.set(vl,x); });
+  const rl=[]; let gn=0, gh=0;
+  [...tree.keys()].sort().forEach(dp=>{ let dn=0, dh=0; let firstD=true;
+    [...tree.get(dp).keys()].sort((a,b)=>a.localeCompare(b,'fr')).forEach(op=>{ let on=0, oh=0, firstO=true;
+      [...tree.get(dp).get(op).entries()].sort((a,b)=>a[0].localeCompare(b[0],'fr')).forEach(([vl,x])=>{ rl.push({cells:[firstD?dp:'',firstO?op:'',vl,rzFmt(x.n),rzHa(x.ha),'']}); firstD=false; firstO=false; on+=x.n; oh+=x.ha; });
+      rl.push({cells:['','','Total exécuté',rzFmt(on),rzHa(oh),''],bold:true}); dn+=on; dh+=oh; });
+    rl.push({cells:['Total semaine '+dp,'','',rzFmt(dn),rzHa(dh),''],bold:true}); gn+=dn; gh+=dh; });
+  rl.push({cells:['Total des levés réalisés au cours de la semaine','','',rzFmt(gn),rzHa(gh),''],bold:true});
+  blocks.push(rzBuildTable(['Département','Nom et prénoms','Villages exécutés','Nb levés','Superficie (Ha)','Observation'],rl));
+  { const ops=new Map(); gw.forEach(g=>{ const k=(g.operateur||'(non renseigné)').trim(); const x=ops.get(k)||{n:0,ha:0}; x.n++; x.ha+=g.superficie||0; ops.set(k,x); });
+    const top=[...ops.entries()].sort((a,b)=>b[1].ha-a[1].ha).slice(0,12);
+    if(top.length){ const im=rzChartImg({type:'bar',data:{labels:top.map(x=>x[0]),datasets:[{label:'Superficie levée (ha)',data:top.map(x=>Math.round(x[1].ha*100)/100),backgroundColor:RZ_COL[1]}]},options:{indexAxis:'y',plugins:{title:{display:true,text:'Superficie levée par opérateur — semaine',font:{size:14}},legend:{display:false}},scales:{x:{beginAtZero:true}}}},640,Math.max(200,40+top.length*26)); if(im) blocks.push(im); } }
+  P('II-2-1-2- Cumul des levés réalisés jusqu\'à ce jour : '+rzFr(to));
+  const cum=new Map(); [...vIdx.values()].forEach(v=>cum.set(v.dept+'|'+rzN(v.village),{v,n:0,ha:0}));
+  gnss.filter(g=>!g.date_leve||upTo(g.date_leve)).forEach(g=>{ const v=vOf(g.dept,g.village); if(!v) return; const x=cum.get(v.dept+'|'+rzN(v.village)); x.n++; x.ha+=g.superficie||0; });
+  blocks.push(rzBuildTable(['Département','Sous-préfecture','Village','Nb parcelles','Superficie (Ha)'],
+    rzHier([...cum.values()].map(x=>({keys:[x.v.dept,x.v.sp,x.v.village],v:[x.n,x.ha]})),[rzFmt,rzHa],3)));
+  // enquêtes
+  H3('II-2-2- Point des enquêtes foncières officielles');
+  P('II-2-2-1- Les enquêtes réalisées au cours de la semaine du '+rzPeriodeTxt(from,to).replace(/^Du /,''));
+  const ce=new Map();
+  const ceRow=(a,vl)=>{ const k=(a||'(CE non renseigné)').trim(); if(!ce.has(k)) ce.set(k,new Map()); const V=ce.get(k); const x=V.get(vl)||{dd:0,rdc:0,pvcl:0,corr:0}; V.set(vl,x); return x; };
+  afor.forEach(d=>{ const vl=d.village||'—'; if(inD(d.date_DD)) ceRow(d.agent,vl).dd++; if(inD(d.date_RDC)) ceRow(d.agent,vl).rdc++; if(inD(d.date_CL)) ceRow(d.agent,vl).pvcl++;
+    const c=pubCQ[d.id]; if(c&&c.corrige&&inD(c.date_correction)) ceRow(d.agent,vl).corr++; });
+  const el=[]; let t1=0,t2=0,t3=0;
+  [...ce.keys()].sort((a,b)=>a.localeCompare(b,'fr')).forEach(a=>{ let s1=0,s2=0,s3=0, first=true;
+    [...ce.get(a).entries()].sort((x,y)=>x[0].localeCompare(y[0],'fr')).forEach(([vl,x])=>{ el.push({cells:[first?a:'',vl,x.dd?rzFmt(x.dd):'',x.rdc?rzFmt(x.rdc):'',x.pvcl?rzFmt(x.pvcl):'',x.corr?x.corr+' dossier(s) corrigé(s)':'']}); first=false; s1+=x.dd; s2+=x.rdc; s3+=x.pvcl; });
+    el.push({cells:['','Total exécuté',rzFmt(s1),rzFmt(s2),rzFmt(s3),''],bold:true}); t1+=s1; t2+=s2; t3+=s3; });
+  el.push({cells:['Total des enquêtes réalisées cette semaine','',rzFmt(t1),rzFmt(t2),rzFmt(t3),''],bold:true});
+  blocks.push(rzBuildTable(['Nom et prénoms du CE','Villages exécutés','Demandes','RDC','PVCL','Observation'],el));
+  { const top=[...ce.entries()].map(([a,V])=>{ let r=0,p=0,dm=0; V.forEach(x=>{ r+=x.rdc; p+=x.pvcl; dm+=x.dd; }); return {a,r,p,dm}; }).sort((x,y)=>(y.r+y.p)-(x.r+x.p)).slice(0,12);
+    if(top.length){ const im=rzChartImg({type:'bar',data:{labels:top.map(x=>x.a),datasets:[{label:'Demandes',data:top.map(x=>x.dm),backgroundColor:RZ_COL[2]},{label:'RDC',data:top.map(x=>x.r),backgroundColor:RZ_COL[0]},{label:'PVCL',data:top.map(x=>x.p),backgroundColor:RZ_COL[3]}]},options:{indexAxis:'y',plugins:{title:{display:true,text:'Enquêtes de la semaine par commissaire enquêteur',font:{size:14}},legend:{position:'bottom'}},scales:{x:{beginAtZero:true}}}},640,Math.max(220,70+top.length*30)); if(im) blocks.push(im); } }
+  P('II-2-2-2- Cumul des enquêtes réalisées jusqu\'à ce jour : '+rzFr(to));
+  PI('L\'enquête foncière officielle sur les parcelles levées : le recensement des droits coutumiers (RDC) et la reconnaissance des tronçons de limite de la parcelle par la signature du procès-verbal de constat de limite (PVCL).');
+  const enq=new Map(); [...vIdx.values()].forEach(v=>enq.set(v.dept+'|'+rzN(v.village),{v,lev:0,rdc:0,pvcl:0}));
+  gnss.filter(g=>!g.date_leve||upTo(g.date_leve)).forEach(g=>{ const v=vOf(g.dept,g.village); if(v) enq.get(v.dept+'|'+rzN(v.village)).lev++; });
+  afor.forEach(d=>{ const v=vOf(d.dept,d.village); if(!v) return; const x=enq.get(v.dept+'|'+rzN(v.village)); if(upTo(d.date_RDC)) x.rdc++; if(upTo(d.date_CL)) x.pvcl++; });
+  blocks.push(rzBuildTable(['Département','Sous-préfecture','Village','Levé','RDC','PVCL'],
+    rzHier([...enq.values()].map(x=>({keys:[x.v.dept,x.v.sp,x.v.village],v:[x.lev,x.rdc,x.pvcl]})),[rzFmt,rzFmt,rzFmt],3)));
+  // synthèse certification foncière
+  blocks.push({k:'sect',orient:'landscape'});
+  H3('II-2-3- Synthèse réalisation de la certification foncière');
+  const sp=new Map(); const spOf=(dept,spn)=>{ const k=rzN(dept)+'|'+(spn||'—'); if(!sp.has(k)) sp.set(k,{dept:rzN(dept),sp:spn||'—',v:Array(14).fill(0)}); return sp.get(k); };
+  gnss.filter(g=>!g.date_leve||upTo(g.date_leve)).forEach(g=>{ const v=vOf(g.dept,g.village); const x=spOf(g.dept,v?v.sp:g.sp); x.v[0]++; x.v[1]+=g.superficie||0; });
+  afor.forEach(d=>{ const x=spOf(d.dept,d.sp), v=x.v;
+    if(upTo(d.date_RDC)) v[2]++; if(upTo(d.date_CL)) v[3]++; const ov=upTo(d.date_OV), cp=upTo(d.date_CP); if(ov) v[4]++; if(cp) v[5]++;
+    const val=d.etape==='VA'&&upTo(d.date_VA||to), appr=upTo(d.date_AP)||val;
+    if(appr){ v[6]++; v[7]+=sup(d); if(val){ v[10]++; v[11]+=sup(d); } else { v[12]++; v[13]+=sup(d); } }
+    if(ov&&!cp){ v[8]++; v[9]+=sup(d); } });
+  const fm=[rzFmt,rzHa,rzFmt,rzFmt,rzFmt,rzFmt,rzFmt,rzHa,rzFmt,rzHa,rzFmt,rzHa,rzFmt,rzHa];
+  const byDp=new Map(); [...sp.values()].forEach(x=>{ if(!byDp.has(x.dept)) byDp.set(x.dept,[]); byDp.get(x.dept).push(x); });
+  const sl=[]; const gt=Array(14).fill(0);
+  [...byDp.keys()].sort().forEach(dp=>{ const arr=byDp.get(dp).sort((a,b)=>a.sp.localeCompare(b.sp,'fr')); const tt=Array(14).fill(0);
+    arr.forEach(x=>{ sl.push({cells:[x.sp,...x.v.map((n,i)=>fm[i](n))]}); x.v.forEach((n,i)=>{ tt[i]+=n; gt[i]+=n; }); });
+    sl.push({cells:['Total '+dp,...tt.map((n,i)=>fm[i](n))],bold:true}); });
+  sl.push({cells:['Total région',...gt.map((n,i)=>fm[i](n))],bold:true});
+  blocks.push(rzBuildTable(['Sous-préfecture','Levées (nb)','Levées (ha)','RDC','PVCL','Pub. ouvertes','Pub. clôturées','Approuvés (nb)','Approuvés (ha)','Pub. en cours (nb)','Pub. en cours (ha)','Validés (nb)','Validés (ha)','En attente de validation (nb)','En attente de validation (ha)'].slice(0,15),sl,{fs:7}));
+  { const rows=sl.filter(r=>!r.bold); const lab=rows.map(r=>r.cells[0]); const col=i=>rows.map(r=>{ const s=String(r.cells[i]).replace(/[\s\u202f\u00a0]/g,'').replace(',','.'); return parseFloat(s)||0; });
+    const im=rzChartImg({type:'bar',data:{labels:lab,datasets:[{label:'Levées',data:col(1),backgroundColor:RZ_COL[2]},{label:'RDC',data:col(3),backgroundColor:RZ_COL[1]},{label:'PVCL',data:col(4),backgroundColor:RZ_COL[3]},{label:'Approuvés',data:col(7),backgroundColor:RZ_COL[0]},{label:'Validés',data:col(11),backgroundColor:RZ_COL[4]}]},options:{plugins:{title:{display:true,text:'Avancement de la certification foncière par sous-préfecture',font:{size:15}},legend:{position:'bottom'}},scales:{y:{beginAtZero:true}}}},960,340); if(im) blocks.push(im);
+    const fv=[['Parcelles levées',gt[0]],['Enquêtées RDC',gt[2]],['Enquêtées PVCL',gt[3]],['Publicités ouvertes',gt[4]],['Publicités clôturées',gt[5]],['Dossiers approuvés',gt[6]],['Dossiers validés',gt[10]]];
+    const fim=rzChartImg({type:'bar',data:{labels:fv.map(x=>x[0]),datasets:[{label:'Dossiers',data:fv.map(x=>x[1]),backgroundColor:[RZ_COL[2],RZ_COL[1],RZ_COL[1],RZ_COL[3],RZ_COL[3],RZ_COL[0],RZ_COL[4]]}]},options:{indexAxis:'y',plugins:{title:{display:true,text:'Entonnoir de la certification foncière (cumul)',font:{size:14}},legend:{display:false}},scales:{x:{beginAtZero:true}}}},640,280); if(fim) synCharts.push(fim);
+    if(zone==='cavally'){ const vm=new Map(); sp.forEach(x=>{ vm.set(rzN(x.sp),(vm.get(rzN(x.sp))||0)+x.v[0]); }); const mp=rzMapImg(vm,960,520,'Carte des parcelles levées par sous-préfecture — Cavally (cumul au '+rzFr(to)+')'); if(mp) blocks.push(mp); } }
+  PI('Dossiers approuvés : constat d\'existence paisible et continu enregistré ou dossier validé. En attente de validation : approuvés non encore validés. Publicité en cours : ouverte et non clôturée.');
+
+  // ══ III — Contrôle qualité
+  blocks.push({k:'sect',orient:'portrait'});
+  H1('III- Point contrôle qualité');
+  const cq=new Map(); acts.forEach(a=>{ const id=String(a.id).split('#')[0], d=byId.get(id); if(!d) return; const by=a.by||'(inconnu)', vl=d.village||'—';
+    if(!cq.has(by)) cq.set(by,new Map()); const V=cq.get(by); if(!V.has(vl)) V.set(vl,new Map()); V.get(vl).set(id,d); });
+  const cl=[]; let gD=0;
+  [...cq.keys()].sort((a,b)=>a.localeCompare(b,'fr')).forEach(by=>{ let tot=0, first=true;
+    [...cq.get(by).keys()].sort((a,b)=>a.localeCompare(b,'fr')).forEach(vl=>{ const ds=[...cq.get(by).get(vl).values()]; const st={conforme:0,rejete:0,a_controler:0}; let tr=0;
+      ds.forEach(d=>{ st[cqeCtlDerived(d).statut]++; if(rejTransmis(d)) tr++; });
+      const txt=[st.conforme?st.conforme+' conforme(s)':'',st.rejete?st.rejete+' rejeté(s)':'',st.a_controler?st.a_controler+' en cours de contrôle':'',tr?tr+' transmis à l\'agent':''].filter(Boolean).join(' · ');
+      cl.push({cells:[first?by:'',vl,rzFmt(ds.length),txt,[...new Set(ds.map(d=>d.agent).filter(Boolean))].join(', ')]}); first=false; tot+=ds.length; });
+    cl.push({cells:['Total '+by,'',rzFmt(tot),'',''],bold:true}); gD+=tot; });
+  cl.push({cells:['Total général','',rzFmt(gD),'',''],bold:true});
+  if(cq.size) blocks.push(rzBuildTable(['Agent contrôleur','Village contrôlé','Nombre de dossiers','Statut du dossier contrôlé','CE concerné'],cl)); else PI('Aucun contrôle qualité enregistré sur la période.');
+  { const st={conforme:0,rejete:0,a_controler:0}; afor.forEach(d=>{ st[cqeCtlDerived(d).statut]++; });
+    const dn=rzChartImg({type:'doughnut',data:{labels:['Conformes','Rejetés','À contrôler'],datasets:[{data:[st.conforme,st.rejete,st.a_controler],backgroundColor:[RZ_COL[1],RZ_COL[4],RZ_COL[2]]}]},options:{plugins:{title:{display:true,text:'État du contrôle qualité des dossiers de la zone',font:{size:14}},legend:{position:'right'}}}},640,260); if(dn) blocks.push(dn);
+    const ag=[0,0,0]; rows_rej.forEach(x=>{ const j=x.e.jours; if(j==null||j<CQE_ALERT_DAYS) ag[0]++; else if(j<CQE_CRIT_DAYS) ag[1]++; else ag[2]++; });
+    const bg=rzChartImg({type:'bar',data:{labels:['< '+CQE_ALERT_DAYS+' jours','≥ '+CQE_ALERT_DAYS+' jours','≥ '+CQE_CRIT_DAYS+' jours'],datasets:[{label:'Rejets en attente de correction',data:ag,backgroundColor:[RZ_COL[1],RZ_COL[2],RZ_COL[4]]}]},options:{plugins:{title:{display:true,text:'Rejets en attente selon leur ancienneté',font:{size:14}},legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}},640,240); if(bg) blocks.push(bg); }
+  P('Situation des rejets : '+rzFmt(rows_rej.length)+' dossier(s) rejeté(s) en attente de correction ; '+rzFmt(nonTrans)+' non transmis aux agents ; '+rzFmt(enRetard)+' en retard de correction (≥ '+CQE_ALERT_DAYS+' jours).');
+
+  // ══ IV — Planning
+  H1('IV- Planning des activités de la semaine suivante');
+  manuel('cal_asf','IV-1','Calendrier des ASF');
+  H2('IV-2- Calendrier des activités techniques');
+  manuel('cal_topos','IV-2-1','Calendrier d\'activités des topos',3);
+  manuel('cal_ce','IV-2-2','Calendrier d\'activités des CE',3);
+  // ══ V — Divers
+  H1('V- Divers');
+  const dv=((o.manuels&&o.manuels.divers)||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  if(dv.length) dv.forEach(l=>blocks.push(/^V-\d/.test(l)?{k:'h2',x:l}:{k:'p',x:l})); else PI('À compléter.');
+  blocks.splice(synIdx,0,...synCharts.filter(Boolean));
+  return {zone:Z.label, from, to, blocks, titre:rzPeriodeTxt(from,to), o, kpis};
+}
+// Sommaire (sans numéros de page)
+function rzToc(blocks){ return blocks.filter(b=>b.k==='h1'||b.k==='h2').map(b=>({lvl:b.k==='h1'?1:2,x:b.x})); }
+// ── Aperçu HTML
+function rzHtml(R){
+  const esc=planEsc, num=v=>/^[\d\s  .,+\-]+$/.test(String(v))&&String(v).trim()!=='';
+  const toc=rzToc(R.blocks).map(t=>`<div style="margin:${t.lvl===1?'7px 0 0':'1px 0 0 20px'};font-size:12px;${t.lvl===1?'font-weight:700;color:#1C4A2E;':'color:#444;'}">${esc(t.x)}</div>`).join('');
+  const tiles=(items,big)=>`<div style="display:grid;grid-template-columns:repeat(${items.length},1fr);gap:10px;margin:12px 0;">${items.map(k=>`<div style="background:${big?'rgba(255,255,255,.12)':'#F4F7F5'};border-left:4px solid #F5A623;border-radius:6px;padding:10px 12px;"><div style="font-size:${big?24:22}px;font-weight:700;color:${big?'#fff':'#1C4A2E'};">${esc(k.value)}</div><div style="font-size:11px;color:${big?'#dfeee5':'#444'};">${esc(k.label)}</div><div style="font-size:10px;color:${big?'#F5D79A':'#777'};">${esc(k.sub||'')}</div></div>`).join('')}</div>`;
+  let h=`<div style="font-family:Arial,sans-serif;color:#1a1a1a;max-width:1100px;margin:auto;">
+    <div style="background:linear-gradient(135deg,#1C4A2E,#2E7D4F);color:#fff;padding:46px 40px 30px;border-radius:0 0 12px 12px;">
+      <div style="font-size:11px;letter-spacing:3px;color:#F5D79A;font-weight:700;">SSE_PRESFOR_CAG · GROUPEMENT CAG</div>
+      <div style="font-size:13px;letter-spacing:3px;margin-top:26px;">RAPPORT HEBDOMADAIRE</div>
+      <div style="font-size:28px;font-weight:700;margin:6px 0 8px;">RAPPORT D'ACTIVITÉS DE LA SEMAINE</div>
+      <div style="font-size:16px;">${esc(R.titre)}</div><div style="font-size:30px;font-weight:700;color:#F5A623;margin:10px 0 18px;">${esc(R.zone.toUpperCase())}</div>
+      ${tiles(R.kpis,true)}</div>
+    <div style="padding:18px 40px 4px;font-size:12px;color:#555;">${esc(R.o.dateRapport||'')}<br>Présenté par le Coordonnateur Régional : <b>${esc(R.o.par||'')}</b></div>
+    <div style="padding:6px 40px 6px;"><div style="font-weight:700;color:#1C4A2E;letter-spacing:1px;border-bottom:2px solid #F5A623;padding-bottom:3px;margin:12px 0 4px;">TABLE DES MATIÈRES</div>${toc}</div><div style="padding:0 40px 30px;">`;
+  R.blocks.forEach(b=>{
+    if(b.k==='h1') h+=`<h2 style="font-size:17px;color:#fff;background:#1C4A2E;padding:7px 12px;border-radius:5px;margin:30px 0 10px;border-left:6px solid #F5A623;">${esc(b.x)}</h2>`;
+    else if(b.k==='h2') h+=`<h3 style="font-size:14px;color:#1C4A2E;border-bottom:1px solid #cfdcd3;padding-bottom:2px;margin:20px 0 6px;">${esc(b.x)}</h3>`;
+    else if(b.k==='h3') h+=`<h4 style="font-size:12.5px;margin:14px 0 6px;color:#2E7D4F;">${esc(b.x)}</h4>`;
+    else if(b.k==='p') h+=`<p style="font-size:12px;margin:6px 0;">${esc(b.x)}</p>`;
+    else if(b.k==='pi') h+=`<p style="font-size:11px;margin:6px 0;color:#777;font-style:italic;">${esc(b.x)}</p>`;
+    else if(b.k==='kpis') h+=tiles(b.items,false);
+    else if(b.k==='bul') h+=`<div style="background:#FFF7E6;border-left:4px solid #F5A623;padding:8px 14px;margin:10px 0;border-radius:4px;"><ul style="font-size:12px;margin:0 0 0 16px;">${b.items.map(i=>`<li style="margin:3px 0;">${esc(i)}</li>`).join('')}</ul></div>`;
+    else if(b.k==='img') h+=`<div style="text-align:center;margin:12px 0;"><img src="${b.src}" style="max-width:100%;height:auto;border:1px solid #e3e8e5;border-radius:6px;"></div>`;
+    else if(b.k==='table'){
+      h+=`<div style="overflow:auto;margin:6px 0 10px;"><table style="border-collapse:collapse;width:100%;font-size:${b.fs>=9?12:11}px;"><thead><tr>${b.head.map(x=>`<th style="border:1px solid #1C4A2E;background:#1C4A2E;color:#fff;padding:5px 6px;text-align:left;">${esc(x)}</th>`).join('')}</tr></thead><tbody>`+
+        b.rows.map((r,i)=>`<tr style="${b.bold[i]?'font-weight:700;background:#E4EFE7;':(i%2?'background:#F8FAF9;':'')}">${r.map(c=>`<td style="border:1px solid #dde5e0;padding:3px 6px;${num(c)?'text-align:right;':''}">${esc(c)}</td>`).join('')}</tr>`).join('')+`</tbody></table></div>`;
+    }
+  });
+  return h+'</div></div>';
+}
+// ── Export Word (.docx)
+function rzLoadDocx(){
+  return new Promise((res,rej)=>{ if(window.docx) return res(window.docx);
+    const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js';
+    s.onload=()=>window.docx?res(window.docx):rej(new Error('bibliothèque Word introuvable')); s.onerror=()=>rej(new Error('bibliothèque Word indisponible (connexion Internet ?)')); document.head.appendChild(s); });
+}
+async function rzBuildDocx(R){
+  const D=await rzLoadDocx();
+  const {Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,WidthType,AlignmentType,PageOrientation,Footer,Header,PageNumber,ShadingType,TableLayoutType,BorderStyle,ImageRun,VerticalAlign}=D;
+  const FONT='Calibri', GREEN='1C4A2E', GOLD='F5A623';
+  const tx=(t,o)=>new TextRun(Object.assign({text:String(t==null?'':t),font:FONT},o||{}));
+  const para=(t,o)=>new Paragraph(Object.assign({children:[tx(t,o&&o.run)]},o&&o.p||{}));
+  const isNum=v=>/^[\d\s  .,+\-]+$/.test(String(v))&&String(v).trim()!=='';
+  const none={style:BorderStyle.NONE,size:0,color:'FFFFFF'}, noB={top:none,bottom:none,left:none,right:none};
+  const b64=u=>{ const s=atob(u.split(',')[1]); const a=new Uint8Array(s.length); for(let i=0;i<s.length;i++) a[i]=s.charCodeAt(i); return a; };
+  const W=o=>o==='landscape'?14570:9638;
+  const tiles=(items,w,dark)=>{ const cw=Math.floor(w/items.length);
+    return new Table({width:{size:cw*items.length,type:WidthType.DXA},columnWidths:items.map(()=>cw),layout:TableLayoutType.FIXED,borders:{top:none,bottom:none,left:none,right:none,insideHorizontal:none,insideVertical:none},
+      rows:[new TableRow({cantSplit:true,children:items.map(k=>new TableCell({width:{size:cw,type:WidthType.DXA},verticalAlign:VerticalAlign.CENTER,
+        shading:{type:ShadingType.CLEAR,fill:dark?'2E7D4F':'F4F7F5',color:'auto'},margins:{top:110,bottom:110,left:150,right:100},
+        borders:{top:{style:BorderStyle.SINGLE,size:12,color:'FFFFFF'},bottom:{style:BorderStyle.SINGLE,size:12,color:'FFFFFF'},left:{style:BorderStyle.SINGLE,size:24,color:GOLD},right:{style:BorderStyle.SINGLE,size:12,color:'FFFFFF'}},
+        children:[new Paragraph({children:[tx(k.value,{size:38,bold:true,color:dark?'FFFFFF':GREEN})]}),new Paragraph({children:[tx(k.label,{size:17,color:dark?'E6F2EA':'444444'})]}),new Paragraph({children:[tx(k.sub||'',{size:15,color:dark?'F5D79A':'777777'})]})]}))})]}); };
+  const mkTable=(b,Wd)=>{
+    const wt=b.head.map((h,i)=>Math.min(26,Math.max(6,Math.max(String(h).length*0.6,...b.rows.map(r=>Math.min(String(r[i]||'').length,30))))));
+    const sum=wt.reduce((a,c)=>a+c,0); const cw=wt.map(x=>Math.floor(Wd*x/sum));
+    const bd={style:BorderStyle.SINGLE,size:4,color:'CFDCD3'}, borders={top:bd,bottom:bd,left:bd,right:bd};
+    const cell=(t,i,o)=>new TableCell({width:{size:cw[i],type:WidthType.DXA},borders,verticalAlign:VerticalAlign.CENTER,
+      shading:o.head?{type:ShadingType.CLEAR,fill:GREEN,color:'auto'}:(o.bold?{type:ShadingType.CLEAR,fill:'E4EFE7',color:'auto'}:(o.zebra?{type:ShadingType.CLEAR,fill:'F8FAF9',color:'auto'}:undefined)),margins:{top:40,bottom:40,left:70,right:70},
+      children:[new Paragraph({alignment:(!o.head&&isNum(t))?AlignmentType.RIGHT:AlignmentType.LEFT,children:[tx(t,{size:b.fs*2,bold:!!(o.head||o.bold),color:o.head?'FFFFFF':undefined})]})]});
+    const rows=[new TableRow({tableHeader:true,cantSplit:true,children:b.head.map((h,i)=>cell(h,i,{head:true}))}),...b.rows.map((r,ri)=>new TableRow({cantSplit:true,children:r.map((c,i)=>cell(c,i,{bold:b.bold[ri],zebra:ri%2===1}))}))];
+    return new Table({width:{size:Wd,type:WidthType.DXA},columnWidths:cw,layout:TableLayoutType.FIXED,rows});
+  };
+  const sections=[]; let cur=null;
+  const start=(o)=>{ cur={orient:o,children:[]}; sections.push(cur); };
+  start('portrait');
+  const c=cur.children, wP=W('portrait');
+  // ── page de garde
+  c.push(new Table({width:{size:wP,type:WidthType.DXA},columnWidths:[wP],layout:TableLayoutType.FIXED,rows:[new TableRow({children:[new TableCell({width:{size:wP,type:WidthType.DXA},borders:noB,shading:{type:ShadingType.CLEAR,fill:GREEN,color:'auto'},margins:{top:500,bottom:500,left:500,right:500},children:[
+    para('SSE_PRESFOR_CAG  ·  GROUPEMENT CAG',{run:{bold:true,size:20,color:'F5D79A'},p:{spacing:{after:900}}}),
+    para('RAPPORT HEBDOMADAIRE',{run:{size:26,color:'FFFFFF'},p:{spacing:{after:120}}}),
+    para('RAPPORT D\'ACTIVITÉS DE LA SEMAINE',{run:{bold:true,size:50,color:'FFFFFF'},p:{spacing:{after:200}}}),
+    para(R.titre,{run:{size:32,color:'FFFFFF'},p:{spacing:{after:200}}}),
+    para(R.zone.toUpperCase(),{run:{bold:true,size:64,color:GOLD},p:{spacing:{after:200}}})]})]})]}));
+  c.push(new Paragraph({spacing:{after:300},children:[]}));
+  c.push(tiles(R.kpis,wP,false));
+  c.push(new Paragraph({spacing:{before:700,after:60},children:[tx(R.o.dateRapport||'',{size:24,color:'555555'})]}));
+  c.push(new Paragraph({spacing:{after:60},children:[tx('Présenté par le Coordonnateur Régional : ',{size:24}),tx(R.o.par||'',{size:24,bold:true})]}));
+  c.push(new Paragraph({pageBreakBefore:true,spacing:{after:240},children:[tx('TABLE DES MATIÈRES',{bold:true,size:32,color:GREEN})],border:{bottom:{style:BorderStyle.SINGLE,size:12,color:GOLD,space:3}}}));
+  rzToc(R.blocks).forEach(t=>c.push(new Paragraph({indent:{left:t.lvl===1?0:500},spacing:{before:t.lvl===1?160:0,after:20},children:[tx(t.x,{size:t.lvl===1?24:21,bold:t.lvl===1,color:t.lvl===1?GREEN:'444444'})]})));
+  R.blocks.forEach(b=>{
+    if(b.k==='sect'){ if(b.orient!==cur.orient) start(b.orient); return; }
+    const ch=cur.children;
+    if(b.k==='h1') ch.push(new Paragraph({pageBreakBefore:ch.length>0,spacing:{before:0,after:220},shading:{type:ShadingType.CLEAR,fill:GREEN,color:'auto'},border:{left:{style:BorderStyle.SINGLE,size:36,color:GOLD,space:6}},children:[tx(' '+b.x,{bold:true,size:30,color:'FFFFFF'})]}));
+    else if(b.k==='h2') ch.push(new Paragraph({keepNext:true,spacing:{before:300,after:100},border:{bottom:{style:BorderStyle.SINGLE,size:6,color:'CFDCD3',space:2}},children:[tx(b.x,{bold:true,size:26,color:GREEN})]}));
+    else if(b.k==='h3') ch.push(new Paragraph({keepNext:true,spacing:{before:200,after:80},children:[tx(b.x,{bold:true,size:23,color:'2E7D4F'})]}));
+    else if(b.k==='p') ch.push(new Paragraph({spacing:{before:60,after:60},children:[tx(b.x,{size:22})]}));
+    else if(b.k==='pi') ch.push(new Paragraph({spacing:{before:60,after:60},children:[tx(b.x,{size:20,italics:true,color:'777777'})]}));
+    else if(b.k==='kpis'){ ch.push(tiles(b.items,W(cur.orient),false)); ch.push(new Paragraph({spacing:{after:100},children:[]})); }
+    else if(b.k==='bul') b.items.forEach(i=>ch.push(new Paragraph({shading:{type:ShadingType.CLEAR,fill:'FFF7E6',color:'auto'},border:{left:{style:BorderStyle.SINGLE,size:24,color:GOLD,space:6}},spacing:{before:30,after:30},indent:{left:200},children:[tx('•  '+i,{size:22})]})));
+    else if(b.k==='img'){ const maxW=cur.orient==='landscape'?940:620; const k=Math.min(1,maxW/b.w); try{ ch.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:120,after:120},keepNext:false,children:[new ImageRun({data:b64(b.src),transformation:{width:Math.round(b.w*k),height:Math.round(b.h*k)},type:'png'})]})); }catch(e){ console.warn('img',e); } }
+    else if(b.k==='table'){ ch.push(mkTable(b,W(cur.orient))); ch.push(new Paragraph({spacing:{after:120},children:[]})); }
+  });
+  const hdr=new Header({children:[new Paragraph({alignment:AlignmentType.RIGHT,border:{bottom:{style:BorderStyle.SINGLE,size:6,color:GOLD,space:2}},children:[tx('RAPPORT HEBDOMADAIRE  ·  '+R.zone.toUpperCase()+'  ·  '+R.titre,{size:16,color:'666666'})]})]});
+  const ftr=new Footer({children:[new Paragraph({alignment:AlignmentType.CENTER,children:[tx('Rapport d\'activités de la semaine '+R.zone+' — Page ',{size:16,color:'666666'}),new TextRun({children:[PageNumber.CURRENT],font:FONT,size:16,color:'666666'}),tx(' | ',{size:16,color:'666666'}),new TextRun({children:[PageNumber.TOTAL_PAGES],font:FONT,size:16,color:'666666'})]})]});
+  const docSections=sections.map((s,i)=>({
+    properties:Object.assign({page:{size:{orientation:s.orient==='landscape'?PageOrientation.LANDSCAPE:PageOrientation.PORTRAIT},margin:{top:1134,bottom:1134,left:1134,right:1134}}},i===0?{titlePage:true}:{}),
+    headers:i===0?{default:hdr,first:new Header({children:[new Paragraph({children:[]})]})}:{default:hdr},
+    footers:i===0?{default:ftr,first:new Footer({children:[new Paragraph({children:[]})]})}:{default:ftr},
+    children:s.children}));
+  const doc=new Document({creator:'SSE_PRESFOR_CAG',title:'Rapport hebdomadaire '+R.zone+' '+R.titre,sections:docSections});
+  return Packer.toBlob(doc);
+}
+// ── Interface
+function rzRead(){
+  const g=id=>(document.getElementById(id)||{}).value||'';
+  const manuels={}; RZ_MANUELS.forEach(m=>{ manuels[m[0]]=g('rz-m-'+m[0]); });
+  rzManuels=Object.assign({},manuels); rzSaveManuels();
+  try{ localStorage.setItem('presfor_rz_par', g('rz-par')); }catch(e){}
+  return {zone:g('rz-zone')||'cavally', du:g('rz-du'), au:g('rz-au'), par:g('rz-par'), dateRapport:g('rz-date'), manuels};
+}
+function rzInit(){
+  const root=document.getElementById('rz-card'); if(!root||root.dataset.ok) return; root.dataset.ok='1';
+  const lz=(typeof cqeUserZone==='function')?cqeUserZone():null;
+  const z=lz||((dashZoneFilter&&dashZoneFilter!=='all')?dashZoneFilter:'cavally');
+  const sel=document.getElementById('rz-zone'); sel.value=z; if(lz) sel.disabled=true;
+  const p=rzDefautPeriode(); document.getElementById('rz-du').value=p.du; document.getElementById('rz-au').value=p.au;
+  let par=''; try{ par=localStorage.getItem('presfor_rz_par')||''; }catch(e){}
+  if(!par&&currentUser&&currentUser.nom) par=String(currentUser.nom).split('—')[0].trim();
+  document.getElementById('rz-par').value=par;
+  document.getElementById('rz-date').value=new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).replace(/^./,c=>c.toUpperCase());
+  const box=document.getElementById('rz-manuels');
+  box.innerHTML=RZ_MANUELS.map(m=>`<label style="display:block;font-size:11px;color:var(--text2);margin:0 0 10px;"><b>${planEsc(m[1])}</b> — ${planEsc(m[2])}${m[3]?`<div style="font-size:10px;color:var(--text3);margin:1px 0 3px;">Colonnes : ${planEsc(m[3])}</div>`:''}
+    <textarea id="rz-m-${m[0]}" rows="3" placeholder="${m[3]?'Collez ici les lignes copiées depuis Excel (une ligne par rang, colonnes séparées par tabulation) — laissez vide pour compléter dans Word':'Un paragraphe par ligne'}" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:11px;margin-top:2px;font-family:inherit;"></textarea></label>`).join('');
+  RZ_MANUELS.forEach(m=>{ const t=document.getElementById('rz-m-'+m[0]); if(t) t.value=rzManuels[m[0]]||''; });
+}
+function rzApercu(){
+  const o=rzRead(); if(!o.du||!o.au||o.du>o.au){ showToast('Vérifiez la période du rapport.'); return null; }
+  if(!(dossiersAFOR||[]).length){ showToast('Aucun dossier AFOR en mémoire : importez les données avant de générer le rapport.'); return null; }
+  let R; try{ R=rzCompute(o); }catch(e){ console.error(e); showToast('Erreur de génération : '+e.message); return null; }
+  const box=document.getElementById('rz-apercu'); box.style.display='block'; document.getElementById('rz-contenu').innerHTML=rzHtml(R);
+  document.getElementById('rz-btn-word').style.display='inline-block'; window._rzR=R; return R;
+}
+async function rzWord(btn){
+  const R=window._rzR||rzApercu(); if(!R) return;
+  const o=rzRead(); R.o=o;
+  const old=btn&&btn.textContent; if(btn){ btn.disabled=true; btn.textContent='Création du fichier Word…'; }
+  try{
+    const blob=await rzBuildDocx(rzCompute(o));
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='RAPPORT_PRESFOR_'+R.zone.toUpperCase()+'_DU_'+o.du.split('-').reverse().join('-')+'.docx'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },3000);
+    showToast('Rapport Word téléchargé.');
+  }catch(e){ console.error(e); showToast('Export Word impossible : '+e.message); }
+  if(btn){ btn.disabled=false; btn.textContent=old; }
 }
 
 function rptGenerer(){
