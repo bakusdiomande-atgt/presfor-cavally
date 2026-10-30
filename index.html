@@ -528,7 +528,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <div style="margin-top:auto;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,0.12);">
       <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;width:100%;margin-bottom:10px;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">⏻ Se déconnecter</button>
       <div class="rail-zone" id="tb-zone-label" style="font-size:10.5px;color:rgba(255,255,255,0.7);line-height:1.3;">Cavally + Worodougou</div>
-      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-10-ci</div>
+      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-10-cj</div>
     </div>
   </nav>
 
@@ -6775,7 +6775,7 @@ cqeCtlChoose = function(id,kind){ _lockGrace=Date.now()+20000; return _cqeCtlCho
 // ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-10-ci';
+const APP_VERSION = 'v15-10-cj';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
@@ -9500,7 +9500,7 @@ let cqeEtat = {};
 try{ const x=localStorage.getItem('presfor_cq_etat'); if(x) cqeEtat=JSON.parse(x); }catch(e){}
 function cqeEtatSaveLocal(){ try{ localStorage.setItem('presfor_cq_etat', JSON.stringify(cqeEtat)); }catch(e){} }
 function cqeEtatSet(id, statut, par, date){
-  const rec={s:statut, par:par||'', d:date||cqeToday(), _u:nowSrv()};
+  const rec={s:statut, par:par||'', d:date||cqeToday(), v:2, _u:nowSrv()};
   cqeEtat[id]=rec; cqeEtatSaveLocal(); cqeFbPut('cq_etat/'+encodeURIComponent(id), rec);
 }
 async function cqeEtatLoad(){
@@ -9518,7 +9518,7 @@ function cqeCtlDerived(d){
   const e=cqeEtat[d.id];
   if(e){
     const tc=terrChecks[d.id]||{}, stamps=TERR_ALL.map(t=>chkStamp(tc[t])).concat([chkStamp(planChecks[d.id])]);
-    if(stamps.every(x=>String(e._u||'')>=x)) return {statut:e.s, par:e.par||'', date:e.d||''};   // aucun contrôle plus récent que l'état partagé
+    if((e.v===2 || e.s!=='conforme') && stamps.every(x=>String(e._u||'')>=x)) return {statut:e.s, par:e.par||'', date:e.d||''};   // aucun contrôle plus récent ; un ancien état « conforme » (avant la règle de toutes les pièces) est recalculé
   }
   return cqeCtlCalc(d);
 }
@@ -9537,34 +9537,29 @@ function cqeEtatBackfill(){
 function cqeCtlStatutOf(id){ const d=(dossiersAFOR||[]).find(x=>String(x.id)===String(id)); return d?cqeCtlDerived(d).statut:((cqeCtl[id]||{}).statut||'a_controler'); }
 // État d'un dossier dans « Contrôle des dossiers », déduit des contrôles par pièce (RDC, PVCL, plan) + ancien verdict global.
 // Rejeté : au moins une pièce incohérente. Conforme : toutes les pièces existantes sont conformes. Sinon : à contrôler.
+// Règle de conformité : un dossier est « conforme » si et seulement si TOUTES les pièces exigées (de la demande au constat d'existence)
+// existent et ont été contrôlées conformes par le contrôle qualité. Une pièce absente ou non contrôlée => « à contrôler ».
+// Une seule pièce incohérente => « rejeté ». (L'attestation de validation n'est pas exigée ; l'annonce l'est dès que sa fiche existe.)
+const CTL_REQUIS = ['dem','rdc','pvcl','ouv','clo','con'];
+function cqeCtlRequis(d){
+  const r = CTL_REQUIS.slice(); if(terrRec(d,'afp')) r.push('afp'); r.push('plan');
+  return r;
+}
 function cqeCtlCalc(d){
-  const id=d.id, tc=terrChecks[id]||{}, items=[];
-  TERR_ALL.forEach(t=>{ if(terrRec(d,t)){ const c=tc[t]; items.push(c&&(c.statut==='conforme'||c.statut==='incoherent')?c:null); } });
-  const pe=(typeof planGetFor==='function')?planGetFor(d):null; if(pe){ const c=planChecks[id], st=planStatusOf(pe,id); items.push(c&&(st==='conforme'||st==='incoherent')?c:null); }
+  const id=d.id, tc=terrChecks[id]||{}, items=[], ok={};
+  TERR_ALL.forEach(t=>{ if(terrRec(d,t)){ const c=tc[t]; const v=c&&(c.statut==='conforme'||c.statut==='incoherent')?c:null; items.push(v); if(v&&v.statut==='conforme') ok[t]=v; } });
+  const pe=(typeof planGetFor==='function')?planGetFor(d):null; if(pe){ const c=planChecks[id], st=planStatusOf(pe,id); const v=c&&(st==='conforme'||st==='incoherent')?c:null; items.push(v); if(v&&v.statut==='conforme') ok.plan=v; }
   const last = arr=>arr.filter(Boolean).sort((a,b)=>chkStamp(a)<chkStamp(b)?1:-1)[0]||null;
   const ko = last(items.filter(x=>x&&x.statut==='incoherent'));
   if(ko) return {statut:'rejete', par:ko.par||'', date:ko.date||''};
-  const k=cqeCtl[id], allOk = items.length && items.every(Boolean), lo = allOk?last(items):null;
-  if(k){
-    if(k.statut==='conforme') return {statut:'conforme', par:k.par||'', date:k.date||''};
-    if(allOk && String(lo.date||'')>=String(k.date||'')) return {statut:'conforme', par:lo.par||'', date:lo.date||''};
-    return {statut:'rejete', par:k.par||'', date:k.date||''};
-  }
-  if(allOk) return {statut:'conforme', par:lo.par||'', date:lo.date||''};
-  return {statut:'a_controler', par:'', date:''};
+  const req=cqeCtlRequis(d);
+  if(req.every(t=>ok[t])){ const lo=last(req.map(t=>ok[t])); return {statut:'conforme', par:lo.par||'', date:lo.date||''}; }
+  const k=cqeCtl[id];
+  if(k && k.statut==='rejete') return {statut:'rejete', par:k.par||'', date:k.date||''};   // ancien verdict global « rejeté » conservé
+  return {statut:'a_controler', par:'', date:''};                                         // ancien verdict « conforme » sans toutes les pièces : à recontrôler
 }
 
 // État d'un des trois contrôles d'un dossier (RDC, PVCL, plan) — pour la liste et pour le choix du contrôle à faire
-// Origine du statut « conforme » d'un dossier (pour vérifier qu'il remplit bien les conditions)
-function cqeCtlOrigine(d){
-  const id=d.id, tc=terrChecks[id]||{}; let nb=0, ok=0;
-  TERR_ALL.forEach(t=>{ if(terrRec(d,t)){ nb++; const c=tc[t]; if(c&&c.statut==='conforme') ok++; } });
-  const pe=(typeof planGetFor==='function')?planGetFor(d):null; if(pe){ nb++; const c=planChecks[id]; if(c&&planStatusOf(pe,id)==='conforme') ok++; }
-  const calc=cqeCtlCalc(d);
-  if(calc.statut!=='conforme') return 'partage';                         // repris de l'état partagé enregistré (ancien contrôle)
-  if(!(nb>0 && ok===nb)) return 'ancien';                                // ancien verdict global, sans contrôle pièce par pièce
-  return nb===1 ? 'une' : 'pieces';                                      // toutes les pièces existantes contrôlées conformes
-}
 function cqeCtlState(d, kind){
   if(kind==='plan'){ const e=(typeof planGetFor==='function')?planGetFor(d):null; if(!e) return {k:'none'}; const st=planStatusOf(e,d.id); return {k:st==='conforme'?'ok':st==='incoherent'?'ko':st==='a_reverifier'?'redo':'todo'}; }
   if(!terrRec(d,kind)) return {k:'none'};
@@ -9603,14 +9598,12 @@ function cqeRenderControle(){
   const der = new Map(afor.map(d=>[String(d.id), cqeCtlDerived(d)]));
   const nOk=[...der.values()].filter(x=>x.statut==='conforme').length, nRej=[...der.values()].filter(x=>x.statut==='rejete').length;
   const ctlIds={length:nOk+nRej};
-  const orig={pieces:0,une:0,ancien:0,partage:0};
-  afor.forEach(d=>{ const x=der.get(String(d.id)); if(x&&x.statut==='conforme'){ try{ orig[cqeCtlOrigine(d)]++; }catch(e){} } });
   const mine = new Set();
   afor.forEach(d=>{ TERR_ALL.forEach(ty=>{ const c=(terrChecks[d.id]||{})[ty]; if(c&&c.par===me&&c.date===t) mine.add(d.id+'|'+ty); }); const pc=planChecks[d.id]; if(pc&&pc.par===me&&pc.date===t) mine.add(d.id+'|plan'); });
   cqeBuildActions().filter(a=>ids.has(String(a.id))&&a.by===me&&a.d===t&&(a.t==='dos_ok'||a.t==='dos_rej')).forEach(a=>mine.add(a.id+'|global'));
   Object.keys(cqeEtat||{}).forEach(id=>{ const e=cqeEtat[id]; if(e&&e.par===me&&e.d===t&&ids.has(String(id))) mine.add(id+'|global'); });
   const mineIds=new Set([...mine].map(x=>x.split('|')[0])); const myDay=[...mineIds].filter(id=>ids.has(String(id))).length;
-  kpiEl.innerHTML=[['Dossiers de la zone',afor.length,'#475569',''],['À contrôler',afor.length-ctlIds.length,'#d97706','a_controler'],['Conformes',nOk,'#16a34a','conforme',nOk?`${orig.pieces} pièces toutes contrôlées · ${orig.une} avec 1 seule pièce · ${orig.ancien} ancien verdict global · ${orig.partage} état enregistré`:''],['Rejetés',nRej,'#dc2626','rejete'],['Mes contrôles aujourd\'hui',myDay,'#0f766e','mes']]
+  kpiEl.innerHTML=[['Dossiers de la zone',afor.length,'#475569',''],['À contrôler',afor.length-ctlIds.length,'#d97706','a_controler'],['Conformes',nOk,'#16a34a','conforme'],['Rejetés',nRej,'#dc2626','rejete'],['Mes contrôles aujourd\'hui',myDay,'#0f766e','mes']]
     .map(k=>`<div class="kpi" ${k[3]===null?'':`onclick="cqeCtlSet('statut','${k[3]}')" style="cursor:pointer;" title="Cliquer pour filtrer la liste"`}><div class="kpi-l">${k[0]}</div><div class="kpi-v" style="color:${k[2]}">${k[1].toLocaleString('fr-FR')}</div>${k[4]?`<div class="kpi-s">${k[4]}</div>`:''}</div>`).join('');
   const f=cqeCtlFilter, q=(f.q||'').toLowerCase();
   const depts=[...new Set(afor.map(d=>d.dept).filter(Boolean))].sort();
