@@ -528,7 +528,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <div style="margin-top:auto;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,0.12);">
       <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;width:100%;margin-bottom:10px;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">⏻ Se déconnecter</button>
       <div class="rail-zone" id="tb-zone-label" style="font-size:10.5px;color:rgba(255,255,255,0.7);line-height:1.3;">Cavally + Worodougou</div>
-      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-10-cl</div>
+      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-10-cm</div>
     </div>
   </nav>
 
@@ -6775,7 +6775,7 @@ cqeCtlChoose = function(id,kind){ _lockGrace=Date.now()+20000; return _cqeCtlCho
 // ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-10-cl';
+const APP_VERSION = 'v15-10-cm';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
@@ -9562,6 +9562,33 @@ function cqeCtlCalc(d){
 }
 
 // État d'un des trois contrôles d'un dossier (RDC, PVCL, plan) — pour la liste et pour le choix du contrôle à faire
+// Pièces d'un dossier selon la règle de conformité : conformes / incohérentes / à contrôler ou absentes
+function cqeCtlPieces(d){
+  const tc=terrChecks[d.id]||{}, LAB={rdc:'RDC',pvcl:'PVCL',dem:'Demande',afp:'Annonce',ouv:'Ouverture',clo:'Clôture',con:'Constat',att:'Attestation',plan:'Plan'};
+  const o={ok:[],ko:[],todo:[]};
+  cqeCtlRequis(d).forEach(t=>{
+    let c=null, exists=true;
+    if(t==='plan'){ const pe=(typeof planGetFor==='function')?planGetFor(d):null; if(!pe) exists=false; else { const st=planStatusOf(pe,d.id); c=planChecks[d.id]; if(!(c&&(st==='conforme'||st==='incoherent'))) c=null; else c={statut:st}; } }
+    else { if(!terrRec(d,t)) exists=false; else c=tc[t]; }
+    if(c&&c.statut==='conforme') o.ok.push(LAB[t]); else if(c&&c.statut==='incoherent') o.ko.push(LAB[t]); else o.todo.push(LAB[t]+(exists?'':' (absent)'));
+  });
+  return o;
+}
+// Liste détaillée ouverte en cliquant sur une carte de « Contrôle des dossiers »
+function ddCtl(kind){
+  const afor=dashFilterByZone(dossiersAFOR||[], dashZoneFilter), mine=window._ctlMine||new Set();
+  const stOf=d=>cqeCtlDerived(d);
+  const T={a_controler:'Dossiers à contrôler', conforme:'Dossiers conformes', rejete:'Dossiers rejetés', mes:'Mes contrôles aujourd\'hui', '':'Dossiers de la zone'};
+  const rows=afor.filter(d=>kind==='mes'?mine.has(String(d.id))||mine.has(d.id) : (!kind || stOf(d).statut===kind));
+  const LIB={a_controler:'À contrôler',conforme:'Conforme',rejete:'Rejeté'};
+  ddOpen(T[kind]||'Dossiers', rows, [
+    {h:'Statut',f:d=>LIB[stOf(d).statut]||''},
+    {h:'Contrôlé par',f:d=>stOf(d).par||''},
+    {h:'Pièces conformes',f:d=>{ const p=cqeCtlPieces(d); return p.ok.length+'/'+(p.ok.length+p.ko.length+p.todo.length)+(p.ok.length?' : '+p.ok.join(', '):''); }},
+    {h:'Pièces incohérentes',f:d=>cqeCtlPieces(d).ko.join(', ')},
+    {h:'Pièces à contrôler',f:d=>cqeCtlPieces(d).todo.join(', ')}
+  ]);
+}
 function cqeCtlState(d, kind){
   if(kind==='plan'){ const e=(typeof planGetFor==='function')?planGetFor(d):null; if(!e) return {k:'none'}; const st=planStatusOf(e,d.id); return {k:st==='conforme'?'ok':st==='incoherent'?'ko':st==='a_reverifier'?'redo':'todo'}; }
   if(!terrRec(d,kind)) return {k:'none'};
@@ -9604,9 +9631,9 @@ function cqeRenderControle(){
   afor.forEach(d=>{ TERR_ALL.forEach(ty=>{ const c=(terrChecks[d.id]||{})[ty]; if(c&&c.par===me&&c.date===t) mine.add(d.id+'|'+ty); }); const pc=planChecks[d.id]; if(pc&&pc.par===me&&pc.date===t) mine.add(d.id+'|plan'); });
   cqeBuildActions().filter(a=>ids.has(String(a.id))&&a.by===me&&a.d===t&&(a.t==='dos_ok'||a.t==='dos_rej')).forEach(a=>mine.add(a.id+'|global'));
   Object.keys(cqeEtat||{}).forEach(id=>{ const e=cqeEtat[id]; if(e&&e.par===me&&e.d===t&&ids.has(String(id))) mine.add(id+'|global'); });
-  const mineIds=new Set([...mine].map(x=>x.split('|')[0])); const myDay=[...mineIds].filter(id=>ids.has(String(id))).length;
+  const mineIds=new Set([...mine].map(x=>x.split('|')[0])); window._ctlMine=mineIds; const myDay=[...mineIds].filter(id=>ids.has(String(id))).length;
   kpiEl.innerHTML=[['Dossiers de la zone',afor.length,'#475569',''],['À contrôler',afor.length-ctlIds.length,'#d97706','a_controler'],['Conformes',nOk,'#16a34a','conforme'],['Rejetés',nRej,'#dc2626','rejete'],['Mes contrôles aujourd\'hui',myDay,'#0f766e','mes']]
-    .map(k=>`<div class="kpi" ${k[3]===null?'':`onclick="cqeCtlSet('statut','${k[3]}')" style="cursor:pointer;" title="Cliquer pour filtrer la liste"`}><div class="kpi-l">${k[0]}</div><div class="kpi-v" style="color:${k[2]}">${k[1].toLocaleString('fr-FR')}</div>${k[4]?`<div class="kpi-s">${k[4]}</div>`:''}</div>`).join('');
+    .map(k=>`<div class="kpi" ${k[3]===null?'':`onclick="cqeCtlSet('statut','${k[3]}');ddCtl('${k[3]}')" style="cursor:pointer;" title="Cliquer pour voir la liste"`}><div class="kpi-l">${k[0]}</div><div class="kpi-v" style="color:${k[2]}">${k[1].toLocaleString('fr-FR')}</div>${k[4]?`<div class="kpi-s">${k[4]}</div>`:''}</div>`).join('');
   const f=cqeCtlFilter, q=(f.q||'').toLowerCase();
   const depts=[...new Set(afor.map(d=>d.dept).filter(Boolean))].sort();
   const list=afor.filter(d=>{
