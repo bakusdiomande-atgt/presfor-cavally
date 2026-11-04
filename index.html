@@ -528,7 +528,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <div style="margin-top:auto;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,0.12);">
       <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;width:100%;margin-bottom:10px;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">⏻ Se déconnecter</button>
       <div class="rail-zone" id="tb-zone-label" style="font-size:10.5px;color:rgba(255,255,255,0.7);line-height:1.3;">Cavally + Worodougou</div>
-      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-10-cq</div>
+      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-12-ca</div>
     </div>
   </nav>
 
@@ -538,7 +538,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
       <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;flex-shrink:0;">
         <div>
           <h1 style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--text);margin:0;">Tableau de bord SSE_PRESFOR_CAG</h1>
-          <p style="font-size:11px;color:var(--text2);margin:1px 0 0;">Vue d'ensemble de l'avancement du projet — Région du Cavally</p>
+          <p style="font-size:11px;color:var(--text2);margin:1px 0 0;">Vue d'ensemble de l'avancement du projet — Cavally et Worodougou</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <div style="background:var(--surface3);border:1px solid var(--border-med);border-radius:var(--radius-sm);padding:4px 10px;font-size:10px;color:var(--text2);">
@@ -643,7 +643,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <!-- Liste dossiers -->
     <div class="panel active" id="dos-panel-list">
       <div class="page-head">
-        <div><h2>Dossiers fonciers</h2><p>Suivi de la chaîne de traitement — Région du Cavally</p></div>
+        <div><h2>Dossiers fonciers</h2><p>Suivi de la chaîne de traitement — Cavally et Worodougou</p></div>
         <div class="btn-row">
           <button class="btn-s" onclick="dosExportCSV()" style="display:inline-flex;align-items:center;gap:5px;">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
@@ -652,7 +652,6 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
           <button class="btn-p viewer-hidden" onclick="dosShowPanel('form')">+ Nouveau dossier</button>
         </div>
       </div>
-      <div class="kpi-bar" id="dos-kpi"></div>
       <div class="kpi-bar" id="dos-kpi" style="margin-bottom:10px;"></div>
       <div class="filter-bar">
   <input type="text" id="dos-srch" placeholder="N° dossier, nom, village..." oninput="dosRenderList()">
@@ -661,7 +660,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <option value="GUIGLO">Guiglo</option>
     <option value="BLOLEQUIN">Bloléquin</option>
     <option value="TAI">Taï</option>
-    <option value="TOULEPLEU">Toulépleu</option>
+    <option value="TOULEPLEU">Toulépleu</option><option value="KANI">Kani</option><option value="SEGUELA">Séguéla</option>
   </select>
   <select id="dos-f-etape" onchange="dosRenderList()">
     <option value="">Toutes les étapes</option>
@@ -733,7 +732,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
           <option value="">-- Sélectionner --</option>
           <option value="GUIGLO">Guiglo</option>
           <option value="BLOLEQUIN">Bloléquin</option>
-          <option value="TOULEPLEU">Toulépleu</option>
+          <option value="TOULEPLEU">Toulépleu</option><option value="KANI">Kani</option><option value="SEGUELA">Séguéla</option>
           <option value="TAI">Taï</option>
         </select><span class="ferr" id="de-dept">Requis.</span></div>
       <div class="ff"><label class="fl">Sous-Préfecture <span class="req">*</span></label>
@@ -828,7 +827,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
           <option value="GUIGLO">Guiglo</option>
           <option value="BLOLEQUIN">Bloléquin</option>
           <option value="TAI">Taï</option>
-          <option value="TOULEPLEU">Toulépleu</option>
+          <option value="TOULEPLEU">Toulépleu</option><option value="KANI">Kani</option><option value="SEGUELA">Séguéla</option>
         </select>
         <select id="afor-cf-agent" onchange="aforCFRenderList()"><option value="">Tous les agents CE</option></select>
         <select id="afor-cf-retard" onchange="aforCFRenderList()">
@@ -943,7 +942,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
       <div class="panel active" id="pub-panel-list">
         <div class="page-head">
           <div>
-            <h2>Publicité Foncière — Cavally</h2>
+            <h2>Publicité Foncière</h2>
             <p id="pub-subtitle">Dossiers en phase de publicité (OV → CP)</p>
           </div>
           <div class="btn-row">
@@ -955,7 +954,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
           <input id="pub-f-text" type="text" placeholder="N° dossier, nom, village..." style="padding:7px 11px;border:1px solid var(--border);border-radius:6px;font-size:12px;min-width:180px;" oninput="pubRenderList()">
           <select id="pub-f-dept" onchange="pubPopulateSP();pubRenderList();" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
             <option value="">Tous dép.</option>
-            <option>GUIGLO</option><option>BLOLEQUIN</option><option>TAI</option><option>TOULEPLEU</option>
+            <option>GUIGLO</option><option>BLOLEQUIN</option><option>TAI</option><option>TOULEPLEU</option><option>KANI</option><option>SEGUELA</option>
           </select>
           <select id="pub-f-sp" onchange="pubRenderList()" style="padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
             <option value="">Toutes SP</option>
@@ -1304,7 +1303,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
           <input id="rpt-fin" type="date" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-top:3px;"></label>
         <label style="font-size:11px;color:var(--text2);">Département
           <select id="rpt-dept" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-top:3px;">
-            <option value="">Tous</option><option>GUIGLO</option><option>BLOLEQUIN</option><option>TAI</option><option>TOULEPLEU</option>
+            <option value="">Tous</option><option>GUIGLO</option><option>BLOLEQUIN</option><option>TAI</option><option>TOULEPLEU</option><option>KANI</option><option>SEGUELA</option>
           </select></label>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px;">
@@ -1448,10 +1447,9 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
             Dossiers en publicité sans GNSS
           </button>
-          <button class="btn-s" onclick="terrShowStructure()" title="Liste des champs des fiches tablette (RDC, PVCL, demande, publicité, constat, attestation)" style="display:inline-flex;align-items:center;gap:6px;">Structure des fiches tablette</button>
-          <button class="btn-s viewer-hidden" id="btn-afor-wipe" onclick="aforWipeFirebase()" title="Purger la base AFOR sur Firebase (admin)" style="display:none;align-items:center;gap:6px;background:#FDECEA;color:#B71C1C;border-color:#B71C1C;">
+          <button class="btn-s viewer-hidden" id="btn-afor-wipe" onclick="appResetAll()" title="Efface toutes les données de travail (dossiers, GNSS, tablettes, contrôles, plans) sur Firebase et sur tous les appareils — comptes et liste des agents conservés (admin)" style="display:none;align-items:center;gap:6px;background:#FDECEA;color:#B71C1C;border-color:#B71C1C;">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5ZM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 5.885 16h4.23a2 2 0 0 0 1.994-1.84l.853-10.66H13.5a.5.5 0 0 0 0-1z"/></svg>
-            Vider Firebase AFOR
+            Remise à zéro complète (fin de formation)
           </button>
         </div>
         <p style="font-size:10px;color:var(--text3);margin:12px 0 0;">Ces imports alimentent directement <code>dossiersAFOR</code> et <code>gnssData</code>, utilisés par l'ensemble de l'application (Tableau de bord, Activités, Indicateurs, Publicité, CQE).</p>
@@ -1755,7 +1753,8 @@ function renderPagination(containerId, page, total, pageSize, onPageFn){
 function dosGoPage(p){ dosPage=p; dosRenderPage(); }
 function fmtDate(d){if(!d)return'—';return new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});}
 function fmtHeure(h){if(!h)return'';return h;}
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+let _toastTm=null;
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(_toastTm);const ms=Math.min(14000,Math.max(2500,String(msg).length*45));_toastTm=setTimeout(()=>t.classList.remove('show'),ms);}
 
 // ── Navigation modules ──
 function switchModule(id){
@@ -1842,75 +1841,19 @@ let _gnssSuperfIndex = null;
 let _gnssOrphelins   = []; // Parcelles GNSS sans dossier AFOR correspondant
 
 function gnssRebuildSuperfIndex(){
+  // Index dérivé de l'affectation unique (gnssAssign) : un seul moteur de rattachement pour toute l'application.
+  _gnssAs=null; _gnssAsSig=null;
   if(!gnssData || !gnssData.length || !dossiersAFOR || !dossiersAFOR.length){
-    _gnssSuperfIndex = {}; return;
+    _gnssSuperfIndex = {}; _gnssOrphelins = []; return;
   }
-  const normN = s => {
-    if(!s) return '';
-    return s.toString().toUpperCase()
-      .normalize('NFD').replace(/[̀-ͯ]/g,'')
-      .replace(/[^A-Z0-9 ]/g,' ').replace(/  +/g,' ').trim();
-  };
-
-  // Copie des entrées GNSS avec flag 'used'
-  const entries = gnssData.map(g => ({
-    code:   (g.n_demcge||'').trim(),
-    nom:    normN(g.nom_demand||''),
-    dept:   normN(g.dept||''),
-    vill:   normN(g.village||''),
-    superf: g.superficie || 0,
-    used:   false,
-  }));
-
+  const A = gnssAssign();
   const idx = {};
-
-  // Passe 1 : matching par code_parcelle (1 entrée GNSS = 1 dossier)
-  dossiersAFOR.forEach(d => {
-    const code = (d.code_parcelle || '').trim();
-    if(!code) return;
-    const g = entries.find(e => !e.used && e.code === code);
-    if(g){ g.used = true; idx[d.id] = (idx[d.id]||0) + g.superf; }
-  });
-
-  // Passe 2 : matching par nom + localisation pour les dossiers sans code
-  dossiersAFOR.forEach(d => {
-    if(idx[d.id]) return; // déjà trouvé
-    const prN  = normN(d.prenom||'');
-    const nomN = normN(d.nom||d.nom_demandeur||'');
-    if(!prN && !nomN) return;
-    const v1 = (nomN+' '+prN).trim();
-    const v2 = (prN+' '+nomN).trim();
-    const dept = normN(d.dept||'');
-    const vill = normN(d.village||'');
-    const g = entries.find(e => {
-      if(e.used) return false;
-      if(e.nom !== v1 && e.nom !== v2) return false;
-      if(dept && e.dept && e.dept !== dept) return false;
-      if(vill && e.vill && e.vill !== vill) return false;
-      return true;
-    });
-    if(g){ g.used = true; idx[d.id] = (idx[d.id]||0) + g.superf; }
-  });
-
+  dossiersAFOR.forEach(d=>{ const en=A.get(d.id); if(en && en.length) idx[d.id]=en.reduce((s,e)=>s+(e.superficie||0),0); });
   _gnssSuperfIndex = idx;
-
-  // Stocker les parcelles GNSS non attribuées (sans dossier AFOR)
-  _gnssOrphelins = entries.filter(e => !e.used).map(e => ({
-    id:         'GNSS-' + e.code,
-    _src:       'gnss_orphelin',
-    nom_demandeur: e.nom || '—',
-    code_parcelle: e.code,
-    dept:       e.dept,
-    village:    e.vill,
-    superficie: e.superf,
-    etape:      'Levé GNSS',
-    type:       'GNSS',
-  }));
-
-  console.log('Index GNSS superficie construit:', Object.keys(idx).length, 'dossiers,',
-    Object.values(idx).reduce((s,v)=>s+v,0).toFixed(1), 'ha |',
-    _gnssOrphelins.length, 'orphelins,',
-    _gnssOrphelins.reduce((s,g)=>s+(g.superficie||0),0).toFixed(1), 'ha');
+  const normN = s => (s||'').toString().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9 ]/g,' ').replace(/  +/g,' ').trim();
+  _gnssOrphelins = gnssData.filter(e=>!_gnssAsClaimed.has(e)).map(e=>({
+    id:'GNSS-'+(e.n_demcge||''), _src:'gnss_orphelin', nom_demandeur:normN(e.nom_demand)||'—', code_parcelle:e.n_demcge||'',
+    dept:normN(e.dept), village:normN(e.village), superficie:e.superficie||0, etape:'Levé GNSS', type:'GNSS' }));
 }
 
 function dosGetSuperficie(d){
@@ -2267,75 +2210,18 @@ function dosSubmit(e){
 }
 
 function dosResetForm(){
-  ['df-id','df-prenom','df-nom','df-village','df-code','df-date-etape'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.value='';
-  });
-  ['df-dept','df-sp','df-type','df-etape'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.value='';
-  });
-  document.getElementById('dos-edit-id').value='';
-  document.getElementById('dos-form-title').textContent='Nouveau dossier foncier';
-  document.getElementById('df-submit-btn')?.setAttribute('textContent','Enregistrer');
-}
-
-
-function dosEdit(id){
-  const d = dossiers.find(x=>x.id===id);
-  if(!d) return;
-  switchModule('dossier');
-  dosShowPanel('new');
-  setTimeout(()=>{
-    document.getElementById('dos-edit-id').value = id;
-    document.getElementById('dos-form-title').textContent = 'Modifier le dossier';
-    document.getElementById('df-id').value = d.id||'';
-    document.getElementById('df-prenom').value = d.prenom||'';
-    document.getElementById('df-nom').value = d.nom||'';
-    document.getElementById('df-dept').value = d.dept||'';
-    dosUpdateSP();
-    setTimeout(()=>{ document.getElementById('df-sp').value = d.sp||''; },50);
-    document.getElementById('df-village').value = d.village||'';
-    document.getElementById('df-code').value = d.code_parcelle||'';
-    document.getElementById('df-type').value = d.type||'';
-    document.getElementById('df-etape').value = d.etape||'';
-    document.getElementById('df-date-etape').value = d['date_'+d.etape]||'';
-    dosUpdateDateField();
-  },100);
-}
-function dosCloseForm(){ dosShowPanel('list'); }
-function dosAvancer(id){
-  const d=dossiers.find(x=>x.id===id);if(!d||d.etape==='Clôturé')return;
-  const i=dosIdx(d.etape);if(i<0||i>=DOS_ETAPES.length-1)return;
-  const next=DOS_ETAPES[i+1];
-  const today=new Date().toISOString().split('T')[0];
-  d.historique=d.historique||[];d.historique.push({etape:next,date:today});
-  d.etape=next;d.etape_date=today;
-  dosSave();dosRenderAll();showToast('Avancé vers : '+next);
-}
-function dosEdit(id){
-  const d=dossiers.find(x=>x.id===id);if(!d)return;
-  dosEditingId=id;
-  document.getElementById('dos-form-title').textContent='Modifier le dossier';
-  document.getElementById('df-ref').value=d.ref_officiel;document.getElementById('df-date').value=d.date_ouverture;document.getElementById('df-agent').value=d.agent;document.getElementById('df-dept').value=d.dept;dosUpdateGeo();document.getElementById('df-village').value=d.village;document.getElementById('df-demandeur').value=d.demandeur;document.getElementById('df-tel').value=d.tel||'';document.getElementById('df-superficie').value=d.superficie;document.getElementById('df-type').value=d.type_parcelle||'Agricole';
-  document.getElementById('df-activite').value=d.activite||'CF';dosUpdateEtapeChips();
-  setTimeout(()=>{document.getElementById('df-etape').value=d.etape;document.querySelectorAll('#dos-etape-chips .chip').forEach(c=>c.classList.toggle('selected',c.dataset.v===d.etape));},60);
-  document.getElementById('df-etape-date').value=d.etape_date||'';document.getElementById('df-obs').value=d.obs||'';
-  dosShowPanel('form');window.scrollTo(0,0);
-}
-function dosDel(id){if(!canDelete()){showToast('Action réservée au coordinateur.');return;}if(!confirm('Supprimer ce dossier ?'))return;dossiers=dossiers.filter(d=>d.id!==id);dosSave();dosRenderAll();showToast('Supprimé.');}
-function dosResetForm(){
   dosEditingId=null;
-  document.getElementById('dos-form-title').textContent='Nouveau dossier foncier';
-  document.getElementById('dos-form').reset();
-  document.getElementById('df-date').value=new Date().toISOString().split('T')[0];
-  document.getElementById('df-etape-date').value=new Date().toISOString().split('T')[0];
-  document.getElementById('df-activite').value='';
-  document.getElementById('df-etape').value='';
-  document.getElementById('dos-etape-chips').innerHTML='<span style="font-size:12px;color:var(--text3);padding:6px 0">Choisissez d\'abord une activité principale</span>';
-  document.getElementById('dos-village-dl').innerHTML='';
+  const _s=(id,fn)=>{ const e=document.getElementById(id); if(e) fn(e); };
+  _s('dos-form-title',e=>e.textContent='Nouveau dossier foncier');
+  _s('dos-form',e=>e.reset());
+  _s('dos-edit-id',e=>e.value='');
+  _s('df-date-etape',e=>e.value=new Date().toISOString().split('T')[0]);
+  _s('df-etape',e=>e.value='');
+  _s('dos-village-dl',e=>e.innerHTML='');
   document.querySelectorAll('#dos-panel-form .ferr').forEach(e=>e.classList.remove('show'));
   document.querySelectorAll('#dos-panel-form .fi,#dos-panel-form .fsel').forEach(e=>e.classList.remove('err'));
-  document.getElementById('dos-val-sum').classList.remove('show');
-  document.getElementById('dos-suc').classList.remove('show');
+  _s('dos-val-sum',e=>e.classList.remove('show'));
+  _s('dos-suc',e=>e.classList.remove('show'));
 }
 function dosExportCSV(){
   // Exporter la liste filtrée active (dossiers manuels + AFOR + GNSS sans dossier)
@@ -3183,7 +3069,7 @@ function agRenderAll(){
   const _agNb = document.getElementById('ag-nb');
   if(_agNb) _agNb.textContent = AGENTS_FULL.length;
   const _agSub = document.getElementById('ag-subtitle');
-  if(_agSub) _agSub.textContent = AGENTS_FULL.length + ' agents PRESFOR — Région du Cavally';
+  if(_agSub) _agSub.textContent = AGENTS_FULL.length + ' agents PRESFOR — Cavally et Worodougou';
 }
 
 function agShowPanel(id, btn){
@@ -3571,21 +3457,30 @@ function agRenderPerf(idPrefix){
   });
   data.sort((x,y)=>y.totalDos-x.totalDos);
   const maxDos = data[0]?.totalDos||1;
-  const totalAll = data.reduce((s,d)=>s+d.totalDos,0);
+  // Unités séparées : dossiers (CE) et parcelles (opérateurs GNSS) ne s'additionnent pas ;
+  // les hectares GNSS ne sont comptés que sur les lignes d'opérateurs (les lignes CE portent les mêmes hectares via leurs dossiers).
+  const rowsCE   = data.filter(d=>!d.isGnss);
+  const rowsGNSS = data.filter(d=>d.isGnss);
+  const totalCE   = rowsCE.reduce((s,d)=>s+d.totalDos,0);
+  const totalParc = rowsGNSS.reduce((s,d)=>s+d.totalDos,0);
   const actifs = data.filter(d=>d.totalDos>0).length;
   const meilleur = data[0];
-  const totalHaGnss = data.reduce((s,d)=>s+(d.ha||0),0);
+  const totalHaGnss = rowsGNSS.reduce((s,d)=>s+(d.ha||0),0);
 
   kpiEl.innerHTML=`
-    <div class="kpi green"><div class="kpi-l">Production totale</div><div class="kpi-v">${totalAll}</div><div class="kpi-s">Tous agents</div></div>
+    <div class="kpi green"><div class="kpi-l">Production totale</div><div class="kpi-v">${totalCE}</div><div class="kpi-s">dossiers CE · + ${totalParc} parcelles GNSS</div></div>
     <div class="kpi blue"><div class="kpi-l">Agents actifs</div><div class="kpi-v">${actifs}</div><div class="kpi-s">Avec production</div></div>
-    <div class="kpi amber"><div class="kpi-l">Meilleure perf.</div><div class="kpi-v">${meilleur?.totalDos||0}</div><div class="kpi-s">${meilleur?.a.nom.split(' ')[0]||'—'}</div></div>
+    <div class="kpi amber"><div class="kpi-l">Meilleure perf.</div><div class="kpi-v">${meilleur?.totalDos||0}</div><div class="kpi-s">${meilleur?.a.nom.split(' ')[0]||'—'}${meilleur&&meilleur.isGnss?' (parcelles)':' (dossiers)'}</div></div>
     <div class="kpi teal"><div class="kpi-l">Superficie GNSS</div><div class="kpi-v" style="font-size:16px;">${totalHaGnss.toFixed(1)} ha</div><div class="kpi-s">Opérateurs GNSS</div></div>`;
 
   tbodyEl.innerHTML = data.map((d,i)=>{
     const c = agFonctionColor(d.a.fonction);
-    const pct = maxDos>0?Math.round(d.totalDos/maxDos*100):0;
-    const perf = pct>=80?{label:'Excellent',bg:'var(--accent-lt)',tx:'var(--accent-txt)'}:
+    // Comparaison au meilleur de SA catégorie (dossiers CE avec CE, parcelles GNSS avec GNSS) ; pas d'appréciation pour les fonctions sans production mesurée
+    const _mesure = d.isGnss || d.a.fonction==='Commissaire enquêteur';
+    const _max = Math.max(1, ...data.filter(x=>x.isGnss===d.isGnss && (x.isGnss || x.a.fonction==='Commissaire enquêteur')).map(x=>x.totalDos));
+    const pct = _max>0?Math.round(d.totalDos/_max*100):0;
+    const perf = !_mesure?{label:'—',bg:'var(--surface2)',tx:'var(--text3)'}:
+                 pct>=80?{label:'Excellent',bg:'var(--accent-lt)',tx:'var(--accent-txt)'}:
                  pct>=50?{label:'Bon',bg:'var(--blue-lt)',tx:'var(--blue-txt)'}:
                  pct>=20?{label:'Moyen',bg:'var(--amber-lt)',tx:'var(--amber-txt)'}:
                          {label:'Faible',bg:'var(--surface2)',tx:'var(--text2)'};
@@ -3818,7 +3713,38 @@ function zvShowPanel(id, btn){
 // ── Stats globales ──
 // Normalise une chaîne pour comparaison robuste (majuscules, sans accents)
 function zvNormStr(s){
-  return (s||'').toString().trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  // Majuscules, sans accents, ponctuation/traits d'union/apostrophes → espace (« Blédi-Diéya » = « BLEDI DIEYA » = « Bledi  Dieya »)
+  return (s||'').toString().trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]+/g,' ').trim();
+}
+// Villages porteurs de données (dossiers AFOR/manuels, parcelles GNSS) qui n'existent pas dans le référentiel ZV_GEO :
+// sans cette liste ils seraient comptés dans les totaux généraux mais invisibles dans toutes les vues par village.
+function zvHorsReferentiel(){
+  const ref={};
+  Object.entries(ZV_GEO).forEach(([dept,info])=>{ const dn=zvNormStr(dept.replace(/^Dép\.\s*/,'')); Object.values(info.sp).flat().forEach(v=>{ ref[dn+'|'+zvNormStr(v)]=1; }); });
+  const res={};
+  const add=(dept,vil,kind,ha,val)=>{
+    const dn=zvNormStr(String(dept||'').replace(/^Dép\.\s*/,'')), vn=zvNormStr(vil);
+    const k=dn+'|'+vn; if(ref[k]) return;
+    const o=res[k]||(res[k]={dept:String(dept||'(vide)').replace(/^Dép\.\s*/,''), village:vil||'(vide)', dos:0, val:0, gnss:0, ha:0});
+    if(kind==='d'){ o.dos++; if(val) o.val++; } else { o.gnss++; o.ha+=ha||0; }
+  };
+  (dossiersAFOR||[]).forEach(d=>add(d.dept,d.village,'d',0,isValide(d)));
+  (dossiers||[]).forEach(d=>add(d.dept,d.village,'d',0,false));
+  ((typeof gnssData!=='undefined'&&gnssData)||[]).forEach(g=>add(g.dept,g.village,'g',g.superficie));
+  return Object.values(res).sort((a,b)=>String(a.dept).localeCompare(String(b.dept))||(b.dos+b.gnss)-(a.dos+a.gnss));
+}
+function zvRenderHorsRef(cards, idPrefix){
+  let box=document.getElementById(idPrefix+'-horsref');
+  if(!box){ box=document.createElement('div'); box.id=idPrefix+'-horsref'; box.style.cssText='margin-top:16px;'; cards.parentNode.insertBefore(box, cards.nextSibling); }
+  const L=zvHorsReferentiel();
+  if(!L.length){ box.innerHTML=''; return; }
+  const tot=L.reduce((a,x)=>({d:a.d+x.dos,g:a.g+x.gnss,h:a.h+x.ha}),{d:0,g:0,h:0});
+  box.innerHTML='<div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;">'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:4px;">Villages hors référentiel ('+L.length+')</div>'
+    +'<div style="font-size:11px;color:var(--text2);margin-bottom:8px;">Villages (ou départements, ex. Worodougou) qui portent des données — '+tot.d+' dossier(s), '+tot.g+' parcelle(s) GNSS, '+tot.h.toFixed(1)+' ha — mais absents de la liste de villages de référence : ils sont comptés dans les totaux généraux, pas dans la couverture par village. Vérifiez l\'orthographe ou complétez le référentiel.</div>'
+    +'<div style="max-height:320px;overflow:auto;"><table style="width:100%;font-size:11px;border-collapse:collapse;"><thead><tr style="text-align:left;color:var(--text3);"><th>Département</th><th>Village</th><th style="text-align:right">Dossiers</th><th style="text-align:right">Validés</th><th style="text-align:right">Parcelles GNSS</th><th style="text-align:right">ha GNSS</th></tr></thead><tbody>'
+    +L.slice(0,400).map(x=>'<tr style="border-top:1px solid var(--border);"><td>'+x.dept+'</td><td>'+x.village+'</td><td style="text-align:right">'+x.dos+'</td><td style="text-align:right">'+x.val+'</td><td style="text-align:right">'+x.gnss+'</td><td style="text-align:right">'+x.ha.toFixed(1)+'</td></tr>').join('')
+    +'</tbody></table></div></div>';
 }
 // Index village → stats, reconstruit dès que les données changent (AFOR, GNSS, dossiers manuels)
 let _zvIdx=null, _zvIdxSig='';
@@ -3888,7 +3814,7 @@ function zvRenderKPI(idPrefix){
   const pct = totalV>0?Math.round(couverts/totalV*100):0;
   const totalSP = depts.reduce((s,d)=>s+Object.keys(ZV_GEO[d].sp).length,0);
   el.innerHTML=`
-    <div class="kpi blue"><div class="kpi-l">Départements</div><div class="kpi-v">4</div><div class="kpi-s">Région du Cavally</div></div>
+    <div class="kpi blue"><div class="kpi-l">Départements</div><div class="kpi-v">${depts.length}</div><div class="kpi-s">Référentiel de villages : Cavally</div></div>
     <div class="kpi"><div class="kpi-l">Sous-préfectures</div><div class="kpi-v">${totalSP}</div><div class="kpi-s">${totalV} villages recensés</div></div>
     <div class="kpi green"><div class="kpi-l">Villages couverts</div><div class="kpi-v">${couverts}</div><div class="kpi-s">Taux : ${pct}%</div></div>
     <div class="kpi amber"><div class="kpi-l">Dossiers CF ouverts</div><div class="kpi-v">${totalDos}</div><div class="kpi-s">${totalVal} validés · ${totalGn} parcelles GNSS</div></div>`;
@@ -3900,6 +3826,7 @@ function zvRenderOverview(idPrefix){
   const cards = document.getElementById(idPrefix+'-dept-cards');
   if(!cards) return;
   const goFn = idPrefix==='zv' ? 'zvGoToDept' : 'indZvGoToDept';
+  try{ zvRenderHorsRef(cards, idPrefix); }catch(e){ console.warn('zvRenderHorsRef',e); }
   cards.innerHTML = Object.entries(ZV_GEO).map(([dept, info])=>{
     const s = zvGetDeptStats(dept);
     const pct = s.pct||0;
@@ -6785,7 +6712,7 @@ setInterval(async ()=>{
   try{
     const m=document.getElementById('module-cqe'); if(!m || !m.classList.contains('active') || document.hidden) return;
     if(_pubPushing) return;
-    const nAs = (await cqeAssignLoad()) + (await cqeGrilleLoad()) + (await cqeSuiviLoad()) + (await terrLoadChecks()) + (await planLoadChecks()) + (await cqeEtatLoad()) + (await cqeLocksLoad());
+    const nAs = (await cqeAssignLoad()) + (await cqeGrilleLoad()) + (await cqeSuiviLoad()) + (await terrLoadChecks()) + (await planLoadChecks()) + (await cqeEtatLoad()) + (await cqeLocksLoad()) + (await cqeOwnersLoad());
     await pubLoadFromFirebase();
     if(pubRemoteChanged>0 || nAs>0){
       const modalOpen = ['terr-modal','cqe-dossier-modal','terr-struct'].some(id=>{ const e=document.getElementById(id); return e && e.style.display!=='none'; });
@@ -6804,11 +6731,16 @@ async function autoSyncCount(path){
   try{ const r = await fetch(FIREBASE_URL+'/presfor/'+path+'.json',{signal:AbortSignal.timeout(15000)}); if(!r.ok) return undefined; const v = await r.json(); return (v==null)?0:Number(v)||0; }
   catch(e){ return undefined; }   // undefined = Firebase injoignable : on ne touche à rien
 }
+async function autoSyncStr(path){
+  try{ const r = await fetch(FIREBASE_URL+'/presfor/'+path+'.json',{signal:AbortSignal.timeout(15000)}); if(!r.ok) return undefined; const v = await r.json(); return (v==null)?'':String(v); }
+  catch(e){ return undefined; }
+}
 async function autoSyncRun(){
   if(_autoSyncBusy || !currentUser || document.hidden) return;
   if(typeof _pubPushing!=='undefined' && _pubPushing) return;
   _autoSyncBusy = true; const did = [];
   try{
+    if(await appCheckResetEpoch()){ _autoSyncBusy=false; location.reload(); return; }
     const admin = currentUser.role==='admin';
     // 1) Contrôles CQ : envoi incrémental (seulement ce qui a changé) puis relecture
     try{ if(admin && Object.keys(pubCQ||{}).length){ const r = await pubPushToFirebase(false); if(r && r.sent) did.push('CQ envoyés'); } }catch(e){}
@@ -6819,12 +6751,19 @@ async function autoSyncRun(){
     const rAfor = await autoSyncCount('afor_cf/meta/count'), lAfor = (dossiersAFOR||[]).length;
     if(rAfor!==undefined){
       if(admin && lAfor>rAfor){ try{ await aforSaveToFirebase(); aforLoadStatus='✓ envoyé automatiquement : '+lAfor.toLocaleString('fr-FR')+' dossiers'; did.push('dossiers AFOR envoyés'); }catch(e){ aforLoadStatus='✗ envoi auto : '+e.message; } }
+      else if(!admin && rAfor===lAfor && (await autoSyncStr('afor_cf/meta/ts'))>(localStorage.getItem('presfor_afor_ts')||'')){
+        // même nombre de dossiers mais fichier AFOR ré-importé (étapes, statuts mis à jour) : l'horodatage Firebase est plus récent
+        try{ if(await aforLoadFromFirebase()){ try{ aforRenderAll(); dosRenderAll(); }catch(e){} did.push('dossiers AFOR mis à jour (nouvel import)'); } }catch(e){}
+      }
       else if(rAfor>lAfor || (!admin && rAfor!==lAfor)){ try{ if(await aforLoadFromFirebase()){ try{ aforRenderAll(); dosRenderAll(); }catch(e){} did.push('dossiers AFOR rechargés'); } }catch(e){} }
     }
     // 3) GNSS
     const rG = await autoSyncCount('gnss_data/count'), lG = (gnssData||[]).length;
     if(rG!==undefined){
       if(admin && lG>rG){ try{ await gnssSaveToFirebase(); did.push('GNSS envoyé'); }catch(e){} }
+      else if(!admin && rG===lG && (await autoSyncStr('gnss_data/ts'))>(localStorage.getItem('presfor_gnss_ts')||'')){
+        try{ if(await gnssLoadFromFirebase()) did.push('GNSS mis à jour (nouvel import)'); }catch(e){}
+      }
       else if(rG>lG || (!admin && rG!==lG)){ try{ if(await gnssLoadFromFirebase()) did.push('GNSS rechargé'); }catch(e){} }
     }
     autoSyncStatus = '✓ '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+(did.length?' — '+did.join(', '):' — tout est à jour');
@@ -6903,11 +6842,86 @@ function lockBlockedDialog(id, by, t, retry){
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;"><button class="btn-p" onclick="document.getElementById('lock-modal').remove()">OK</button>${rejIsAdmin()?`<button class="btn-s" style="color:var(--red);" onclick="document.getElementById('lock-modal').remove();${retry}">Forcer l'accès (administrateur)</button>`:''}</div></div>`;
   document.body.appendChild(m);
 }
+// ═══════════════════════════════════════════════════════════════
+// CONTRÔLEUR RESPONSABLE DU DOSSIER — dès qu'un CQI a contrôlé une pièce d'un dossier, il est seul à poursuivre le contrôle des autres pièces.
+// Un autre CQI ne peut y accéder qu'avec l'autorisation de l'administrateur (transfert ou libération).
+// Responsable = auteur du plus ancien contrôle de pièce fait par un CQI (déduit des contrôles, donc valable pour l'existant),
+// sauf décision de l'administrateur : /presfor/cq_owner/{dossier} = {by, _u, adm} ; by='' = libéré (le prochain CQI qui contrôle devient responsable).
+// L'administrateur n'est jamais bloqué et ne devient pas responsable.
+// ═══════════════════════════════════════════════════════════════
+let cqeOwners = {};
+try{ cqeOwners = JSON.parse(localStorage.getItem('presfor_cq_owner')||'{}')||{}; }catch(e){}
+function cqeOwnersSaveLocal(){ try{ localStorage.setItem('presfor_cq_owner', JSON.stringify(cqeOwners)); }catch(e){} }
+async function cqeOwnersLoad(){
+  let n=0;
+  try{
+    const r = await fetch(FIREBASE_URL+'/presfor/cq_owner.json',{signal:AbortSignal.timeout(15000)}); if(!r.ok) return 0;
+    const d = (await r.json())||{};
+    Object.keys(d).forEach(id=>{ const rem=d[id], loc=cqeOwners[id]; if(!rem||typeof rem!=='object') return; if(!loc || String(rem._u||'')>String(loc._u||'')){ cqeOwners[id]=rem; n++; } });
+    Object.keys(cqeOwners).forEach(id=>{ const loc=cqeOwners[id], rem=d[id]; if(loc && (!rem || String(loc._u||'')>String(rem._u||''))) cqeFbPut('cq_owner/'+encodeURIComponent(id), loc); });
+    if(n) cqeOwnersSaveLocal();
+  }catch(e){ console.warn('cqeOwnersLoad:', e.message); }
+  return n;
+}
+function cqeOwnerOf(id){
+  const sid=String(id), ov=cqeOwners[sid];
+  if(ov && ov.by) return ov.by;
+  const since = (ov && ov._u) ? String(ov._u) : '';
+  const cq = new Set(cqeUsers().map(u=>u.name));
+  if(!cq.size) return '';
+  const cand=[], tc=(typeof terrChecks!=='undefined'&&terrChecks[sid])||{};
+  Object.keys(tc).forEach(t=>{ const c=tc[t]; if(c && c.par && c.statut && cq.has(c.par)) cand.push(c); });
+  const pc=(typeof planChecks!=='undefined')?planChecks[sid]:null; if(pc && pc.par && pc.statut && cq.has(pc.par)) cand.push(pc);
+  const list=cand.filter(c=>!since || chkStamp(c)>since).sort((a,b)=>chkStamp(a)<chkStamp(b)?-1:1);
+  return list.length ? list[0].par : '';
+}
+function cqeOwnerBlock(id){
+  if(!currentUser || currentUser.role!=='cqe') return null;
+  const o=cqeOwnerOf(id), me=cqeWho()||'';
+  return (o && o!==me) ? o : null;
+}
+function ownerBlockedDialog(id, by){
+  const old=document.getElementById('lock-modal'); if(old) old.remove();
+  const m=document.createElement('div'); m.id='lock-modal'; m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10010;display:flex;align-items:center;justify-content:center;padding:20px;';
+  m.innerHTML=`<div style="background:var(--surface);border-radius:12px;max-width:440px;width:100%;padding:20px;"><div style="font-size:30px;text-align:center;">🔒</div>
+    <h3 style="font-family:'Syne',sans-serif;font-size:15px;margin:6px 0;text-align:center;">Dossier suivi par un autre contrôleur</h3>
+    <p style="font-size:13px;text-align:center;margin:8px 0 14px;">Le contrôle du dossier <b>${planEsc(id)}</b> a été entamé par <b>${planEsc(by)}</b>, qui est seul à le poursuivre.<br>Un autre contrôleur ne peut y accéder qu'avec l'autorisation de l'administrateur.</p>
+    <div style="text-align:center;"><button class="btn-p" onclick="document.getElementById('lock-modal').remove()">OK</button></div></div>`;
+  document.body.appendChild(m);
+}
+function cqeOwnerSet(id, name){
+  if(!rejIsAdmin()) return;
+  const sid=String(id), rec={by:name||'', _u:nowSrv(), adm:cqeWho()||''};
+  cqeOwners[sid]=rec; cqeOwnersSaveLocal(); cqeFbPut('cq_owner/'+encodeURIComponent(sid), rec);
+  try{ auditLog('cq_owner', sid, name?('Contrôle confié à '+name):'Dossier libéré'); }catch(e){}
+  showToast(name?('Dossier '+sid+' : contrôle confié à '+name+'.'):('Dossier '+sid+' libéré : le prochain CQI qui le contrôle en devient responsable.'));
+  cqeOwnerPanel(sid); try{ if(typeof cqeRenderControle==='function') cqeRenderControle(); }catch(e){}
+}
+// Encart « contrôleur responsable » en tête de la fenêtre du dossier (Contrôle des dossiers)
+function cqeOwnerPanel(id){
+  const m=document.getElementById('ctl-modal'); if(!m) return;
+  const box=m.querySelector('div > div:nth-child(2)'); if(!box) return;
+  let el=document.getElementById('ctl-owner'); if(el) el.remove();
+  const o=cqeOwnerOf(id), sid=String(id).replace(/'/g,"\\'");
+  let h='';
+  if(o) h+=`<div>Contrôle entamé par <b>${planEsc(o)}</b> : seul ce CQI poursuit le contrôle des pièces de ce dossier.</div>`;
+  else h+=`<div style="color:var(--text3);">Aucun CQI n'a encore contrôlé de pièce de ce dossier : le premier qui contrôlera une pièce en deviendra responsable.</div>`;
+  if(rejIsAdmin()){
+    const names=cqeUsers().map(u=>u.name).sort();
+    h+=`<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;"><select id="ctl-owner-sel" style="border:1px solid var(--border-med);border-radius:6px;padding:4px 6px;font-size:12px;">${names.map(n=>`<option ${n===o?'selected':''}>${planEsc(n)}</option>`).join('')}</select>
+      <button class="btn-s" onclick="cqeOwnerSet('${sid}', document.getElementById('ctl-owner-sel').value)">Autoriser / confier à ce CQI</button>${o?`<button class="btn-s" onclick="cqeOwnerSet('${sid}','')">Libérer le dossier</button>`:''}</div>`;
+  }
+  el=document.createElement('div'); el.id='ctl-owner'; el.style.cssText='margin:0 0 10px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);font-size:12px;';
+  el.innerHTML=h; box.insertBefore(el, box.firstChild);
+}
+const _cqeCtlOpenBase = cqeCtlOpen;
+cqeCtlOpen = function(id){ const r=_cqeCtlOpenBase.apply(this,arguments); try{ cqeOwnerPanel(id); }catch(e){ console.warn(e); } return r; };
 // Ouvre un écran de contrôle uniquement si le dossier n'est pas pris par un autre contrôleur.
 function cqeGuard(name, orig){
   return function(id, a, b){
     const args = arguments, self = this;
     if(!grilleCan()) return orig.apply(self, args);
+    { const ob = cqeOwnerBlock(id); if(ob){ ownerBlockedDialog(id, ob); return; } }
     if(_lockMine && _lockMine.id===String(id) && Date.now()-_lockMine.at < 120000){ _lockGrace=Date.now()+15000; return orig.apply(self, args); }
     return cqeLockAcquire(id).then(r=>{
       if(r.ok) return orig.apply(self, args);
@@ -6925,9 +6939,136 @@ grilleOpen = cqeGuard('grilleOpen', grilleOpen);
 const _cqeCtlChoose0 = cqeCtlChoose;
 cqeCtlChoose = function(id,kind){ _lockGrace=Date.now()+20000; return _cqeCtlChoose0(id,kind); };
 // ═══════════════════════════════════════════════════════════════
+// PIÈCES JOINTES DES FICHES TABLETTE — pièce d'identité du demandeur, document d'achat (images).
+// À l'import des ZIP, l'image est réduite (900 px, JPEG) et gardée à part : IndexedDB sur l'appareil + Firebase /presfor/tab_img/{type}/{fiche}
+// (lue à la demande, jamais chargée avec les fiches). Fiche importée avant cette fonction : réimporter les ZIP pour obtenir l'image.
+// ═══════════════════════════════════════════════════════════════
+function tabIsImgStr(v){ return typeof v==='string' && ((v.length>1000 && (/^data:image\//.test(v) || /^[A-Za-z0-9+\/=\r\n]+$/.test(v.slice(0,200)))) || /^https?:\/\/\S+\.(jpe?g|png|webp)(\?\S*)?$/i.test(v)); }
+function tabImgSrc(v){ return (/^data:image/.test(v)||/^https?:/.test(v)) ? v : 'data:image/'+(/^iVBOR/.test(v)?'png':'jpeg')+';base64,'+v.replace(/\s+/g,''); }
+function tabImgSan(code){ return String(code).replace(/[.#$\[\]\/\s]/g,'_'); }
+function tabImgDb(){ return new Promise((res,rej)=>{ const to=setTimeout(()=>rej(new Error('IndexedDB indisponible')),4000); try{ const r=indexedDB.open('presfor_tab_img',1); r.onupgradeneeded=()=>r.result.createObjectStore('img'); r.onsuccess=()=>{ clearTimeout(to); res(r.result); }; r.onerror=()=>{ clearTimeout(to); rej(r.error); }; }catch(e){ clearTimeout(to); rej(e); } }); }
+async function tabImgIdbGet(k){ try{ const db=await tabImgDb(); return await new Promise(res=>{ const q=db.transaction('img').objectStore('img').get(k); q.onsuccess=()=>{ db.close(); res(q.result||null); }; q.onerror=()=>{ db.close(); res(null); }; }); }catch(e){ return null; } }
+async function tabImgIdbPut(k,v){ try{ const db=await tabImgDb(); await new Promise(res=>{ const tx=db.transaction('img','readwrite'); tx.objectStore('img').put(v,k); tx.oncomplete=()=>{ db.close(); res(true); }; tx.onerror=()=>{ db.close(); res(false); }; }); return true; }catch(e){ return false; } }
+function tabImgShrink(src, maxPx, q){
+  return new Promise(res=>{ if(/^https?:/.test(src)) return res(src);
+    const im=new Image();
+    im.onload=()=>{ try{ let w=im.naturalWidth, h=im.naturalHeight; const k=Math.min(1,maxPx/Math.max(w,h)); w=Math.max(1,Math.round(w*k)); h=Math.max(1,Math.round(h*k));
+      const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,w,h); x.drawImage(im,0,0,w,h); res(c.toDataURL('image/jpeg',q)); }catch(e){ res(null); } };
+    im.onerror=()=>res(null); im.src=src; });
+}
+// Images à conserver dans une fiche tablette brute : [{slot, v}]
+function tabImgExtract(stageKey, rec){
+  const out=[]; if(!rec || typeof rec!=='object') return out;
+  if(stageKey==='requests'){ const v=rec.applicant && rec.applicant.identityDocumentPhoto; if(tabIsImgStr(v)) out.push({slot:'dem_id', v}); }
+  if(stageKey==='minutes'){
+    const h=(rec.interviewedPeople||[]).find(pvIsHolder); const v=h && h.identityDocumentPhoto; if(tabIsImgStr(v)) out.push({slot:'rdc_id', v});
+    let found=null; const walk=(o,k)=>{ if(found||o==null) return; if(typeof o==='string'){ if(/purchas|achat|vente|acte|receipt|recu/i.test(k||'') && tabIsImgStr(o)) found=o; return; } if(Array.isArray(o)){ o.forEach(x=>walk(x,k)); return; } if(typeof o==='object') Object.keys(o).forEach(kk=>walk(o[kk],kk)); };
+    walk(rec.response3,''); if(found) out.push({slot:'rdc_buy', v:found});
+  }
+  return out;
+}
+let _tabImgPending = [];
+async function tabImgKeep(slot, code, v){
+  const out = await tabImgShrink(tabImgSrc(v), 900, 0.62); if(!out) return false;
+  const k = slot+'|'+tabImgSan(code); await tabImgIdbPut(k, out); _tabImgPending.push({slot, code, k}); return true;
+}
+let _tabImgBusy = false;
+async function tabImgFlush(){
+  if(_tabImgBusy || !_tabImgPending.length) return; _tabImgBusy=true;
+  const tot=_tabImgPending.length; let ok=0, ko=0;
+  try{
+    const worker = async()=>{ while(_tabImgPending.length){ const it=_tabImgPending.shift();
+      try{ const v=await tabImgIdbGet(it.k); if(!v) throw 0;
+        const r=await fetch(FIREBASE_URL+'/presfor/tab_img/'+it.slot+'/'+encodeURIComponent(tabImgSan(it.code))+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({d:v}),signal:AbortSignal.timeout(30000)});
+        if(!r.ok) throw 0; ok++; }catch(e){ ko++; } } };
+    await Promise.all([worker(),worker(),worker()]);
+  } finally { _tabImgBusy=false; }
+  showToast('Pièces jointes tablette : '+ok+' / '+tot+' envoyée(s) sur Firebase'+(ko?' ('+ko+' en échec : réimportez les ZIP pour réessayer)':'')+'.');
+}
+async function tabImgGet(slot, code){
+  const k=slot+'|'+tabImgSan(code); const v=await tabImgIdbGet(k); if(v) return v;
+  try{ const r=await fetch(FIREBASE_URL+'/presfor/tab_img/'+slot+'/'+encodeURIComponent(tabImgSan(code))+'.json',{signal:AbortSignal.timeout(20000)});
+    if(r.ok){ const j=await r.json(); if(j && j.d){ tabImgIdbPut(k, j.d); return j.d; } } }catch(e){}
+  return null;
+}
+function tabImgCodeOf(stageKey, rec){ const def=TAB_STAGE_DEFS.find(x=>x.key===stageKey); return String((rec&&def&&rec[def.codeField])||(rec&&rec.id)||''); }
+// État des pièces d'un dossier selon la fiche tablette : {dem:{flag}, buy:{flag, applicable}, rdcId:{flag}}
+function tabPiecesInfo(d){
+  const t=(typeof tabMatchForDossier==='function'&&tabMatchForDossier(d))||{}, req=t.requests, rdc=t.minutes;
+  const ap=(req&&req.applicant)||{}, r3=(rdc&&rdc.response3)||{}, sa=r3.sellerAudition||{};
+  const holder=rdc?(rdc.interviewedPeople||[]).find(pvIsHolder):null;
+  const achat = r3.howDidYouGetThisParcel==='CAS_ACHAT' || !!sa.doYouHaveAPurchasingDocument;
+  return {t, req, rdc, dem:{has:!!req, flag:!!ap.identityDocumentPhoto}, rdcId:{has:!!rdc && !!holder, flag:!!(holder&&holder.identityDocumentPhoto)}, buy:{has:!!rdc && achat, flag:sa.doYouHaveAPurchasingDocument===true, nonDecl:sa.doYouHaveAPurchasingDocument===false}};
+}
+function tabPiecesBar(d){
+  const x=tabPiecesInfo(d), sid=String(d.id).replace(/'/g,"\\'");
+  const b=(slot,lab,flag,nonDecl)=>`<button class="btn-s" onclick="tabImgShow('${sid}','${slot}','${lab.replace(/'/g,"\\'")}')" title="${flag?'Afficher la pièce enregistrée sur la tablette':'Aucune pièce déclarée sur la tablette'}">📎 ${lab} ${flag?'<span style="color:#16a34a;">✓</span>':nonDecl?'<span style="color:#d97706;">non fourni</span>':'<span style="color:var(--text3);">—</span>'}</button>`;
+  const btns=[];
+  if(x.dem.has) btns.push(b('dem_id','Pièce du demandeur',x.dem.flag));
+  if(x.rdcId.has) btns.push(b('rdc_id','Pièce du détenteur (RDC)',x.rdcId.flag));
+  if(x.buy.has) btns.push(b('rdc_buy','Document d\'achat',x.buy.flag,x.buy.nonDecl));
+  if(!btns.length) return '';
+  return `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 8px;padding:6px 8px;background:var(--surface2);border-radius:8px;"><span style="font-size:11px;color:var(--text2);font-weight:700;">Pièces jointes :</span>${btns.join('')}</div>`;
+}
+async function tabImgShow(id, slot, label){
+  const d=(dossiersAFOR||[]).find(x=>String(x.id)===String(id)); if(!d) return;
+  const x=tabPiecesInfo(d), stage=slot==='dem_id'?'requests':'minutes', rec=slot==='dem_id'?x.req:x.rdc; if(!rec) return;
+  const flag = slot==='dem_id'?x.dem.flag : slot==='rdc_id'?x.rdcId.flag : x.buy.flag;
+  const old=document.getElementById('tabimg-modal'); if(old) old.remove();
+  const m=document.createElement('div'); m.id='tabimg-modal'; m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10020;display:flex;align-items:center;justify-content:center;padding:16px;';
+  m.onclick=e=>{ if(e.target===m) m.remove(); };
+  m.innerHTML=`<div style="background:var(--surface);border-radius:12px;max-width:900px;width:100%;max-height:94vh;display:flex;flex-direction:column;overflow:hidden;"><div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;"><b style="font-family:'Syne',sans-serif;font-size:14px;">${planEsc(label)} · dossier ${planEsc(d.id)}</b><button class="btn-s" onclick="document.getElementById('tabimg-modal').remove()">✕ Fermer</button></div><div id="tabimg-body" style="padding:14px;overflow:auto;text-align:center;font-size:12px;color:var(--text2);">Chargement…</div></div>`;
+  document.body.appendChild(m);
+  const v = await tabImgGet(slot, tabImgCodeOf(stage, rec));
+  const body=document.getElementById('tabimg-body'); if(!body) return;
+  if(v) body.innerHTML=`<img src="${v}" alt="${planEsc(label)}" style="max-width:100%;max-height:78vh;border:1px solid var(--border);border-radius:6px;cursor:zoom-in;" onclick="window.open(this.src,'_blank')"><div style="margin-top:6px;font-size:10px;color:var(--text3);">Cliquer sur l'image pour l'ouvrir en grand.</div>`;
+  else body.innerHTML = flag
+    ? `<p style="margin:18px 0;"><b>Pièce déclarée sur la fiche tablette, mais l'image n'est pas disponible dans l'application.</b></p><p style="color:var(--text3);">La fiche a été importée avant l'enregistrement des pièces jointes, ou l'envoi a échoué. Réimportez les ZIP ${stage==='requests'?'01_requests':'02_minutes'} (Imports → Données tablettes) pour enregistrer l'image.</p>`
+    : `<p style="margin:18px 0;"><b>Aucune pièce enregistrée sur la tablette pour ce dossier.</b></p>`;
+}
+// ═══════════════════════════════════════════════════════════════
+// APRÈS LE CONTRÔLE D'UNE PIÈCE — proposer de contrôler une autre pièce du même dossier tant qu'il en reste de disponibles
+// (fiche présente, non rejetée par l'AFOR, pas encore contrôlée ou à re-vérifier). Évite qu'un dossier parte en « Rejets CQI »
+// avant que le contrôleur ait vu toutes ses pièces.
+// ═══════════════════════════════════════════════════════════════
+const CTL_KINDS = [['dem','Demande'],['rdc','RDC'],['pvcl','PVCL'],['plan','Plan'],['afp','Annonce'],['ouv','Ouverture'],['clo','Clôture'],['con','Constat'],['att','Attestation']];
+function cqePiecesRestantes(d, fait){
+  const e=rejEtat(d), bloque = (e.origine==='afor' && e.etat==='rejete') ? rejDocsAfor(d) : [];
+  const aforLab={dem:'Demande',rdc:'RDC',pvcl:'PVCL',plan:'Plan',afp:'Annonce',ouv:'Ouverture',clo:'Clôture',con:'Constat d\'existence',att:'Attestation'};
+  return CTL_KINDS.filter(([k])=>k!==fait && !bloque.includes(aforLab[k]) && ['todo','redo'].includes(cqeCtlState(d,k).k));
+}
+function cqeNextPieceClose(){ const m=document.getElementById('nextpiece-modal'); if(m) m.remove(); }
+function cqeNextPieceGo(id, kind){ cqeNextPieceClose(); try{ cqeCtlClose(); }catch(e){} if(kind==='plan') planOpen(id); else terrOpen(id, kind); }
+function cqeNextPiecePrompt(id, fait){
+  try{
+    if(!grilleCan() || rejIsAdmin() && false) return;
+    const d=(dossiersAFOR||[]).find(x=>String(x.id)===String(id)); if(!d) return;
+    const rest=cqePiecesRestantes(d, fait); if(!rest.length) return;
+    cqeNextPieceClose();
+    const st=cqeCtlState(d,fait).k, lab=(CTL_KINDS.find(x=>x[0]===fait)||[0,fait])[1], qid=String(id).replace(/'/g,"\\'");
+    const m=document.createElement('div'); m.id='nextpiece-modal'; m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10015;display:flex;align-items:center;justify-content:center;padding:20px;';
+    m.innerHTML=`<div style="background:var(--surface);border-radius:12px;max-width:460px;width:100%;padding:20px;">
+      <h3 style="font-family:'Syne',sans-serif;font-size:15px;margin:0 0 6px;">${planEsc(lab)} contrôlé${st==='ko'?' — <span style="color:#dc2626;">incohérence enregistrée</span>':st==='ok'?' — <span style="color:#16a34a;">conforme</span>':''}</h3>
+      <p style="font-size:13px;margin:6px 0 12px;">Le dossier <b>${planEsc(id)}</b> a encore ${rest.length} pièce(s) disponible(s) à contrôler. Voulez-vous en contrôler une autre avant de quitter le dossier ?${st==='ko'?'<br><span style="font-size:12px;color:var(--text3);">Le dossier est déjà compté comme rejeté et passe dans « Rejets CQI ».</span>':''}</p>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;">${rest.map(([k,l])=>`<button class="btn-p" onclick="cqeNextPieceGo('${qid}','${k}')">Contrôler : ${planEsc(l)}</button>`).join('')}</div>
+      <div style="text-align:right;"><button class="btn-s" onclick="cqeNextPieceClose()">Terminer — retour à la liste</button></div></div>`;
+    document.body.appendChild(m);
+  }catch(e){ console.warn('cqeNextPiecePrompt', e); }
+}
+(function(){
+  const wrap=(name, kindOf)=>{ const f=window[name]; if(typeof f!=='function') return; window[name]=async function(id){
+      const k=kindOf.apply(null,arguments), stamp=()=>k==='plan'?chkStamp(planChecks[id]):chkStamp((terrChecks[id]||{})[k]), before=stamp();
+      const r=await f.apply(this,arguments);
+      try{ if(k && stamp()!==before) setTimeout(()=>cqeNextPiecePrompt(id,k),250); }catch(e){}   // seulement si un contrôle a réellement été enregistré
+      return r; }; };
+  wrap('grpSave', (id,type)=>type);
+  wrap('terrSubmit', (id,type)=>type);
+  wrap('planSubmit', (id,statut)=>'plan');
+})();
+// ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-10-cq';
+const APP_VERSION = 'v15-12-ca';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
@@ -8055,7 +8196,7 @@ function terrOpen(id, focus){
     if(dt && da){ const j = Math.round((Date.parse(dt)-Date.parse(da))/86400000); ecart = Math.abs(j)>1 ? `<div style="margin:6px 0;padding:6px 8px;background:var(--amber-lt);color:var(--amber-txt);border-radius:6px;font-size:11px;">⚠ Date sur tablette (${dt.split('-').reverse().join('/')}) différente de la date dans la base AFOR (${da.split('-').reverse().join('/')}) : écart de ${Math.abs(j)} jour(s).</div>` : ''; }
     return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:14px;overflow:hidden;">
       <div style="background:var(--surface2);padding:8px 12px;display:flex;justify-content:space-between;align-items:center;"><b style="font-family:'Syne',sans-serif;">${T.label} — ${T.titre}</b><span style="font-size:11px;">${terrBadge(d,type)}</span></div>
-      <div style="padding:8px 12px;font-size:12px;">${(type==='rdc'&&terrIsPV(rec))?terrRenderPV(d,rec):(type==='pvcl'&&terrIsPVCL(rec))?terrRenderPVCL(d,rec):DOC_TYPES.includes(type)?terrRenderDoc(d,rec,type):(ecart+(terrRenderNode(rec,0)||'<span style="color:var(--text3);">Fiche vide.</span>'))}
+      <div style="padding:8px 12px;font-size:12px;">${tabPiecesBar(d)}${(type==='rdc'&&terrIsPV(rec))?terrRenderPV(d,rec):(type==='pvcl'&&terrIsPVCL(rec))?terrRenderPVCL(d,rec):DOC_TYPES.includes(type)?terrRenderDoc(d,rec,type):(ecart+(terrRenderNode(rec,0)||'<span style="color:var(--text3);">Fiche vide.</span>'))}
         <div style="font-size:10px;color:var(--text3);margin-top:6px;">Tablette : ${planEsc(rec._tablette||'—')}${rec._importedAt?' · importé le '+new Date(rec._importedAt).toLocaleDateString('fr-FR'):''}${rejIsAdmin()?` · <a href="#" onclick="terrBrutShow('${sid}','${type}');return false;" style="color:var(--blue);">Structure de la fiche</a>`:''}</div></div>
       ${focus?'':`<div style="background:var(--surface2);padding:10px 12px;border-top:1px solid var(--border);">
         <div style="font-weight:700;color:var(--blue);margin-bottom:4px;">Contrôle du ${T.label}</div>
@@ -9039,6 +9180,22 @@ function tabSlimRecord(v){
   return v;
 }
 function terrIsPV(rec){ return !!rec && (Array.isArray(rec.investigationMembers) || Array.isArray(rec.interviewedPeople)); }
+// Nombre d'occupants tel qu'enregistré sur la tablette (0 est une valeur valide : ne pas le remplacer par la longueur de la liste). null si non renseigné.
+function pvNbOccupants(r4){ if(!r4) return null; const v=r4.numberOfOccupants; if(v===null||v===undefined||String(v).trim()==='') return null; const n=parseInt(String(v),10); return isNaN(n)?null:n; }
+// Annexe « PV de désignation du gestionnaire d'un bien foncier rural collectif » : membres du groupement (entitledPeople), signature de chacun,
+// règle : au moins la moitié + 1 des membres (n/2 arrondi à l'entier inférieur, plus 1).
+function pvIsCollectif(rec, d){
+  const req=(typeof tabMatchForDossier==='function'&&d&&(tabMatchForDossier(d)||{}).requests)||{};
+  return !!rec && ((Array.isArray(rec.entitledPeople)&&rec.entitledPeople.length>0) || !!String((req.applicant||{}).nameOfGroup||'').trim() || (String((req.applicant||{}).typeOfIndividualCertificate||'').toUpperCase()==='CFC'));
+}
+function pvMembresSig(rec){
+  const mem=Array.isArray(rec.entitledPeople)?rec.entitledPeople:[], sg=(rec.signatories||[]).filter(x=>x&&(x.signatoryPhoto||x.hasSignatoryPhoto===true));
+  const nameOf=p=>((p.lastname||'')+' '+(p.firstname||'')).replace(/\s+/g,' ').trim();
+  const champ = mem.some(p=>p&&(p.signatoryPhoto!==undefined||p.hasSignatoryPhoto!==undefined));
+  const list=mem.map(p=>{ const nom=nameOf(p); const own=!!(p.signatoryPhoto||p.hasSignatoryPhoto===true); const viaSg=!own && !!nom && sg.some(x=>pvSim(((x.lastname||'')+' '+(x.firstname||'')).trim(), nom)>=0.75); return {p, nom, signed: own||viaSg}; });
+  const n=list.length, req=Math.floor(n/2)+1, ok=list.filter(x=>x.signed).length;
+  return {n, req, ok, list, champ, ge: n>0 && ok>=req};
+}
 function pvName(p){ return ((p&&p.firstname||'')+' '+(p&&p.lastname||'')).replace(/\s+/g,' ').trim(); }
 function pvRole(p){ return (p&&p.memberType&&p.memberType.label)||''; }
 function pvIsHolder(p){ const m=p&&p.memberType; return !!m && (m.code==='001' || /d[ée]tenteur/i.test(m.label||'')); }
@@ -9104,6 +9261,12 @@ function terrRdcControls(d, rec){
     if(o==='CAS_HERITAGE' && !(r3.transferorFamilyAudition&&(r3.transferorFamilyAudition.detenteurHeritage||r3.transferorFamilyAudition.nomPrenomReferent))) add('warn','Héritage : détenteur d\'origine / référent non renseigné.');
     if(o==='CAS_DON' && !(r3.applicantAudition&&r3.applicantAudition.nomPrenomDonateur)) add('warn','Don : nom du donateur non renseigné.'); }
   const r4 = rec.response4; if(r4 && String(r4.occuper)==='1' && !(r4.occupants||[]).length) add('err','Q4 : des occupants sont déclarés mais aucun n\'est décrit.');
+  if(r4){ const nbD = pvNbOccupants(r4), nbL=(r4.occupants||[]).length; if(nbD!==null && nbD!==nbL && (nbL>0||nbD>0)) add('warn','Q4 : nombre d\'occupants déclaré ('+nbD+') différent du nombre d\'occupants listés ('+nbL+')'+(String(r4.occuper)!=='1'?' alors que la réponse « occupée » n\'est pas « oui »':'')+'.'); }
+  // Annexe de désignation du gestionnaire (bien collectif) : nom et signature d'au moins la moitié + 1 des membres
+  if(pvIsCollectif(rec,d)){ const ms=pvMembresSig(rec);
+    if(!ms.n) add('warn','Bien collectif : aucun membre du groupement (liste des détenteurs de droits) pour l\'annexe de désignation du gestionnaire.');
+    else if(!ms.ge){ if(ms.ok===0 && !ms.champ) add('warn','Annexe de désignation du gestionnaire : aucune signature de membre retrouvée dans les données tablette ('+ms.n+' membre(s), '+ms.req+' signature(s) requises) — à vérifier sur le scan de l\'annexe.'); else add('err','Annexe de désignation du gestionnaire : '+ms.ok+' signature(s) de membre sur '+ms.n+', la majorité requise est de '+ms.req+' (moitié + 1).'); }
+    else add('ok','Annexe de désignation du gestionnaire : '+ms.ok+' signature(s) de membre sur '+ms.n+' (majorité requise : '+ms.req+').'); }
   // Voisins
   const voisins = people.filter(pvIsNeighbor), temoins = [...new Set((rec.intercalaire||[]).map(i=>i.nomTemoin).filter(Boolean))];
   if(voisins.length<2) add('warn','Moins de 2 voisins limitrophes enregistrés ('+voisins.length+').');
@@ -9218,16 +9381,32 @@ function pvOfficielHtml(d, rec){
     <p><b>2) Êtes-vous seuls à exercer ces droits ?</b></p><div class="pvo-ans">${r2?((r2.haveBrothersAndSisters===true||(r2.brotherOrSisters||[]).length)?'Non — '+E((r2.brotherOrSisters||[]).length||r2.numberOfBrothersAndSisters)+' frère(s)/sœur(s) associé(s)'+((r2.brotherOrSisters||[]).length?'<br>'+(r2.brotherOrSisters||[]).map(b=>E(((b.lastname||'')+' '+(b.firstname||'')).trim()+(b.age?' ('+b.age+' ans)':'')+(b.residence?' — '+b.residence:''))).join('<br>'):''):'Oui, seul(e)'):nr}</div>
     <p><b>3) Quelle est l'origine de ces droits ?</b></p><div class="pvo-ans">`;
   if(r3){ const lab={CAS_HERITAGE:'Héritage',CAS_ACHAT:'Achat',CAS_DON:'Don'}[r3.howDidYouGetThisParcel]||r3.howDidYouGetThisParcel||''; dec += `<b>${E(lab)}</b>${r3.qresponse?'<div>'+E(r3.qresponse)+'</div>':''}`; ['sellerAudition','transferorFamilyAudition','applicantAudition'].forEach(k=>{ if(r3[k]) dec += node(r3[k]); }); } else dec += nr;
-  dec += `</div><p><b>4) Quels sont les occupants de la parcelle ?</b></p><div class="pvo-ans">${r4?(String(r4.occuper)==='1'?'Oui — '+E(r4.numberOfOccupants||(r4.occupants||[]).length)+' occupant(s)'+((r4.occupants||[]).length?'<br>'+(r4.occupants||[]).map(o=>E([o.nameOccupant,o.occupantType,o.cultureType,o.superficie?o.superficie+' ha':''].filter(Boolean).join(' · '))).join('<br>'):''):'Non'):nr}</div>
+  dec += `</div><p><b>4) Quels sont les occupants de la parcelle ?</b></p><div class="pvo-ans">${r4?(()=>{ const nbD=pvNbOccupants(r4), lst=r4.occupants||[], oui=String(r4.occuper)==='1';
+      const head = (oui?'Oui':'Non')+' — '+(nbD!==null?nbD:lst.length)+' occupant(s) (nombre enregistré sur la tablette'+(nbD===null?' : non renseigné, nombre de lignes listées affiché':'')+')';
+      const rows = lst.length ? '<br>'+lst.map(o=>E([o.nameOccupant,o.occupantType,o.cultureType,o.superficie?o.superficie+' ha':''].filter(Boolean).join(' · '))).join('<br>') : '';
+      const warn = (nbD!==null && nbD!==lst.length && (nbD>0||lst.length>0)) ? '<br><span class="pvo-ko">⚠ incohérence sur la tablette : '+nbD+' occupant(s) déclaré(s), '+lst.length+' ligne(s) listée(s)</span>' : '';
+      return head+rows+warn; })():nr}</div>
     <p>« Lecture faite à M. <b>${E(up(nomDem))}</b> qui persiste et signe le <b>${E(fr(dPV))}</b> à <b>${E(up(lieu))}</b></p>
     <p>${(holder&&(holder.signatoryPhoto||holder.hasSignatoryPhoto===true)) || sigDe(nomDem,/demandeur|gestionnaire/i) || sigs.some(x=>/demandeur|gestionnaire/i.test(x.description||''))?'<span class="pvo-ok">✓ signature enregistrée sur la tablette</span>':'<span class="pvo-ko">✗ signature du demandeur manquante</span>'}</p><p class="pvo-small">N° de la demande <b>${E(numPV)}</b></p>`;
   const grp = {}; (rec.intercalaire||[]).forEach(i=>{ (grp[i.nomTemoin||'(sans nom)']=grp[i.nomTemoin||'(sans nom)']||[]).push(i); });
-  Object.keys(grp).forEach((n,ix)=>{ dec += `<hr class="pvo-hr"><p><b>Déclarant N°${ix+2} : ${E(n)}</b></p>`+grp[n].map(i=>`<p><i>${E(i.question||'')}</i></p><div class="pvo-ans">${(i.reponse||'').trim()?E(i.reponse):nr}</div>`).join('')+`<p>${sigDe(n,/t[ée]moin/i)||sigDe(n)?'<span class="pvo-ok">✓ signature enregistrée</span>':'<span class="pvo-ko">✗ signature manquante</span>'}</p>`; });
+  // Le demandeur / gestionnaire est déjà le déclarant N°1 : ses réponses complémentaires de l'intercalaire lui sont rattachées (pas de déclarant en double, pas de décalage de numérotation)
+  const _estDem = n=>[nomDem, manager].some(x=>x && pvSim(n,x)>=0.75);
+  const grpDem = Object.keys(grp).filter(_estDem), grpAutres = Object.keys(grp).filter(n=>!_estDem(n));
+  if(grpDem.length) dec += `<hr class="pvo-hr"><p><i>Réponses complémentaires du déclarant N°1 (${E(grpDem.join(' ; '))}) — fiche intercalaire :</i></p>`+grpDem.map(n=>grp[n].map(i=>`<p><i>${E(i.question||'')}</i></p><div class="pvo-ans">${(i.reponse||'').trim()?E(i.reponse):nr}</div>`).join('')).join('');
+  grpAutres.forEach((n,ix)=>{ dec += `<hr class="pvo-hr"><p><b>Déclarant N°${ix+2} : ${E(n)}</b></p>`+grp[n].map(i=>`<p><i>${E(i.question||'')}</i></p><div class="pvo-ans">${(i.reponse||'').trim()?E(i.reponse):nr}</div>`).join('')+`<p>${sigDe(n,/t[ée]moin/i)||sigDe(n)?'<span class="pvo-ok">✓ signature enregistrée</span>':'<span class="pvo-ko">✗ signature manquante</span>'}</p>`; });
   h += page('EO 5 bis','Annexe au PV<br>DÉCLARATIONS DE TOUTES LES PERSONNES AUDITIONNÉES', dec);
   // Détenteurs de droits (ayants droit du groupement / de la famille)
   const ay = rec.entitledPeople||[];
   if(ay.length) h += page('Annexe','Annexe au PV<br>LISTE DES DÉTENTEURS DE DROITS COUTUMIERS ('+ay.length+')', tbl(['N°','Nom et Prénoms','Nationalité','Lien / observations','Pièce d\'identité','Téléphone'],
     ay.map((p,i)=>`<tr><td>${i+1}</td><td>${E(((p.lastname||'')+' '+(p.firstname||'')).trim())}</td><td>${E(p.nationality||'')}</td><td>${E(p.observations||'')}</td><td>${E(((p.identityDocumentType||'')+' '+(p.identityDocumentNumber||'')).trim())}</td><td>${E(p.phoneNumber||'')}</td></tr>`), 1));
+  // Annexe — Désignation du gestionnaire d'un bien foncier rural collectif (noms + signatures des membres)
+  if(pvIsCollectif(rec,d)){ const ms=pvMembresSig(rec), gest=manager||nomDem;
+    const sigC = x=> x.signed?'<span class="pvo-ok">✓ signature enregistrée</span>':'<span class="pvo-ko">✗ signature non retrouvée</span>';
+    const bilan = !ms.n ? '<span class="pvo-ko">Aucun membre enregistré.</span>' : (ms.ge?'<span class="pvo-ok">✓ ':'<span class="pvo-ko">✗ ')+ms.ok+' signature(s) sur '+ms.n+' membre(s) — majorité requise (moitié + 1) : '+ms.req+'</span>';
+    h += page('Annexe','Annexe au PV<br>DÉSIGNATION DU GESTIONNAIRE D\'UN BIEN FONCIER RURAL COLLECTIF',
+      `<p>Les membres du groupement / de la famille ci-après désignent comme gestionnaire du bien foncier rural collectif : <b class="pvo-f">${E(up(gest))}</b>.</p><p>${bilan}</p>`+
+      tbl(['N°','Nom et Prénoms','Lien / observations','Pièce d\'identité','Signature'], ms.list.map((x,i)=>`<tr><td>${i+1}</td><td>${E(x.nom)}</td><td>${E(x.p.observations||'')}</td><td>${E(((x.p.identityDocumentType&&(x.p.identityDocumentType.label||x.p.identityDocumentType))||'')+' '+(x.p.identityDocumentNumber||'')).trim()}</td><td>${sigC(x)}</td></tr>`), 3)+
+      `<p class="pvo-small">Règle : nom et signature d'au moins la moitié plus un des membres du groupement.</p><p class="pvo-small">N° de la demande <b>${E(numPV)}</b></p>`); }
   // EO 6 — litiges
   const comp = (rec.idLandDispute&&rec.idLandDispute.disputePerson)||rec.complainants||[];
   h += page('EO 6','Annexe au PV<br>FICHE D\'IDENTIFICATION DES LITIGES FONCIERS', tbl(['Identification des plaignants (Nom et prénoms, qualité et village de résidence, pièce d\'identité)','Description du litige'],
@@ -9243,7 +9422,7 @@ function pvOfficielHtml(d, rec){
 }
 function terrRenderPV(d, rec){
   const E = planEsc;
-  const res = terrRdcControls(d, rec), col = {err:'var(--red)',warn:'var(--amber-txt)',info:'var(--text3)'}, ic = {err:'✗',warn:'⚠',info:'ℹ'};
+  const res = terrRdcControls(d, rec), col = {err:'var(--red)',warn:'var(--amber-txt)',info:'var(--text3)',ok:'var(--accent)'}, ic = {err:'✗',warn:'⚠',info:'ℹ',ok:'✓'};
   const ctl = `<div style="margin:0 0 8px;font-weight:700;color:var(--blue);font-size:12px;">Contrôles automatiques</div>`+(res.length ? '<div style="font-size:11px;">'+res.map(x=>`<div style="padding:3px 0;color:${col[x.s]};">${ic[x.s]} ${E(x.t)}</div>`).join('')+'</div>' : '<div style="color:var(--accent);font-size:11px;">✓ Aucune anomalie détectée automatiquement.</div>');
   return ctl + `<div style="margin:12px 0 6px;"><b style="font-size:12px;color:var(--blue);">Procès-verbal de recensement des droits coutumiers (format AFOR — lecture seule)</b></div>` + pvOfficielHtml(d, rec);
 }
@@ -9256,13 +9435,38 @@ function terrRenderPV(d, rec){
 function terrIsPVCL(rec){ return !!rec && (Array.isArray(rec.neighborhood) || Array.isArray(rec.presences) || !!rec.expertSurveyor); }
 function pvclHasSig(p){ return !!p && (p.hasSignatoryPhoto===true || (p.hasSignatoryPhoto==null && !!p.signatoryPhoto)); }
 function pvclCard(pos){ const t=new Set(agNormTok(pos)); const o=[]; if(t.has('NORD')) o.push('N'); if(t.has('SUD')) o.push('S'); if(t.has('EST')) o.push('E'); if(t.has('OUEST')) o.push('O'); return o; }
+// PV de non participation au constat de limite d'un voisin (fiche tablette : comityAttestList2[] / champs nameVoiz, limitVoiz, firstDate, secondDate,
+// nameCVGFR, comityAttestList). Il justifie l'absence de signature d'UN voisin précis (même personne : comparaison des noms).
+function pvclNonPart(rec){
+  const out=[], seen=new Set(); if(!rec) return out;
+  const yes=v=>v===true||v==='true'||v===1;
+  const push=o=>{ if(!o||typeof o!=='object') return; const nom=String(o.nameVoiz||'').trim(); if(!nom) return;
+    const k=agNormTok(nom).join(' ')+'|'+String(o.limitVoiz||'').toLowerCase(); if(seen.has(k)) return; seen.add(k);
+    out.push({nom, lim:String(o.limitVoiz||'').trim(), d1:String(o.firstDate||'').trim(), d2:String(o.secondDate||'').trim(), cv:String(o.nameCVGFR||'').trim(),
+      sigCE:yes(o.comityAttestSignatoryCE)||yes(o.hasComityAttestSignatoryCE), sigCV:yes(o.comityAttestSignatoryCVGFR)||yes(o.hasComityAttestSignatoryCVGFR), sigP:yes(o.comityAttestSignatoryPCVGFR)||yes(o.hasComityAttestSignatoryPCVGFR),
+      liste:Array.isArray(o.comityAttestList)?o.comityAttestList:[]}); };
+  (Array.isArray(rec.comityAttestList2)?rec.comityAttestList2:[]).forEach(push);
+  push(rec);
+  return out;
+}
+function pvclNpFor(nps, nom){ if(!nom) return null; return nps.find(x=>pvSim(x.nom, nom)>=0.75) || null; }
+function pvclNpHtml(rec){
+  const E=planEsc, nps=pvclNonPart(rec); if(!nps.length) return '';
+  const ck=(b,l)=>b?`<span class="pvo-ok">✓ ${l}</span>`:`<span class="pvo-ko">✗ ${l}</span>`;
+  return `<div style="margin:14px 0 6px;"><b style="font-size:12px;color:var(--blue);">PV de non participation au constat de limite d'un voisin (${nps.length})</b></div>`+nps.map(x=>`<div style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:12px;">
+    <div><b>Voisin concerné : ${E(x.nom)}</b>${x.lim?' · limite '+E(x.lim):''}</div>
+    ${(x.d1||x.d2)?`<div style="color:var(--text2);margin-top:3px;">Convocations : ${E(x.d1||'—')}${x.d2?' · '+E(x.d2):''}</div>`:''}
+    ${x.cv?`<div style="color:var(--text2);">Président CVGFR : ${E(x.cv)}</div>`:''}
+    <div style="margin-top:4px;">${ck(x.sigCE,'Commissaire-enquêteur')} · ${ck(x.sigCV,'CVGFR')} · ${ck(x.sigP,'Président CVGFR')}</div>
+    ${x.liste.length?`<table class="pvo-t" style="margin-top:6px;"><thead><tr><th>Nom</th><th>Qualité</th><th>Signature</th></tr></thead><tbody>${x.liste.map(l=>`<tr><td>${E(l.fullName||'')}</td><td>${E(l.quality||l.description||'')}</td><td>${(l.signatory===true||l.hasSignatory===true)?'<span class="pvo-ok">✓</span>':'<span class="pvo-ko">✗</span>'}</td></tr>`).join('')}</tbody></table>`:''}</div>`).join('');
+}
 const _pvclCtl = new WeakMap();
 function terrPvclControls(d, rec){
   const rdc = terrRec(d,'rdc');
-  const sig = [d.id,d.date_CL,d.date_RDC,d.superficie_declaree,d.village,d.voisins,rdc?1:0].join('|');
+  const sig = [d.id,d.date_CL,d.date_RDC,d.superficie_declaree,d.village,d.voisins,rdc?1:0,JSON.stringify(pvclNonPart(rec).map(x=>x.nom+x.lim))].join('|');
   const c = _pvclCtl.get(rec); if(c && c.sig===sig) return c.res;
   const out = []; const add=(s,t)=>out.push({s,t});
-  const nb = rec.neighborhood||[], pres = rec.presences||[];
+  const nb = rec.neighborhood||[], pres = rec.presences||[], nps = pvclNonPart(rec);
   // Superficie
   const a = Number(rec.estimatedArea);
   if(!(a>0)) add('err','Superficie estimée du PVCL absente ou nulle.');
@@ -9281,10 +9485,12 @@ function terrPvclControls(d, rec){
     const cov = new Set(); nb.forEach(n=>pvclCard(n.position).forEach(x=>cov.add(x)));
     const manq = ['N','E','S','O'].filter(x=>!cov.has(x)); if(manq.length) add(manq.length>=2?'warn':'info','Aucun voisin déclaré au '+manq.map(x=>({N:'Nord',E:'Est',S:'Sud',O:'Ouest'}[x])).join(', ')+'.');
     const sansNom = nb.filter(n=>!(n.nameOfNeighbor||'').trim()).length; if(sansNom) add('err',sansNom+' limite(s) sans nom de voisin.');
-    const absents = nb.filter(n=>n.isPresent===false && n.description==='Personne physique').length; if(absents) add('warn',absents+' voisin(s) (personne physique) absent(s) lors du constat.');
+    const absentsL = nb.filter(n=>n.isPresent===false && n.description==='Personne physique');
+    const absentsKo = absentsL.filter(n=>!pvclNpFor(nps,n.nameOfNeighbor)); if(absentsKo.length) add('warn',absentsKo.length+' voisin(s) (personne physique) absent(s) lors du constat'+' sans PV de non participation.');
+    absentsL.filter(n=>pvclNpFor(nps,n.nameOfNeighbor)).forEach(n=>add('ok','Voisin absent '+n.nameOfNeighbor+' : absence justifiée par le PV de non participation.'));
     const phys = nb.filter(n=>/personne physique/i.test(n.description||''));
     // voisins présents sur la liste de présence
-    const horsListe = phys.filter(n=>n.nameOfNeighbor && !pres.some(p=>pvSim(p.nameOfPerson,n.nameOfNeighbor)>=0.6)); if(horsListe.length) add('warn',horsListe.length+' voisin(s) du PVCL absent(s) de la liste de présence : '+horsListe.slice(0,3).map(n=>n.nameOfNeighbor).join(' ; ')+(horsListe.length>3?'…':'')+'.');
+    const horsListe = phys.filter(n=>n.nameOfNeighbor && !pres.some(p=>pvSim(p.nameOfPerson,n.nameOfNeighbor)>=0.6) && !pvclNpFor(nps,n.nameOfNeighbor)); if(horsListe.length) add('warn',horsListe.length+' voisin(s) du PVCL absent(s) de la liste de présence : '+horsListe.slice(0,3).map(n=>n.nameOfNeighbor).join(' ; ')+(horsListe.length>3?'…':'')+'.');
     // cohérence avec le RDC
     if(rdc){ const vr = (rdc.interviewedPeople||[]).filter(pvIsNeighbor);
       if(vr.length){ const abs = vr.filter(v=>!nb.some(n=>pvSim(pvName(v),n.nameOfNeighbor)>=0.6)).length; if(abs) add('warn',abs+' voisin(s) limitrophe(s) du RDC ne figure(nt) pas parmi les voisins du PVCL.'); }
@@ -9295,7 +9501,10 @@ function terrPvclControls(d, rec){
   // Liste de présence
   if(!pres.length) add('err','Liste de présence vide.');
   else {
-    const sm = pres.filter(p=>!pvclHasSig(p)); if(sm.length) add(sm.length===pres.length?'err':'warn',sm.length+' signature(s) manquante(s) sur '+pres.length+' présent(s).');
+    const smAll = pres.filter(p=>!pvclHasSig(p)), smJust = smAll.filter(p=>pvclNpFor(nps,p.nameOfPerson)), sm = smAll.filter(p=>!pvclNpFor(nps,p.nameOfPerson));
+    if(sm.length) add(sm.length===pres.length?'err':'warn',sm.length+' signature(s) manquante(s) sur '+pres.length+' présent(s)'+(smJust.length?' (hors '+smJust.length+' justifiée(s) par un PV de non participation)':'')+'.');
+    smJust.forEach(p=>{ const x=pvclNpFor(nps,p.nameOfPerson); add('ok','Absence de signature de '+p.nameOfPerson+' justifiée par le PV de non participation (même voisin : '+x.nom+(x.lim?', limite '+x.lim:'')+')'+((x.sigCE&&x.sigCV&&x.sigP)?'.':' — attention : PV de non participation incomplet (signature(s) manquante(s)).')); });
+    nps.filter(x=>!pres.some(p=>pvSim(p.nameOfPerson,x.nom)>=0.75) && !nb.some(n=>pvSim(n.nameOfNeighbor,x.nom)>=0.75)).forEach(x=>add('warn','PV de non participation au nom de '+x.nom+' : ce nom ne correspond à aucun voisin du PVCL — il ne justifie aucune absence de signature.'));
     const noCni = pres.filter(p=>!String(p.numberCNI||'').trim()).length; if(noCni) add('info',noCni+' présent(s) sans n° de pièce.');
     const by = {}; pres.forEach(p=>{ const n=String(p.numberCNI||'').toUpperCase().replace(/[^A-Z0-9]/g,''); if(n.length>=6) (by[n]=by[n]||[]).push(p); });
     Object.keys(by).forEach(n=>{ const g=by[n]; if(g.length<2) return; const diff=g.some((p,i)=>g.slice(i+1).some(q=>pvSim(p.nameOfPerson,q.nameOfPerson)<0.5)); add(diff?'err':'warn', diff?'Même n° de pièce ('+n+') pour des personnes différentes : '+g.map(p=>p.nameOfPerson).join(' / ')+'.':'Personne en double dans la liste de présence (n° '+n+') : '+g[0].nameOfPerson+'.'); });
@@ -9342,14 +9551,14 @@ function pvclOfficielHtml(d, rec){
     <p style="text-align:right;margin-top:22px;">Signature de l'opérateur technique agréé<br>${sigEx}</p>
     <p style="margin-top:22px;">N° de la demande <b class="pvo-f">${E(num)}</b></p></div><div class="pvo-eo2">EO 3-1</div></div>`;
   const p2 = `<div class="pvo-page"><div style="text-align:center;margin:6px 0 4px;">Annexe au constat</div><div style="text-align:center;font-weight:700;text-decoration:underline;font-size:14px;margin-bottom:14px;">Liste des parties présentes lors du constat de limites</div>
-    <table class="pvo-t"><thead><tr><th>N°</th><th>NOM ET PRÉNOMS</th><th>QUALITÉ</th><th>VILLAGE</th><th>SIGNATURE</th></tr></thead><tbody>${pres.map((p,i)=>`<tr><td>${i+1}</td><td><b>${E(p.nameOfPerson||'')}</b></td><td>${E((p.memberType&&p.memberType.label)||'')}${p.representant?' ('+E(p.representant)+')':''}</td><td>${E(village)}</td><td>${pvclHasSig(p)?'<span class="pvo-ok">✓ signature enregistrée</span>':'<span class="pvo-ko">✗ manquante</span>'}</td></tr>`).join('')||'<tr><td colspan="5">&nbsp;</td></tr>'}</tbody></table>
+    <table class="pvo-t"><thead><tr><th>N°</th><th>NOM ET PRÉNOMS</th><th>QUALITÉ</th><th>VILLAGE</th><th>SIGNATURE</th></tr></thead><tbody>${pres.map((p,i)=>`<tr><td>${i+1}</td><td><b>${E(p.nameOfPerson||'')}</b></td><td>${E((p.memberType&&p.memberType.label)||'')}${p.representant?' ('+E(p.representant)+')':''}</td><td>${E(village)}</td><td>${pvclHasSig(p)?'<span class="pvo-ok">✓ signature enregistrée</span>':(pvclNpFor(pvclNonPart(rec),p.nameOfPerson)?'<span class="pvo-ok">non participation justifiée (PV)</span>':'<span class="pvo-ko">✗ manquante</span>')}</td></tr>`).join('')||'<tr><td colspan="5">&nbsp;</td></tr>'}</tbody></table>
     <p style="margin-top:12px;">N° de la demande <b class="pvo-f">${E(num)}</b></p><div class="pvo-eo2">EO 3-2</div></div>`;
   return pvCss()+'<div class="pvo">'+p1+p2+'</div>';
 }
 function terrRenderPVCL(d, rec){
-  const E=planEsc, res=terrPvclControls(d,rec), col={err:'var(--red)',warn:'var(--amber-txt)',info:'var(--text3)'}, ic={err:'✗',warn:'⚠',info:'ℹ'};
+  const E=planEsc, res=terrPvclControls(d,rec), col={err:'var(--red)',warn:'var(--amber-txt)',info:'var(--text3)',ok:'var(--accent)'}, ic={err:'✗',warn:'⚠',info:'ℹ',ok:'✓'};
   const ctl = `<div style="margin:0 0 8px;font-weight:700;color:var(--blue);font-size:12px;">Contrôles automatiques</div>`+(res.length ? '<div style="font-size:11px;">'+res.map(x=>`<div style="padding:3px 0;color:${col[x.s]};">${ic[x.s]} ${E(x.t)}</div>`).join('')+'</div>' : '<div style="color:var(--accent);font-size:11px;">✓ Aucune anomalie détectée automatiquement.</div>');
-  return ctl + `<div style="margin:12px 0 6px;"><b style="font-size:12px;color:var(--blue);">Constat de limites (format AFOR — lecture seule)</b></div>` + pvclOfficielHtml(d, rec);
+  return ctl + `<div style="margin:12px 0 6px;"><b style="font-size:12px;color:var(--blue);">Constat de limites (format AFOR — lecture seule)</b></div>` + pvclOfficielHtml(d, rec) + pvclNpHtml(rec);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -10684,7 +10893,7 @@ function pubRenderStats(){
   const el = document.getElementById('pub-stats-content');
   if(!el) return;
 
-  const depts = ['GUIGLO','BLOLEQUIN','TAI','TOULEPLEU'];
+  const depts = Object.values(PROJECT_ZONES).flatMap(z=>z.depts);
   const statRow = dept => {
     const d = all.filter(x => x.dept.includes(dept.substring(0,4)));
     const enCours  = d.filter(x => x.statut === 'en_cours').length;
@@ -11047,7 +11256,8 @@ function rptInit(){
 function rptNormDept(x){
   return (x||'').toString().replace('Dép. ','').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z]/g,'');
 }
-const RPT_DEPTS = ['GUIGLO','BLOLEQUIN','TAI','TOULEPLEU'];
+const RPT_DEPTS = ['GUIGLO','BLOLEQUIN','TAI','TOULEPLEU','KANI','SEGUELA'];
+function rptDepts(){ return (dashZoneFilter && PROJECT_ZONES[dashZoneFilter]) ? PROJECT_ZONES[dashZoneFilter].depts : RPT_DEPTS; }
 const RPT_ETAPES = [
   {k:'DD',  l:'Demandes enregistrées'},
   {k:'RDC', l:'Recensements des droits coutumiers'},
@@ -11079,7 +11289,7 @@ function rptGetData(){
   const gnssCumul = gnss.filter(g=>!g.date_leve || avant(g.date_leve));
   const sum = l => l.reduce((s,g)=>s+(g.superficie||0),0);
 
-  const depts = (dept?[dept]:RPT_DEPTS).map(dp=>{
+  const depts = (dept?[dept]:rptDepts()).map(dp=>{
     const a = (dossiersAFOR||[]).filter(d=>rptNormDept(d.dept)===dp);
     const g = (gnssData||[]).filter(x=>rptNormDept(x.dept)===dp);
     return {
@@ -12598,6 +12808,15 @@ const AFOR_COLS = {
   voisins:'Détails Voisins', nb_voisins:'Nombre de Voisins'
 };
 
+// Type de certificat : toute écriture reconnaissable est ramenée à 'CFI' (individuel) ou 'CFC' (collectif),
+// car tous les indicateurs (CFI/CFC, genre, superficies individuelles/collectives) comparent à ces deux valeurs exactes.
+function aforNormType(v){
+  const t=(v==null?'':String(v)).trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(!t) return '';
+  if(/^CFI\b|^CFI$|INDIVIDUEL|^CF\s*I\b|^I$/.test(t)) return 'CFI';
+  if(/^CFC\b|^CFC$|COLLECTIF|^CF\s*C\b|^C$/.test(t)) return 'CFC';
+  return String(v).trim();
+}
 // Mapping normalisé des étapes (fichier → standard)
 function aforNormEtape(e){
   if(!e) return '';
@@ -12966,7 +13185,8 @@ function aforImportExcel(input){
           code_parcelle: (row[AFOR_COLS.code_parcelle]||'').trim(),
           agent: aforAgentNom((row[AFOR_COLS.agent]||'').trim()),
           agent_raw: (row[AFOR_COLS.agent]||'').trim(),
-          type: (row[AFOR_COLS.type]||'').trim(),
+          type: aforNormType(row[AFOR_COLS.type]),
+          type_raw: (row[AFOR_COLS.type]||'').toString().trim(),
           genre: (()=>{ const g=(row[AFOR_COLS.genre]||'').trim().toUpperCase(); return g.startsWith('F')?'F':g.startsWith('H')||g.startsWith('M')?'H':''; })(),
           etape,
           date_DD:  fmtD(row[AFOR_COLS.date_DD]),
@@ -13092,7 +13312,8 @@ function aforImportExcel(input){
       // ══ DÉDUPLICATION via la fonction globale ══
       const nbDoublons = aforDeduplicate();
 
-      const msg = `Base AFOR actualisée : ${nbNouveaux} nouveaux · ${nbMaj} mis à jour · ${nbInchanges} inchangés · ${conserves.length} conservés · ${nbDoublons} doublons supprimés`;
+      const msg = `Base AFOR actualisée : ${rows.length} lignes lues · ${nbNouveaux} nouveaux · ${nbMaj} mis à jour · ${nbInchanges} inchangés · ${conserves.length} conservés · ${nbDoublons} doublons supprimés`+(ignore?` · ⚠ ${ignore} ligne(s) SANS numéro de dossier ignorée(s)`:'');
+      console.warn('AFOR import: lignes lues', rows.length, '· sans numéro ignorées', ignore, '· doublons supprimés', nbDoublons);
       // Persister pubCQ (contrôle qualité), peuplé plus haut depuis les colonnes du même fichier AFOR —
       // sinon ces données de rejet/motifs ne survivraient qu'en mémoire, perdues au rechargement.
       try{ terrSyncRejets(); }catch(e){ console.warn('terrSyncRejets', e); }
@@ -13536,7 +13757,7 @@ function gnssImportExcel(input){
       gnssIndex = {};           // index par code parcelle (N_DEMCGE)
       gnssIndexFull = {};       // index par nom+village+sp+dept
       gnssIndexNomVil = {};     // index par nom+village (fallback)
-      let nb=0, ignore=0;
+      let nb=0, ignore=0; const ignoreListe=[];
 
       // Normalise une date (objet Date, ISO "YYYY-MM-DD", ou texte "JJ/MM/AAAA"/"MM/JJ/AAAA") en "YYYY-MM-DD"
       const gnssFmtD = v => {
@@ -13570,7 +13791,7 @@ function gnssImportExcel(input){
         const operateur = (row['NOM_AGENT']||'').trim();
         const dateLeve  = gnssFmtD(row['DATE_CREA']);
 
-        if((!nom && !code) || superf <= 0){ ignore++; return; }
+        if((!nom && !code) || superf <= 0){ ignore++; ignoreListe.push((code||num||nom||'(ligne vide)')+(superf<=0?' [superficie nulle]':' [nom et code vides]')); return; }
 
         const entry = {
           nom_demand: nom, village, dept, sp,
@@ -13613,7 +13834,9 @@ function gnssImportExcel(input){
         const k3=gnssKeyNomVillage(e.nom_demand,e.village); (gnssIndexNomVil[k3]=gnssIndexNomVil[k3]||[]).push(e);
       });
       console.log('GNSS fusion:', nb, 'du fichier,', nbConservees, 'conservées de la base existante,', gnssData.length, 'au total');
-      showToast('GNSS : '+nb+' parcelles lues · '+nbConservees+' conservées de la base existante · '+gnssData.length+' au total');
+      window._gnssIgnorees = ignoreListe;
+      if(ignore) console.warn('GNSS import: '+ignore+' ligne(s) ignorée(s):', ignoreListe.slice(0,50));
+      showToast('GNSS : '+rows.length+' lignes lues · '+nb+' parcelles retenues'+(ignore?' · ⚠ '+ignore+' ignorée(s) (superficie nulle ou nom/code vides)':'')+' · '+nbConservees+' conservées de la base existante · '+gnssData.length+' au total');
 
       // ── Sauvegarder localement ET Firebase ──
       try{
@@ -13640,48 +13863,60 @@ function gnssImportExcel(input){
 }
 
 // ── Trouver les données GNSS pour un dossier AFOR (jointure multi-critères) ──
+// ── Rattachement GNSS ↔ dossiers : affectation UNIQUE (une parcelle GNSS n'est jamais attribuée à deux dossiers) ──
+// Passe 1 : code parcelle (N_DEMCGE) + même nom ; passe 2 : nom + village + SP + département ; passe 3 : nom + village.
+// Quand plusieurs dossiers d'une même personne partagent la même clé (homonymes / personne ayant plusieurs dossiers
+// sans code), les parcelles sont réparties une par dossier (ordre du numéro de dossier / date de levé) ; les parcelles
+// en surplus sont rattachées au premier dossier du groupe, de sorte qu'aucun hectare n'est compté deux fois ni perdu.
+let _gnssAs=null, _gnssAsSig=null;
+function gnssAssign(){
+  const sig=[gnssData, dossiersAFOR, dossiers, (gnssData||[]).length, (dossiersAFOR||[]).length, (dossiers||[]).length];
+  if(_gnssAs && _gnssAsSig && _gnssAsSig.every((v,i)=>v===sig[i])) return _gnssAs;
+  const out=new Map();
+  const G=gnssData||[];
+  if(G.length){
+    const claimed=new Set();
+    const idxCode={}, idxFull={}, idxNV={};
+    G.forEach(e=>{
+      const c=gnssNorm(e.n_demcge||''); if(c) (idxCode[c]=idxCode[c]||[]).push(e);
+      const k2=gnssKeyFullName(e.nom_demand,e.village,e.sp,e.dept); (idxFull[k2]=idxFull[k2]||[]).push(e);
+      const k3=gnssKeyNomVillage(e.nom_demand,e.village); (idxNV[k3]=idxNV[k3]||[]).push(e);
+    });
+    const D=[...(dossiers||[]),...(dossiersAFOR||[])].filter(d=>d && d.id!=null);
+    const info=new Map();
+    D.forEach(d=>{ info.set(d,{
+      nom:gnssNormNameSorted((d.prenom||'')+' '+(d.nom||d.nom_demandeur||'')),
+      village:gnssNorm(d.village||''), sp:gnssNorm(d.sp||''), dept:gnssNorm(d.dept||''), code:gnssNorm(d.code_parcelle||'') }); });
+    // Passe 1 : code + nom
+    D.forEach(d=>{ const i=info.get(d); if(!i.code||!i.nom||!idxCode[i.code]) return;
+      const m=idxCode[i.code].filter(e=>!claimed.has(e) && gnssNormNameSorted(e.nom_demand)===i.nom);
+      if(m.length){ m.forEach(e=>claimed.add(e)); out.set(d.id,m); } });
+    // Passes 2 et 3 : répartition par groupes de dossiers partageant la même clé
+    const alloc=(keyOf, idx, needNV)=>{
+      const groups={};
+      D.forEach(d=>{ if(out.has(d.id)) return; const i=info.get(d); if(needNV && !(i.nom&&i.village)) return; const k=keyOf(i); (groups[k]=groups[k]||[]).push(d); });
+      Object.keys(groups).forEach(k=>{
+        const E=(idx[k]||[]).filter(e=>!claimed.has(e)); if(!E.length) return;
+        const Dg=groups[k].slice().sort((x,y)=>String(x.id).localeCompare(String(y.id)));
+        E.sort((x,y)=>String(x.date_leve||'').localeCompare(String(y.date_leve||''))||String(x.n_demcge||'').localeCompare(String(y.n_demcge||'')));
+        if(Dg.length===1){ out.set(Dg[0].id,E); E.forEach(e=>claimed.add(e)); return; }
+        Dg.forEach((d,j)=>{ if(j<E.length) out.set(d.id,[E[j]]); });
+        if(E.length>Dg.length){ const first=out.get(Dg[0].id); E.slice(Dg.length).forEach(e=>first.push(e)); }
+        E.forEach(e=>claimed.add(e));
+      });
+    };
+    alloc(i=>i.nom+'|'+i.village+'|'+i.sp+'|'+i.dept, idxFull, false);
+    alloc(i=>i.nom+'|'+i.village, idxNV, true);
+    _gnssAsClaimed=claimed;
+  } else _gnssAsClaimed=new Set();
+  _gnssAs=out; _gnssAsSig=sig; return out;
+}
+let _gnssAsClaimed=new Set();
 function gnssForDossier(dos){
-  if(!gnssData.length) return null;
-  const nom = gnssNormNameSorted((dos.prenom||'')+' '+(dos.nom||dos.nom_demandeur||''));
-  const village = gnssNorm(dos.village||'');
-  const sp      = gnssNorm(dos.sp||'');
-  const dept    = gnssNorm(dos.dept||'');
-  const code    = gnssNorm(dos.code_parcelle||'');
-  let entries = null;
-
-  // Critère 1 : Code Parcelle = N_DEMCGE — ET nom du demandeur cohérent (comparaison
-  // insensible à l'ordre des mots : "Prénom Nom" AFOR vs "Nom Prénom" GNSS doivent matcher).
-  // Une correspondance de code SEUL ne suffit pas : si le nom diffère complètement, ce n'est pas
-  // une correspondance parfaite. Ces parcelles restent alors non rattachées ici et
-  // sont traitées à part (voir gnssGetOrphanEntries) : conservées comme dossiers
-  // distincts, sans écraser la superficie de ce dossier AFOR.
-  if(code && gnssIndex[code] && gnssIndex[code].length){
-    const parCode = gnssIndex[code];
-    const memeNom = nom ? parCode.filter(e => gnssNormNameSorted(e.nom_demand) === nom) : [];
-    if(memeNom.length) entries = memeNom;
-  }
-  // Critère 2 : NOM_DEMAND + village + SP + département
-  if(!entries){
-    const k2 = nom+'|'+village+'|'+sp+'|'+dept;
-    if(gnssIndexFull[k2] && gnssIndexFull[k2].length)
-      entries = gnssIndexFull[k2];
-  }
-  // Critère 3 : NOM_DEMAND + village (fallback)
-  if(!entries && nom && village){
-    const k3 = nom+'|'+village;
-    if(gnssIndexNomVil[k3] && gnssIndexNomVil[k3].length)
-      entries = gnssIndexNomVil[k3];
-  }
+  if(!dos || !gnssData || !gnssData.length) return null;
+  const entries=gnssAssign().get(dos.id);
   if(!entries || !entries.length) return null;
-
-  // Marquer les entrées comme matchées
-  entries.forEach(e=>{ e._matched = true; });
-  return {
-    leve: true,
-    superficie: entries.reduce((s,e)=>s+e.superficie, 0),
-    nb_parcelles: entries.length,
-    entries,
-  };
+  return { leve:true, superficie: entries.reduce((s,e)=>s+e.superficie,0), nb_parcelles: entries.length, entries };
 }
 
 // ── Parcelles GNSS non rattachées par correspondance parfaite (code + nom) à un dossier AFOR/manuel ──
@@ -13804,6 +14039,19 @@ function aforDeduplicate(){
   const er = {DD:0,RDC:1,CL:2,OV:3,CP:4,AP:5,VA:6};
   const map = {};
   const removed = [];
+  // Passe 0 : un même numéro de dossier ne peut exister qu'une fois (Firebase stocke les dossiers par numéro : les
+  // répétitions disparaissaient silencieusement au rechargement, d'où des écarts de +1 entre écrans).
+  { const byId = new Map();
+    dossiersAFOR.forEach(d=>{
+      const id = String(d.id==null?'':d.id).trim(); if(!id){ byId.set(Symbol(), d); return; }
+      const ex = byId.get(id);
+      if(!ex){ byId.set(id, d); return; }
+      const keepNew = (er[d.etape]||0) >= (er[ex.etape]||0);
+      removed.push(Object.assign({}, keepNew?ex:d, {_conserve_id:id, _cle_dedup:'MÊME NUMÉRO DE DOSSIER'}));
+      if(keepNew) byId.set(id, d);
+    });
+    dossiersAFOR = [...byId.values()];
+  }
   dossiersAFOR.forEach(d=>{
     // Clé de dédoublonnage : identité + parcelle. Le code parcelle (ou, à défaut, l'ID
     // du dossier) distingue les parcelles multiples d'une même personne dans un même
@@ -13821,7 +14069,7 @@ function aforDeduplicate(){
       removed.push(Object.assign({}, d, {_conserve_id: ex.id, _cle_dedup: k}));
     }
   });
-  const avant = dossiersAFOR.length;
+  const avant = dossiersAFOR.length + removed.filter(r=>r._cle_dedup==='MÊME NUMÉRO DE DOSSIER').length;
   dossiersAFOR = Object.values(map);
   dossiersAFORDedupRemoved = removed;
   return avant - dossiersAFOR.length; // nombre de doublons supprimés
@@ -14265,15 +14513,16 @@ async function tabImportZips(){
       if(!Array.isArray(records)){ rapportParEtape.push(stage.label+' : format inattendu'); continue; }
 
       let nouveaux=0, majs=0, conserves=0;
-      records.forEach(rec=>{
+      for(const rec of records){
         const code = rec[stage.codeField] || rec.id;
-        if(!code) return;
+        if(!code) continue;
         const key = String(code);
         if(!tabletteData[stage.key][key]) nouveaux++; else majs++;
         const exist = tabletteData[stage.key][key];
-        if(exist && tabRecordRank(exist, stage.key) > tabRecordRank(rec, stage.key)){ conserves++; return; } // l'existant est plus avancé/récent
+        if(exist && tabRecordRank(exist, stage.key) > tabRecordRank(rec, stage.key)){ conserves++; continue; } // l'existant est plus avancé/récent
+        try{ for(const im of tabImgExtract(stage.key, rec)) await tabImgKeep(im.slot, key, im.v); }catch(e){ console.warn('pièce jointe', e); }
         tabletteData[stage.key][key] = Object.assign({}, tabSlimRecord(rec), {_tablette: nomTablette, _importedAt: new Date().toISOString()});
-      });
+      }
       totalNouveaux += nouveaux; totalMisAJour += majs; fichiersLus++;
       rapportParEtape.push(stage.label+' : '+records.length+' enregistrement(s) ('+nouveaux+' nouveaux, '+majs+' mis à jour'+(conserves?', '+conserves+' déjà plus récents conservés':'')+')');
     }catch(e){
@@ -14300,6 +14549,7 @@ async function tabImportZips(){
   tabSaveToStorage();
   localStorage.setItem('presfor_tablette_ts', new Date().toISOString());
   syncPendingStart();
+  tabImgFlush();
   tabSaveStatus = 'sauvegarde Firebase en cours…';
   tabSaveToFirebase().then(()=>{ tabSaveStatus = '✓ sauvegardé sur Firebase le '+new Date().toLocaleString('fr-FR'); tabFbStatus='sauvegardé'; showToast('Données tablette sauvegardées sur Firebase ✓'); try{ terrRenderTabKeep(); }catch(e){} }).catch(e=>{ console.warn('Tablette Firebase save:', e.message); tabSaveStatus = '✗ échec de la sauvegarde Firebase : '+e.message; updateSyncIndicator('error'); showToast('⚠ Données tablette NON sauvegardées sur Firebase : '+e.message+' — une copie reste sur cet ordinateur ; utilisez « Sauvegarder sur Firebase » pour réessayer.'); try{ terrRenderTabKeep(); }catch(e2){} }).finally(syncPendingEnd);
 
@@ -14319,8 +14569,7 @@ function tabRenderImportHistory(){
   if(!el) return;
   const inv = (()=>{ const st=k=>Object.keys((tabletteData&&tabletteData[k])||{}).length;
     return `<div style="margin-bottom:12px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Données chargées dans l'application, par étape</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;">${TAB_STAGE_DEFS.map(x=>{ const n=st(x.key); return `<span style="border:1px solid ${n?'var(--border)':'var(--red)'};border-radius:6px;padding:4px 8px;font-size:11px;background:var(--surface);">${n?'✓':'✗'} ${planEsc(x.label)} : <b style="color:${n?'inherit':'var(--red)'};">${n.toLocaleString('fr-FR')}</b></span>`; }).join('')}</div>
-      <div style="margin-top:6px;"><button class="btn-s" onclick="terrShowStructure()">🔎 Structure des fiches tablette</button></div></div>`; })();
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">${TAB_STAGE_DEFS.map(x=>{ const n=st(x.key); return `<span style="border:1px solid ${n?'var(--border)':'var(--red)'};border-radius:6px;padding:4px 8px;font-size:11px;background:var(--surface);">${n?'✓':'✗'} ${planEsc(x.label)} : <b style="color:${n?'inherit':'var(--red)'};">${n.toLocaleString('fr-FR')}</b></span>`; }).join('')}</div></div>`; })();
   if(!tabletteImports.length){ el.innerHTML=inv; return; }
   const rows = tabletteImports.slice().reverse().map(imp=>{
     const d = new Date(imp.date);
@@ -14397,6 +14646,73 @@ function tabCalcAge(birthdateIso){
   const m = today.getMonth() - bd.getMonth();
   if(m<0 || (m===0 && today.getDate()<bd.getDate())) age--;
   return age;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// REMISE À ZÉRO COMPLÈTE (fin de formation) — efface TOUTES les données de travail, partout.
+// Conservés : comptes utilisateurs, liste des agents, motifs personnalisés, chiffres figés (snapshots), journal d'audit.
+// Un « repère de remise à zéro » (reset_epoch) est publié sur Firebase : chaque appareil qui le découvre vide ses copies
+// locales (localStorage + IndexedDB) AVANT de se resynchroniser — sinon un navigateur resté avec les anciennes données
+// de formation les renverrait sur Firebase à la synchronisation automatique suivante.
+// ═══════════════════════════════════════════════════════════════
+const RESET_FB_PATHS = ['cq_owner','tab_img','afor_cf','gnss_data','tablette','pub_data','cq_assign','cq_etat','cq_suivi','cq_lock','cq_grille','plan_checks','plans_meta','plans_img','terr_checks'];
+const RESET_LS_KEYS  = ['presfor_cq_owner','presfor_afor_data','presfor_afor_ts','presfor_gnss_data','presfor_gnss_ts','presfor_tablette_data','presfor_tablette_ts','presfor_tablette_imports','presfor_cq_assign','presfor_cq_etat','presfor_cq_grille','presfor_cq_suivi','presfor_cqe_ctl','presfor_plan_checks','presfor_plan_meta','presfor_pub_cq','presfor_pub_oppositions','presfor_terr_checks','presfor_backup_dossiers','presfor_backup_ts','presfor_notif_lues','presfor_last_notif_sent'];
+const RESET_EPOCH_KEY = 'presfor_reset_epoch';
+async function appPurgeLocalData(){
+  RESET_LS_KEYS.forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
+  try{ cqeOwners={}; }catch(e){}
+  try{ await new Promise(res=>{ const q=indexedDB.deleteDatabase('presfor_tab_img'); q.onsuccess=q.onerror=q.onblocked=()=>res(); }); }catch(e){}
+  try{ const db=await tabIdb(); await new Promise((res,rej)=>{ const tx=db.transaction('kv','readwrite'); tx.objectStore('kv').clear(); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); db.close(); }catch(e){ console.warn('purge IndexedDB:', e); }
+}
+// Appelée au démarrage et avant chaque synchronisation automatique. Renvoie true si cet appareil a été purgé.
+async function appCheckResetEpoch(){
+  try{
+    const r = await fetch(FIREBASE_URL + '/presfor/reset_epoch.json', {signal:AbortSignal.timeout(12000)});
+    if(!r.ok) return false;
+    const remote = await r.json();
+    if(remote==null || remote==='') return false;
+    let local=null; try{ local=localStorage.getItem(RESET_EPOCH_KEY); }catch(e){}
+    if(local===String(remote)) return false;
+    await appPurgeLocalData();
+    try{ localStorage.setItem(RESET_EPOCH_KEY, String(remote)); }catch(e){}
+    return true;
+  }catch(e){ return false; }
+}
+async function appResetAll(){
+  if(!currentUser || currentUser.role!=='admin'){ showToast('Accès refusé — réservé à l\'administrateur.'); return; }
+  if(!confirm('⚠ REMISE À ZÉRO COMPLÈTE\n\nVa effacer sur Firebase ET sur tous les appareils : dossiers AFOR, parcelles GNSS, données tablette, contrôles et rejets qualité, attributions, suivis, plans importés.\n\nConservés : comptes, liste des agents, chiffres figés.\n\nUne sauvegarde JSON de l\'état actuel va d\'abord être téléchargée. Continuer ?')) return;
+  const mot = prompt('Pour confirmer, tapez exactement :  REMISE A ZERO');
+  if(mot !== 'REMISE A ZERO'){ showToast('Remise à zéro annulée.'); return; }
+  try{
+    // 1) Sauvegarde locale de sécurité (ce que cet appareil connaît)
+    try{
+      const bk = {date:new Date().toISOString(), version:APP_VERSION, dossiersAFOR, gnssData, pubCQ, pubOppositions, cqeCtl, cqeEtat, cqeSuivi, cqeAssign, cqeGrille, terrChecks, planChecks};
+      const blob = new Blob([JSON.stringify(bk)], {type:'application/json'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'SAUVEGARDE_avant_remise_a_zero_'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.json';
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+    }catch(e){ console.warn('sauvegarde avant reset:', e); }
+    showToast('Remise à zéro en cours…');
+    // 2) Firebase : suppression des chemins de travail
+    const echecs=[];
+    for(const p of RESET_FB_PATHS){
+      try{ const r = await fetch(FIREBASE_URL + '/presfor/' + p + '.json', {method:'DELETE', signal:AbortSignal.timeout(60000)}); if(!r.ok) echecs.push(p+' (HTTP '+r.status+')'); }
+      catch(e){ echecs.push(p+' ('+e.message+')'); }
+    }
+    if(echecs.length){ alert('Remise à zéro INCOMPLÈTE — chemins non supprimés :\n'+echecs.join('\n')+'\n\nCorrigez (règles Firebase / connexion) puis recommencez. Le repère de remise à zéro n\'a pas été publié.'); return; }
+    // 3) Repère de remise à zéro publié, puis purge locale de cet appareil
+    const epoch = new Date().toISOString();
+    const r = await fetch(FIREBASE_URL + '/presfor/reset_epoch.json', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(epoch), signal:AbortSignal.timeout(20000)});
+    if(!r.ok) throw new Error('repère de remise à zéro : HTTP '+r.status);
+    // données manuelles (ancien système) vidées aussi
+    try{ dossiers = []; await fetch(FIREBASE_URL + '/presfor.json', {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({dossiers:[], updated_at:new Date().toISOString()}), signal:AbortSignal.timeout(20000)}); }catch(e){ console.warn('reset dossiers manuels:', e); }
+    await appPurgeLocalData();
+    try{ localStorage.setItem(RESET_EPOCH_KEY, epoch); }catch(e){}
+    alert('Remise à zéro terminée.\n\n• Firebase est vide (comptes et liste des agents conservés).\n• Chaque autre appareil se videra automatiquement à sa prochaine ouverture ou synchronisation.\n• Demandez à chacun de recharger la page (Ctrl+F5) avant le nouvel import.\n\nLa page va se recharger.');
+    location.reload();
+  }catch(e){
+    console.error('appResetAll:', e);
+    alert('Erreur pendant la remise à zéro : '+(e&&e.message||e));
+  }
 }
 
 async function aforWipeFirebase(){
@@ -14987,6 +15303,7 @@ dosInit();
 agInit();
 zvInit();
 
+appCheckResetEpoch().then(purged=>{ if(purged) location.reload(); });
 serverLoad().then(ok => {
   if(!ok){
     dosRenderAll(); dashRenderAll();
@@ -15081,7 +15398,7 @@ setTimeout(syncPoll, 10000);
           <option value="GUIGLO">Guiglo</option>
           <option value="BLOLEQUIN">Bloléquin</option>
           <option value="TAI">Taï</option>
-          <option value="TOULEPLEU">Toulépleu</option>
+          <option value="TOULEPLEU">Toulépleu</option><option value="KANI">Kani</option><option value="SEGUELA">Séguéla</option>
         </select>
         <select id="retard-f-etape" onchange="retardRenderList()">
           <option value="">Toutes les étapes</option>
