@@ -528,7 +528,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <div style="margin-top:auto;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,0.12);">
       <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;width:100%;margin-bottom:10px;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">⏻ Se déconnecter</button>
       <div class="rail-zone" id="tb-zone-label" style="font-size:10.5px;color:rgba(255,255,255,0.7);line-height:1.3;">Cavally + Worodougou</div>
-      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-18-ca</div>
+      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-18b-ca</div>
     </div>
   </nav>
 
@@ -7168,7 +7168,7 @@ async function tabImgOpen(code, slot, label, id){
 // ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-18-ca';
+const APP_VERSION = 'v15-18b-ca';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
@@ -9386,7 +9386,7 @@ function pvSim(a,b){ const x=agNormTok(a), y=agNormTok(b); if(!x.length||!y.leng
 function pvPhoneBad(t){ const s=String(t||'').replace(/\D/g,''); return !s || /^0+$/.test(s) || s.length<8; }
 function pvIdKey(p){ return String(p&&p.identityDocumentNumber||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
 
-let _pvIdIdx = null, _pvIdSig = '', _pvIdStore = null;
+var _pvIdIdx = null, _pvIdSig = '', _pvIdStore = null;
 function pvIdIndex(){
   tabFixNamesAll();
   const store = (tabletteData&&tabletteData.minutes)||{}, sig = _tabVer+'';
@@ -14811,12 +14811,14 @@ function tabFixNameObj(o,depth){
   }
   Object.keys(o).forEach(k=>{ const v=o[k]; if(v && typeof v==='object') tabFixNameObj(v,depth+1); });
 }
+var _nfDirty = true;
 function tabFixNamesAll(){
+  if(!_nfDirty) return; _nfDirty = false;
   try{ const T=tabletteData||{}; Object.keys(T).forEach(st=>{ const S=T[st]; if(!S||typeof S!=='object') return; Object.keys(S).forEach(k=>{ const r=S[k]; if(r && typeof r==='object' && !r._nfx){ tabFixNameObj(r,0); r._nfx=1; } }); }); }catch(e){ console.warn('tabFixNamesAll',e); }
 }
-let _tabVer = 0, _tabReqCnt = {v:-1,n:0};
+var _tabVer = 0, _tabReqCnt = {v:-1,n:0};
 function tabReqCount(){ const r=(tabletteData&&tabletteData.requests)||{}; if(_tabReqCnt.v!==_tabVer||_tabReqCnt.r!==r){ _tabReqCnt={v:_tabVer,r:r,n:Object.keys(r).length}; } return _tabReqCnt.n; }
-function tabInvalidateIndex(){ tabFixNamesAll(); _tabVer++; _pvIdIdx = null; _tabIndex = null; _tabMerged = null; _tabAgentPaths = null; _tabParcelAlias = null; }
+function tabInvalidateIndex(){ _nfDirty = true; tabFixNamesAll(); _tabVer++; _pvIdIdx = null; _tabIndex = null; _tabMerged = null; _tabAgentPaths = null; _tabParcelAlias = null; }
 function tabKeyVariants(code){
   const n = tabNormCode(code);
   if(!n) return [];
