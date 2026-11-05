@@ -528,7 +528,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <div style="margin-top:auto;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,0.12);">
       <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;width:100%;margin-bottom:10px;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">⏻ Se déconnecter</button>
       <div class="rail-zone" id="tb-zone-label" style="font-size:10.5px;color:rgba(255,255,255,0.7);line-height:1.3;">Cavally + Worodougou</div>
-      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-16-ca</div>
+      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-16b-ca</div>
     </div>
   </nav>
 
@@ -7104,12 +7104,14 @@ async function tabImportImagesZip(file, password, statusEl){
   const entries=(await rd.getEntries()).filter(e=>!e.directory);
   const known=tabImgKnownKeys(), cnt={}, rep={entrees:entries.length, ext:{}, noms:[], jsonCles:{}, trouvees:0, rattachees:0, stockees:0, sansDossier:[], sansImage:0};
   const seq={}; let done=0;
-  const store=async(norm, kind, dataUrl, hint)=>{
+  const store=async(norm, kind, dataUrl, hint, suffix)=>{
     rep.trouvees++;
     if(!norm){ if(rep.sansDossier.length<10) rep.sansDossier.push(hint); return; }
     rep.rattachees++;
-    const n=((cnt[norm+'|'+kind]=(cnt[norm+'|'+kind]||0)+1)); const slot='z_'+kind+(n>1?'_'+n:'');
-    if(await tabImgKeep(slot, norm, dataUrl)){ await tabImgIdxAdd(norm, slot, TAB_IMG_LAB[kind]+(n>1?' ('+n+')':'')); rep.stockees++; }
+    let slot, label;
+    if(kind==='autre' && suffix!=null){ slot='z_pj'+suffix; label='Pièce jointe n°'+(Number(suffix)+1); }   // fichiers « numéro_0.jpg », « numéro_1.jpg »… : classés par rang
+    else { const n=((cnt[norm+'|'+kind]=(cnt[norm+'|'+kind]||0)+1)); slot='z_'+kind+(n>1?'_'+n:''); label=TAB_IMG_LAB[kind]+(n>1?' ('+n+')':''); }
+    if(await tabImgKeep(slot, norm, dataUrl)){ await tabImgIdxAdd(norm, slot, label); rep.stockees++; }
   };
   for(const e of entries){
     const name=e.filename||''; const ext=(name.split('.').pop()||'').toLowerCase(); rep.ext[ext]=(rep.ext[ext]||0)+1; if(rep.noms.length<15) rep.noms.push(name);
@@ -7117,7 +7119,8 @@ async function tabImportImagesZip(file, password, statusEl){
     try{
       if(/^(jpe?g|png|webp|gif|bmp)$/.test(ext)){
         const blob=await e.getData(new zip.BlobWriter('image/'+(ext==='jpg'?'jpeg':ext))); const du=await tabImgDataUrl(blob);
-        await store(tabImgFindKey(name, known), tabImgKindOf(name), du, name);
+        const _m=name.match(/_(\d+)\.[A-Za-z]+$/);
+        await store(tabImgFindKey(name, known), tabImgKindOf(name), du, name, _m?_m[1]:null);
       } else if(ext==='json'){
         const data=JSON.parse(await e.getData(new zip.TextWriter()));
         const walk=async(o, anc, key)=>{
@@ -7144,6 +7147,8 @@ async function tabImgFillExtra(d){
   try{
     const keys=[tabNormCode(d.id)].concat(tabKeyVariants(d.id), tabKeyVariants(d.code_parcelle)).filter(Boolean); const seen=new Set(); let items=[];
     for(const k of keys){ if(seen.has(k)) continue; seen.add(k); const idx=await tabImgIdxGet(k); idx.forEach(x=>items.push({k, ...x})); if(items.length) break; }
+    if(items.some(x=>x.s.indexOf('z_pj')===0)) items=items.filter(x=>x.s.indexOf('z_autre')!==0);
+    items.sort((a,b)=>String(a.s)<String(b.s)?-1:1);
     if(items.some(x=>x.s.indexOf('z_rdc_buy')===0)) document.querySelectorAll('.tabimg-flagbtn[data-slot="rdc_buy"]').forEach(e=>e.remove());   // l'image du ZIP remplace l'indicateur « déclaré »
     document.querySelectorAll('.tabimg-extra').forEach(el=>{
       if(!items.length) return; const bar=el.closest('.tabimg-bar'); if(bar) bar.style.display='flex';
@@ -7163,7 +7168,7 @@ async function tabImgOpen(code, slot, label, id){
 // ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-16-ca';
+const APP_VERSION = 'v15-16b-ca';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
