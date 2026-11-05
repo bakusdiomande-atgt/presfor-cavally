@@ -528,7 +528,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <div style="margin-top:auto;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,0.12);">
       <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;width:100%;margin-bottom:10px;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">⏻ Se déconnecter</button>
       <div class="rail-zone" id="tb-zone-label" style="font-size:10.5px;color:rgba(255,255,255,0.7);line-height:1.3;">Cavally + Worodougou</div>
-      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-14d-ca</div>
+      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-15-ca</div>
     </div>
   </nav>
 
@@ -7165,7 +7165,7 @@ async function tabImgOpen(code, slot, label, id){
 // ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-14d-ca';
+const APP_VERSION = 'v15-15-ca';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
@@ -9179,8 +9179,10 @@ function tabMergedForPerf(){
   if(_tabMerged && _tabMergedAf===af && _tabMergedSig===sig) return _tabMerged;
   tabAgentPaths();
   const idsAfor = new Set(); af.forEach(d=>{ tabKeyVariants(d.id).forEach(v=>idsAfor.add(v)); tabKeyVariants(d.code_parcelle).forEach(v=>idsAfor.add(v)); });
+  const _reqRattachees = new Set();
   const out = af.map(d=>{
     const t = tabMatchForDossier(d); if(!t) return d;
+    if(t.requests) _reqRattachees.add(t.requests);
     let e = null; const set=(k,v)=>{ if(!e) e=Object.assign({},d); e[k]=v; };
     if(!d.agent){ const a = tabAgentFromMatch(t); if(a) set('agent', a); }
     Object.keys(TAB_STAGE_DATES).forEach(st=>{ const cfg=TAB_STAGE_DATES[st]; if(!d[cfg[0]] && t[st]){ const dt = tabDateOf(t[st], cfg[1]); if(dt) set(cfg[0], dt); } });
@@ -9188,7 +9190,7 @@ function tabMergedForPerf(){
   });
   const reqs = (tabletteData&&tabletteData.requests)||{};
   Object.keys(reqs).forEach(k=>{
-    if(tabKeyVariants(k).some(v=>idsAfor.has(v))) return;
+    if(tabKeyVariants(k).some(v=>idsAfor.has(v)) || _reqRattachees.has(reqs[k])) return;
     const t = tabMatchForDossier({id:k}) || {requests:reqs[k]};
     // Fiche présente sur la tablette mais absente de la base AFOR : zone, département, village et demandeur sont lus dans la demande elle-même
     // (sinon le dossier n'a pas de département et disparaît dès qu'une zone — Cavally ou Worodougou — est sélectionnée).
@@ -9228,7 +9230,9 @@ function tabRecoupement(){
       if(Math.abs(j)>1) r.dateDiff.push({d, lab, afor:d[f], tab:dt, j});
     });
   });
-  Object.keys((tabletteData&&tabletteData.requests)||{}).forEach(k=>{ if(!tabKeyVariants(k).some(v=>ids.has(v))){ r.tabOnly++; if(r.exTab.length<400) r.exTab.push(k); } });
+  r.tabParDept={};
+  Object.keys((tabletteData&&tabletteData.requests)||{}).forEach(k=>{ const q=tabletteData.requests[k]||{}; const dl=String(((((q.land||{}).village||{}).subPrefecture||{}).department||{}).label||'(inconnu)').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); const o=(r.tabParDept[dl]=r.tabParDept[dl]||{n:0,ok:0}); o.n++;
+    if(!tabKeyVariants(k).some(v=>ids.has(v))){ r.tabOnly++; if(r.exTab.length<400) r.exTab.push(k); } else o.ok++; });
   return r;
 }
 function tabShowRecoupement(){
@@ -9252,6 +9256,8 @@ function tabShowRecoupement(){
       </div>
       <div style="font-weight:700;color:var(--blue);margin:8px 0 4px;">Rattachement par département (dossiers AFOR retrouvés sur tablette)</div>
       ${tbl(['Département','Dossiers AFOR','Avec fiches tablette'], Object.keys(r.parDept).sort().map(k=>`<tr style="border-top:1px solid var(--border);"><td style="padding:4px 8px;">${planEsc(k)}</td><td style="padding:4px 8px;">${r.parDept[k].n}</td><td style="padding:4px 8px;color:${r.parDept[k].ok?'inherit':'var(--red)'};">${r.parDept[k].ok}</td></tr>`).join(''))}
+      <div style="font-weight:700;color:var(--blue);margin:8px 0 4px;">Demandes tablette chargées, par département</div>
+      ${tbl(['Département (fiche tablette)','Demandes tablette','Rattachées à un dossier AFOR'], Object.keys(r.tabParDept).sort().map(k=>`<tr style="border-top:1px solid var(--border);"><td style="padding:4px 8px;">${planEsc(k)}</td><td style="padding:4px 8px;">${r.tabParDept[k].n}</td><td style="padding:4px 8px;">${r.tabParDept[k].ok}</td></tr>`).join(''))}
       <div style="font-weight:700;color:var(--blue);margin:8px 0 4px;">Exemples de numéros qui ne se rattachent pas</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
         <div><div style="font-size:11px;color:var(--text3);">Base AFOR (Numéro de Dossier · Code parcelle · Dépt)</div><pre style="white-space:pre-wrap;user-select:all;font-size:10px;background:var(--surface2);padding:6px;border-radius:6px;max-height:160px;overflow:auto;">${planEsc(r.exAf.slice(0,12).map(d=>d.id+' · '+(d.code_parcelle||'—')+' · '+(d.dept||'—')).join('\n')||'—')}</pre></div>
@@ -14672,7 +14678,6 @@ async function tabImportZips(){
   statusEl.innerHTML = `<div style="color:var(--accent);font-weight:600;margin-bottom:4px;">✓ ${fichiersLus} fichier(s) importé(s) pour "${nomTablette}" — ${totalNouveaux} nouveaux, ${totalMisAJour} mis à jour</div>` +
     '<div style="font-size:10px;color:var(--text3);">'+rapportParEtape.join(' · ')+'</div>';
   if(imgDetail) statusEl.innerHTML += `<details style="margin-top:6px;font-size:11px;"><summary style="cursor:pointer;color:var(--blue);">Détail du ZIP d'images</summary><pre style="white-space:pre-wrap;user-select:all;font-size:10px;background:var(--surface2);padding:6px;border-radius:6px;">${planEsc(imgDetail)}</pre></details>`;
-  try{ const rc=tabRecoupement(); if(rc.tabOnly>0){ statusEl.innerHTML += `<div style="margin-top:6px;padding:6px 8px;background:var(--amber-lt);color:var(--amber-txt);border-radius:6px;font-size:11px;"><b>${rc.tabOnly.toLocaleString('fr-FR')} demande(s) tablette sans dossier dans la base AFOR.</b> Elles sont comptées dans « Performance des agents » (par zone et département lus dans la demande), mais les tableaux de bord, le contrôle qualité et les cartes se calculent à partir de la base AFOR : importez-la aussi (Imports → Base AFOR) pour la zone concernée.</div>`; } }catch(e){ console.warn(e); }
   filesInput.value = '';
   document.getElementById('tab-import-pwd').value = '';
   tabRenderImportHistory();
@@ -14687,7 +14692,7 @@ function tabRenderImportHistory(){
   if(!el) return;
   const inv = (()=>{ const st=k=>Object.keys((tabletteData&&tabletteData[k])||{}).length;
     return `<div style="margin-bottom:12px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Données chargées dans l'application, par étape</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;">${TAB_STAGE_DEFS.map(x=>{ const n=st(x.key); return `<span style="border:1px solid ${n?'var(--border)':'var(--red)'};border-radius:6px;padding:4px 8px;font-size:11px;background:var(--surface);">${n?'✓':'✗'} ${planEsc(x.label)} : <b style="color:${n?'inherit':'var(--red)'};">${n.toLocaleString('fr-FR')}</b></span>`; }).join('')}</div>${rejIsAdmin()?`<div style="margin-top:8px;"><button class="btn-s" onclick="tabShowRecoupement()">⇄ Recoupement AFOR ↔ tablette (diagnostic du rattachement)</button></div>`:''}</div>`; })();
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">${TAB_STAGE_DEFS.map(x=>{ const n=st(x.key); return `<span style="border:1px solid ${n?'var(--border)':'var(--red)'};border-radius:6px;padding:4px 8px;font-size:11px;background:var(--surface);">${n?'✓':'✗'} ${planEsc(x.label)} : <b style="color:${n?'inherit':'var(--red)'};">${n.toLocaleString('fr-FR')}</b></span>`; }).join('')}</div></div>`; })();
   if(!tabletteImports.length){ el.innerHTML=inv; return; }
   const rows = tabletteImports.slice().reverse().map(imp=>{
     const d = new Date(imp.date);
@@ -14712,7 +14717,8 @@ function tabRenderImportHistory(){
 // code normalisé → enregistrement, par étape. Évite de reparcourir toutes les clés pour chaque dossier
 // et tolère les variantes de format (espaces, tirets, zéros de tête).
 let _tabIndex = null;
-function tabInvalidateIndex(){ _tabIndex = null; _tabMerged = null; _tabAgentPaths = null; }
+var _tabParcelAlias = null, _tabAforParcelSig = '', _tabAforParcelCnt = null;
+function tabInvalidateIndex(){ _tabIndex = null; _tabMerged = null; _tabAgentPaths = null; _tabParcelAlias = null; }
 function tabKeyVariants(code){
   const n = tabNormCode(code);
   if(!n) return [];
@@ -14751,7 +14757,28 @@ function tabMatchForDossier(dos){
       if(m.has(c)){ result[stage.key] = m.get(c); found = true; break; }
     }
   });
+  if(!found){ const al=tabParcelMatch(dos, idx); if(al) return al; }   // numéro de dossier différent entre AFOR et tablette : rattachement automatique par code parcelle
   return found ? result : null;
+}
+// Rattachement de secours, sans intervention : la demande tablette et le dossier AFOR portent le même code parcelle, ce code est unique des
+// deux côtés et le département (quand il est connu des deux) est le même. Les autres fiches (RDC, PVCL…) suivent le numéro de la demande.
+function tabParcelClean(v){ const c=String(v==null?'':v).toUpperCase().replace(/[^A-Z0-9]/g,''); return (c.length>=5 && !/^0+$/.test(c)) ? c : ''; }
+function tabParcelMatch(dos, idx){
+  const pc=tabParcelClean(dos.code_parcelle); if(!pc) return null;
+  if(!_tabParcelAlias){
+    const cnt=new Map(), first=new Map(); const reqs=(tabletteData&&tabletteData.requests)||{};
+    for(const k in reqs){ const q=reqs[k]||{}, c=tabParcelClean((q.applicant||{}).numParcelle||(q.land||{}).numParcelle); if(!c) continue; cnt.set(c,(cnt.get(c)||0)+1); if(!first.has(c)) first.set(c,q); }
+    _tabParcelAlias=new Map(); cnt.forEach((n,c)=>{ if(n===1) _tabParcelAlias.set(c, first.get(c)); });
+  }
+  const q=_tabParcelAlias.get(pc); if(!q) return null;
+  const af=dossiersAFOR||[], sig=af.length+'|'+(af[0]&&af[0].id);
+  if(!_tabAforParcelCnt || _tabAforParcelSig!==sig){ _tabAforParcelCnt=new Map(); af.forEach(d=>{ const c=tabParcelClean(d.code_parcelle); if(c) _tabAforParcelCnt.set(c,(_tabAforParcelCnt.get(c)||0)+1); }); _tabAforParcelSig=sig; }
+  if(_tabAforParcelCnt.get(pc)!==1) return null;
+  const nz=x=>String(x==null?'':x).trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const dq=nz((((((q.land||{}).village||{}).subPrefecture||{}).department||{}).label)), dd=nz(dos.dept); if(dq && dd && dq!==dd) return null;
+  const res={requests:q}; const key=q.requestNumber||q.id;
+  TAB_STAGE_DEFS.forEach(stage=>{ if(stage.key==='requests') return; const m=idx[stage.key]; for(const c of tabKeyVariants(key)){ if(m.has(c)){ res[stage.key]=m.get(c); break; } } });
+  return res;
 }
 
 // Âge à partir d'une date de naissance ISO
