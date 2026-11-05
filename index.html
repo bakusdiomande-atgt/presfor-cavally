@@ -528,7 +528,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <div style="margin-top:auto;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,0.12);">
       <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;width:100%;margin-bottom:10px;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">⏻ Se déconnecter</button>
       <div class="rail-zone" id="tb-zone-label" style="font-size:10.5px;color:rgba(255,255,255,0.7);line-height:1.3;">Cavally + Worodougou</div>
-      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-17b-ca</div>
+      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-18-ca</div>
     </div>
   </nav>
 
@@ -7168,7 +7168,7 @@ async function tabImgOpen(code, slot, label, id){
 // ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-17b-ca';
+const APP_VERSION = 'v15-18-ca';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
@@ -9388,6 +9388,7 @@ function pvIdKey(p){ return String(p&&p.identityDocumentNumber||'').toUpperCase(
 
 let _pvIdIdx = null, _pvIdSig = '', _pvIdStore = null;
 function pvIdIndex(){
+  tabFixNamesAll();
   const store = (tabletteData&&tabletteData.minutes)||{}, sig = _tabVer+'';
   if(_pvIdIdx && sig===_pvIdSig && store===_pvIdStore) return _pvIdIdx;
   const keys = Object.keys(store); _pvIdStore = store;
@@ -14799,9 +14800,23 @@ function tabRenderImportHistory(){
 // et tolère les variantes de format (espaces, tirets, zéros de tête).
 let _tabIndex = null;
 var _tabParcelAlias = null, _tabAforParcelSig = '', _tabAforParcelCnt = null;
+// Les tablettes enregistrent le NOM de famille dans le champ « firstname » et les prénoms dans « lastname » (constaté : géomètre-expert, demandeurs).
+// Remise à l'endroit, une seule fois par fiche (marqueur _nfx), sauf si « lastname » est déjà en majuscules alors que « firstname » ne l'est pas.
+function tabNameUp(x){ x=String(x||'').trim(); return /[A-ZÀ-Ý]/.test(x) && x===x.toUpperCase(); }
+function tabFixNameObj(o,depth){
+  if(!o || typeof o!=='object' || depth>8) return;
+  if(Array.isArray(o)){ o.forEach(x=>tabFixNameObj(x,depth+1)); return; }
+  if(typeof o.lastname==='string' && typeof o.firstname==='string' && o.lastname.trim() && o.firstname.trim()){
+    if(!(tabNameUp(o.lastname) && !tabNameUp(o.firstname))){ const t=o.lastname; o.lastname=o.firstname; o.firstname=t; }
+  }
+  Object.keys(o).forEach(k=>{ const v=o[k]; if(v && typeof v==='object') tabFixNameObj(v,depth+1); });
+}
+function tabFixNamesAll(){
+  try{ const T=tabletteData||{}; Object.keys(T).forEach(st=>{ const S=T[st]; if(!S||typeof S!=='object') return; Object.keys(S).forEach(k=>{ const r=S[k]; if(r && typeof r==='object' && !r._nfx){ tabFixNameObj(r,0); r._nfx=1; } }); }); }catch(e){ console.warn('tabFixNamesAll',e); }
+}
 let _tabVer = 0, _tabReqCnt = {v:-1,n:0};
 function tabReqCount(){ const r=(tabletteData&&tabletteData.requests)||{}; if(_tabReqCnt.v!==_tabVer||_tabReqCnt.r!==r){ _tabReqCnt={v:_tabVer,r:r,n:Object.keys(r).length}; } return _tabReqCnt.n; }
-function tabInvalidateIndex(){ _tabVer++; _pvIdIdx = null; _tabIndex = null; _tabMerged = null; _tabAgentPaths = null; _tabParcelAlias = null; }
+function tabInvalidateIndex(){ tabFixNamesAll(); _tabVer++; _pvIdIdx = null; _tabIndex = null; _tabMerged = null; _tabAgentPaths = null; _tabParcelAlias = null; }
 function tabKeyVariants(code){
   const n = tabNormCode(code);
   if(!n) return [];
@@ -14813,6 +14828,7 @@ function tabKeyVariants(code){
   return out;
 }
 function tabGetIndex(){
+  tabFixNamesAll();
   if(_tabIndex) return _tabIndex;
   const idx = {};
   TAB_STAGE_DEFS.forEach(stage=>{
