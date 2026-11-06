@@ -528,7 +528,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <div style="margin-top:auto;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,0.12);">
       <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;width:100%;margin-bottom:10px;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">⏻ Se déconnecter</button>
       <div class="rail-zone" id="tb-zone-label" style="font-size:10.5px;color:rgba(255,255,255,0.7);line-height:1.3;">Cavally + Worodougou</div>
-      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-18b-ca</div>
+      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-20-ca</div>
     </div>
   </nav>
 
@@ -7168,7 +7168,7 @@ async function tabImgOpen(code, slot, label, id){
 // ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-18b-ca';
+const APP_VERSION = 'v15-20-ca';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
@@ -8559,6 +8559,8 @@ function rejDetailOpen(id){
     <div style="padding:16px 20px;overflow-y:auto;">
       <div style="margin-bottom:12px;"><span style="color:${st.c};font-weight:700;">${st.t}</span></div>
       ${row('Demandeur',esc(((d.prenom||'')+' '+(d.nom_demandeur||'')).trim()||'—'))}${row('Village',esc(d.village||'—'))}${row('Département',esc(d.dept||'—'))}${row('Agent',esc(d.agent||'—'))}${row('Contrôlé par',esc(rejControlePar(d)||'—'))}${row('Date de rejet',fd(c.date_rejet))}${row('Date de correction',corr?fd(c.date_correction):'—')}${row('Durée de correction',dur)}
+      <div style="margin:14px 0 6px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text3);">État par pièce</div>
+      ${(()=>{ const r=rejPiecesEtat(d); const col={3:'var(--red)',2:'var(--red)',1:'var(--amber-txt)',0:'var(--accent)'}; return r.length?r.map(x=>`<div style="padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;"><b>${esc(x.piece)}</b> — <span style="color:${col[x.sev]};font-weight:700;">${esc(x.etat)}</span>${x.det?`<div style="font-size:11px;color:var(--text2);">${esc(x.det)}</div>`:''}</div>`).join(''):'<div style="font-size:12px;color:var(--text3);">Aucun détail par pièce disponible.</div>'; })()}
       <div style="margin:14px 0 6px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text3);">Motifs de rejet par document</div>
       ${blocs||`<div style="font-size:12px;white-space:pre-line;">${esc(rejMotifCourant(d)||'—')}</div>`}
       <div style="margin:14px 0 6px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text3);">Historique du dossier</div>
@@ -8623,7 +8625,7 @@ function cqeRenderRejetsCqi(){
       const dur = corr ? (c.date_rejet&&c.date_correction ? Math.max(0,cqeDaysBetween(c.date_rejet,c.date_correction)||0)+' j' : '—') : (x.e.jours!=null ? '<span style="color:var(--text3);">'+x.e.jours+' j en cours</span>' : '—');
       const mot=String(rejMotifCourant(x.d)||'').replace(/\s*[\r\n]+\s*/g,' · ');
       return `<tr style="border-top:1px solid var(--border);cursor:pointer;white-space:nowrap;" onclick="rejDetailOpen('${String(x.d.id).replace(/'/g,"\\'")}')" title="Cliquer pour voir le détail du rejet"><td style="padding:6px 10px;font-family:'DM Mono',monospace;white-space:nowrap;">${esc(x.d.id)}</td><td style="padding:6px 10px;">${esc(((x.d.prenom||'')+' '+(x.d.nom_demandeur||'')).trim())}</td><td style="padding:6px 10px;">${esc(x.d.village||'')}</td><td style="padding:6px 10px;">${esc(x.d.agent||'')}</td>
-      <td style="padding:6px 10px;white-space:nowrap;">${esc(rejDocsOf(x.d))}</td><td style="padding:6px 10px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;" title="${esc(mot)}">${esc(mot)}</td>
+      <td style="padding:6px 10px;white-space:nowrap;">${esc(rejDocsOf(x.d))}${rejPiecesChips(x.d)}</td><td style="padding:6px 10px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;" title="${esc(mot)}">${esc(mot)}</td>
       <td style="padding:6px 10px;white-space:nowrap;">${fd(c.date_rejet)}</td><td style="padding:6px 10px;"><span style="color:${st.c};font-weight:700;">${st.t}</span></td>
       <td style="padding:6px 10px;white-space:nowrap;">${rejTransHtml(x.d,x.e.etat)}</td><td style="padding:6px 10px;">${esc(x.par||'')}</td><td style="padding:6px 10px;white-space:nowrap;">${corr?fd(c.date_correction):'—'}</td><td style="padding:6px 10px;white-space:nowrap;">${dur}</td></tr>`; }).join('')||'<tr><td colspan="12" style="padding:16px;text-align:center;color:var(--text3);">Aucun dossier rejeté par les contrôleurs pour ces filtres.</td></tr>'}</tbody></table></div>
     ${pages>1?`<div style="padding:8px 16px;display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);font-size:11px;"><button class="btn-s" ${F.page===0?'disabled':''} onclick="rejFilter.page--;cqeRenderRejets()">← Précédent</button><span>Page ${F.page+1} / ${pages}</span><button class="btn-s" ${F.page>=pages-1?'disabled':''} onclick="rejFilter.page++;cqeRenderRejets()">Suivant →</button></div>`:''}
@@ -8692,7 +8694,7 @@ function cqeRenderRejets(){
       ${['Dossier','Demandeur','Village','Agent','Document rejeté','Motif','Rejeté le','Délai','Transmis le','Contrôleur responsable','Corrigé le','Durée de correction'].map(h=>`<th style="text-align:left;padding:7px 10px;">${h}</th>`).join('')}</tr></thead>
     <tbody>${pageList.map(x=>{ const id=String(x.d.id).replace(/'/g,"\\'"), c=x.e.cq; const j=x.e.jours; const jc=j==null?'':(j>=CQE_CRIT_DAYS?'var(--red)':j>=CQE_ALERT_DAYS?'var(--amber-txt)':'inherit');
       return `<tr style="border-top:1px solid var(--border);cursor:pointer;" onclick="rejDetailOpen('${id}')"><td style="padding:6px 10px;font-family:'DM Mono',monospace;">${planEsc(x.d.id)}</td><td style="padding:6px 10px;">${planEsc(((x.d.prenom||'')+' '+(x.d.nom_demandeur||'')).trim())}</td><td style="padding:6px 10px;">${planEsc(x.d.village||'')}</td><td style="padding:6px 10px;">${planEsc(x.d.agent||'')}</td>
-      <td style="padding:6px 10px;white-space:nowrap;">${planEsc(rejDocsOf(x.d))}</td><td style="padding:6px 10px;max-width:260px;font-size:11px;">${planEsc(rejMotif(x.d)).slice(0,160)}${(()=>{ const tc=terrChecks[x.d.id]||{}; const rc=['rdc','pvcl'].map(t=>tc[t]&&tc[t].recheck).filter(Boolean).sort((a,b)=>String(b.d).localeCompare(String(a.d)))[0]; if(!rc) return ''; return `<div style="font-size:10px;color:var(--text3);white-space:normal;max-width:220px;">Fiche renvoyée le ${planEsc(String(rc.d).split('-').reverse().join('/'))}${rc.ko.length?' — <b style="color:var(--red)">non corrigé : '+planEsc(rc.ko.join(' ; '))+'</b>':''}${rc.confirm.length?' — <b style="color:var(--amber-txt)">corrigé, à confirmer : '+planEsc(rc.confirm.join(' ; '))+'</b>':''}</div>`; })()}</td>
+      <td style="padding:6px 10px;white-space:nowrap;">${planEsc(rejDocsOf(x.d))}${rejPiecesChips(x.d)}</td><td style="padding:6px 10px;max-width:260px;font-size:11px;">${planEsc(rejMotif(x.d)).slice(0,160)}${(()=>{ const tc=terrChecks[x.d.id]||{}; const rc=['rdc','pvcl'].map(t=>tc[t]&&tc[t].recheck).filter(Boolean).sort((a,b)=>String(b.d).localeCompare(String(a.d)))[0]; if(!rc) return ''; return `<div style="font-size:10px;color:var(--text3);white-space:normal;max-width:220px;">Fiche renvoyée le ${planEsc(String(rc.d).split('-').reverse().join('/'))}${rc.ko.length?' — <b style="color:var(--red)">non corrigé : '+planEsc(rc.ko.join(' ; '))+'</b>':''}${rc.confirm.length?' — <b style="color:var(--amber-txt)">corrigé, à confirmer : '+planEsc(rc.confirm.join(' ; '))+'</b>':''}</div>`; })()}</td>
       <td style="padding:6px 10px;white-space:nowrap;">${c&&c.date_rejet?planEsc(c.date_rejet.split('-').reverse().join('/')):'—'}</td><td style="padding:6px 10px;color:${jc};font-weight:${jc!=='inherit'?700:400};">${j==null?'—':j+' j'}</td>
       <td style="padding:6px 10px;white-space:nowrap;">${rejTransHtml(x.d,x.e.etat)}</td>
       <td style="padding:6px 10px;">${ctlSel(x.d.id,x.resp)}</td>
@@ -8943,6 +8945,80 @@ function rejRecheck(d, type, rec, k, sig){
     if(!ko.length) cqeSuiviSet(id,'corrige_agent');
   }
   return true;
+}
+
+// ── Bilan des rejets après chaque import tablette : pour chaque pièce rejetée, motif corrigé / non corrigé / fiche non renvoyée ──
+// État de chaque pièce d'un dossier rejeté : corrigé / motif non corrigé / fiche non renvoyée / à confirmer / contrôle manuel
+function rejPiecesEtat(d){
+  const rows=[], NOAUTO={afp:'aucune donnée tablette d\'annonce exportée (04_advertising) : contrôle manuel par le CQI', att:'aucune fiche d\'attestation exportée (08_validation) : contrôle manuel par le CQI'};
+  const tc=terrChecks[d.id]||{}, g=cqeGrille[d.id]||{}, cqd=(pubCQ[d.id]&&pubCQ[d.id].date_rejet)||'';
+  TERR_ALL.concat(['plan']).forEach(type=>{
+    const piece=GRP_PIECE[type], motifs=((g.c||[]).filter(m=>grillePieceDeMotif(m)===piece)).map(m=>grilleMotifTexte(m));
+    const k = type==='plan' ? planChecks[d.id] : tc[type];
+    const rc=k&&k.recheck, wasRej = k && (k.statut==='incoherent' || (rc&&rc.d) || k.statut==='a_verifier');
+    if(!wasRej && !motifs.length) return;
+    const lab = type==='plan' ? 'Plan' : TERR_TYPES[type].label;
+    const recent = rc && rc.d && (!cqd || String(rc.d)>=String(cqd));
+    let etat, det=motifs.join(' ; ')||(k&&k.commentaire)||'', sev;
+    if(type==='plan'){
+      const en=planGetFor(d);
+      if(!en){ etat='Plan absent de la base'; sev=2; }
+      else if(k && en.ts && k.date && String(en.ts).slice(0,10)>String(k.date).slice(0,10)){
+        let n=0; try{ const m=planMeta[en.key]||en; const tab=tabMatchForDossier(d); n=planCrossChecks(d, planNorm((m&&m.txt)||''), (m&&m.txt)||'', tab).filter(x=>x.s==='err'||x.s==='warn').length; }catch(x){}
+        etat = n ? 'Plan remplacé — '+n+' incohérence(s) automatique(s) restante(s)' : 'Plan remplacé — à confirmer par le CQI'; sev = n?3:1; det = n?'Voir les contrôles croisés du plan':det;
+      } else { etat='Plan NON remplacé depuis le rejet — motif non corrigé'; sev=2; }
+    }
+    else if(NOAUTO[type] && !terrRec(d,type)){ etat='Contrôle manuel requis'; det=NOAUTO[type]+(motifs.length?' — motif(s) : '+motifs.join(' ; '):''); sev=2; }
+    else {
+      const rec=terrRec(d,type);
+      if(k && k.statut==='conforme'){ etat='Corrigé'; sev=0; }
+      else if(recent && rc.ko && rc.ko.length){ etat='Fiche renvoyée — motif NON corrigé'; det=rc.ko.join(' ; '); sev=3; }
+      else if(recent && rc.confirm && rc.confirm.length){ etat='Corrigé, à confirmer par le CQI'; det=rc.confirm.join(' ; '); sev=1; }
+      else if(k && k.statut==='a_verifier' && k.refait && (!cqd || String(k.refait)>=String(cqd))){ etat='Fiche renvoyée — à re-vérifier par le CQI'; sev=1; }
+      else if(!rec){ etat='Fiche absente des données tablette'; sev=2; }
+      else if(!k){ etat='À vérifier par le CQI (aucun contrôle automatique enregistré pour ce motif)'; sev=2; }
+      else { etat='Fiche NON renvoyée depuis le rejet — motif non corrigé'; sev=2; }
+    }
+    rows.push({id:d.id, piece:lab, etat, det, sev});
+  });
+  return rows;
+}
+function rejPiecesChips(d){
+  let r; try{ r=rejPiecesEtat(d); }catch(e){ return ''; }
+  if(!r.length) return '';
+  const col={3:'var(--red)',2:'var(--red)',1:'var(--amber-txt)',0:'var(--accent)'}, ic={3:'✗',2:'✗',1:'?',0:'✓'}, lib={3:'motif non corrigé',2:'non renvoyée / à vérifier',1:'à confirmer',0:'corrigé'};
+  return '<div style="margin-top:3px;font-size:10px;line-height:1.5;white-space:normal;max-width:300px;">'+r.map(x=>`<span title="${planEsc(x.etat+(x.det?' — '+x.det:''))}" style="display:inline-block;margin:1px 4px 1px 0;padding:0 5px;border-radius:8px;border:1px solid ${col[x.sev]};color:${col[x.sev]};white-space:nowrap;">${ic[x.sev]} ${planEsc(x.piece)} : ${lib[x.sev]}</span>`).join('')+'</div>';
+}
+function rejImportBilan(){
+  const rows=[];
+  (dossiersAFOR||[]).forEach(d=>{
+    let e; try{ e=rejEtat(d); }catch(x){ return; }
+    if(e.etat!=='rejete') return;
+    const nom=((d.prenom||'')+' '+(d.nom_demandeur||'')).trim();
+    const pe=rejPiecesEtat(d); pe.forEach(r=>rows.push(Object.assign({nom, agent:d.agent||''}, r)));
+    if(!pe.length){ const docs=rejDocsAfor(d); rows.push({id:d.id, nom, agent:d.agent||'', piece:docs.length?docs.join(', '):'Non précisé', etat:'Rejet AFOR : motif à vérifier manuellement', det:rejMotif(d)||'', sev:2}); }
+  });
+  rows.sort((a,b)=>b.sev-a.sev || String(a.id).localeCompare(String(b.id)));
+  return rows;
+}
+function rejImportBilanShow(rows){
+  rows = rows || rejImportBilan();
+  const old=document.getElementById('rej-bilan-modal'); if(old) old.remove();
+  const nb=k=>rows.filter(r=>r.sev===k).length, esc=planEsc;
+  const col={3:'var(--red)',2:'var(--red)',1:'var(--amber-txt)',0:'var(--accent)'};
+  const m=document.createElement('div'); m.id='rej-bilan-modal'; m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;';
+  m.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:100%;max-width:1000px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;"><h3 style="font-family:'Syne',sans-serif;font-size:15px;margin:0;">Bilan des rejets après import tablette</h3><div style="display:flex;gap:6px;"><button class="btn-s" onclick="rejImportBilanXlsx()">Exporter Excel</button><button class="btn-s" onclick="document.getElementById('rej-bilan-modal').remove()">✕ Fermer</button></div></div>
+    <div style="padding:10px 20px;font-size:12px;border-bottom:1px solid var(--border);"><b style="color:var(--red)">${nb(3)}</b> motif(s) non corrigé(s) après renvoi · <b style="color:var(--red)">${nb(2)}</b> fiche(s) non renvoyée(s) / à vérifier · <b style="color:var(--amber-txt)">${nb(1)}</b> corrigé(s) à confirmer · <b style="color:var(--accent)">${nb(0)}</b> corrigé(s)</div>
+    <div style="overflow:auto;padding:0 20px 16px;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="text-align:left;color:var(--text3);"><th style="padding:6px 8px;">Dossier</th><th style="padding:6px 8px;">Demandeur</th><th style="padding:6px 8px;">Agent</th><th style="padding:6px 8px;">Pièce</th><th style="padding:6px 8px;">État</th><th style="padding:6px 8px;">Motif(s) restant(s)</th></tr></thead><tbody>${
+      rows.length?rows.map(r=>`<tr style="border-top:1px solid var(--border);"><td style="padding:6px 8px;white-space:nowrap;">${esc(r.id)}</td><td style="padding:6px 8px;">${esc(r.nom)}</td><td style="padding:6px 8px;">${esc(r.agent)}</td><td style="padding:6px 8px;">${esc(r.piece)}</td><td style="padding:6px 8px;color:${col[r.sev]};font-weight:700;">${esc(r.etat)}</td><td style="padding:6px 8px;font-size:11px;">${esc(r.det)}</td></tr>`).join(''):'<tr><td colspan="6" style="padding:16px;color:var(--text3);">Aucun dossier rejeté à vérifier.</td></tr>'}</tbody></table></div></div>`;
+  document.body.appendChild(m);
+}
+function rejImportBilanXlsx(){
+  if(typeof XLSX==='undefined') return;
+  const rows=rejImportBilan();
+  const ws=XLSX.utils.aoa_to_sheet([['Dossier','Demandeur','Agent','Pièce','État','Motif(s) restant(s)']].concat(rows.map(r=>[r.id,r.nom,r.agent,r.piece,r.etat,r.det])));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Bilan rejets'); XLSX.writeFile(wb,'Bilan_rejets_apres_import_'+cqeToday()+'.xlsx');
 }
 // Fiche refaite : si le contenu tablette a changé depuis le dernier contrôle, le contrôle repasse « à vérifier ».
 function terrDetectRefaits(){
@@ -14764,6 +14840,7 @@ async function tabImportZips(){
   document.getElementById('tab-import-pwd').value = '';
   tabRenderImportHistory();
   try{ const nRef = terrDetectRefaits(); if(nRef) showToast(nRef+' fiche(s) RDC/PVCL refaite(s) : à re-vérifier.'); }catch(e){ console.warn(e); }
+  try{ const bil=rejImportBilan(); const aCorr=bil.filter(r=>r.sev>=2).length; if(bil.length){ statusEl.innerHTML += `<div style="margin-top:8px;padding:8px 10px;border-radius:6px;background:${aCorr?'var(--red-lt,#fdecea)':'var(--amber-lt)'};font-size:12px;"><b>Rejets :</b> ${aCorr} pièce(s) dont le motif de rejet n'est pas corrigé, ${bil.filter(r=>r.sev===1).length} à confirmer, ${bil.filter(r=>r.sev===0).length} corrigée(s). <a href="#" onclick="rejImportBilanShow();return false;" style="color:var(--blue);font-weight:600;">Voir le bilan</a></div>`; if(aCorr) rejImportBilanShow(bil); } }catch(e){ console.warn('rejImportBilan',e); }
   try{ if(typeof cqeRenderAll==='function') cqeRenderAll(); }catch(e){}
   try{ if(typeof agRenderPerf==='function'){ agRenderPerf(); agRenderPerf('ind-ag'); } if(typeof agRenderKPI==='function'){ agRenderKPI(); agRenderKPI('ind-ag'); } }catch(e){}
   showToast('Données tablette importées : '+nomTablette);
