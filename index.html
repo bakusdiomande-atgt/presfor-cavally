@@ -533,7 +533,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <div style="margin-top:auto;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,0.12);">
       <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;width:100%;margin-bottom:10px;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">⏻ Se déconnecter</button>
       <div class="rail-zone" id="tb-zone-label" style="font-size:10.5px;color:rgba(255,255,255,0.7);line-height:1.3;">Cavally + Worodougou</div>
-      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-22c-ca</div>
+      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-23b-ca</div>
     </div>
   </nav>
 
@@ -2124,8 +2124,10 @@ function dosUpdateGeo(){
   geoUpdateSP('df-dept','df-sp','df-village');
 }
 function dosSelEtape(el){document.querySelectorAll('#dos-etape-chips .chip').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');document.getElementById('df-etape').value=el.dataset.v;}
+function regionFor(dept, fb){ const r=REGION_BY_DEPT[String(dept||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')]; return r || fb || ''; }
 function dosUpdateSP(){
   const dept = document.getElementById('df-dept').value;
+  { const rg=document.getElementById('df-region'); if(rg) rg.value = regionFor(dept,'CAVALLY'); }
   const sp = document.getElementById('df-sp');
   const SP_MAP = {
     'GUIGLO':    ['Guiglo','Kaadé','Kouibly','Nidrou','Nizahon','Ouaninou','Taï','Zéaglo','Ziglo'],
@@ -2177,7 +2179,7 @@ function dosSubmit(e){
     id: (document.getElementById('df-id')?.value||'').trim(),
     prenom: (document.getElementById('df-prenom')?.value||'').trim(),
     nom: (document.getElementById('df-nom')?.value||'').trim(),
-    region: 'CAVALLY',
+    region: regionFor(document.getElementById('df-dept')?.value,'CAVALLY'),
     dept: document.getElementById('df-dept')?.value||'',
     sp: document.getElementById('df-sp')?.value||'',
     village: (document.getElementById('df-village')?.value||'').trim(),
@@ -2257,7 +2259,7 @@ function dosExportCSV(){
     return [
       d._src==='afor'?'AFOR':d._src==='gnss'?'GNSS':'Manuel',
       d.id||'', prenom, nomFam,
-      d.region||'CAVALLY', d.dept||'', d.sp||'', d.village||'',
+      regionFor(d.dept, d.region)||'CAVALLY', d.dept||'', d.sp||'', d.village||'',
       d.code_parcelle||'', d.agent||'', d.type||'',
       d.etape||'', dateEtape, leve, bornee, superf,
       statut, retard.jours||''
@@ -6607,7 +6609,13 @@ async function cqeGrilleLoad(){
 }
 function grilleCatalogue(){
   // Catalogue de base + motifs ajoutés par les contrôleurs (rattachés à une pièce)
-  return GRILLE_CQ.map(p=>({id:p.id, code:p.code, e:p.e.map(e=>({id:e.id, t:e.t, m:e.m.map((t,i)=>({id:e.id+'-'+(i+1), t}))})), extra:Object.keys(cqeMotifs).filter(k=>cqeMotifs[k].p===p.id).map(k=>({id:k, t:cqeMotifs[k].t, by:cqeMotifs[k].by}))}));
+  return GRILLE_CQ.map(p=>{
+    const mine=Object.keys(cqeMotifs).filter(k=>cqeMotifs[k].p===p.id).map(k=>({id:k, t:cqeMotifs[k].t, by:cqeMotifs[k].by, e:cqeMotifs[k].e||''}));
+    const eids=new Set(p.e.map(e=>e.id));
+    return {id:p.id, code:p.code,
+      e:p.e.map(e=>({id:e.id, t:e.t, m:e.m.map((t,i)=>({id:e.id+'-'+(i+1), t})), ex:mine.filter(x=>x.e===e.id)})),
+      extra:mine.filter(x=>!eids.has(x.e))};
+  });
 }
 function grilleMotifTexte(mid){
   if(cqeMotifs[mid]) return cqeMotifs[mid].t;
@@ -6638,13 +6646,13 @@ function grilleRender(){
   const g = cqeGrille[d.id], cat = grilleCatalogue();
   const old = document.getElementById('grille-modal'); const scroll = old ? (old.querySelector('#grille-main')||{}).scrollTop : 0; if(old) old.remove();
   const nomDem = ((d.prenom||'')+' '+(d.nom_demandeur||'')).trim();
-  const cnt = p=>{ let n=0; p.e.forEach(e=>e.m.forEach(m=>{ if(S.checked.has(m.id)) n++; })); p.extra.forEach(m=>{ if(S.checked.has(m.id)) n++; }); return n; };
+  const cnt = p=>{ let n=0; p.e.forEach(e=>{ e.m.forEach(m=>{ if(S.checked.has(m.id)) n++; }); (e.ex||[]).forEach(m=>{ if(S.checked.has(m.id)) n++; }); }); p.extra.forEach(m=>{ if(S.checked.has(m.id)) n++; }); return n; };
   const motifRow = m=>`<label style="display:flex;gap:8px;align-items:flex-start;padding:4px 0;font-size:12px;cursor:${can?'pointer':'default'};"><input type="checkbox" ${S.checked.has(m.id)?'checked':''} ${can?'':'disabled'} onchange="grilleToggle('${m.id}',this.checked)" style="margin-top:2px;"><span>${E(m.t)}${m.by?` <span style="color:var(--text3);font-size:10px;">(ajouté par ${E(m.by)})</span>`:''}</span></label>`;
   const piece = p=>{
     const n = cnt(p), open = S.open.has(p.id) || n>0;
     return `<div style="border:1px solid ${n?'var(--red)':'var(--border)'};border-radius:8px;margin-bottom:8px;overflow:hidden;">
       <div onclick="grilleTogglePiece('${p.id}')" style="cursor:pointer;background:${n?'var(--red-lt)':'var(--surface2)'};padding:7px 12px;display:flex;justify-content:space-between;align-items:center;"><b style="font-size:12px;">${p.id}-${E(p.code)}</b><span style="font-size:11px;color:${n?'var(--red)':'var(--text3)'};font-weight:${n?700:400};">${n?n+' motif(s) coché(s)':'RAS'} ${open?'▾':'▸'}</span></div>
-      ${open?`<div style="padding:6px 12px 10px;">${p.e.map(e=>`<div style="margin-top:6px;font-weight:600;color:var(--blue);font-size:11px;">${E(e.id)} — ${E(e.t)}</div>${e.m.map(motifRow).join('')}`).join('')}
+      ${open?`<div style="padding:6px 12px 10px;">${p.e.map(e=>`<div style="margin-top:6px;font-weight:600;color:var(--blue);font-size:11px;">${E(e.id)} — ${E(e.t)}</div>${e.m.map(motifRow).join('')}${(e.ex||[]).map(motifRow).join('')}`).join('')}
         ${p.extra.length?`<div style="margin-top:6px;font-weight:600;color:var(--blue);font-size:11px;">Autres motifs</div>${p.extra.map(motifRow).join('')}`:''}
         ${can?`<div style="display:flex;gap:6px;margin-top:8px;"><input type="text" id="gr-new-${p.id}" placeholder="Ajouter un autre motif de rejet pour cette pièce…" style="flex:1;border:1px solid var(--border-med);border-radius:6px;padding:5px 8px;font-size:12px;"><button class="btn-s" onclick="grilleAddMotif('${p.id}')">+ Ajouter</button></div>`:''}</div>`:''}
     </div>`;
@@ -6675,15 +6683,36 @@ function grilleToggle(mid, on){
 }
 function grilleTogglePiece(pid){ const S=window._gr; if(!S) return; const comm=(document.getElementById('gr-comm')||{}).value; if(S.open.has(pid)) S.open.delete(pid); else S.open.add(pid); grilleKeepComm(comm); }
 function grilleKeepComm(comm){ grilleRender(); const c=document.getElementById('gr-comm'); if(c && comm!=null) c.value=comm; }
+// Choix de la grille (section) où ajouter un nouveau motif de rejet, p. ex. 3d « Fiche d'identification des litiges fonciers » ou 3e « Liste des détenteurs des droits coutumiers collectifs ».
+function grilleChoisirSection(pid, texte, cb){
+  const p=GRILLE_CQ.find(x=>x.id===pid), E=planEsc; if(!p){ cb(''); return; }
+  const old=document.getElementById('gr-sec-modal'); if(old) old.remove();
+  window._grSecCb=cb;
+  const m=document.createElement('div'); m.id='gr-sec-modal'; m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10040;display:flex;align-items:center;justify-content:center;padding:20px;';
+  m.innerHTML=`<div style="background:var(--surface);border-radius:12px;max-width:560px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--border);"><h3 style="font-family:'Syne',sans-serif;font-size:15px;margin:0 0 4px;">À quelle grille ajouter ce motif ?</h3><div style="font-size:12px;color:var(--text2);">« ${E(texte)} »<br>Pièce ${E(p.id)} — ${E(p.code)}</div></div>
+    <div style="padding:10px 18px;overflow:auto;flex:1;">${p.e.map((e,i)=>`<label style="display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer;"><input type="radio" name="gr-sec" value="${E(e.id)}" ${i===0?'checked':''} style="margin-top:2px;"><span><b>${E(e.id)}</b> — ${E(e.t)}</span></label>`).join('')}
+      <label style="display:flex;gap:8px;align-items:flex-start;padding:7px 0;font-size:12px;cursor:pointer;"><input type="radio" name="gr-sec" value="" style="margin-top:2px;"><span>Autres motifs (sans grille précise)</span></label></div>
+    <div style="padding:10px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;"><button class="btn-s" onclick="document.getElementById('gr-sec-modal').remove();window._grSecCb=null;">Annuler</button><button class="btn-p" onclick="grilleSectionOk()">Ajouter à cette grille</button></div></div>`;
+  document.body.appendChild(m);
+}
+function grilleSectionOk(){
+  const r=document.querySelector('#gr-sec-modal input[name=gr-sec]:checked'), v=r?r.value:'', cb=window._grSecCb;
+  const m=document.getElementById('gr-sec-modal'); if(m) m.remove(); window._grSecCb=null;
+  if(cb) cb(v);
+}
 function grilleAddMotif(pid){
   const S=window._gr; if(!S||!grilleCan()) return;
   const inp = document.getElementById('gr-new-'+pid); const t=((inp&&inp.value)||'').trim();
   if(t.length<4){ showToast('Saisissez le motif (4 caractères minimum).'); return; }
   const dup = Object.keys(cqeMotifs).find(k=>cqeMotifs[k].p===pid && cqeMotifs[k].t.toLowerCase()===t.toLowerCase());
-  const id = dup || ('c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5));
-  if(!dup){ cqeMotifs[id] = {p:pid, t, by:cqeWho()||'', d:cqeToday()}; cqeGrilleSaveLocal(); cqeFbPut('cq_motifs/'+encodeURIComponent(id), cqeMotifs[id]); }
-  S.checked.add(id); S.open.add(pid);
-  const comm=(document.getElementById('gr-comm')||{}).value; grilleKeepComm(comm);
+  const fin=(sec)=>{
+    const id = dup || ('c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5));
+    if(!dup){ cqeMotifs[id] = {p:pid, e:sec||'', t, by:cqeWho()||'', d:cqeToday()}; cqeGrilleSaveLocal(); cqeFbPut('cq_motifs/'+encodeURIComponent(id), cqeMotifs[id]); }
+    S.checked.add(id); S.open.add(pid);
+    const comm=(document.getElementById('gr-comm')||{}).value; grilleKeepComm(comm);
+  };
+  if(dup) fin(); else grilleChoisirSection(pid, t, fin);
 }
 // Enregistrement : au moins un motif coché = dossier rejeté (circuit CQ habituel) ; aucun = dossier conforme.
 function grilleSave(id){
@@ -7174,7 +7203,7 @@ async function tabImgOpen(code, slot, label, id){
 // ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-22c-ca';
+const APP_VERSION = 'v15-23b-ca';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
@@ -8297,7 +8326,7 @@ function grpHtml(){
   const last = S.type==='plan' ? planChecks[S.id] : (terrChecks[S.id]||{})[S.type];
   const sid = String(S.id).replace(/'/g,"\\'");
   return `<div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--blue);">Grille de contrôle · ${E(GRP_LABEL[S.type])} <span style="font-weight:400;font-size:11px;color:var(--text3);">(pièce ${E(p.id)} — ${E(p.code)})</span></div>
-    <div style="margin-top:6px;">${p.e.map(e=>`<div style="margin-top:6px;font-weight:600;color:var(--blue);font-size:11px;">${E(e.id)} — ${E(e.t)}</div>${e.m.map(row).join('')}`).join('')}
+    <div style="margin-top:6px;">${p.e.map(e=>`<div style="margin-top:6px;font-weight:600;color:var(--blue);font-size:11px;">${E(e.id)} — ${E(e.t)}</div>${e.m.map(row).join('')}${(e.ex||[]).map(row).join('')}`).join('')}
       ${p.extra.length?`<div style="margin-top:6px;font-weight:600;color:var(--blue);font-size:11px;">Autres motifs</div>${p.extra.map(row).join('')}`:''}</div>
     ${can?`<div style="display:flex;gap:6px;margin-top:8px;"><input type="text" id="grp-new" placeholder="Ajouter un autre motif de rejet…" style="flex:1;border:1px solid var(--border-med);border-radius:6px;padding:5px 8px;font-size:12px;"><button class="btn-s" onclick="grpAdd()">+ Ajouter</button></div>`:''}
     <label style="display:block;margin-top:10px;font-size:11px;color:var(--text3);">Commentaire (facultatif)<textarea id="grp-comm" rows="3" ${can?'':'disabled'} style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:6px;font-size:12px;font-family:inherit;margin-top:3px;">${E(S.comm||'')}</textarea></label>
@@ -8315,9 +8344,12 @@ function grpAdd(){
   const inp=document.getElementById('grp-new'); const t=((inp&&inp.value)||'').trim();
   if(t.length<4){ showToast('Saisissez le motif (4 caractères minimum).'); return; }
   const dup = Object.keys(cqeMotifs).find(k=>cqeMotifs[k].p===S.pid && cqeMotifs[k].t.toLowerCase()===t.toLowerCase());
-  const id = dup || ('c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5));
-  if(!dup){ cqeMotifs[id] = {p:S.pid, t, by:cqeWho()||'', d:cqeToday()}; cqeGrilleSaveLocal(); cqeFbPut('cq_motifs/'+encodeURIComponent(id), cqeMotifs[id]); }
-  S.checked.add(id); grpKeepComm(); grpRender();
+  const fin=(sec)=>{
+    const id = dup || ('c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5));
+    if(!dup){ cqeMotifs[id] = {p:S.pid, e:sec||'', t, by:cqeWho()||'', d:cqeToday()}; cqeGrilleSaveLocal(); cqeFbPut('cq_motifs/'+encodeURIComponent(id), cqeMotifs[id]); }
+    S.checked.add(id); grpKeepComm(); grpRender();
+  };
+  if(dup) fin(); else grilleChoisirSection(S.pid, t, fin);
 }
 async function grpSave(id, type){
   const S=window._grp; if(!S||!grilleCan()) return;
@@ -9601,7 +9633,7 @@ function pvOfficielHtml(d, rec){
   const dReq = terrDay(req.requestDate)||terrDay(req.creationDate)||dPV;
   const fr = iso=>iso?iso.split('-').reverse().join('/'):'';
   const village = d.village || pvFind(rec,/village/i) || pvFind(req,/village/i);
-  const region = pvFind(rec,/^region/i) || pvFind(req,/^region/i) || 'CAVALLY';
+  const region = regionFor(d.dept, pvFind(rec,/^region/i) || pvFind(req,/^region/i)) || 'CAVALLY';
   const sp = d.sp || pvFind(rec,/cspgfr|sous.?pref/i) || pvFind(req,/cspgfr|sous.?pref/i);
   const nomDem = holder ? (((holder.lastname||'')+' '+(holder.firstname||'')).trim()) : ((d.nom_demandeur||'')+' '+(d.prenom||'')).trim();
   const manager = rec.manager ? (rec.manager.fullName || pvName(rec.manager)) : '';
@@ -9797,7 +9829,7 @@ function pvclOfficielHtml(d, rec){
   const num = tabNormCode(pvPick(rec,/^(observation|minutes|request)number$/i) || numRdc || d.id);
   const dReq = terrDay(req.requestDate)||terrDay(req.creationDate)||dRdc||dPV;
   const village = rec.label || d.village || '';
-  const region = pvFind(rec,/^region/i) || pvFind(req,/^region/i) || 'CAVALLY';
+  const region = regionFor(d.dept, pvFind(rec,/^region/i) || pvFind(req,/^region/i)) || 'CAVALLY';
   const sp = d.sp || pvFind(rec,/cspgfr|sous.?pref/i);
   const nomDem = ((d.nom_demandeur||'')+' '+(d.prenom||'')).trim();
   const manager = rdc&&rdc.manager ? (rdc.manager.fullName||pvName(rdc.manager)) : '';
@@ -9856,7 +9888,7 @@ function docCtx(d){
   const rep=((ap.representativeLastname||'')+' '+(ap.representativeFirstname||'')).trim();
   const village = docG(land,'village.label') || d.village || '';
   return {t,req,ap,land,rdc,pvcl,ouv,clo,up,person,grp,rep,village,
-    region: docG(land,'village.subPrefecture.department.region.label') || 'CAVALLY',
+    region: regionFor(docG(land,'village.subPrefecture.department.label') || d.dept, docG(land,'village.subPrefecture.department.region.label')) || 'CAVALLY',
     dept: docG(land,'village.subPrefecture.department.label') || d.dept || '',
     sp: docG(land,'village.subPrefecture.label') || d.sp || '',
     nomDem: grp || person, gest: grp ? (ap.selectedSignatory==='representant'&&rep?rep:person) : (rep||''),
