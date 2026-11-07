@@ -73,11 +73,15 @@ body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--t
 @media(max-width:1500px){.tb-title{display:none;}#net-label{display:none;}.tb-mod .mod-num{display:none;}.tb-mod{padding:0 8px;}}
 @media(max-width:1400px){.tb-mod svg{display:none;}}
 @media(max-width:1300px){.topbar{padding:0 8px;}#zone-selector{max-width:130px;}}
-/* Contrôleur qualité : seuls le tableau de bord (lecture) et le CQE sont accessibles */
+/* Contrôleur qualité : seuls le tableau de bord (lecture) et le CQ sont accessibles */
 body.role-cqe .tb-mod:not(#tab-accueil):not(#tab-cqe){display:none !important;}
 body.role-cqe #tb-admin-btn{display:none !important;}
+body.role-sup .tb-mod:not(#tab-accueil):not(#tab-cqe):not(#tab-pub){display:none !important;}
+body.role-sup #tb-admin-btn{display:none !important;}
+body.role-sup #module-accueil [onclick*="dashOpenSettings"], body.role-sup #module-accueil .btn-p{display:none !important;}
+body.role-sup #tb-user-role { background:#E8F0FE; color:#1a4fa0; }
 body.role-cqe #module-accueil [onclick*="dashOpenSettings"], body.role-cqe #module-accueil .btn-p{display:none !important;}
-/* Affichage plus compact du CQE */
+/* Affichage plus compact du CQ */
 #module-cqe .main{padding:12px 16px;}
 #module-cqe .page-head{margin-bottom:10px;}
 #module-cqe .page-head h2{font-size:16px;}
@@ -282,7 +286,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 .admin-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9000;display:none;align-items:center;justify-content:center;}
 .admin-overlay.show{display:flex;}
 .admin-card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:28px 32px;width:100%;max-width:700px;max-height:88vh;overflow-y:auto;}
-/* Contrôleur qualité : lecture seule partout (comme CE/GNSS), sauf dans CQE (voir isViewer()
+/* Contrôleur qualité : lecture seule partout (comme CE/GNSS), sauf dans CQ (voir isViewer()
    et les fonctions cqeMarquerCorrige/cqeAnnulerCorrection, qui ne sont pas soumises à .viewer-hidden) */
 body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
 </style>
@@ -358,7 +362,8 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
             <option value="agent">Agent PRESFOR</option>
             <option value="ce">Commissaire Enquêteur (CE) — Visuel</option>
             <option value="gnss">Opérateur GNSS — Visuel</option>
-            <option value="cqe">Contrôleur qualité — Accès CQE uniquement</option>
+            <option value="cqe">Contrôleur qualité — Accès CQ uniquement</option>
+            <option value="sup">Superviseur — Accueil, CQ (y c. Pilotage) et Publicité, consultation, toutes zones</option>
             <option value="admin">Administrateur</option>
           </select>
         </div>
@@ -499,7 +504,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
       Publicité</button>
     <button class="tb-mod" onclick="switchModule('cqe')" id="tab-cqe">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="margin-right:4px"><path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/><path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/></svg>
-      CQE</button>
+      CQ</button>
     <button class="tb-mod" onclick="switchModule('rapport')" id="tab-rapport">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="margin-right:4px"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H4zm0 1h8a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/><path d="M4.5 6a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7zm0 2.5a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7zm0 2.5a.5.5 0 0 1 0-1h4a.5.5 0 0 1 0 1h-4z"/></svg>
       Rapports
@@ -528,7 +533,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <div style="margin-top:auto;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,0.12);">
       <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;width:100%;margin-bottom:10px;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">⏻ Se déconnecter</button>
       <div class="rail-zone" id="tb-zone-label" style="font-size:10.5px;color:rgba(255,255,255,0.7);line-height:1.3;">Cavally + Worodougou</div>
-      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-20-ca</div>
+      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-22-ca</div>
     </div>
   </nav>
 
@@ -1225,19 +1230,19 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
 </div>
 
 <!-- ══════════════════════════════════════════════
-     MODULE CQE — Contrôle Qualité Enquête
+     MODULE CQ — Contrôle Qualité Enquête
 ══════════════════════════════════════════════ -->
 <div id="module-cqe" class="module" style="display:none;flex:1;min-width:0;">
   <main class="main" style="width:100%;">
     <div class="panel active">
       <div class="page-head">
-        <div><h2>Contrôle qualité</h2><p>État général · rejets AFOR (CQE) · rejets des contrôleurs qualité (CQI)</p></div>
+        <div><h2>Contrôle qualité</h2><p>État général · rejets AFOR (CQ) · rejets des contrôleurs qualité (CQI)</p></div>
         <div class="btn-row">
           <button class="btn-s" id="cqe-tab-dossiers" onclick="cqeSetTab('dossiers')" style="font-weight:700;">État général</button>
-          <button class="btn-s" id="cqe-tab-rejets_afor" onclick="cqeSetTab('rejets_afor')">Rejets AFOR (CQE)</button>
+          <button class="btn-s" id="cqe-tab-rejets_afor" onclick="cqeSetTab('rejets_afor')">Rejets AFOR (CQ)</button>
           <button class="btn-s" id="cqe-tab-cqi" onclick="cqeSetTab(window._cqiSub||'rejets')">Rejets contrôleurs (CQI)</button>
           <button class="btn-s" id="cqe-tab-rapprochement" onclick="cqeSetTab('rapprochement')" style="display:none;">Rapprochement des sources</button>
-          <button class="btn-s" id="cqe-tab-pilotage" onclick="cqeSetTab('pilotage')" style="display:none;">Pilotage CQE <span id="cqe-pilot-badge" style="display:none;background:#dc2626;color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:3px;"></span></button>
+          <button class="btn-s" id="cqe-tab-pilotage" onclick="cqeSetTab('pilotage')" style="display:none;">Pilotage CQ <span id="cqe-pilot-badge" style="display:none;background:#dc2626;color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:3px;"></span></button>
         </div>
       </div>
       <div id="cqe-subbar"></div>
@@ -1253,7 +1258,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
 ══════════════════════════════════════════════ -->
 <div id="module-rapport" class="module" style="display:none;flex:1;min-width:0;">
   <div style="flex:1;overflow-y:auto;padding:20px;">
-    <div class="page-head"><div><h2>Rapports d'activités</h2><p>Rapport généré automatiquement à partir des données AFOR, GNSS, tablettes et CQE</p></div></div>
+    <div class="page-head"><div><h2>Rapports d'activités</h2><p>Rapport généré automatiquement à partir des données AFOR, GNSS, tablettes et CQ</p></div></div>
     <div class="tw" id="rz-card" style="padding:16px;margin-bottom:16px;border-left:3px solid var(--accent);">
       <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:2px;">Rapport hebdomadaire de zone (modèle PRESFOR)</div>
       <p style="font-size:11px;color:var(--text2);margin:0 0 12px;">Page de garde, sommaire, synthèse de la semaine, levés, enquêtes, certification foncière et contrôle qualité sont calculés automatiquement. Les parties ISF, délimitation, plannings et divers se collent depuis Excel (ou se complètent dans Word). Export Word modifiable.</p>
@@ -1452,7 +1457,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
             Remise à zéro complète (fin de formation)
           </button>
         </div>
-        <p style="font-size:10px;color:var(--text3);margin:12px 0 0;">Ces imports alimentent directement <code>dossiersAFOR</code> et <code>gnssData</code>, utilisés par l'ensemble de l'application (Tableau de bord, Activités, Indicateurs, Publicité, CQE).</p>
+        <p style="font-size:10px;color:var(--text3);margin:12px 0 0;">Ces imports alimentent directement <code>dossiersAFOR</code> et <code>gnssData</code>, utilisés par l'ensemble de l'application (Tableau de bord, Activités, Indicateurs, Publicité, CQ).</p>
       </div>
     </div>
   </div>
@@ -1758,7 +1763,8 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 
 // ── Navigation modules ──
 function switchModule(id){
-  if(currentUser && currentUser.role==='cqe' && id!=='accueil' && id!=='cqe') id='cqe';   // contrôleur qualité : CQE et tableau de bord seulement
+  if(currentUser && currentUser.role==='sup' && id!=='accueil' && id!=='cqe' && id!=='pub') id='accueil';   // superviseur : Accueil, CQ et Publicité (consultation)
+  if(currentUser && currentUser.role==='cqe' && id!=='accueil' && id!=='cqe') id='cqe';   // contrôleur qualité : CQ et tableau de bord seulement
   document.querySelectorAll('.module').forEach(m=>{m.style.display='none';m.classList.remove('active');});
   document.querySelectorAll('.tb-mod').forEach(b=>b.classList.remove('active'));
   const m=document.getElementById('module-'+id);
@@ -6399,7 +6405,7 @@ function indRenderAll(){
 }
 
 // ═══════════════════════════════════════════
-// MODULE CQE — Contrôle Qualité Enquête
+// MODULE CQ — Contrôle Qualité Enquête
 // ═══════════════════════════════════════════
 // ── Sous-onglets Indicateurs : Agents (M4) et Zones (M5) intégrés comme rubriques ──
 const IND_NAV_ITEMS = [
@@ -7168,7 +7174,7 @@ async function tabImgOpen(code, slot, label, id){
 // ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-20-ca';
+const APP_VERSION = 'v15-22-ca';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
@@ -7683,7 +7689,7 @@ try{ const m = localStorage.getItem('presfor_plan_meta'); if(m) planMeta = JSON.
 
 function planEsc(x){ return String(x==null?'':x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function planNorm(x){ return String(x||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]+/g,' ').trim(); }
-function planCanEdit(){ return !!currentUser && currentUser.role!=='ce' && currentUser.role!=='gnss'; }
+function planCanEdit(){ return !!currentUser && currentUser.role!=='ce' && currentUser.role!=='gnss' && currentUser.role!=='sup'; }
 function planWho(){ return (currentUser && currentUser.nom) ? currentUser.nom.split('—')[0].trim() : ''; }
 function planKeyOf(code){ return String(code).replace(/[^A-Za-z0-9_-]/g,'_'); }
 function planCodeFromName(name){
@@ -7700,13 +7706,15 @@ function cqeTabsRender(){
   ['dossiers','rejets_afor','cqi','rapprochement','pilotage'].forEach(k=>{
     const b=document.getElementById('cqe-tab-'+k); if(!b) return;
     b.style.fontWeight = g===k?'700':'400';
-    if(k==='rapprochement'||k==='pilotage') b.style.display = rejIsAdmin()?'':'none';
+    if(k==='rapprochement') b.style.display = rejIsAdmin()?'':'none';
+    if(k==='pilotage') b.style.display = (rejIsAdmin()||rejIsSup())?'':'none';
   });
   const sb=document.getElementById('cqe-subbar');
   if(sb) sb.innerHTML = g==='cqi' ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px;">'+CQI_SUBS.map(x=>`<button class="btn-s" onclick="cqeSetTab('${x[0]}')" style="${cqeTab===x[0]?'font-weight:700;background:var(--accent);color:#fff;border-color:var(--accent);':''}font-size:12px;">${x[1]}</button>`).join('')+'</div>' : '';
 }
 function cqeSetTab(t){
-  if((t==='rapprochement'||t==='pilotage') && !rejIsAdmin()) t='dossiers';
+  if(t==='rapprochement' && !rejIsAdmin()) t='dossiers';
+  if(t==='pilotage' && !rejIsAdmin() && !rejIsSup()) t='dossiers';
   cqeTab = t;
   cqeTabsRender();
   cqeRenderAll();
@@ -8021,7 +8029,7 @@ async function planOpen(id){
   const sel = (name,val)=>`<select id="plan-${name}" ${can?'':'disabled'} style="width:100%;padding:5px;border:1px solid var(--border-med);border-radius:6px;font-size:12px;">
       ${[['','— à évaluer —'],['ok','Conforme'],['ko','Incohérent'],['na','Non vérifiable']].map(o=>`<option value="${o[0]}" ${val===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>`;
   const who = planEsc(planWho()||'consultation');
-  const wm = encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='360' height='220'><text x='20' y='120' font-family='Arial' font-size='15' fill='rgba(0,0,0,0.07)' transform='rotate(-25 180 110)'>PRESFOR · consultation · ${planWho().replace(/[<>&']/g,'')||'CQE'}</text></svg>`);
+  const wm = encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='360' height='220'><text x='20' y='120' font-family='Arial' font-size='15' fill='rgba(0,0,0,0.07)' transform='rotate(-25 180 110)'>PRESFOR · consultation · ${planWho().replace(/[<>&']/g,'')||'CQ'}</text></svg>`);
   const modal = document.createElement('div');
   modal.id = 'plan-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;display:flex;padding:14px;';
@@ -8455,6 +8463,7 @@ function rejRows(){
 function rejPortfolioGo(n,etat){ rejFilter.resp=n; rejFilter.etat=etat; rejFilter.page=0; cqeRenderRejets(); }
 function rejSetFilter(k,v){ rejFilter[k]=v; rejFilter.page=0; cqeRenderRejets(); }
 // Prise en charge / attribution. Un dossier rejeté seulement par le statut AFOR reçoit une fiche de suivi CQ.
+function rejIsSup(){ return !!currentUser && currentUser.role==='sup'; }
 function rejIsAdmin(){ return !!currentUser && currentUser.role==='admin'; }
 function rejIsCqe(){ return !!currentUser && currentUser.role==='cqe'; }
 function rejAssign(id, who){
@@ -8675,7 +8684,7 @@ function cqeRenderRejets(){
   const opt = (arr,v)=>arr.map(o=>`<option value="${planEsc(o[0])}" ${v===o[0]?'selected':''}>${planEsc(o[1])}</option>`).join('');
   const ctlSel = (id,cur)=>`<select ${rejIsAdmin()?'':'disabled'} onchange="rejAssign('${String(id).replace(/'/g,"\\'")}',this.value)" style="padding:3px;border:1px solid var(--border);border-radius:5px;font-size:11px;max-width:150px;"><option value="">— non attribué —</option>${names.map(n=>`<option ${n===cur?'selected':''}>${planEsc(n)}</option>`).join('')}</select>`;
   el.innerHTML = `
-  <div style="font-size:12px;color:var(--text3);margin:0 0 8px;">${modeAfor?'<b>Rejets AFOR (CQE)</b> — dossiers rejetés par l\'AFOR (fichier ou statut). Les contrôleurs les suivent dans leur portefeuille jusqu\'à la correction.':'<b>Rejets des contrôleurs qualité (CQI)</b> — dossiers rejetés par nos contrôleurs (grille, plan parcellaire, RDC, PVCL).'}</div>
+  <div style="font-size:12px;color:var(--text3);margin:0 0 8px;">${modeAfor?'<b>Rejets AFOR (CQ)</b> — dossiers rejetés par l\'AFOR (fichier ou statut). Les contrôleurs les suivent dans leur portefeuille jusqu\'à la correction.':'<b>Rejets des contrôleurs qualité (CQI)</b> — dossiers rejetés par nos contrôleurs (grille, plan parcellaire, RDC, PVCL).'}</div>
   <div class="tw" style="margin-bottom:12px;overflow:auto;"><div style="font-weight:700;padding:10px 12px;">Portefeuille des contrôleurs qualité</div>
     <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--surface2);"><th style="text-align:left;padding:6px 10px;">Contrôleur</th><th style="text-align:right;padding:6px 10px;">Dossiers à corriger (actif)</th><th style="text-align:right;padding:6px 10px;">En retard (≥ ${CQE_ALERT_DAYS} j)</th><th style="text-align:right;padding:6px 10px;">Plus ancien (j)</th><th style="text-align:right;padding:6px 10px;">Corrigés</th><th></th></tr></thead>
     <tbody>${port.map(p=>`<tr style="border-top:1px solid var(--border);"><td style="padding:6px 10px;font-weight:600;">${planEsc(p.n)}</td><td style="padding:6px 10px;text-align:right;font-weight:700;${p.ac?'cursor:pointer;text-decoration:underline;':''}" ${p.ac?`onclick="rejPortfolioGo('${String(p.n).replace(/'/g,"\\'")}','a_corriger')" title="Voir ses dossiers à corriger"`:''}>${p.ac}</td><td style="padding:6px 10px;text-align:right;color:${p.ret?'var(--red)':'inherit'};">${p.ret}</td><td style="padding:6px 10px;text-align:right;">${p.max==null?'—':p.max}</td><td style="padding:6px 10px;text-align:right;${p.co?'cursor:pointer;text-decoration:underline;':''}" ${p.co?`onclick="rejPortfolioGo('${String(p.n).replace(/'/g,"\\'")}','verifie')" title="Voir ses dossiers corrigés"`:''}>${p.co}</td><td style="padding:6px 10px;text-align:right;"><button class="btn-s" onclick="rejSetFilter('resp','${String(p.n).replace(/'/g,"\\'")}')">Voir</button></td></tr>`).join('')||'<tr><td colspan="6" style="padding:12px;text-align:center;color:var(--text3);">Aucun compte contrôleur qualité.</td></tr>'}</tbody></table></div>
@@ -8985,9 +8994,10 @@ function rejPiecesEtat(d){
 }
 function rejPiecesChips(d){
   let r; try{ r=rejPiecesEtat(d); }catch(e){ return ''; }
-  if(!r.length) return '';
+  const np=cqeNouvellesPieces(d).filter(x=>!r.some(y=>y.piece===x[1]));
+  if(!r.length && !np.length) return '';
   const col={3:'var(--red)',2:'var(--red)',1:'var(--amber-txt)',0:'var(--accent)'}, ic={3:'✗',2:'✗',1:'?',0:'✓'}, lib={3:'motif non corrigé',2:'non renvoyée / à vérifier',1:'à confirmer',0:'corrigé'};
-  return '<div style="margin-top:3px;font-size:10px;line-height:1.5;white-space:normal;max-width:300px;">'+r.map(x=>`<span title="${planEsc(x.etat+(x.det?' — '+x.det:''))}" style="display:inline-block;margin:1px 4px 1px 0;padding:0 5px;border-radius:8px;border:1px solid ${col[x.sev]};color:${col[x.sev]};white-space:nowrap;">${ic[x.sev]} ${planEsc(x.piece)} : ${lib[x.sev]}</span>`).join('')+'</div>';
+  return '<div style="margin-top:3px;font-size:10px;line-height:1.5;white-space:normal;max-width:300px;">'+np.map(x=>`<span title="Pièce non encore contrôlée : à contrôler depuis « Contrôle des dossiers »" style="display:inline-block;margin:1px 4px 1px 0;padding:0 5px;border-radius:8px;border:1px solid #2563eb;color:#2563eb;white-space:nowrap;">+ ${planEsc(x[1])} : à contrôler</span>`).join('')+r.map(x=>`<span title="${planEsc(x.etat+(x.det?' — '+x.det:''))}" style="display:inline-block;margin:1px 4px 1px 0;padding:0 5px;border-radius:8px;border:1px solid ${col[x.sev]};color:${col[x.sev]};white-space:nowrap;">${ic[x.sev]} ${planEsc(x.piece)} : ${lib[x.sev]}</span>`).join('')+'</div>';
 }
 function rejImportBilan(){
   const rows=[];
@@ -9862,7 +9872,7 @@ function pvNomInverseCtl(add, nom, prenom, d, lab){
   const an=String(d&&d.nom_demandeur||'').trim(), ap=String(d&&d.prenom||'').trim();
   if(an && ap){
     const direct = pvSim(nom,an)>=0.75 && pvSim(prenom,ap)>=0.75, swap = pvSim(nom,ap)>=0.75 && pvSim(prenom,an)>=0.75;
-    if(swap && !direct){ add('err', lab+' : nom et prénoms inversés par rapport à la base AFOR (fiche : nom « '+nom+' », prénoms « '+prenom+' » ; AFOR : nom « '+an+' », prénoms « '+ap+' »).'); return; }
+    if(swap && !direct){ add('info', lab+' : nom et prénoms inversés par rapport à la base AFOR (fiche : nom « '+nom+' », prénoms « '+prenom+' » ; AFOR : nom « '+an+' », prénoms « '+ap+' »). À signaler pour correction de la base AFOR, ce n\'est pas un motif de rejet.'); return; }
   }
   if(pvCaseOf(nom)!=='U' && pvCaseOf(nom)!=='' && pvCaseOf(prenom)==='U') add('warn', lab+' : nom « '+nom+' » en minuscules et prénoms « '+prenom+' » en majuscules — inversion nom/prénoms probable, à comparer avec la pièce d\'identité.');
 }
@@ -10033,7 +10043,7 @@ function terrRenderDoc(d, rec, type){
 setTimeout(()=>{ try{ terrLoadChecks(); }catch(e){} }, 2800);
 
 // ═══════════════════════════════════════════════════════════════
-// PILOTAGE CQE — suivi du travail des contrôleurs qualité et des délais de correction
+// PILOTAGE CQ — suivi du travail des contrôleurs qualité et des délais de correction
 // ═══════════════════════════════════════════════════════════════
 const CQE_ALERT_DAYS = 7, CQE_CRIT_DAYS = 14;
 let cqePilotChart = null;
@@ -10171,6 +10181,9 @@ function cqeEtatBackfill(){
   });
   return n;
 }
+// Dossier rejeté mais dont une pièce n'a pas encore été contrôlée (ajoutée après le rejet, ou renvoyée) : reste à contrôler
+function cqeNouvellesPieces(d){ try{ return cqePiecesRestantes(d,''); }catch(e){ return []; } }
+function cqeCtlAContr(d, der){ const st=(der||cqeCtlDerived(d)).statut; return st==='a_controler' || (st==='rejete' && cqeNouvellesPieces(d).length>0); }
 function cqeCtlStatutOf(id){ const d=(dossiersAFOR||[]).find(x=>String(x.id)===String(id)); return d?cqeCtlDerived(d).statut:((cqeCtl[id]||{}).statut||'a_controler'); }
 // État d'un dossier dans « Contrôle des dossiers », déduit des contrôles par pièce (RDC, PVCL, plan) + ancien verdict global.
 // Rejeté : au moins une pièce incohérente. Conforme : toutes les pièces existantes sont conformes. Sinon : à contrôler.
@@ -10214,7 +10227,7 @@ function ddCtl(kind){
   const afor=dashFilterByZone(dossiersAFOR||[], dashZoneFilter), mine=window._ctlMine||new Set();
   const stOf=d=>cqeCtlDerived(d);
   const T={a_controler:'Dossiers à contrôler', conforme:'Dossiers conformes', rejete:'Dossiers rejetés', mes:'Mes contrôles aujourd\'hui', '':'Dossiers de la zone'};
-  const rows=afor.filter(d=>kind==='mes'?mine.has(String(d.id))||mine.has(d.id) : (!kind || stOf(d).statut===kind));
+  const rows=afor.filter(d=>kind==='mes'?mine.has(String(d.id))||mine.has(d.id) : kind==='a_controler' ? cqeCtlAContr(d) : (!kind || stOf(d).statut===kind));
   const LIB={a_controler:'À contrôler',conforme:'Conforme',rejete:'Rejeté'};
   ddOpen(T[kind]||'Dossiers', rows, [
     {h:'Statut',f:d=>LIB[stOf(d).statut]||''},
@@ -10267,12 +10280,13 @@ function cqeRenderControle(){
   cqeBuildActions().filter(a=>ids.has(String(a.id))&&a.by===me&&a.d===t&&(a.t==='dos_ok'||a.t==='dos_rej')).forEach(a=>mine.add(a.id+'|global'));
   Object.keys(cqeEtat||{}).forEach(id=>{ const e=cqeEtat[id]; if(e&&e.par===me&&e.d===t&&ids.has(String(id))) mine.add(id+'|global'); });
   const mineIds=new Set([...mine].map(x=>x.split('|')[0])); window._ctlMine=mineIds; const myDay=[...mineIds].filter(id=>ids.has(String(id))).length;
-  kpiEl.innerHTML=[['Dossiers de la zone',afor.length,'#475569',''],['À contrôler',afor.length-ctlIds.length,'#d97706','a_controler'],['Conformes',nOk,'#16a34a','conforme'],['Rejetés',nRej,'#dc2626','rejete'],['Mes contrôles aujourd\'hui',myDay,'#0f766e','mes']]
+  kpiEl.innerHTML=[['Dossiers de la zone',afor.length,'#475569',''],['À contrôler',afor.filter(d=>cqeCtlAContr(d,der.get(String(d.id)))).length,'#d97706','a_controler'],['Conformes',nOk,'#16a34a','conforme'],['Rejetés',nRej,'#dc2626','rejete'],['Mes contrôles aujourd\'hui',myDay,'#0f766e','mes']]
     .map(k=>`<div class="kpi" ${k[3]===null?'':`onclick="cqeCtlSet('statut','${k[3]}');ddCtl('${k[3]}')" style="cursor:pointer;" title="Cliquer pour voir la liste"`}><div class="kpi-l">${k[0]}</div><div class="kpi-v" style="color:${k[2]}">${k[1].toLocaleString('fr-FR')}</div>${k[4]?`<div class="kpi-s">${k[4]}</div>`:''}</div>`).join('');
   const f=cqeCtlFilter, q=(f.q||'').toLowerCase();
   const depts=[...new Set(afor.map(d=>d.dept).filter(Boolean))].sort();
   const list=afor.filter(d=>{
     if(f.statut==='mes'){ if(!mineIds.has(String(d.id))) return false; }
+    else if(f.statut==='a_controler'){ if(!cqeCtlAContr(d,der.get(String(d.id)))) return false; }
     else if(f.statut && cqeCtlStatutOf(d.id)!==f.statut) return false;
     if(f.dept && d.dept!==f.dept) return false;
     if(q && !(String(d.id).toLowerCase().includes(q)||((d.prenom||'')+' '+(d.nom_demandeur||'')).toLowerCase().includes(q)||(d.village||'').toLowerCase().includes(q)||(d.agent||'').toLowerCase().includes(q))) return false;
@@ -10282,7 +10296,7 @@ function cqeRenderControle(){
   const esc=planEsc, qid=id=>String(id).replace(/'/g,"\\'");
   const rows=list.slice(f.page*PG,f.page*PG+PG).map(d=>{
     const k0=cqeCtlDerived(d), k=k0.statut==='a_controler'?null:k0; const hasPlan=!!(typeof planGetFor==='function'&&planGetFor(d));
-    const st=k?(k.statut==='conforme'?'<span style="color:#16a34a;font-weight:700;">Conforme</span>':'<span style="color:#dc2626;font-weight:700;">Rejeté</span>'):'<span style="color:#d97706;">À contrôler</span>';
+    const np=(k&&k.statut==='rejete')?cqeNouvellesPieces(d):[]; const st=k?(k.statut==='conforme'?'<span style="color:#16a34a;font-weight:700;">Conforme</span>':'<span style="color:#dc2626;font-weight:700;">Rejeté</span>'+(np.length?'<div style="font-size:10px;color:#2563eb;font-weight:700;">+ '+np.length+' pièce(s) à contrôler : '+esc(np.map(x=>x[1]).join(', '))+'</div>':'')):'<span style="color:#d97706;">À contrôler</span>';
     return `<tr style="cursor:pointer;" onclick="cqeCtlOpen('${qid(d.id)}')"><td style="font-family:'DM Mono',monospace;font-size:11px;">${esc(d.id)}${(()=>{ const lk=lockOther(d.id); return lk?` <span title="En cours de traitement par ${esc(lk.by)}" style="font-family:inherit;color:#b45309;">🔒 ${esc(lk.by)}</span>`:''; })()}</td><td>${esc((d.prenom||'')+' '+(d.nom_demandeur||''))}</td><td>${esc(d.village||'')}</td><td>${esc(d.agent||'—')}</td><td>${st}${(()=>{ const e=rejEtat(d); if(e.origine!=='afor' || e.etat!=='rejete') return ''; return `<div style="font-size:10px;color:#b45309;font-weight:600;white-space:normal;max-width:190px;" title="Rejet AFOR : ${esc(rejMotif(d))}">⚠ Rejeté par l\'AFOR : ${esc(rejDocsOf(d))}</div>`; })()}</td><td>${k?esc(k.par||''):''}</td>${(()=>{ if(!k||k.statut!=='rejete') return '<td></td>'; const mm=cqeCtlMotif(d); return `<td style="white-space:nowrap;">${esc(mm.date?mm.date.split('-').reverse().join('/'):'')}</td>`; })()}<td>${cqeCtlBadge(d,'rdc')}</td><td>${cqeCtlBadge(d,'pvcl')}</td><td>${cqeCtlBadge(d,'plan')}</td>${TERR_NEW.map(t=>`<td title="${esc(TERR_TYPES[t].titre)}" style="text-align:center;">${cqeCtlBadgeS(d,t)}</td>`).join('')}${(()=>{ if(!k||k.statut!=='rejete') return '<td></td>'; const mm=cqeCtlMotif(d); return `<td style="max-width:340px;font-size:11px;white-space:pre-line;">${esc(mm.motif)}</td>`; })()}</tr>`;}).join('')||'<tr><td colspan="17" style="text-align:center;color:#888;padding:14px;">Aucun dossier pour ces filtres.</td></tr>';
   const sel=(k,opts)=>`<select onchange="cqeCtlSet('${k}',this.value)" style="border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;">${opts.map(o=>`<option value="${esc(o[0])}" ${f[k]===o[0]?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
   el.innerHTML=`<div class="tw" style="overflow:hidden;">
@@ -10637,7 +10651,7 @@ const DD_REG={
     // Contrôle des dossiers (onglet) — applique le filtre de la liste
     'a controler':()=>{ cqeCtlSet('statut','a_controler'); return null; },
     'conformes ':()=>null,
-    // Rejets AFOR (CQE) : cartes de chiffres
+    // Rejets AFOR (CQ) : cartes de chiffres
     'rejetes a corriger':()=>ddRejAfor('Rejets AFOR à corriger',x=>x.e.etat==='rejete'),
     'suivi des corrections':()=>ddRejAfor('Corrigés par l\'agent (à vérifier)',x=>x.s==='corrige_agent'),
     'sans responsable cq':()=>ddRejAfor('Rejets AFOR sans responsable CQ',x=>x.e.etat==='rejete'&&!x.resp),
@@ -12402,7 +12416,7 @@ function notifGetAlertes(){
     });
   }
 
-  // 1b. Corrections en retard (suivi CQE)
+  // 1b. Corrections en retard (suivi CQ)
   try{
     const od=cqeOverdue();
     if(od.length){
@@ -15332,19 +15346,19 @@ function authLogout(){
 function authApplyUI(){
   const role = currentUser?.role || '';
   const isAdmin  = role === 'admin';
-  const isViewer = role === 'ce' || role === 'gnss' || role === 'cqe';
+  const isViewer = role === 'ce' || role === 'gnss' || role === 'cqe' || role === 'sup';
   const isAgent  = role === 'agent';
   const ui = document.getElementById('tb-user-info');
 
   // Appliquer la classe de rôle sur le body
-  document.body.classList.remove('role-admin','role-agent','role-ce','role-gnss','role-cqe','role-viewer');
+  document.body.classList.remove('role-admin','role-agent','role-ce','role-gnss','role-cqe','role-sup','role-viewer');
   if(role) document.body.classList.add('role-'+role);
   if(isViewer) document.body.classList.add('role-viewer');
 
   if(currentUser){
     ui.style.display = 'flex';
     document.getElementById('tb-user-name').textContent = currentUser.nom.split('—')[0].trim().split(' ').slice(0,2).join(' ');
-    const roleLabel = isAdmin?'Admin':role==='ce'?'CE':role==='gnss'?'GNSS':role==='cqe'?'Contrôle qualité':'Agent';
+    const roleLabel = isAdmin?'Admin':role==='ce'?'CE':role==='gnss'?'GNSS':role==='cqe'?'Contrôle qualité':role==='sup'?'Superviseur':'Agent';
     document.getElementById('tb-user-role').textContent = roleLabel;
     document.getElementById('tb-logout-btn').style.display = 'block'; { const l2=document.getElementById('tb-logout-btn2'); if(l2) l2.style.display='block'; }
     document.getElementById('tb-admin-btn').style.display = isAdmin ? 'block' : 'none';
@@ -15352,7 +15366,7 @@ function authApplyUI(){
     if(wipeBtn) wipeBtn.style.display = isAdmin ? 'inline-flex' : 'none';
     // Contrôleur qualité : seul module accessible, on y bascule directement (le reste de la
     // navigation est masqué par CSS, mais un module resté ouvert d'une session précédente
-    // doit quand même être remplacé par CQE).
+    // doit quand même être remplacé par CQ).
     if(role==='cqe'){ cqeLockZone(); switchModule('cqe'); }
     else { const zs=document.getElementById('zone-selector'); if(zs) zs.style.display=''; }
   } else {
@@ -15371,7 +15385,7 @@ function authApplyUI(){
   setTimeout(applyViewerRestrictions, 100);
 }
 
-function isViewer(){ return currentUser && (currentUser.role==='ce'||currentUser.role==='gnss'); }
+function isViewer(){ return currentUser && (currentUser.role==='ce'||currentUser.role==='gnss'||currentUser.role==='sup'); }
 
 function canDelete(){ return currentUser && currentUser.role === 'admin'; }
 function canEdit(){   return currentUser && !isViewer(); }
@@ -15416,7 +15430,7 @@ function adminLoadUsers(){
   const _seenR = new Set();
   tbody.innerHTML = list.filter(u=>!_seenR.has(u.id)&&_seenR.add(u.id)).map(u=>{
     const isMe = u.id === currentUser.id;
-    const roleB = u.role==='admin'?'<span class="badge b-amber">Admin</span>':u.role==='ce'?'<span class="badge b-green">CE — Visuel</span>':u.role==='gnss'?'<span class="badge b-green">GNSS — Visuel</span>':u.role==='cqe'?`<span class="badge b-blue">Contrôle qualité</span><br><select onchange="adminSetZone('${u.id}',this.value)" style="margin-top:4px;font-size:11px;"><option value="cavally" ${(u.zone||'cavally')==='cavally'?'selected':''}>Région : Cavally</option><option value="worodougou" ${u.zone==='worodougou'?'selected':''}>Région : Worodougou</option></select>`:'<span class="badge b-blue">Agent</span>';
+    const roleB = u.role==='admin'?'<span class="badge b-amber">Admin</span>':u.role==='ce'?'<span class="badge b-green">CE — Visuel</span>':u.role==='gnss'?'<span class="badge b-green">GNSS — Visuel</span>':u.role==='sup'?'<span class="badge b-blue">Superviseur</span>':u.role==='cqe'?`<span class="badge b-blue">Contrôle qualité</span><br><select onchange="adminSetZone('${u.id}',this.value)" style="margin-top:4px;font-size:11px;"><option value="cavally" ${(u.zone||'cavally')==='cavally'?'selected':''}>Région : Cavally</option><option value="worodougou" ${u.zone==='worodougou'?'selected':''}>Région : Worodougou</option></select>`:'<span class="badge b-blue">Agent</span>';
     const created = u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—';
     const last = u.last_login
       ? new Date(u.last_login).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
@@ -15642,7 +15656,7 @@ serverLoad().then(ok => {
   // place — silencieux sinon).
   aforRenderAll();
   // Le contrôle qualité (rejets, conformes, contrôles) n'était chargé que par le module Publicité :
-  // un contrôleur arrivant directement sur CQE sans copie locale voyait une liste vide.
+  // un contrôleur arrivant directement sur CQ sans copie locale voyait une liste vide.
   pubLoadFromFirebase().then(()=>{ cqeRefreshIfOpen(); });
   cqeAssignLoad().then(()=>cqeRefreshIfOpen());
   cqeGrilleLoad().then(()=>cqeRefreshIfOpen());
