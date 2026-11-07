@@ -533,7 +533,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <div style="margin-top:auto;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,0.12);">
       <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;width:100%;margin-bottom:10px;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">⏻ Se déconnecter</button>
       <div class="rail-zone" id="tb-zone-label" style="font-size:10.5px;color:rgba(255,255,255,0.7);line-height:1.3;">Cavally + Worodougou</div>
-      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-22-ca</div>
+      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-22c-ca</div>
     </div>
   </nav>
 
@@ -7174,7 +7174,7 @@ async function tabImgOpen(code, slot, label, id){
 // ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-22-ca';
+const APP_VERSION = 'v15-22c-ca';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
@@ -9872,7 +9872,8 @@ function pvNomInverseCtl(add, nom, prenom, d, lab){
   const an=String(d&&d.nom_demandeur||'').trim(), ap=String(d&&d.prenom||'').trim();
   if(an && ap){
     const direct = pvSim(nom,an)>=0.75 && pvSim(prenom,ap)>=0.75, swap = pvSim(nom,ap)>=0.75 && pvSim(prenom,an)>=0.75;
-    if(swap && !direct){ add('info', lab+' : nom et prénoms inversés par rapport à la base AFOR (fiche : nom « '+nom+' », prénoms « '+prenom+' » ; AFOR : nom « '+an+' », prénoms « '+ap+' »). À signaler pour correction de la base AFOR, ce n\'est pas un motif de rejet.'); return; }
+    if(swap && !direct) return;   // inversion par rapport à la base AFOR : la fiche fait foi, ni anomalie ni motif de rejet
+
   }
   if(pvCaseOf(nom)!=='U' && pvCaseOf(nom)!=='' && pvCaseOf(prenom)==='U') add('warn', lab+' : nom « '+nom+' » en minuscules et prénoms « '+prenom+' » en majuscules — inversion nom/prénoms probable, à comparer avec la pièce d\'identité.');
 }
@@ -10296,8 +10297,8 @@ function cqeRenderControle(){
   const esc=planEsc, qid=id=>String(id).replace(/'/g,"\\'");
   const rows=list.slice(f.page*PG,f.page*PG+PG).map(d=>{
     const k0=cqeCtlDerived(d), k=k0.statut==='a_controler'?null:k0; const hasPlan=!!(typeof planGetFor==='function'&&planGetFor(d));
-    const np=(k&&k.statut==='rejete')?cqeNouvellesPieces(d):[]; const st=k?(k.statut==='conforme'?'<span style="color:#16a34a;font-weight:700;">Conforme</span>':'<span style="color:#dc2626;font-weight:700;">Rejeté</span>'+(np.length?'<div style="font-size:10px;color:#2563eb;font-weight:700;">+ '+np.length+' pièce(s) à contrôler : '+esc(np.map(x=>x[1]).join(', '))+'</div>':'')):'<span style="color:#d97706;">À contrôler</span>';
-    return `<tr style="cursor:pointer;" onclick="cqeCtlOpen('${qid(d.id)}')"><td style="font-family:'DM Mono',monospace;font-size:11px;">${esc(d.id)}${(()=>{ const lk=lockOther(d.id); return lk?` <span title="En cours de traitement par ${esc(lk.by)}" style="font-family:inherit;color:#b45309;">🔒 ${esc(lk.by)}</span>`:''; })()}</td><td>${esc((d.prenom||'')+' '+(d.nom_demandeur||''))}</td><td>${esc(d.village||'')}</td><td>${esc(d.agent||'—')}</td><td>${st}${(()=>{ const e=rejEtat(d); if(e.origine!=='afor' || e.etat!=='rejete') return ''; return `<div style="font-size:10px;color:#b45309;font-weight:600;white-space:normal;max-width:190px;" title="Rejet AFOR : ${esc(rejMotif(d))}">⚠ Rejeté par l\'AFOR : ${esc(rejDocsOf(d))}</div>`; })()}</td><td>${k?esc(k.par||''):''}</td>${(()=>{ if(!k||k.statut!=='rejete') return '<td></td>'; const mm=cqeCtlMotif(d); return `<td style="white-space:nowrap;">${esc(mm.date?mm.date.split('-').reverse().join('/'):'')}</td>`; })()}<td>${cqeCtlBadge(d,'rdc')}</td><td>${cqeCtlBadge(d,'pvcl')}</td><td>${cqeCtlBadge(d,'plan')}</td>${TERR_NEW.map(t=>`<td title="${esc(TERR_TYPES[t].titre)}" style="text-align:center;">${cqeCtlBadgeS(d,t)}</td>`).join('')}${(()=>{ if(!k||k.statut!=='rejete') return '<td></td>'; const mm=cqeCtlMotif(d); return `<td style="max-width:340px;font-size:11px;white-space:pre-line;">${esc(mm.motif)}</td>`; })()}</tr>`;}).join('')||'<tr><td colspan="17" style="text-align:center;color:#888;padding:14px;">Aucun dossier pour ces filtres.</td></tr>';
+    const np=(k&&k.statut==='rejete')?cqeNouvellesPieces(d):[]; const st=k?(k.statut==='conforme'?'<span style="color:#16a34a;font-weight:700;">Conforme</span>':'<span style="color:#dc2626;font-weight:700;">Rejeté</span>'+(np.length?'<div title="'+esc(np.map(x=>x[1]).join(', '))+'" style="font-size:10px;color:#2563eb;font-weight:700;white-space:nowrap;">+ '+np.length+' pièce(s) à contrôler</div>':'')):'<span style="color:#d97706;">À contrôler</span>';
+    return `<tr style="cursor:pointer;" onclick="cqeCtlOpen('${qid(d.id)}')"><td style="font-family:'DM Mono',monospace;font-size:11px;">${esc(d.id)}${(()=>{ const lk=lockOther(d.id); return lk?` <span title="En cours de traitement par ${esc(lk.by)}" style="font-family:inherit;color:#b45309;">🔒 ${esc(lk.by)}</span>`:''; })()}</td><td>${esc((d.prenom||'')+' '+(d.nom_demandeur||''))}</td><td>${esc(d.village||'')}</td><td>${esc(d.agent||'—')}</td><td>${st}${(()=>{ const e=rejEtat(d); if(e.origine!=='afor' || e.etat!=='rejete') return ''; return `<div style="font-size:10px;color:#b45309;font-weight:600;white-space:normal;max-width:190px;" title="Rejet AFOR : ${esc(rejMotif(d))}">⚠ Rejeté par l\'AFOR : ${esc(rejDocsOf(d))}</div>`; })()}</td><td>${k?esc(k.par||''):''}</td>${(()=>{ if(!k||k.statut!=='rejete') return '<td></td>'; const mm=cqeCtlMotif(d); return `<td style="white-space:nowrap;">${esc(mm.date?mm.date.split('-').reverse().join('/'):'')}</td>`; })()}<td>${cqeCtlBadge(d,'rdc')}</td><td>${cqeCtlBadge(d,'pvcl')}</td><td>${cqeCtlBadge(d,'plan')}</td>${TERR_NEW.map(t=>`<td title="${esc(TERR_TYPES[t].titre)}" style="text-align:center;">${cqeCtlBadgeS(d,t)}</td>`).join('')}${(()=>{ if(!k||k.statut!=='rejete') return '<td></td>'; const mm=cqeCtlMotif(d); return `<td style="max-width:340px;font-size:11px;"><div title="${esc(mm.motif)}" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;line-height:1.35;max-height:2.7em;">${esc(String(mm.motif||'').replace(/\s*\n+\s*/g,' · '))}</div></td>`; })()}</tr>`;}).join('')||'<tr><td colspan="17" style="text-align:center;color:#888;padding:14px;">Aucun dossier pour ces filtres.</td></tr>';
   const sel=(k,opts)=>`<select onchange="cqeCtlSet('${k}',this.value)" style="border:1px solid var(--border-med);border-radius:6px;padding:6px 8px;font-size:12px;">${opts.map(o=>`<option value="${esc(o[0])}" ${f[k]===o[0]?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
   el.innerHTML=`<div class="tw" style="overflow:hidden;">
    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
