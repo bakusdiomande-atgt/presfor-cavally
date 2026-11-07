@@ -533,7 +533,7 @@ body.role-cqe #tb-user-role { background:#FDECEA; color:#B71C1C; }
     <div style="margin-top:auto;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,0.12);">
       <button id="tb-logout-btn" onclick="authLogout()" title="Se déconnecter" style="display:none;width:100%;margin-bottom:10px;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;text-align:left;">⏻ Se déconnecter</button>
       <div class="rail-zone" id="tb-zone-label" style="font-size:10.5px;color:rgba(255,255,255,0.7);line-height:1.3;">Cavally + Worodougou</div>
-      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-23b-ca</div>
+      <div class="rail-ver" title="Version de l'application" style="font-size:9.5px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;margin-top:2px;">v15-24-ca</div>
     </div>
   </nav>
 
@@ -7203,7 +7203,7 @@ async function tabImgOpen(code, slot, label, id){
 // ═══════════════════════════════════════════════════════════════
 // ROBUSTESSE — version, horloge serveur, échecs d'envoi visibles, journal d'audit, chiffres figés
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v15-23b-ca';
+const APP_VERSION = 'v15-24-ca';
 var _clockOff = 0, _clockOk = false;
 function nowSrv(){ return new Date(Date.now()+(+_clockOff||0)).toISOString(); }
 // ── Échecs d'envoi vers Firebase : plus jamais silencieux ──
@@ -9669,7 +9669,7 @@ function pvOfficielHtml(d, rec){
     <ul class="pvo-ul"><li>Questionnaire relatif au recensement des droits coutumiers,</li><li>Déclarations de toutes les personnes auditionnées (membres de déclarations : ${(rec.intercalaire?Object.keys((rec.intercalaire||[]).reduce((a,i)=>(a[i.nomTemoin||'']=1,a),{})).length:0)+1}),</li><li>Fiche(s) d'identification des litiges (nombre de litiges : ${(((rec.idLandDispute&&rec.idLandDispute.disputePerson)||rec.complainants||[]).length)}),</li><li>Liste des détenteurs de droits coutumiers collectifs, le cas échéant,</li><li>Liste des détenteurs de droits coutumiers individuels, le cas échéant,</li><li>État des droits de propriété ou de droits de concession ou d'occupation accordés par l'administration,</li><li>Liste des servitudes ou droits d'usage, le cas échéant, le cas de la caractérisation des éléments de ces droits.</li></ul>`);
   // EO 4 — fiche démographique
   h += page('EO 4','Annexe au PV<br>FICHE DÉMOGRAPHIQUE', tbl(['N°','Qualité des personnes concernées par l\'enquête','Nom et Prénoms','Nationalité','Nature et N° de la pièce d\'identité','Observations'],
-    people.map((p,i)=>{ const aud = pvIsHolder(p) || temoins.has(agNormTok(pvName(p)).join(' ')); return `<tr><td>${i+1}</td><td>${E(up(pvRole(p)))}</td><td>${E(((p.lastname||'')+' '+(p.firstname||'')).trim())}</td><td>${E(p.nationality||'')}</td><td>${E(((p.identityDocumentType&&(p.identityDocumentType.label||p.identityDocumentType))||'')+' '+(p.identityDocumentNumber||'')).trim()}</td><td>${aud?'Auditionné':'Non auditionné'}</td></tr>`; }), 3));
+    people.map((p,i)=>{ const aud = pvIsHolder(p) || temoins.has(agNormTok(pvName(p)).join(' ')); return `<tr><td>${i+1}</td><td>${E(pvRole(p))}</td><td>${E(((p.lastname||'')+' '+(p.firstname||'')).trim())}</td><td>${E(p.nationality||'')}</td><td>${E(((p.identityDocumentType&&(p.identityDocumentType.label||p.identityDocumentType))||'')+' '+(p.identityDocumentNumber||'')).trim()}</td><td>${aud?'Auditionné':'Non auditionné'}</td></tr>`; }), 3));
   // EO 7 — équipe d'enquête
   h += page('EO 7','Annexe au PV<br>LISTE DES MEMBRES DE L\'ÉQUIPE D\'ENQUÊTE', tbl(['N°','Nom et Prénoms','Qualité','Téléphone','Signature'],
     members.map((m,i)=>`<tr><td>${i+1}</td><td>${E(((m.lastname||'')+' '+(m.firstname||'')).trim())}</td><td>${E(pvRole(m))}</td><td>${E(m.phoneNumber||'')}</td><td>${sigOk(m)}</td></tr>`), 3));
